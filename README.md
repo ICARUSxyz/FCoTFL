@@ -1,7 +1,5 @@
-# FCoTFL: Formal Chain-of-Thought prompting for Software Fault localization
-
-This repository provides a framework for **FCoTFL: Formal Chain-of-Thought prompting for Software Fault localization** using Large Language Models (LLMs).  
-It integrates several benchmark datasets (Defects4J, QuixBugs, and an unseen dataset), formal specifications (SOFL), and prompt-based LLM workflows.
+# FCoTFL
+This repository provides a framework for **FCoTFL: Formal Chain-of-Thought prompting for Software Fault localization** using Large Language Models (LLMs).   It integrates several benchmark datasets (Defects4J, QuixBugs, and an unseen dataset), formal specifications (SOFL), and prompt-based LLM workflows.
 
 ---
 
@@ -59,7 +57,7 @@ This repo builds on widely-used FL datasets:
   - Includes reference test cases.
 
 - **UnseenCode-FL**  
-  - A new dataset of 70 student-written buggy programs (multi-line errors), unseen by training models.
+  - A newly constructed dataset of 70 buggy programs (multi-line errors), unseen by training models.
   - Contains buggy/fixed code, buggy line locations, SOFL specs, prompts, and bug reports.
 
 ---
@@ -125,3 +123,8 @@ accelerate==0.22.0
 
 ## 6. Result
 The raw experimental results are available under the `Results/` directory for reference.
+
+## License
+- Code: Apache-2.0 (see `LICENSE`)
+- Textual contents (docs, SOFL specs, prompt templates) and experiment artifacts (figures, CSVs that are ours): CC BY 4.0 (see [`LICENSE-CC-BY-4.0`](https://creativecommons.org/licenses/by-nc-nd/4.0/))
+- Third-party datasets/code (e.g., Defects4J, QuixBugs) are not redistributed; please follow their original licenses. We provide scripts to fetch them.
