@@ -57,7 +57,7 @@ This repo builds on widely-used FL datasets:
   - Includes reference test cases.
 
 - **UnseenCode-FL**  
-  - A new dataset of 70 student-written buggy programs (multi-line errors), unseen by training models.
+  - A newly constructed dataset of 70 buggy programs (multi-line errors), unseen by training models.
   - Contains buggy/fixed code, buggy line locations, SOFL specs, prompts, and bug reports.
 
 ---
