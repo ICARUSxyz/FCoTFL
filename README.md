@@ -126,5 +126,5 @@ The raw experimental results are available under the `Results/` directory for re
 
 ## License
 - Code: Apache-2.0 (see `LICENSE`)
-- Textual contents (docs, SOFL specs, prompt templates) and experiment artifacts (figures, CSVs that are ours): CC BY 4.0 (see `LICENSE-CC-BY-4.0`)
+- Textual contents (docs, SOFL specs, prompt templates) and experiment artifacts (figures, CSVs that are ours): CC BY 4.0 (see [`LICENSE-CC-BY-4.0`](https://creativecommons.org/licenses/by-nc-nd/4.0/))
 - Third-party datasets/code (e.g., Defects4J, QuixBugs) are not redistributed; please follow their original licenses. We provide scripts to fetch them.
