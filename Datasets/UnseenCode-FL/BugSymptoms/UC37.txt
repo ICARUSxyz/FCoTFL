@@ -1,0 +1,65 @@
+**Bug Report: DataUse Module Behavior Summary**
+
+---
+
+**Test Case 1: getNameForID with valid ID**
+
+**Action:**
+Call `getNameForID("U123", "userdata.csv")` where the CSV line format is `U123/xx/John/xxx`.
+
+**Expected:**
+Function returns "John".
+
+**Observed:**
+Function returns `null`.
+
+**Output:**
+
+```plaintext
+[INFO] Reading CSV file...
+[WARN] No matching ID found or incorrect data index
+[RESULT] name = null
+```
+
+---
+
+**Test Case 2: getIDForName with valid name**
+
+**Action:**
+Call `getIDForName("John", "userdata.csv")` where the CSV line format is `U123/xx/John/xxx`.
+
+**Expected:**
+Function returns "U123".
+
+**Observed:**
+Function returns `null`.
+
+**Output:**
+
+```plaintext
+[INFO] Reading CSV file...
+[DEBUG] DataUse: xxx
+[WARN] Name did not match expected column
+[RESULT] id = null
+```
+
+---
+
+**Test Case 3: readFitnessData with valid user ID**
+
+**Action:**
+Call `readFitnessData("U123", "fitnessdata.txt")` where the file contains `U123 value1 value2 value3 value4 value5 value6 value7 value8 value9 value10`.
+
+**Expected:**
+Function returns an integer array of 5 fitness values starting from the 6th value.
+
+**Observed:**
+Array contains unexpected values or throws `ArrayIndexOutOfBoundsException`.
+
+**Output:**
+
+```plaintext
+[INFO] Reading fitness data...
+[ERROR] java.lang.ArrayIndexOutOfBoundsException: Index 10 out of bounds for length 10
+[RESULT] data = [0, 0, 0, 0, 0]
+```

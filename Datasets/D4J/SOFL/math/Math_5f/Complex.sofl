@@ -1,0 +1,528 @@
+module Complex  
+var:  
+  serialVersionUID: long = -6195664516687396620L  
+
+process constructor(real: double)  
+pre true  
+post  
+  this.real' = real  
+  this.imaginary' = 0.0  
+  this.isNaN' = Double.isNaN(real)  
+  this.isInfinite' = Double.isInfinite(real)  
+Functional Scenario Form  
+real=1.5 && creates (1.5,0.0)  
+real=Double.NaN && creates NaN  
+end_process  
+
+// Full constructor  
+process constructor(real: double, imaginary: double)  
+pre true  
+post  
+  this.real' = real  
+  this.imaginary' = imaginary  
+  this.isNaN' = Double.isNaN(real) ∨ Double.isNaN(imaginary)  
+  this.isInfinite' = ¬isNaN ∧ (Double.isInfinite(real) ∨ Double.isInfinite(imaginary))  
+Functional Scenario Form  
+real=2.0 imaginary=3.0 && creates (2.0,3.0)  
+real=Double.POSITIVE_INFINITY imaginary=1.0 && creates INF-like  
+end_process  
+
+// Absolute value  
+process abs() result: double  
+pre true  
+post  
+  isNaN → result' = Double.NaN  
+  isInfinite → result' = Double.POSITIVE_INFINITY  
+  FastMath.abs(real) < FastMath.abs(imaginary)  
+    ? imaginary = 0.0 → result' = FastMath.abs(real)  
+    : q = real / imaginary  
+      result' = FastMath.abs(imaginary) * FastMath.sqrt(1 + q*q)  
+  FastMath.abs(real) ≥ FastMath.abs(imaginary)  
+    ? real = 0.0 → result' = FastMath.abs(imaginary)  
+    : q = imaginary / real  
+      result' = FastMath.abs(real) * FastMath.sqrt(1 + q*q)  
+Functional Scenario Form  
+real=3.0 imaginary=4.0 && result'=5.0  
+real=Double.NaN && result'=Double.NaN  
+real=Double.POSITIVE_INFINITY && result'=Double.POSITIVE_INFINITY  
+end_process  
+
+// Complex addition  
+process add(addend: Complex) result: Complex  
+pre true  
+post  
+  addend = null → throw NullArgumentException  
+  isNaN ∨ addend.isNaN → result' = NaN  
+  else → result' = createComplex(real + addend.real, imaginary + addend.imaginary)  
+Functional Scenario Form  
+this=(1,2) addend=(3,4) && result'=(4,6)  
+this=NaN addend=(1,1) && result'=NaN  
+end_process  
+
+// Real addition  
+process add_real(addend: double) result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isNaN(addend) → result' = NaN  
+  else → result' = createComplex(real + addend, imaginary)  
+Functional Scenario Form  
+this=(1,2) addend=3 && result'=(4,2)  
+end_process  
+
+// Conjugate  
+process conjugate() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(real, -imaginary)  
+Functional Scenario Form  
+this=(2,3) && result'=(2,-3)  
+this=NaN && result'=NaN  
+end_process  
+
+// Division  
+process divide(divisor: Complex) result: Complex  
+pre true  
+post  
+  divisor = null → throw NullArgumentException  
+  isNaN ∨ divisor.isNaN → result' = NaN  
+  divisor.real = 0.0 ∧ divisor.imaginary = 0.0 → result' = NaN  
+  divisor.isInfinite ∧ ¬isInfinite → result' = ZERO  
+  FastMath.abs(divisor.real) < FastMath.abs(divisor.imaginary)  
+    ? q = divisor.real / divisor.imaginary  
+      denominator = divisor.real*q + divisor.imaginary  
+      realPart = (real*q + imaginary) / denominator  
+      imagPart = (imaginary*q - real) / denominator  
+      result' = createComplex(realPart, imagPart)  
+  else  
+    q = divisor.imaginary / divisor.real  
+    denominator = divisor.imaginary*q + divisor.real  
+    realPart = (imaginary*q + real) / denominator  
+    imagPart = (imaginary - real*q) / denominator  
+    result' = createComplex(realPart, imagPart)  
+Functional Scenario Form  
+dividend=(4,5) divisor=(2,1) && result'≈(2.6,1.8)  
+divisor=ZERO && result'=NaN  
+divisor=INF && result'=ZERO  
+end_process  
+
+// Division by real  
+process divide_real(divisor: double) result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isNaN(divisor) → result' = NaN  
+  divisor = 0 → result' = NaN  
+  Double.isInfinite(divisor) ∧ ¬isInfinite → result' = ZERO  
+  else → result' = createComplex(real/divisor, imaginary/divisor)  
+Functional Scenario Form  
+this=(4,6) divisor=2 && result'=(2,3)  
+divisor=0 && result'=NaN  
+divisor=Double.POSITIVE_INFINITY && result'=ZERO  
+end_process  
+
+// Reciprocal  
+process reciprocal() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  real=0 ∧ imaginary=0 → result' = NaN  
+  isInfinite → result' = ZERO  
+  FastMath.abs(real) < FastMath.abs(imaginary)  
+    ? q = real/imaginary  
+      scale = 1/(real*q + imaginary)  
+      result' = createComplex(scale*q, -scale)  
+  else  
+    q = imaginary/real  
+    scale = 1/(imaginary*q + real)  
+    result' = createComplex(scale, -scale*q)  
+Functional Scenario Form  
+this=(2,0) && result'=(0.5,0)  
+this=ZERO && result'=NaN  
+this=INF && result'=ZERO  
+end_process  
+
+// Equality check  
+process equals(other: Object) result: boolean  
+pre true  
+post  
+  this = other → result' = true  
+  other instanceof Complex  
+    ? c = (Complex)other  
+      c.isNaN → result' = isNaN  
+      else → result' = (real = c.real) ∧ (imaginary = c.imaginary)  
+  else → result' = false  
+Functional Scenario Form  
+same instance && result'=true  
+this=(1,2) other=(1,2) && result'=true  
+this=NaN other=NaN && result'=true  
+end_process  
+
+// Hash code  
+process hashCode() result: int  
+pre true  
+post  
+  isNaN → result' = 7  
+  else → result' = 37*(17*MathUtils.hash(imaginary) + MathUtils.hash(real))  
+Functional Scenario Form  
+this=(0,0) && result'=hash of (0,0)  
+this=NaN && result'=7  
+end_process  
+
+// Getters  
+process getImaginary() result: double  
+pre true  
+post  
+  result' = imaginary  
+end_process  
+
+process getReal() result: double  
+pre true  
+post  
+  result' = real  
+end_process  
+
+process isNaN() result: boolean  
+pre true  
+post  
+  result' = isNaN  
+end_process  
+
+process isInfinite() result: boolean  
+pre true  
+post  
+  result' = isInfinite  
+end_process  
+
+// Complex multiplication  
+process multiply_complex(factor: Complex) result: Complex  
+pre true  
+post  
+  factor = null → throw NullArgumentException  
+  isNaN ∨ factor.isNaN → result' = NaN  
+  Double.isInfinite(real) ∨ Double.isInfinite(imaginary) ∨  
+  Double.isInfinite(factor.real) ∨ Double.isInfinite(factor.imaginary)  
+      → result' = INF  
+  else → result' = createComplex(real*factor.real - imaginary*factor.imaginary,  
+                                real*factor.imaginary + imaginary*factor.real)  
+Functional Scenario Form  
+this=(1,2) factor=(3,4) && result'=(-5,10)  
+this=INF factor=ONE && result'=INF  
+end_process  
+
+// Integer multiplication  
+process multiply_int(factor: int) result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  Double.isInfinite(real) ∨ Double.isInfinite(imaginary) → result' = INF  
+  else → result' = createComplex(real*factor, imaginary*factor)  
+Functional Scenario Form  
+this=(2,3) factor=2 && result'=(4,6)  
+end_process  
+
+// Real multiplication  
+process multiply_real(factor: double) result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isNaN(factor) → result' = NaN  
+  Double.isInfinite(real) ∨ Double.isInfinite(imaginary) ∨  
+  Double.isInfinite(factor) → result' = INF  
+  else → result' = createComplex(real*factor, imaginary*factor)  
+Functional Scenario Form  
+this=(1.5,2.5) factor=2.0 && result'=(3.0,5.0)  
+end_process  
+
+// Negation  
+process negate() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(-real, -imaginary)  
+Functional Scenario Form  
+this=(1,1) && result'=(-1,-1)  
+end_process  
+
+// Complex subtraction  
+process subtract_complex(subtrahend: Complex) result: Complex  
+pre true  
+post  
+  subtrahend = null → throw NullArgumentException  
+  isNaN ∨ subtrahend.isNaN → result' = NaN  
+  else → result' = createComplex(real - subtrahend.real,  
+                                 imaginary - subtrahend.imaginary)  
+Functional Scenario Form  
+this=(5,6) subtrahend=(3,4) && result'=(2,2)  
+end_process  
+
+// Real subtraction  
+process subtract_real(subtrahend: double) result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isNaN(subtrahend) → result' = NaN  
+  else → result' = createComplex(real - subtrahend, imaginary)  
+Functional Scenario Form  
+this=(3,4) subtrahend=1 && result'=(2,4)  
+end_process  
+
+// Arccosine  
+process acos() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = this.add(this.sqrt1z().multiply(I)).log().multiply(I.negate())  
+Functional Scenario Form  
+this=ONE && result'≈0.0  
+end_process  
+
+// Arcsine  
+process asin() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = sqrt1z().add(this.multiply(I)).log().multiply(I.negate())  
+Functional Scenario Form  
+this=ZERO && result'≈0.0  
+end_process  
+// Arctangent  
+process atan() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = this.add(I).divide(I.subtract(this)).log().multiply(I.divide(createComplex(2.0,0.0)))  
+Functional Scenario Form  
+this=ZERO && result'≈0.0  
+end_process  
+
+// Cosine  
+process cos() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(FastMath.cos(real)*FastMath.cosh(imaginary), -FastMath.sin(real)*FastMath.sinh(imaginary))  
+Functional Scenario Form  
+this=ZERO && result'=(1,0)  
+end_process  
+
+// Hyperbolic cosine  
+process cosh() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(FastMath.cosh(real)*FastMath.cos(imaginary), FastMath.sinh(real)*FastMath.sin(imaginary))  
+Functional Scenario Form  
+this=ZERO && result'=(1,0)  
+end_process  
+
+// Exponential  
+process exp() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else →  
+    expReal = FastMath.exp(real)  
+    result' = createComplex(expReal*FastMath.cos(imaginary), expReal*FastMath.sin(imaginary))  
+Functional Scenario Form  
+this=ZERO && result'=(1,0)  
+this=new Complex(0,π) && result'≈(-1,0)  
+end_process  
+
+// Natural logarithm  
+process log() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(FastMath.log(abs()), FastMath.atan2(imaginary,real))  
+Functional Scenario Form  
+this=ONE && result'=(0,0)  
+this=I && result'≈(0,π/2)  
+end_process  
+
+// Complex power  
+process pow_complex(x: Complex) result: Complex  
+pre true  
+post  
+  x = null → throw NullArgumentException  
+  else → result' = this.log().multiply(x).exp()  
+Functional Scenario Form  
+this=new Complex(0,1) x=TWO && result'≈(-1,0)  
+end_process  
+
+// Real power  
+process pow_real(x: double) result: Complex  
+pre true  
+post  
+  result' = this.log().multiply(x).exp()  
+Functional Scenario Form  
+this=ONE x=5.0 && result'=ONE  
+end_process  
+
+// Sine  
+process sin() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(FastMath.sin(real)*FastMath.cosh(imaginary), FastMath.cos(real)*FastMath.sinh(imaginary))  
+Functional Scenario Form  
+this=ZERO && result'=(0,0)  
+end_process  
+
+// Hyperbolic sine  
+process sinh() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  else → result' = createComplex(FastMath.sinh(real)*FastMath.cos(imaginary), FastMath.cosh(real)*FastMath.sin(imaginary))  
+Functional Scenario Form  
+this=ZERO && result'=(0,0)  
+end_process  
+
+// Square root  
+process sqrt() result: Complex  
+pre true  
+post  
+  isNaN → result' = NaN  
+  real=0.0 ∧ imaginary=0.0 → result' = ZERO  
+  real ≥ 0.0  
+    ? t = FastMath.sqrt((FastMath.abs(real) + abs())/2.0)  
+      result' = createComplex(t, imaginary/(2.0*t))  
+  else  
+    t = FastMath.sqrt((FastMath.abs(real) + abs())/2.0)  
+    result' = createComplex(FastMath.abs(imaginary)/(2.0*t), FastMath.copySign(1.0,imaginary)*t)  
+Functional Scenario Form  
+this=ONE && result'≈(1,0)  
+this=new Complex(0,1) && result'≈(0.707,0.707)  
+end_process  
+
+// Square root of (1 - z²)  
+process sqrt1z() result: Complex  
+pre true  
+post  
+  result' = createComplex(1.0,0.0).subtract(this.multiply(this)).sqrt()  
+Functional Scenario Form  
+this=ZERO && result'=(1,0)  
+end_process  
+
+// Tangent  
+process tan() result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isInfinite(real) → result' = NaN  
+  imaginary > 20.0 → result' = createComplex(0.0,1.0)  
+  imaginary < -20.0 → result' = createComplex(0.0,-1.0)  
+  else  
+    real2 = 2.0*real  
+    imaginary2 = 2.0*imaginary  
+    d = FastMath.cos(real2) + FastMath.cosh(imaginary2)  
+    result' = createComplex(FastMath.sin(real2)/d, FastMath.sinh(imaginary2)/d)  
+Functional Scenario Form  
+this=ZERO && result'=(0,0)  
+end_process  
+
+// Hyperbolic tangent  
+process tanh() result: Complex  
+pre true  
+post  
+  isNaN ∨ Double.isInfinite(imaginary) → result' = NaN  
+  real > 20.0 → result' = createComplex(1.0,0.0)  
+  real < -20.0 → result' = createComplex(-1.0,0.0)  
+  else  
+    real2 = 2.0*real  
+    imaginary2 = 2.0*imaginary  
+    d = FastMath.cosh(real2) + FastMath.cos(imaginary2)  
+    result' = createComplex(FastMath.sinh(real2)/d, FastMath.sin(imaginary2)/d)  
+Functional Scenario Form  
+this=ZERO && result'=(0,0)  
+end_process  
+
+// Argument/phase  
+process getArgument() result: double  
+pre true  
+post  
+  result' = FastMath.atan2(imaginary, real)  
+Functional Scenario Form  
+this=ONE && result'=0.0  
+this=I && result'=π/2  
+end_process  
+
+// Nth roots  
+process nthRoot(n: int) result: List<Complex>  
+pre true  
+post  
+  n ≤ 0 → throw NotPositiveException  
+  isNaN → result' = [NaN]  
+  isInfinite → result' = [INF]  
+  nthRootOfAbs = FastMath.pow(abs(), 1.0/n)  
+  nthPhi = getArgument() / n  
+  slice = 2*FastMath.PI / n  
+  innerPart = nthPhi  
+  result' = new ArrayList()  
+  for k=0 to n-1  
+    realPart = nthRootOfAbs * FastMath.cos(innerPart)  
+    imagPart = nthRootOfAbs * FastMath.sin(innerPart)  
+    result'.add(createComplex(realPart, imagPart))  
+    innerPart = innerPart + slice  
+Functional Scenario Form  
+n=2 this=(4,0) && result'≈[(2,0),(-2,0)]  
+n=0 && throws NotPositiveException  
+this=NaN && result'=[NaN]  
+end_process  
+
+// Protected complex creation  
+process createComplex(realPart: double, imaginaryPart: double) result: Complex  
+pre true  
+post  
+  result' = new Complex(realPart, imaginaryPart)  
+Functional Scenario Form  
+realPart=1.0 imaginaryPart=2.0 && creates (1,2)  
+end_process  
+
+// Static valueOf with real/imaginary  
+process valueOf_realImag(realPart: double, imaginaryPart: double) result: Complex  
+pre true  
+post  
+  Double.isNaN(realPart) ∨ Double.isNaN(imaginaryPart) → result' = NaN  
+  else → result' = new Complex(realPart, imaginaryPart)  
+Functional Scenario Form  
+realPart=NaN && result'=NaN  
+realPart=3.0 imaginaryPart=4.0 && creates (3,4)  
+end_process  
+
+// Static valueOf with real only  
+process valueOf_real(realPart: double) result: Complex  
+pre true  
+post  
+  Double.isNaN(realPart) → result' = NaN  
+  else → result' = new Complex(realPart)  
+Functional Scenario Form  
+realPart=5.0 && creates (5,0)  
+realPart=Double.NaN && result'=NaN  
+end_process  
+
+// Deserialization resolution  
+process readResolve() result: Object  
+pre true  
+post  
+  result' = createComplex(real, imaginary)  
+Functional Scenario Form  
+this=(1,2) && result'=(1,2)  
+end_process  
+
+// Get field instance  
+process getField() result: ComplexField  
+pre true  
+post  
+  result' = ComplexField.getInstance()  
+Functional Scenario Form  
+always returns ComplexField instance  
+end_process  
+
+// String representation  
+process toString() result: String  
+pre true  
+post  
+  result' = "(" + real + ", " + imaginary + ")"  
+Functional Scenario Form  
+this=(1.5,2.5) && result'="(1.5, 2.5)"  
+end_process  
+
+end_module

@@ -1,0 +1,875 @@
+module Partial  
+type:  
+  iValues: int[]    
+
+var:  
+  serialVersionUID: long = 12324121189002L  
+
+process constructor()  
+pre true  
+post  
+  chrono = DateTimeUtils.getChronology(null) ∧  
+  iChronology' = chrono.withUTC() ∧  
+  iTypes' = new DateTimeFieldType[0] ∧  
+  iValues' = new int[0]  
+
+Functional Scenario Form  
+default chronology ISO UTC  
+    && creates empty partial  
+end_process  
+
+process constructor(chrono: Chronology)  
+pre true  
+post  
+  baseChrono = DateTimeUtils.getChronology(chrono) ∧  
+  iChronology' = baseChrono.withUTC() ∧  
+  iTypes' = new DateTimeFieldType[0] ∧  
+  iValues' = new int[0]  
+
+Functional Scenario Form  
+chrono=ISOChronology  
+    && creates empty partial with UTC  
+chrono=null  
+    && uses default ISO UTC  
+end_process  
+
+process constructor(type: DateTimeFieldType, value: int)  
+pre true  
+post  
+  this(type, value, null)  
+
+Functional Scenario Form  
+type=HOUR_OF_DAY value=12  
+    && creates partial with single field  
+end_process  
+
+process constructor(type: DateTimeFieldType, value: int, chrono: Chronology)  
+pre true  
+post  
+  type = null  
+    ⇒ errorMsg = "The field type must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    baseChrono = DateTimeUtils.getChronology(chrono) ∧  
+    iChronology' = baseChrono.withUTC() ∧  
+    iTypes' = [type] ∧  
+    iValues' = [value] ∧  
+    iChronology'.validate(this, iValues')  
+
+Functional Scenario Form  
+type=null  
+    && throws exception  
+type=MONTH_OF_YEAR value=6 chrono=BuddhistChronology  
+    && creates validated partial  
+end_process  
+
+process constructor(types: DateTimeFieldType[], values: int[])  
+pre true  
+post  
+  this(types, values, null)  
+
+Functional Scenario Form  
+types=[DAY_OF_MONTH, HOUR] values=[15, 9]  
+    && creates partial with multiple fields  
+end_process  
+
+process constructor(types: DateTimeFieldType[], values: int[], chrono: Chronology)  
+pre true  
+post  
+  baseChrono = DateTimeUtils.getChronology(chrono) ∧  
+  iChronology' = baseChrono.withUTC() ∧  
+  (  
+    types = null  
+      ⇒ errorMsg = "Types array must not be null" ∧  
+        result = IllegalArgumentException  
+    values = null  
+      ⇒ errorMsg = "Values array must not be null" ∧  
+        result = IllegalArgumentException  
+    length(values) ≠ length(types)  
+      ⇒ errorMsg = "Values array must be the same length as the types array" ∧  
+        result = IllegalArgumentException  
+    types.length = 0  
+      ⇒ iTypes' = types ∧ iValues' = values  
+    else  
+      ∃ i ∈ [0, types.length-1]: types[i] = null  
+        ⇒ errorMsg = "Types array must not contain null: index " + i ∧  
+          result = IllegalArgumentException  
+      else  
+        lastUnitField: DurationField? = null ∧  
+        ∀ i ∈ [0, types.length-1]:  
+          loopType = types[i] ∧  
+          loopUnitField = loopType.getDurationType().getField(iChronology') ∧  
+          (  
+            i > 0  
+              ⇒ (  
+                  ¬loopUnitField.isSupported()  
+                    ⇒ (  
+                        lastUnitField.isSupported()  
+                          ⇒ errorMsg = "Types must be largest-smallest: " + types[i-1].getName() + " < " + loopType.getName" ∧  
+                            result = IllegalArgumentException  
+                        else  
+                          errorMsg = "Types must not contain duplicate unsupported: " + types[i-1].getName() + " and " + loopType.getName" ∧  
+                            result = IllegalArgumentException  
+                    )  
+                  else  
+                    compare = lastUnitField.compareTo(loopUnitField) ∧  
+                    (  
+                      compare < 0  
+                        ⇒ errorMsg = "Types must be largest-smallest: " + types[i-1].getName() + " < " + loopType.getName" ∧  
+                          result = IllegalArgumentException  
+                      compare = 0 ∧ lastUnitField.equals(loopUnitField)  
+                        ⇒ (  
+                            types[i-1].getRangeDurationType() = null ∧ loopType.getRangeDurationType() = null  
+                              ⇒ errorMsg = "Types must not contain duplicate: " + types[i-1].getName() + " and " + loopType.getName" ∧  
+                                result = IllegalArgumentException  
+                            else  
+                              lastRangeField = types[i-1].getRangeDurationType().getField(iChronology') ∧  
+                              loopRangeField = loopType.getRangeDurationType().getField(iChronology') ∧  
+                              (  
+                                lastRangeField.compareTo(loopRangeField) < 0  
+                                  ⇒ errorMsg = "Types must be largest-smallest: " + types[i-1].getName() + " < " + loopType.getName" ∧  
+                                    result = IllegalArgumentException  
+                                lastRangeField.compareTo(loopRangeField) = 0  
+                                  ⇒ errorMsg = "Types must not contain duplicate: " + types[i-1].getName() + " and " + loopType.getName" ∧  
+                                    result = IllegalArgumentException  
+                              )  
+                        )  
+                    )  
+              )  
+          ) ∧  
+          lastUnitField' = loopUnitField  
+        ) ∧  
+        iTypes' = types.clone() ∧  
+        iChronology'.validate(this, values) ∧  
+        iValues' = values.clone()  
+  )  
+
+Functional Scenario Form  
+types=null  
+    && throws exception  
+types=[HOUR, MINUTE] values=[12]  
+    && throws length exception  
+types=[MINUTE, HOUR]  
+    && throws order violation  
+types=[DAY, DAY]  
+    && throws duplicate error  
+types=[ERA, YEAR] values=[1,2023] chrono=ISO  
+    && creates validated partial  
+end_process  
+
+process constructor(partial: ReadablePartial)  
+pre true  
+post  
+  partial = null  
+    ⇒ errorMsg = "The partial must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    chrono = DateTimeUtils.getChronology(partial.getChronology()) ∧  
+    iChronology' = chrono.withUTC() ∧  
+    size = partial.size() ∧  
+    iTypes' = new DateTimeFieldType[size] ∧  
+    iValues' = new int[size] ∧  
+    ∀ i ∈ [0, size-1]:  
+      iTypes'[i] = partial.getFieldType(i) ∧  
+      iValues'[i] = partial.getValue(i)  
+
+Functional Scenario Form  
+partial=existingPartial  
+    && creates identical copy with UTC chronology  
+end_process  
+
+process constructor_pkg(partial: Partial, values: int[])  
+pre true  
+post  
+  iChronology' = partial.iChronology ∧  
+  iTypes' = partial.iTypes ∧  
+  iValues' = values  
+
+Functional Scenario Form  
+values=newValues  
+    && creates partial with same types and new values  
+end_process  
+
+process constructor_pkg(chrono: Chronology, types: DateTimeFieldType[], values: int[])  
+pre true  
+post  
+  iChronology' = chrono ∧  
+  iTypes' = types ∧  
+  iValues' = values  
+
+Functional Scenario Form  
+types=[YEAR, MONTH] values=[2023, 7] chrono=ISO  
+    && creates partial without validation  
+end_process  
+
+process size() result: int  
+pre true  
+post  
+  result' = length(iTypes)  
+
+Functional Scenario Form  
+empty partial  
+    && returns 0  
+partial with 2 fields  
+    && returns 2  
+end_process  
+
+process getChronology() result: Chronology  
+pre true  
+post  
+  result' = iChronology  
+
+Functional Scenario Form  
+chronology=ThaiBuddhist  
+    && returns ThaiBuddhist chronology  
+end_process  
+
+process getField(index: int, chrono: Chronology) result: DateTimeField  
+pre true  
+post  
+  index < 0 ∨ index ≥ length(iTypes)  
+    ⇒ result = IndexOutOfBoundsException  
+  else  
+    result' = iTypes[index].getField(chrono)  
+
+Functional Scenario Form  
+index=0 chrono=ISO  
+    && returns first field  
+index=5 with 3 fields  
+    && throws exception  
+end_process  
+
+process getFieldType(index: int) result: DateTimeFieldType  
+pre true  
+post  
+  index < 0 ∨ index ≥ length(iTypes)  
+    ⇒ result = IndexOutOfBoundsException  
+  else  
+    result' = iTypes[index]  
+
+Functional Scenario Form  
+index=1  
+    && returns second field type  
+end_process  
+
+process getFieldTypes() result: DateTimeFieldType[]  
+pre true  
+post  
+  result' = iTypes.clone()  
+
+Functional Scenario Form  
+types=[HOUR, MINUTE]  
+    && returns cloned array  
+end_process  
+
+process getValue(index: int) result: int  
+pre true  
+post  
+  index < 0 ∨ index ≥ length(iValues)  
+    ⇒ result = IndexOutOfBoundsException  
+  else  
+    result' = iValues[index]  
+
+Functional Scenario Form  
+index=0 values=[15]  
+    && returns 15  
+end_process  
+
+process getValues() result: int[]  
+pre true  
+post  
+  result' = iValues.clone()  
+
+Functional Scenario Form  
+values=[2023, 7]  
+    && returns cloned array  
+end_process  
+
+process withChronologyRetainFields(newChronology: Chronology) result: Partial  
+pre true  
+post  
+  newChrono = DateTimeUtils.getChronology(newChronology) ∧  
+  newChronoUTC = newChrono.withUTC() ∧  
+  (  
+    newChronoUTC = getChronology()  
+      ⇒ result' = this  
+    else  
+      newPartial = new Partial(newChronoUTC, iTypes, iValues) ∧  
+      newChronoUTC.validate(newPartial, iValues) ∧  
+      result' = newPartial  
+  )  
+
+Functional Scenario Form  
+newChronology=same as current  
+    && returns this  
+newChronology=ISO  
+    && returns new validated partial  
+end_process  
+
+process with(fieldType: DateTimeFieldType, value: int) result: Partial  
+pre true  
+post  
+  fieldType = null  
+    ⇒ errorMsg = "The field type must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    index = indexOf(fieldType) ∧  
+    (  
+      index = -1  
+        ⇒ 
+          unitField = fieldType.getDurationType().getField(iChronology) ∧  
+          insertPos = 0 ∧  
+          (  
+            unitField.isSupported()  
+              ⇒ ∀ i ∈ [0, length(iTypes)-1]:  
+                  loopType = iTypes[i] ∧  
+                  loopUnitField = loopType.getDurationType().getField(iChronology) ∧  
+                  (  
+                    loopUnitField.isSupported()  
+                      ⇒ compare = unitField.compareTo(loopUnitField) ∧  
+                      (  
+                        compare > 0  
+                          ⇒ insertPos' = i ∧ break  
+                        compare = 0  
+                          ⇒ (  
+                              fieldType.getRangeDurationType() = null  
+                                ⇒ insertPos' = i ∧ break  
+                              else  
+                                rangeField = fieldType.getRangeDurationType().getField(iChronology) ∧  
+                                loopRangeField = loopType.getRangeDurationType().getField(iChronology) ∧  
+                                rangeField.compareTo(loopRangeField) > 0  
+                                  ⇒ insertPos' = i ∧ break  
+                          )  
+                      )  
+                  )  
+              )  
+          ) ∧  
+          newTypes = new DateTimeFieldType[length(iTypes)+1] ∧  
+          newValues = new int[length(iValues)+1] ∧  
+          System.arraycopy(iTypes, 0, newTypes, 0, insertPos) ∧  
+          System.arraycopy(iValues, 0, newValues, 0, insertPos) ∧  
+          newTypes[insertPos] = fieldType ∧  
+          newValues[insertPos] = value ∧  
+          System.arraycopy(iTypes, insertPos, newTypes, insertPos+1, length(iTypes)-insertPos) ∧  
+          System.arraycopy(iValues, insertPos, newValues, insertPos+1, length(iValues)-insertPos) ∧  
+          newPartial = new Partial(newTypes, newValues, iChronology) ∧  
+          iChronology.validate(newPartial, newValues) ∧  
+          result' = newPartial  
+        
+      else  
+        value = getValue(index)  
+          ⇒ result' = this  
+        else  
+          newValues = getValues() ∧  
+          field = getField(index, iChronology) ∧  
+          newValues' = field.set(this, index, newValues, value) ∧  
+          result' = new Partial(this, newValues')  
+    )  
+
+Functional Scenario Form  
+fieldType=null  
+    && throws exception  
+fieldType=HOUR not present  
+    && inserts at correct position  
+fieldType=DAY present with same value  
+    && returns this  
+fieldType=MONTH present with new value  
+    && creates new partial with updated value  
+end_process  
+
+process without(fieldType: DateTimeFieldType) result: Partial  
+pre true  
+post  
+  index = indexOf(fieldType) ∧  
+  (  
+    index = -1  
+      ⇒ result' = this  
+    else  
+      newTypes = new DateTimeFieldType[size()-1] ∧  
+      newValues = new int[size()-1] ∧  
+      System.arraycopy(iTypes, 0, newTypes, 0, index) ∧  
+      System.arraycopy(iTypes, index+1, newTypes, index, length(newTypes)-index) ∧  
+      System.arraycopy(iValues, 0, newValues, 0, index) ∧  
+      System.arraycopy(iValues, index+1, newValues, index, length(newValues)-index) ∧  
+      newPartial = new Partial(iChronology, newTypes, newValues) ∧  
+      iChronology.validate(newPartial, newValues) ∧  
+      result' = newPartial  
+  )  
+
+Functional Scenario Form  
+fieldType=HOUR not present  
+    && returns this  
+fieldType=DAY present  
+    && returns partial without that field  
+end_process  
+
+process withField(fieldType: DateTimeFieldType, value: int) result: Partial  
+pre true  
+post  
+  index = indexOfSupported(fieldType) ∧  
+  (  
+    value = getValue(index)  
+      ⇒ result' = this  
+    else  
+      newValues = getValues() ∧  
+      field = getField(index, iChronology) ∧  
+      newValues' = field.set(this, index, newValues, value) ∧  
+      result' = new Partial(this, newValues')  
+  )  
+
+Functional Scenario Form  
+value=same as current  
+    && returns this  
+value=30 for MINUTE field  
+    && returns new partial with updated minute  
+end_process  
+
+process withFieldAdded(fieldType: DurationFieldType, amount: int) result: Partial  
+pre true  
+post  
+  amount = 0  
+    ⇒ result' = this  
+  else  
+    index = indexOfSupported(fieldType) ∧  
+    newValues = getValues() ∧  
+    field = getField(index, iChronology) ∧  
+    newValues' = field.add(this, index, newValues, amount) ∧  
+    result' = new Partial(this, newValues')  
+
+Functional Scenario Form  
+amount=0  
+    && returns this  
+amount=30 for MINUTE field  
+    && adds minutes and propagates overflow  
+end_process  
+
+process withFieldAddWrapped(fieldType: DurationFieldType, amount: int) result: Partial  
+pre true  
+post  
+  amount = 0  
+    ⇒ result' = this  
+  else  
+    index = indexOfSupported(fieldType) ∧  
+    newValues = getValues() ∧  
+    field = getField(index, iChronology) ∧  
+    newValues' = field.addWrapPartial(this, index, newValues, amount) ∧  
+    result' = new Partial(this, newValues')  
+
+Functional Scenario Form  
+amount=1 for MINUTE=59  
+    && wraps to 0 and increments hour  
+end_process  
+
+process withPeriodAdded(period: ReadablePeriod, scalar: int) result: Partial  
+pre true  
+post  
+  period = null ∨ scalar = 0  
+    ⇒ result' = this  
+  else  
+    newValues = getValues() ∧  
+    ∀ i ∈ [0, period.size()-1]:  
+      fieldType = period.getFieldType(i) ∧  
+      index = indexOf(fieldType) ∧  
+      (  
+        index ≥ 0  
+          ⇒ periodValue = period.getValue(i) ∧  
+            addAmount = FieldUtils.safeMultiply(periodValue, scalar) ∧  
+            field = getField(index, iChronology) ∧  
+            newValues' = field.add(this, index, newValues, addAmount)  
+      )  
+    result' = new Partial(this, newValues)  
+
+Functional Scenario Form  
+period=null  
+    && returns this  
+scalar=0  
+    && returns this  
+period=Hours(2) scalar=1  
+    && adds 2 hours to time  
+period=Days(1) scalar=-1  
+    && subtracts 1 day  
+end_process  
+
+process plus(period: ReadablePeriod) result: Partial  
+pre true  
+post  
+  result' = withPeriodAdded(period, 1)  
+
+Functional Scenario Form  
+period=Minutes(30)  
+    && adds 30 minutes  
+end_process  
+
+process minus(period: ReadablePeriod) result: Partial  
+pre true  
+post  
+  result' = withPeriodAdded(period, -1)  
+
+Functional Scenario Form  
+period=Hours(3)  
+    && subtracts 3 hours  
+end_process  
+
+process property(type: DateTimeFieldType) result: Property  
+pre true  
+post  
+  index = indexOfSupported(type) ∧  
+  result' = new Property(this, index)  
+
+Functional Scenario Form  
+type=MINUTE_OF_HOUR  
+    && returns Property for minute field  
+end_process  
+
+process isMatch(instant: ReadableInstant) result: bool  
+pre true  
+post  
+  millis = DateTimeUtils.getInstantMillis(instant) ∧  
+  chrono = DateTimeUtils.getInstantChronology(instant) ∧  
+  result' = ∀ i ∈ [0, length(iTypes)-1]:  
+              value = iTypes[i].getField(chrono).get(millis) ∧  
+              value = iValues[i]  
+
+Functional Scenario Form  
+instant=2023-07-30T15:30  
+    && returns true if partial is [HOUR=15, MINUTE=30]  
+end_process  
+
+process isMatch(partial: ReadablePartial) result: bool  
+pre true  
+post  
+  partial = null  
+    ⇒ errorMsg = "The partial must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    result' = ∀ i ∈ [0, length(iTypes)-1]:  
+                value = partial.get(iTypes[i]) ∧  
+                value = iValues[i]  
+
+Functional Scenario Form  
+partial=other[HOUR=12, MINUTE=0]  
+    && returns false if this is [HOUR=15, MINUTE=30]  
+end_process  
+
+process getFormatter() result: DateTimeFormatter?  
+pre true  
+post  
+  f = iFormatter ∧  
+  (  
+    f ≠ null  
+      ⇒ result' = f[0]  
+    else  
+      size() = 0  
+        ⇒ result' = null  
+      else  
+        list = new ArrayList(Arrays.asList(iTypes)) ∧  
+        formatter0 = try: ISODateTimeFormat.forFields(list, true, false)  
+                     catch: null ∧  
+        (  
+          formatter0 ≠ null ∧ list.size() = 0  
+            ⇒ formatter1 = formatter0  
+          else  
+            formatter1 = null  
+        ) ∧  
+        f' = [formatter0, formatter1] ∧  
+        iFormatter' = f' ∧  
+        result' = formatter0  
+  )  
+
+Functional Scenario Form  
+empty partial  
+    && returns null  
+partial with valid ISO fields  
+    && returns ISO formatter  
+partial with non-standard fields  
+    && returns null  
+end_process  
+
+process toString() result: String  
+pre true  
+post  
+  f = iFormatter ∧  
+  (  
+    f = null  
+      ⇒ getFormatter() ∧  
+        f' = iFormatter ∧  
+        (  
+          f' = null  
+            ⇒ result' = toStringList()  
+          else  
+            f1 = f'[1] ∧  
+            (  
+              f1 = null  
+                ⇒ result' = toStringList()  
+              else  
+                result' = f1.print(this)  
+            )  
+        )  
+    else  
+      f1 = f[1] ∧  
+      (  
+        f1 = null  
+          ⇒ result' = toStringList()  
+        else  
+          result' = f1.print(this)  
+      )  
+  )  
+
+Functional Scenario Form  
+has valid formatter  
+    && prints ISO string  
+no valid formatter  
+    && returns field list string  
+end_process  
+
+process toStringList() result: String  
+pre true  
+post  
+  buf = new StringBuilder() ∧  
+  buf.append('[') ∧  
+  ∀ i ∈ [0, size()-1]:  
+    (i > 0 ⇒ buf.append(',').append(' ')) ∧  
+    buf.append(iTypes[i].getName()) ∧  
+    buf.append('=') ∧  
+    buf.append(iValues[i]) ∧  
+  buf.append(']') ∧  
+  result' = buf.toString()  
+
+Functional Scenario Form  
+fields=[HOUR=15, MINUTE=30]  
+    && returns "[HOUR=15, MINUTE=30]"  
+end_process  
+
+process toString(pattern: String) result: String  
+pre true  
+post  
+  pattern = null  
+    ⇒ result' = toString()  
+  else  
+    result' = DateTimeFormat.forPattern(pattern).print(this)  
+
+Functional Scenario Form  
+pattern="HH:mm"  
+    && returns "15:30"  
+pattern=null  
+    && returns default toString  
+end_process  
+
+process toString(pattern: String, locale: Locale) result: String  
+pre true  
+post  
+  pattern = null  
+    ⇒ result' = toString()  
+  else  
+    result' = DateTimeFormat.forPattern(pattern).withLocale(locale).print(this)  
+
+Functional Scenario Form  
+pattern="HH:mm" locale=Locale.FRENCH  
+    && returns "15:30"  
+end_process  
+
+process constructor(partial: Partial, fieldIndex: int)  
+pre true  
+post  
+  iPartial' = partial ∧  
+  iFieldIndex' = fieldIndex  
+
+Functional Scenario Form  
+partial=instance fieldIndex=0  
+    && creates property for first field  
+end_process  
+
+process getField() result: DateTimeField  
+pre true  
+post  
+  result' = iPartial.getField(iFieldIndex, iPartial.getChronology())  
+
+Functional Scenario Form  
+field=MINUTE_OF_HOUR  
+    && returns minute field  
+end_process  
+
+process getReadablePartial() result: ReadablePartial  
+pre true  
+post  
+  result' = iPartial  
+
+Functional Scenario Form  
+    && returns associated partial  
+end_process  
+
+process getPartial() result: Partial  
+pre true  
+post  
+  result' = iPartial  
+
+Functional Scenario Form  
+    && returns associated partial  
+end_process  
+
+process get() result: int  
+pre true  
+post  
+  result' = iPartial.getValue(iFieldIndex)  
+
+Functional Scenario Form  
+value=15  
+    && returns 15  
+end_process  
+
+process addToCopy(valueToAdd: int) result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  newValues = iPartial.getValues() ∧  
+  newValues' = field.add(iPartial, iFieldIndex, newValues, valueToAdd) ∧  
+  result' = new Partial(iPartial, newValues')  
+
+Functional Scenario Form  
+valueToAdd=30 for MINUTE=15  
+    && returns partial with MINUTE=45  
+end_process  
+
+process addWrapFieldToCopy(valueToAdd: int) result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  newValues = iPartial.getValues() ∧  
+  newValues' = field.addWrapField(iPartial, iFieldIndex, newValues, valueToAdd) ∧  
+  result' = new Partial(iPartial, newValues')  
+
+Functional Scenario Form  
+valueToAdd=1 for MINUTE=59  
+    && returns partial with MINUTE=0  
+end_process  
+
+process setCopy(value: int) result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  newValues = iPartial.getValues() ∧  
+  newValues' = field.set(iPartial, iFieldIndex, newValues, value) ∧  
+  result' = new Partial(iPartial, newValues')  
+
+Functional Scenario Form  
+value=30 for MINUTE field  
+    && sets minute to 30  
+end_process  
+
+process withMaximumValue() result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  maxValue = field.getMaximumValue(iPartial) ∧  
+  result' = setCopy(maxValue)  
+
+Functional Scenario Form  
+for DAY_OF_MONTH in July  
+    && sets day to 31  
+end_process  
+
+process withMinimumValue() result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  minValue = field.getMinimumValue(iPartial) ∧  
+  result' = setCopy(minValue)  
+
+Functional Scenario Form  
+for HOUR_OF_DAY  
+    && sets hour to 0  
+end_process  
+
+process compareTo(partial: ReadablePartial) result: int  
+pre true  
+post  
+  thisValue = get() ∧  
+  otherValue = partial.getValue(iFieldIndex) ∧  
+  result' = thisValue - otherValue  
+
+Functional Scenario Form  
+thisValue=15 otherValue=10  
+    && returns 5  
+end_process  
+
+process setCopy(value: int) result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  newValues = iPartial.getValues() ∧  
+  newValues' = field.set(iPartial, iFieldIndex, newValues, value) ∧  
+  result' = new Partial(iPartial, newValues')  
+
+Functional Scenario Form  
+value=30 for MINUTE field  
+    && sets minute to 30  
+end_process  
+
+process setCopy(text: String, locale: Locale) result: Partial  
+pre true  
+post  
+  field = getField() ∧  
+  newValues = iPartial.getValues() ∧  
+  newValues' = field.set(iPartial, iFieldIndex, newValues, text, locale) ∧  
+  result' = new Partial(iPartial, newValues')  
+
+Functional Scenario Form  
+text="thirty" locale=Locale.ENGLISH for MINUTE  
+    && sets minute to 30  
+end_process  
+
+process setCopy(text: String) result: Partial  
+pre true  
+post  
+  result' = setCopy(text, null)  
+
+Functional Scenario Form  
+text="midnight" for HOUR_OF_DAY  
+    && sets hour to 0  
+end_process  
+
+process withMaximumValue() result: Partial  
+pre true  
+post  
+  maxValue = getMaximumValue() ∧  
+  result' = setCopy(maxValue)  
+
+Functional Scenario Form  
+for DAY_OF_MONTH in February 2023  
+    && sets day to 28  
+end_process  
+
+process withMinimumValue() result: Partial  
+pre true  
+post  
+  minValue = getMinimumValue() ∧  
+  result' = setCopy(minValue)  
+
+Functional Scenario Form  
+for HOUR_OF_DAY  
+    && sets hour to 0  
+end_process  
+
+process getMaximumValue() result: int  
+pre true  
+post  
+  field = getField() ∧  
+  result' = field.getMaximumValue(iPartial)  
+
+Functional Scenario Form  
+DAY_OF_MONTH in April  
+    && returns 30  
+end_process  
+
+process getMinimumValue() result: int  
+pre true  
+post  
+  field = getField() ∧  
+  result' = field.getMinimumValue(iPartial)  
+
+Functional Scenario Form  
+HOUR_OF_DAY  
+    && returns 0  
+end_process  
+
+end_module  

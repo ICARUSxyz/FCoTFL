@@ -1,0 +1,461 @@
+module SimplexTableau
+
+type
+
+  restrictToNonNegative: boolean
+  numDecisionVariables, numSlackVariables, numArtificialVariables, maxUlps: int 
+  epsilon: double
+
+var
+  NEGATIVE_VAR_COLUMN_LABEL: String = "x-"
+  DEFAULT_ULPS: int = 10
+  serialVersionUID: long = -1369660067587938365
+
+  // object state (fields)
+  f: LinearObjectiveFunction
+  constraints: ConstraintList
+  restrictToNonNegative: Boolean
+  columnLabels: ColumnLabels
+  tableau: RealMatrix
+  numDecisionVariables: int
+  numSlackVariables: int
+  numArtificialVariables: int
+  epsilon: double
+  maxUlps: int
+
+process ctor(f_in: LinearObjectiveFunction,
+             constraints_in: Collection[LinearConstraint],
+             goalType: GoalType,
+             restrictNN: Boolean,
+             epsilon_in: double)
+pre
+  f_in ≠ null ∧ constraints_in ≠ null
+post
+  f = f_in ∧
+  constraints = normalizeConstraints(constraints_in) ∧
+  restrictToNonNegative = restrictNN ∧
+  epsilon = epsilon_in ∧
+  maxUlps = DEFAULT_ULPS ∧
+  numDecisionVariables = dim(f.getCoefficients()) + (restrictNN ? 0 : 1) ∧
+  numSlackVariables = getConstraintTypeCounts(LEQ) + getConstraintTypeCounts(GEQ) ∧
+  numArtificialVariables = getConstraintTypeCounts(EQ) + getConstraintTypeCounts(GEQ) ∧
+  tableau = createTableau(goalType = MAXIMIZE) (if goalType = MAXIMIZE) ∨
+            createTableau(false) (if goalType = MINIMIZE) ∧
+  initializeColumnLabels()
+Functional Scenario Form
+(valid inputs) && (delegate to full ctor with DEFAULT_ULPS)
+end_process
+
+process ctor_full(f_in: LinearObjectiveFunction,
+                  constraints_in: Collection[LinearConstraint],
+                  goalType: GoalType,
+                  restrictNN: Boolean,
+                  epsilon_in: double,
+                  maxUlps_in: int)
+pre
+  f_in ≠ null ∧ constraints_in ≠ null
+post
+  f = f_in ∧
+  constraints = normalizeConstraints(constraints_in) ∧
+  restrictToNonNegative = restrictNN ∧
+  epsilon = epsilon_in ∧
+  maxUlps = maxUlps_in ∧
+  numDecisionVariables = dim(f.getCoefficients()) + (restrictNN ? 0 : 1) ∧
+  numSlackVariables = getConstraintTypeCounts(LEQ) + getConstraintTypeCounts(GEQ) ∧
+  numArtificialVariables = getConstraintTypeCounts(EQ) + getConstraintTypeCounts(GEQ) ∧
+  tableau = createTableau(goalType = MAXIMIZE) (if goalType = MAXIMIZE) ∨
+            createTableau(false) (if goalType = MINIMIZE) ∧
+  initializeColumnLabels()
+Functional Scenario Form
+(valid inputs) && (fields initialized, tableau built, labels initialized)
+end_process
+
+process initializeColumnLabels()
+pre
+  columnLabels = [] (fresh or cleared)
+post
+  (getNumObjectiveFunctions() = 2 → columnLabels appended "W") ∧
+  columnLabels appended "Z" ∧
+  columnLabels appended sequence "x0..x(n-1)" where n = getOriginalNumDecisionVariables() ∧
+  (¬restrictToNonNegative → columnLabels appended NEGATIVE_VAR_COLUMN_LABEL) ∧
+  columnLabels appended sequence "s0..s(k-1)" where k = getNumSlackVariables() ∧
+  columnLabels appended sequence "a0..a(m-1)" where m = getNumArtificialVariables() ∧
+  columnLabels appended "RHS"
+Functional Scenario Form
+(phase1) && (prepend W then Z then decision/slack/artificial/RHS) or
+(phase2) && (prepend Z then decision/slack/artificial/RHS)
+end_process
+
+process createTableau(maximize: Boolean) result: RealMatrix
+pre
+  numDecisionVariables ≥ 0 ∧ numSlackVariables ≥ 0 ∧ numArtificialVariables ≥ 0
+post
+  let
+    width := numDecisionVariables + numSlackVariables + numArtificialVariables + getNumObjectiveFunctions() + 1;
+    height := size(constraints) + getNumObjectiveFunctions();
+    M := new Array2DRowRealMatrix(height, width)
+  in
+    // objective rows
+    ((getNumObjectiveFunctions() = 2) → set(M,0,0,-1)) ∧
+    zIndex := (getNumObjectiveFunctions() = 1 ? 0 : 1) ∧
+    set(M,zIndex,zIndex, (maximize ? 1 : -1)) ∧
+    objCoe := (maximize ? -1 * f.getCoefficients() : f.getCoefficients()) ∧
+    copy(objCoe, row(M,zIndex)[0..dim(objCoe)-1]) ∧
+    set(M,zIndex,width-1, (maximize ? f.getConstantTerm() : -f.getConstantTerm())) ∧
+    (¬restrictToNonNegative →
+        set(M, zIndex, getSlackVariableOffset()-1, getInvertedCoefficientSum(objCoe))) ∧
+
+    // constraints rows
+    slackVar := 0 ∧ artVar := 0 ∧
+    ∀ i ∈ [0..size(constraints)-1]:
+      let row := getNumObjectiveFunctions() + i; c := constraints[i] in
+        copy(c.getCoefficients(), row(M,row)[0..]) ∧
+        (¬restrictToNonNegative →
+           set(M,row,getSlackVariableOffset()-1, getInvertedCoefficientSum(c.getCoefficients()))) ∧
+        set(M,row,width-1, c.getValue()) ∧
+        ((c.relationship = LEQ → set(M,row,getSlackVariableOffset()+slackVar, 1) ∧ slackVar := slackVar+1) ∨
+         (c.relationship = GEQ → set(M,row,getSlackVariableOffset()+slackVar, -1) ∧ slackVar := slackVar+1) ∨
+         (c.relationship = EQ  → no change to slack columns)) ∧
+        (((c.relationship = EQ) ∨ (c.relationship = GEQ)) →
+            set(M,0,getArtificialVariableOffset()+artVar,1) ∧
+            set(M,row,getArtificialVariableOffset()+artVar,1) ∧
+            row(M,0) := row(M,0) - row(M,row) ∧
+            artVar := artVar+1)
+    ∧ result = M
+Functional Scenario Form
+(maximize) && (negate objective coeffs, set Z sign +1) or
+(minimize) && (keep objective coeffs, set Z sign -1)
+or
+(LEQ) && (add slack +1) or
+(GEQ) && (add excess -1 and artificial) or
+(EQ) && (add artificial)
+end_process
+
+process normalizeConstraints(originalConstraints: Collection[LinearConstraint]) result: List[LinearConstraint]
+pre
+  originalConstraints ≠ null
+post
+  result = map(normalize, originalConstraints)
+Functional Scenario Form
+(non-empty input) && (return element-wise normalized list) or
+(empty input) && (return empty list)
+end_process
+
+process normalize(constraint: LinearConstraint) result: LinearConstraint
+pre
+  constraint ≠ null
+post
+  (constraint.value < 0 →
+     result = LinearConstraint(-1 * constraint.coefficients,
+                               opposite(constraint.relationship),
+                               -1 * constraint.value)) ∨
+  (constraint.value ≥ 0 →
+     result = LinearConstraint(constraint.coefficients,
+                               constraint.relationship,
+                               constraint.value))
+Functional Scenario Form
+(negative RHS) && (flip coeffs, flip relationship, negate RHS) or
+(non-negative RHS) && (return as-is)
+end_process
+
+process getNumObjectiveFunctions() result: int
+pre
+  true
+post
+  result = (numArtificialVariables > 0 ? 2 : 1)
+Functional Scenario Form
+(has artificial) && (2) or
+(no artificial) && (1)
+end_process
+
+process getConstraintTypeCounts(relationship: Relationship) result: int
+pre
+  constraints ≠ null
+post
+  result = count(c ∈ constraints | c.relationship = relationship)
+Functional Scenario Form
+(relationship given) && (count matching constraints)
+end_process
+
+process getInvertedCoefficientSum(coefficients: RealVector) result: double
+pre
+  coefficients ≠ null
+post
+  result = Σ (for each v in coefficients) (-v)
+Functional Scenario Form
+(always) && (return negative sum of all entries)
+end_process
+
+process getBasicRow(col: int) result: Integer?
+pre
+  tableau ≠ null ∧ 0 ≤ col < getWidth()
+post
+  // A basic column has exactly one entry ≈ 1 and others ≈ 0 (by ulps)
+  (∃! r ∈ [0..getHeight()-1] :
+       Precision.equals(getEntry(r,col), 1.0, maxUlps) ∧
+       ∀ r' ≠ r : Precision.equals(getEntry(r',col), 0.0, maxUlps))
+    → result = r
+  ∨
+  (otherwise → result = null)
+Functional Scenario Form
+(column is basic) && (return its pivot row) or
+(not basic) && (return null)
+end_process
+
+process dropPhase1Objective()
+pre
+  tableau ≠ null
+post
+  (getNumObjectiveFunctions() = 1 → tableau, columnLabels, numArtificialVariables unchanged) ∨
+  (getNumObjectiveFunctions() = 2 →
+     let colsToDrop := {0} ∪
+       { i | i ∈ [getNumObjectiveFunctions() .. getArtificialVariableOffset()-1] ∧ Precision.compareTo(getEntry(0,i),0,epsilon) > 0 } ∪
+       { getArtificialVariableOffset()+k | k ∈ [0..getNumArtificialVariables()-1] ∧ getBasicRow(getArtificialVariableOffset()+k) = null };
+         M' := removeRow(tableau, 0) with columns in colsToDrop removed
+     in
+       tableau := M' ∧
+       remove column labels at indices colsToDrop (from right to left) ∧
+       numArtificialVariables := 0)
+Functional Scenario Form
+(already phase2) && (do nothing) or
+(phase1) && (drop W row, drop positive-cost non-artificial cols, drop non-basic artificial cols, reset artificial count)
+end_process
+
+process copyArray(src: array of double, dest: array of double)
+pre
+  src ≠ null ∧ dest ≠ null ∧ length(dest) ≥ getNumObjectiveFunctions() + length(src)
+post
+  ∀ i ∈ [0..length(src)-1] : dest[getNumObjectiveFunctions() + i] = src[i]
+Functional Scenario Form
+(valid arrays) && (copy src into dest starting at index getNumObjectiveFunctions())
+end_process
+
+process isOptimal() result: Boolean
+pre
+  tableau ≠ null
+post
+  result = (∀ i ∈ [getNumObjectiveFunctions() .. getWidth()-2] :
+              Precision.compareTo(getEntry(0,i), 0.0, epsilon) ≥ 0)
+Functional Scenario Form
+(all reduced costs ≥ 0) && (true) or
+(exists reduced cost < 0) && (false)
+end_process
+
+process getSolution() result: PointValuePair
+pre
+  columnLabels ≠ null ∧ f ≠ null
+post
+  let
+    negativeVarColumn := indexOf(columnLabels, NEGATIVE_VAR_COLUMN_LABEL);
+    negativeVarBasicRow := (negativeVarColumn > 0 ? getBasicRow(negativeVarColumn) : null);
+    mostNegative := (negativeVarBasicRow = null ? 0 : getEntry(negativeVarBasicRow, getRhsOffset()));
+    basicRows := ∅;
+    coefficients := new array[length = getOriginalNumDecisionVariables()];
+  in
+    ∀ i ∈ [0..length(coefficients)-1] :
+      colIndex := indexOf(columnLabels, "x" + i);
+      if colIndex < 0 → coefficients[i] = 0
+      else
+        basicRow := getBasicRow(colIndex);
+        if basicRow ≠ null ∧ basicRow = 0 →
+          coefficients[i] = 0
+        else if basicRow ∈ basicRows →
+          coefficients[i] = 0 - (restrictToNonNegative ? 0 : mostNegative)
+        else
+          basicRows := basicRows ∪ {basicRow};
+          coefficients[i] = (basicRow = null ? 0 : getEntry(basicRow, getRhsOffset())) -
+                            (restrictToNonNegative ? 0 : mostNegative)
+    ∧ result = PointValuePair(coefficients, f.getValue(coefficients))
+Functional Scenario Form
+(build coeffs array based on basic vars and offsets) && (return PointValuePair)
+end_process
+
+process divideRow(dividendRow: int, divisor: double)
+pre
+  0 ≤ dividendRow < getHeight() ∧ divisor ≠ 0
+post
+  ∀ j ∈ [0..getWidth()-1] : getEntry(dividendRow, j) = old(getEntry(dividendRow, j)) / divisor
+Functional Scenario Form
+(always) && (scale row by divisor)
+end_process
+
+process subtractRow(minuendRow: int, subtrahendRow: int, multiple: double)
+pre
+  0 ≤ minuendRow < getHeight() ∧ 0 ≤ subtrahendRow < getHeight()
+post
+  rowVector(minuendRow) = old(rowVector(minuendRow)) -
+                          (old(rowVector(subtrahendRow)) * multiple)
+Functional Scenario Form
+(always) && (subtract multiple of one row from another)
+end_process
+
+process getWidth() result: int
+pre
+  tableau ≠ null
+post
+  result = tableau.getColumnDimension()
+Functional Scenario Form
+(always) && (return number of columns)
+end_process
+
+process getHeight() result: int
+pre
+  tableau ≠ null
+post
+  result = tableau.getRowDimension()
+Functional Scenario Form
+(always) && (return number of rows)
+end_process
+
+process getEntry(row: int, column: int) result: double
+pre
+  0 ≤ row < getHeight() ∧ 0 ≤ column < getWidth()
+post
+  result = tableau.getEntry(row, column)
+Functional Scenario Form
+(always) && (return cell value)
+end_process
+
+process setEntry(row: int, column: int, value: double)
+pre
+  0 ≤ row < getHeight() ∧ 0 ≤ column < getWidth()
+post
+  tableau.getEntry(row, column) = value
+Functional Scenario Form
+(always) && (set cell value)
+end_process
+
+process getSlackVariableOffset() result: int
+pre
+  true
+post
+  result = getNumObjectiveFunctions() + numDecisionVariables
+Functional Scenario Form
+(always) && (return slack var offset)
+end_process
+
+process getArtificialVariableOffset() result: int
+pre
+  true
+post
+  result = getNumObjectiveFunctions() + numDecisionVariables + numSlackVariables
+Functional Scenario Form
+(always) && (return artificial var offset)
+end_process
+
+process getRhsOffset() result: int
+pre
+  tableau ≠ null
+post
+  result = getWidth() - 1
+Functional Scenario Form
+(always) && (return RHS column index)
+end_process
+
+process getNumDecisionVariables() result: int
+pre
+  true
+post
+  result = numDecisionVariables
+Functional Scenario Form
+(always) && (return decision var count)
+end_process
+
+process getOriginalNumDecisionVariables() result: int
+pre
+  f ≠ null
+post
+  result = f.getCoefficients().getDimension()
+Functional Scenario Form
+(always) && (return original decision var count)
+end_process
+
+process getNumSlackVariables() result: int
+pre
+  true
+post
+  result = numSlackVariables
+Functional Scenario Form
+(always) && (return slack var count)
+end_process
+
+process getNumArtificialVariables() result: int
+pre
+  true
+post
+  result = numArtificialVariables
+Functional Scenario Form
+(always) && (return artificial var count)
+end_process
+
+process getData() result: array of array of double
+pre
+  tableau ≠ null
+post
+  result = tableau.getData()
+Functional Scenario Form
+(always) && (return tableau matrix data)
+end_process
+
+process equals(other: Object) result: Boolean
+pre
+  true
+post
+  (this = other → result = true) ∨
+  (instanceof(other, SimplexTableau) →
+     let rhs := (SimplexTableau) other in
+       result = (restrictToNonNegative = rhs.restrictToNonNegative ∧
+                 numDecisionVariables = rhs.numDecisionVariables ∧
+                 numSlackVariables = rhs.numSlackVariables ∧
+                 numArtificialVariables = rhs.numArtificialVariables ∧
+                 epsilon = rhs.epsilon ∧
+                 maxUlps = rhs.maxUlps ∧
+                 f.equals(rhs.f) ∧
+                 constraints.equals(rhs.constraints) ∧
+                 tableau.equals(rhs.tableau)))
+  ∨ result = false
+Functional Scenario Form
+(equal object) && (true) or
+(equal state) && (true) or
+(not equal) && (false)
+end_process
+
+process hashCode() result: int
+pre
+  true
+post
+  result = hash(Boolean(restrictToNonNegative),
+                numDecisionVariables,
+                numSlackVariables,
+                numArtificialVariables,
+                epsilon,
+                maxUlps,
+                f,
+                constraints,
+                tableau)
+Functional Scenario Form
+(always) && (return combined hash)
+end_process
+
+process writeObject(oos: ObjectOutputStream)
+pre
+  oos ≠ null
+post
+  oos.defaultWriteObject() executed ∧
+  MatrixUtils.serializeRealMatrix(tableau, oos) executed
+Functional Scenario Form
+(always) && (serialize object + matrix)
+end_process
+
+process readObject(ois: ObjectInputStream)
+pre
+  ois ≠ null
+post
+  ois.defaultReadObject() executed ∧
+  MatrixUtils.deserializeRealMatrix(this, "tableau", ois) executed
+Functional Scenario Form
+(always) && (deserialize object + matrix)
+end_process
+
+
+end_module

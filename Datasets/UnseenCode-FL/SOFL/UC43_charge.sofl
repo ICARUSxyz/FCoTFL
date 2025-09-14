@@ -1,0 +1,26 @@
+module UC43_charge
+type
+  balance: int
+  min: string
+  max: string
+  filePath: string
+
+var
+  MAX_BALANCE: int = 500000
+
+process chargeConstructor(filePath: string) result: Boolean
+pre
+  filePath ≠ "" ∧ file at filePath exists ∧ file content is numeric
+post
+  balance = read integer from filePath ∧
+  if balance > 499000 then
+    min = "-" ∧ max = "-" ∧ result = true
+  else
+    min = "1000" ∧ max = intToString(MAX_BALANCE - balance) ∧ result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ valid file content) &&
+((balance > 499000 ∧ min = "-" ∧ max = "-" ∧ result = true) or
+ (balance ≤ 499000 ∧ min = "1000" ∧ max = intToString(500000 - balance) ∧ result = true))
+end_process
+
+end_module

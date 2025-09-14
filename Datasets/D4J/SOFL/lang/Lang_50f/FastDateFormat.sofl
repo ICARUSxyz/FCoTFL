@@ -1,0 +1,472 @@
+module FastDateFormat
+type 
+    pattern: String
+    timeZone: TimeZone
+    locale: Locale
+    format: FastDateFormat
+    key: Object
+    style: int
+    result: FastDateFormat
+
+process getInstance() result: FastDateFormat
+pre  true
+post result = getInstance(getDefaultPattern(), null, null)
+     Functional Scenario Form 
+     (true) && (result = getInstance(getDefaultPattern(), null, null))
+end_process
+
+process getInstance(pattern: String) result: FastDateFormat
+pre  pattern ≠ null
+post result = getInstance(pattern, null, null)
+     Functional Scenario Form 
+     (pattern ≠ null) && (result = getInstance(pattern, null, null))
+end_process
+
+process getInstance(pattern: String, timeZone: TimeZone) result: FastDateFormat
+pre  pattern ≠ null
+post result = getInstance(pattern, timeZone, null)
+     Functional Scenario Form 
+     (pattern ≠ null) && (result = getInstance(pattern, timeZone, null))
+end_process
+
+process getInstance(pattern: String, locale: Locale) result: FastDateFormat
+pre  pattern ≠ null
+post result = getInstance(pattern, null, locale)
+     Functional Scenario Form 
+     (pattern ≠ null) && (result = getInstance(pattern, null, locale))
+end_process
+
+process getInstance(pattern: String, timeZone: TimeZone, locale: Locale) result: FastDateFormat
+pre  pattern ≠ null
+post if cInstanceCache contains FastDateFormat(pattern, timeZone, locale) then
+         result = cached instance
+     else
+         result = new FastDateFormat(pattern, timeZone, locale)
+         result.init()
+         cInstanceCache.put(result, result)
+     Functional Scenario Form 
+     (pattern ≠ null ∧ cached instance exists) && (result = cached instance) or
+     (pattern ≠ null ∧ cached instance does not exist) &&
+         (result = new FastDateFormat(pattern, timeZone, locale) ∧ result is initialized ∧ cache updated)
+end_process
+
+process getDateInstance(style: int) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateInstance(style, null, null)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getDateInstance(style, null, null))
+end_process
+
+process getDateInstance(style: int, locale: Locale) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateInstance(style, null, locale)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getDateInstance(style, null, locale))
+end_process
+
+process getDateInstance(style: int, timeZone: TimeZone) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateInstance(style, timeZone, null)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getDateInstance(style, timeZone, null))
+end_process
+
+process getDateInstance(style: int, timeZone: TimeZone, locale: Locale) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post if locale = null then locale = Locale.getDefault()
+     key = (style, timeZone, locale)
+     if key ∈ cDateInstanceCache then
+         result = cDateInstanceCache[key]
+     else
+         pattern = DateFormat.getDateInstance(style, locale).toPattern()
+         result = getInstance(pattern, timeZone, locale)
+         cDateInstanceCache[key] = result
+     Functional Scenario Form 
+     (key ∈ cDateInstanceCache) && (result = cDateInstanceCache[key]) or
+     (key ∉ cDateInstanceCache) && (result = getInstance(pattern, timeZone, locale) ∧ cache updated)
+end_process
+
+process getTimeInstance(style: int) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getTimeInstance(style, null, null)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getTimeInstance(style, null, null))
+end_process
+
+process getTimeInstance(style: int, locale: Locale) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getTimeInstance(style, null, locale)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getTimeInstance(style, null, locale))
+end_process
+
+process getTimeInstance(style: int, timeZone: TimeZone) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getTimeInstance(style, timeZone, null)
+     Functional Scenario Form 
+     (style ∈ {FULL, LONG, MEDIUM, SHORT}) && (result = getTimeInstance(style, timeZone, null))
+end_process
+
+process getTimeInstance(style: int, timeZone: TimeZone, locale: Locale) result: FastDateFormat
+pre  style ∈ {FULL, LONG, MEDIUM, SHORT}
+post if locale = null then locale = Locale.getDefault()
+     key = Pair(style, timeZone, locale)
+     if key ∈ cTimeInstanceCache then
+         result = cTimeInstanceCache[key]
+     else
+         pattern = DateFormat.getTimeInstance(style, locale).toPattern()
+         result = getInstance(pattern, timeZone, locale)
+         cTimeInstanceCache[key] = result
+     Functional Scenario Form 
+     (key ∈ cTimeInstanceCache) && (result = cTimeInstanceCache[key]) or
+     (key ∉ cTimeInstanceCache) && (result = getInstance(pattern, timeZone, locale) ∧ cache updated)
+end_process
+
+process getDateTimeInstance(dateStyle: int, timeStyle: int) result: FastDateFormat
+pre  dateStyle ∈ {FULL, LONG, MEDIUM, SHORT} ∧ timeStyle ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateTimeInstance(dateStyle, timeStyle, null, null)
+     Functional Scenario Form 
+     (valid styles) && (result = getDateTimeInstance(dateStyle, timeStyle, null, null))
+end_process
+
+process getDateTimeInstance(dateStyle: int, timeStyle: int, locale: Locale) result: FastDateFormat
+pre  dateStyle ∈ {FULL, LONG, MEDIUM, SHORT} ∧ timeStyle ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateTimeInstance(dateStyle, timeStyle, null, locale)
+     Functional Scenario Form 
+     (valid styles) && (result = getDateTimeInstance(dateStyle, timeStyle, null, locale))
+end_process
+
+process getDateTimeInstance(dateStyle: int, timeStyle: int, timeZone: TimeZone) result: FastDateFormat
+pre  dateStyle ∈ {FULL, LONG, MEDIUM, SHORT} ∧ timeStyle ∈ {FULL, LONG, MEDIUM, SHORT}
+post result = getDateTimeInstance(dateStyle, timeStyle, timeZone, null)
+     Functional Scenario Form 
+     (valid styles) && (result = getDateTimeInstance(dateStyle, timeStyle, timeZone, null))
+end_process
+
+process getDateTimeInstance(dateStyle: int, timeStyle: int, timeZone: TimeZone, locale: Locale) result: FastDateFormat
+pre  dateStyle ∈ {FULL, LONG, MEDIUM, SHORT} ∧ timeStyle ∈ {FULL, LONG, MEDIUM, SHORT}
+post if locale = null then locale = Locale.getDefault()
+     key = Pair(Pair(dateStyle, timeStyle), timeZone, locale)
+     if key ∈ cDateTimeInstanceCache then
+         result = cDateTimeInstanceCache[key]
+     else
+         pattern = DateFormat.getDateTimeInstance(dateStyle, timeStyle, locale).toPattern()
+         result = getInstance(pattern, timeZone, locale)
+         cDateTimeInstanceCache[key] = result
+     Functional Scenario Form 
+     (key ∈ cDateTimeInstanceCache) && (result = cDateTimeInstanceCache[key]) or
+     (key ∉ cDateTimeInstanceCache) && (result = getInstance(pattern, timeZone, locale) ∧ cache updated)
+end_process
+
+process getTimeZoneDisplay(tz: TimeZone, daylight: Boolean, style: int, locale: Locale) result: String
+pre  tz ≠ null ∧ style ∈ {TimeZone.LONG, TimeZone.SHORT} ∧ locale ≠ null
+post key = TimeZoneDisplayKey(tz, daylight, style, locale)
+     if key ∈ cTimeZoneDisplayCache then
+         result = cTimeZoneDisplayCache[key]
+     else
+         result = tz.getDisplayName(daylight, style, locale)
+         cTimeZoneDisplayCache[key] = result
+     Functional Scenario Form 
+     (key ∈ cTimeZoneDisplayCache) && (result = cached value) or
+     (key ∉ cTimeZoneDisplayCache) && (result = computed display name ∧ cache updated)
+end_process
+
+process getDefaultPattern() result: String
+pre  true
+post if cDefaultPattern = null then
+         cDefaultPattern = new SimpleDateFormat().toPattern()
+     result = cDefaultPattern
+     Functional Scenario Form 
+     (cDefaultPattern ≠ null) && (result = cDefaultPattern) or
+     (cDefaultPattern = null) && (cDefaultPattern initialized ∧ result = cDefaultPattern)
+end_process
+
+process FastDateFormat(pattern: String, timeZone: TimeZone, locale: Locale)
+pre  pattern ≠ null
+post mPattern = pattern ∧
+     mTimeZone = (timeZone ≠ null ? timeZone : TimeZone.getDefault()) ∧
+     mTimeZoneForced = (timeZone ≠ null) ∧
+     mLocale = (locale ≠ null ? locale : Locale.getDefault()) ∧
+     mLocaleForced = (locale ≠ null)
+     Functional Scenario Form 
+     (pattern ≠ null) && (internal fields initialized based on given pattern, timeZone, locale)
+end_process
+
+process init()
+pre  true
+post mRules = parsePattern().toArray() ∧
+     mMaxLengthEstimate = Σ(rule.estimateLength() for rule in mRules)
+     Functional Scenario Form 
+     (true) && (mRules initialized ∧ mMaxLengthEstimate computed)
+end_process
+
+process parsePattern() result: sequence of Rule
+pre  true
+post result = rules parsed from mPattern by recognizing pattern letters (e.g. G, y, M, etc.)
+     Functional Scenario Form
+     (valid pattern letters) && (result contains Rule objects corresponding to pattern components)
+end_process
+
+process parseToken(pattern: String, indexRef: sequence of int) result: String
+pre  pattern ≠ null ∧ indexRef.length = 1 ∧ 0 ≤ indexRef[0] < pattern.length()
+post result = the next pattern token from pattern starting at indexRef[0]
+     ∧ indexRef[0] is updated to the last index of parsed token
+     Functional Scenario Form
+     (next character is alphabetic) && (result = repeated character token) or
+     (next character is non-alphabetic) && (result = quoted literal block)
+end_process
+
+process selectNumberRule(field: int, padding: int) result: NumberRule
+pre  field ∈ Calendar fields ∧ padding ≥ 1
+post if padding = 1 then result = UnpaddedNumberField(field)
+     else if padding = 2 then result = TwoDigitNumberField(field)
+     else result = PaddedNumberField(field, padding)
+     Functional Scenario Form
+     (padding = 1) && (result = UnpaddedNumberField) or
+     (padding = 2) && (result = TwoDigitNumberField) or
+     (padding ≥ 3) && (result = PaddedNumberField)
+end_process
+
+process format(obj: Object, toAppendTo: StringBuffer, pos: FieldPosition) result: StringBuffer
+pre  obj ≠ null ∧ (obj instanceof Date ∨ Calendar ∨ Long)
+post if obj is Date then result = format((Date) obj, toAppendTo)
+     else if obj is Calendar then result = format((Calendar) obj, toAppendTo)
+     else if obj is Long then result = format((Long) obj, toAppendTo)
+     else throw IllegalArgumentException
+     Functional Scenario Form
+     (obj is supported type) && (result is formatted string appended) or
+     (obj unsupported) && (exception raised)
+end_process
+
+process format(millis: long) result: String
+pre  true
+post result = format(new Date(millis))
+     Functional Scenario Form
+     (millis is long) && (result = formatted string)
+end_process
+
+process format(date: Date) result: String
+pre  date ≠ null
+post calendar = new GregorianCalendar(mTimeZone, mLocale) ∧ calendar.setTime(date)
+     ∧ result = applyRules(calendar, new StringBuffer(mMaxLengthEstimate)).toString()
+     Functional Scenario Form
+     (valid date) && (result = string formatted using rules)
+end_process
+
+process format(calendar: Calendar) result: String
+pre  calendar ≠ null
+post result = format(calendar, new StringBuffer(mMaxLengthEstimate)).toString()
+     Functional Scenario Form
+     (valid calendar) && (result = string formatted using rules)
+end_process
+
+process format(millis: long, buf: StringBuffer) result: StringBuffer
+pre  buf ≠ null
+post result = format(new Date(millis), buf)
+     Functional Scenario Form
+     (millis ≥ 0) && (result = buf appended with formatted date)
+end_process
+
+process format(date: Date, buf: StringBuffer) result: StringBuffer
+pre  date ≠ null ∧ buf ≠ null
+post calendar = new GregorianCalendar(mTimeZone) ∧ calendar.setTime(date)
+     ∧ result = applyRules(calendar, buf)
+     Functional Scenario Form
+     (valid date and buf) && (result = formatted string in buf)
+end_process
+
+process format(calendar: Calendar, buf: StringBuffer) result: StringBuffer
+pre  calendar ≠ null ∧ buf ≠ null
+post if mTimeZoneForced then calendar = clone with mTimeZone
+     ∧ result = applyRules(calendar, buf)
+     Functional Scenario Form
+     (mTimeZoneForced = false) && (calendar unchanged ∧ result formatted) or
+     (mTimeZoneForced = true) && (calendar timeZone changed ∧ result formatted)
+end_process
+
+process applyRules(calendar: Calendar, buf: StringBuffer) result: StringBuffer
+pre  calendar ≠ null ∧ buf ≠ null
+post mRules are applied sequentially to calendar and result appended to buf
+     Functional Scenario Form
+     (valid calendar and buf) && (result = buf with appended formatted values)
+end_process
+
+process parseObject(source: String, pos: ParsePosition) result: Object
+pre  pos ≠ null
+post pos.index = 0 ∧ pos.errorIndex = 0 ∧ result = null
+     Functional Scenario Form
+     (called for parse) && (always returns null ∧ pos reset)
+end_process
+
+process getPattern() result: String
+pre  true
+post result = mPattern
+Functional Scenario Form 
+true && (result = stored pattern string)
+end_process
+
+process getTimeZone() result: TimeZone
+pre  true
+post result = mTimeZone
+Functional Scenario Form 
+true && (result = stored time zone)
+end_process
+
+process getTimeZoneOverridesCalendar() result: Boolean
+pre  true
+post result = mTimeZoneForced
+Functional Scenario Form 
+true && (result = whether time zone overrides calendar)
+end_process
+
+process getLocale() result: Locale
+pre  true
+post result = mLocale
+Functional Scenario Form 
+true && (result = stored locale)
+end_process
+
+process getMaxLengthEstimate() result: int
+pre  true
+post result = mMaxLengthEstimate
+Functional Scenario Form 
+true && (result = estimated maximum output length)
+end_process
+
+process equals(obj: Object) result: Boolean
+pre  true
+post result = (obj instanceof FastDateFormat) ∧ (pattern, timeZone, locale, flags all equal)
+Functional Scenario Form 
+(obj equals current) && (result = true) or
+(obj not equal) && (result = false)
+end_process
+
+process hashCode() result: int
+pre  true
+post result = hashCode computed from pattern, timeZone, locale, and flags
+Functional Scenario Form 
+true && (result = consistent hash with equals)
+end_process
+
+process toString() result: String
+pre  true
+post result = "FastDateFormat[" + mPattern + "]"
+Functional Scenario Form 
+true && (result = debug string of formatter)
+end_process
+
+process readObject(in: ObjectInputStream)
+pre  in ≠ null
+post in.defaultReadObject() executed ∧ init() called to reinitialize transient fields
+Functional Scenario Form 
+(valid input stream) && (object state restored and initialized)
+end_process
+
+process appendTo_UnpaddedNumber(buffer: StringBuffer, value: int)
+pre  value ≥ 0
+post if value < 10 then buffer = buffer + char(value + '0')
+     else if value < 100 then buffer = buffer + char(value / 10 + '0') + char(value % 10 + '0')
+     else buffer = buffer + Integer.toString(value)
+Functional Scenario Form 
+(value < 10) && (append single digit) or 
+(value < 100) && (append two digits) or 
+(value ≥ 100) && (append full number)
+end_process
+
+process appendTo_UnpaddedMonth(buffer: StringBuffer, month: int)
+pre  month ≥ 0 ∧ month ≤ 11
+post buffer = buffer + (month + 1) in 1–12, formatted as unpadded string
+Functional Scenario Form 
+(month + 1 < 10) && (append single digit) or
+(month + 1 ≥ 10) && (append two digits)
+end_process
+
+process appendTo_PaddedNumber(buffer: StringBuffer, value: int, size: int)
+pre  value ≥ 0 ∧ size ≥ 3
+post if value < 100 then append leading (size-2) zeros then 2-digit value;
+     else append leading zeros based on size and digit length
+Functional Scenario Form 
+(value < 100) && (pad to size then append 2-digit value) or 
+(value ≥ 100) && (pad to size then append full digits)
+end_process
+
+process appendTo_TwoDigitNumber(buffer: StringBuffer, value: int)
+pre  value ≥ 0
+post if value < 100 then append (value / 10 + '0') and (value % 10 + '0') 
+     else append Integer.toString(value)
+Functional Scenario Form 
+(value < 100) && (append exactly two digits) or 
+(value ≥ 100) && (append full digits)
+end_process
+
+process appendTo_TwoDigitYear(buffer: StringBuffer, year: int)
+pre  year ≥ 0
+post append (year % 100) as two-digit value
+Functional Scenario Form 
+true && (append last two digits of year)
+end_process
+
+process appendTo_TwoDigitMonth(buffer: StringBuffer, month: int)
+pre  month ≥ 0 ∧ month ≤ 11
+post append (month + 1) as two-digit value
+Functional Scenario Form 
+true && (append month + 1 as two-digit string)
+end_process
+
+process appendTo_TwelveHour(buffer: StringBuffer, calendar: Calendar)
+pre  calendar ≠ null
+post if calendar.get(Calendar.HOUR) = 0 then 
+         value = calendar.getLeastMaximum(Calendar.HOUR) + 1
+     else 
+         value = calendar.get(Calendar.HOUR);
+     buffer = buffer + value formatted by mRule
+Functional Scenario Form
+(calendar.get(Calendar.HOUR) = 0) && (append max+1 by mRule) or
+(calendar.get(Calendar.HOUR) ≠ 0) && (append HOUR by mRule)
+end_process
+
+process appendTo_TwentyFourHour(buffer: StringBuffer, calendar: Calendar)
+pre  calendar ≠ null
+post if calendar.get(Calendar.HOUR_OF_DAY) = 0 then 
+         value = calendar.getMaximum(Calendar.HOUR_OF_DAY) + 1
+     else 
+         value = calendar.get(Calendar.HOUR_OF_DAY);
+     buffer = buffer + value formatted by mRule
+Functional Scenario Form
+(HOUR_OF_DAY = 0) && (append max+1 by mRule) or
+(HOUR_OF_DAY ≠ 0) && (append HOUR_OF_DAY by mRule)
+end_process
+
+process appendTo_TimeZoneName(buffer: StringBuffer, calendar: Calendar)
+pre  calendar ≠ null
+post if mTimeZoneForced then
+         if mTimeZone.useDaylightTime ∧ DST_OFFSET ≠ 0 then
+             buffer = buffer + mDaylight
+         else
+             buffer = buffer + mStandard
+     else
+         if calendar.timeZone.useDaylightTime ∧ DST_OFFSET ≠ 0 then
+             buffer = buffer + daylight name via getTimeZoneDisplay
+         else
+             buffer = buffer + standard name via getTimeZoneDisplay
+Functional Scenario Form
+(forced ∧ DST) && (append mDaylight) or
+(forced ∧ ¬DST) && (append mStandard) or
+(¬forced ∧ DST) && (append daylight name) or
+(¬forced ∧ ¬DST) && (append standard name)
+end_process
+
+process appendTo_TimeZoneNumber(buffer: StringBuffer, calendar: Calendar)
+pre  calendar ≠ null
+post offset = calendar.ZONE_OFFSET + calendar.DST_OFFSET;
+     if offset < 0 then buffer = buffer + '-'; offset = -offset
+     else buffer = buffer + '+';
+     buffer = buffer + HH + [':' if mColon] + MM;
+     where HH = zero-padded hour of offset; MM = zero-padded minute of offset
+Functional Scenario Form
+(offset < 0) && (prefix '-' then append HH[:MM]) or
+(offset ≥ 0) && (prefix '+' then append HH[:MM])
+end_process
+
+
+end_module

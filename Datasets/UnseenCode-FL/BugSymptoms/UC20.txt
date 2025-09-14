@@ -1,0 +1,63 @@
+**Bug Report: RequirementTreeView and BuildProFromSpecDialog Behavior**
+
+---
+
+**Test Case 1: Right-Click Context Menu Trigger**
+
+**Action:**
+User right-clicks on a requirement item in the tree view and selects “Complete the Requirement”.
+
+**Expected:**
+The corresponding signal is emitted and the requirement is marked as completed.
+
+**Observed:**
+The signal is not emitted, and no action occurs.
+
+**Log:**
+
+```plaintext
+[UI] Context menu triggered at position (x, y)  
+[UI] Selected action: (null)  
+[EVENT] No completion triggered  
+```
+
+---
+
+**Test Case 2: Class Item Recognition Check**
+
+**Action:**
+User attempts to demote a class item that was added from an external list.
+
+**Expected:**
+The item is recognized as external and skipped from modification.
+
+**Observed:**
+Item is mistakenly considered editable and gets demoted.
+
+**Log:**
+
+```plaintext
+[CHECK] item->data(0, Qt::UserRole - 1).toBool() returned false  
+[ACTION] Demotion logic applied  
+```
+
+---
+
+**Test Case 3: Removing Top-Level Item**
+
+**Action:**
+User demotes a class function to a global function.
+
+**Expected:**
+Item is properly removed from its parent or top-level list and reinserted at root level.
+
+**Observed:**
+Application crashes or the item is not removed as expected.
+
+**Log:**
+
+```plaintext
+[ACTION] Attempt to remove top-level item  
+[ERROR] takeTopLevelItem() called with no index  
+[CRASH] QTreeWidget: invalid argument  
+```

@@ -1,0 +1,31 @@
+module UC28_screenfactor
+type
+  dpiVal: real
+  ratioVal: real
+  screenFactor: real
+  baseValue: int
+
+var
+  baseValue = 96
+
+process ScreenFactor(parent: QObject) result: ScreenFactor
+pre
+  true
+post
+  result ≠ null
+Functional Scenario Form
+(true) && (construct a ScreenFactor object with QObject parent)
+end_process
+
+process getScreenFactor() result: real
+pre
+  qApp.primaryScreen() ≠ null
+post
+  dpiVal = screen.logicalDotsPerInch() ∧
+  ratioVal = screen.devicePixelRatio() ∧
+  result = dpiVal × ratioVal ÷ baseValue
+Functional Scenario Form
+(screen ≠ null) && (return screen.logicalDotsPerInch() × screen.devicePixelRatio() ÷ 96)
+end_process
+
+end_module

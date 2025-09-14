@@ -1,0 +1,25 @@
+module UC60_serverbuilder
+
+process initConfig(name: string) result: record(path: string, content: string)
+pre  
+  name ≠ ""
+post 
+  (utils_1.readConfig(name) ≠ null ∧ result.path = "." ∧ result.content = utils_1.readConfig(name)) ∨
+  (utils_1.readConfig(name) = null ∧ process exits)
+Functional Scenario Form 
+(utils_1.readConfig(name) ≠ null) && (result.path = "." ∧ result.content = utils_1.readConfig(name)) or 
+(utils_1.readConfig(name) = null) && (process exits)
+end_process
+
+process startup(server: Object) result: Boolean
+pre  
+  _config ≠ null
+post 
+  ((server ≠ null ∧ _config ≠ null ∧ server.initialized = true ∧ process handlers registered) ∧ result = true) ∨ 
+  ((server = null ∨ _config = null) ∧ result = false)
+Functional Scenario Form 
+(server ≠ null ∧ _config ≠ null) && (server.initialized = true ∧ process handlers registered ∧ result = true) or 
+(server = null ∨ _config = null) && (result = false)
+end_process
+
+end_module

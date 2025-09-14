@@ -1,0 +1,46 @@
+**Bug Report: ScreenFactor Calculation Anomalies**
+
+---
+
+**Test Case 1: DPI-Based UI Scaling**
+
+**Action:**
+Launch UI on different monitors with varying DPI and observe scaling.
+
+**Expected:**
+UI elements scale proportionally based on logical DPI and pixel ratio.
+
+**Observed:**
+Scaling appears inconsistent across devices. Some elements are disproportionately large or small.
+
+**Log:**
+
+```plaintext
+[INIT] Primary screen DPI: 120  
+[INFO] Scaling base value: 90  
+[WARN] Scaling factor exceeds expected bounds  
+[RESULT] UI rendered with abnormal element size
+```
+
+---
+
+**Test Case 2: Screen Factor Calculation**
+
+**Action:**
+Call `getScreenFactor()` during UI initialization.
+
+**Expected:**
+A meaningful factor is returned based on both DPI and pixel ratio.
+
+**Observed:**
+Returned value is unexpectedly large or zero; layout shifts occur.
+
+**Log:**
+
+```plaintext
+[CALL] getScreenFactor()  
+[INFO] logicalDPI: 120  
+[INFO] devicePixelRatio: 2.0  
+[ERROR] ratioVal undefined  
+[WARN] screenFactor = 240.0 (unexpected)
+```

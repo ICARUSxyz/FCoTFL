@@ -1,0 +1,43 @@
+**Bug Report: SelectNewClassDialog Behavior Observations**
+
+---
+
+**Test Case 1: Dialog Initialization with New Items**
+
+**Action:**
+User opens the dialog with a list of new items.
+
+**Expected:**
+All items appear in the list with checkboxes in an unchecked state.
+
+**Observed:**
+Application crashes or fails to initialize the checkboxes properly.
+
+**Log:**
+
+```plaintext
+[INIT] Dialog launched with 3 new items  
+[ERROR] Failed to apply initial check state  
+[CRASH] Unexpected token in setCheckState  
+```
+
+---
+
+**Test Case 2: Retrieving Unchecked Items**
+
+**Action:**
+User confirms the dialog and triggers retrieval of unchecked items.
+
+**Expected:**
+The function iterates through the list and returns all items with an unchecked state.
+
+**Observed:**
+No items returned, or function is skipped due to faulty loop initialization.
+
+**Log:**
+
+```plaintext
+[ACTION] Fetch unchecked items from list  
+[ERROR] Loop condition never satisfied  
+[RESULT] Unchecked items: 0  
+```

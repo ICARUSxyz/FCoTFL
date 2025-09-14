@@ -1,0 +1,76 @@
+module UC30_demoCode
+type
+  recording: Boolean
+  currentVideoFilePath: string
+
+process VideoRecorder(timeManager: TimeManager, gpsModule: GPSModule, config: VideoConfig) result: Boolean
+pre
+  true
+post
+  this.timeManager = timeManager ∧
+  this.gpsModule = gpsModule ∧
+  this.videoConfig = config ∧
+  recording = false ∧
+  result = true
+Functional Scenario Form
+(true) && (VideoRecorder object initialized with config and recording = false)
+end_process
+
+process ~VideoRecorder() result: Boolean
+pre
+  true
+post
+  if recording = true then stopRecording() ∧ result = true else result = true
+Functional Scenario Form
+(recording == true) && (stopRecording is called before destruction) or
+(recording == false) && (object is destructed directly)
+end_process
+
+process startRecording() result: Boolean
+pre
+  recording = false
+post
+  if open(videoFileStream, currentVideoFilePath) = true then
+    recording = true ∧
+    currentVideoFilePath = "video_" + timeManager.getCurrentTimestamp() + ".mp4" ∧
+    metadata header is written ∧
+    150 frames written with embedded timestamp and GPS (or fewer if interrupted) ∧
+    result = true
+  else
+    result = false
+Functional Scenario Form
+(recording == false and videoFileStream opened) && (recording starts and data is written) or
+(recording == false but video file cannot open) && (start fails) or
+(recording == true) && (print error and do nothing)
+end_process
+
+process stopRecording() result: Boolean
+pre
+  recording = true
+post
+  videoFileStream is closed ∧ recording = false ∧ result = true
+Functional Scenario Form
+(recording == true) && (recording is stopped and file is closed) or
+(recording == false) && (print error and do nothing)
+end_process
+
+process isRecording() result: Boolean
+pre
+  true
+post
+  result = recording
+Functional Scenario Form
+(true) && (returns current recording status)
+end_process
+
+process getCurrentVideoFilePath() result: string
+pre
+  true
+post
+  if recording = true then result = currentVideoFilePath else result = ""
+Functional Scenario Form
+(recording == true) && (return current video path) or
+(recording == false) && (return "")
+end_process
+
+end_module

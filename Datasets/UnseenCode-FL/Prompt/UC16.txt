@@ -1,0 +1,322 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "guidewizard.h"
+2: #include <QtWidgets>
+3: 
+4: GuideWizard::GuideWizard(QWidget *parent)
+5:     : QWizard(parent)
+6: {
+7:     setPage(Page_Intro, new IntroPage);
+8:     setPage(Page_CreateNewProject, new CreateProjectPage);
+9:     setPage(Page_OpenExistingProject, new OpenProjectPage);
+10:     setPage(Page_Conclusion, new ConclusionPage);
+11: 
+12:     setStartId(Page_Intro);
+13: 
+14: #ifndef Q_OS_MAC
+15: 
+16:     setWizardStyle(ModernStyle);
+17: #endif
+18: 
+19:     setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"));
+20: 
+21:     setWindowTitle(tr("HMPP Tool Guide"));
+22: }
+23: 
+24: CreateProjectPage::CreateProjectPage(QWidget *parent)
+25:     : QWizardPage(parent)
+26: {
+27:     setTitle(tr("Create a new project"));
+28:     projectNameLabel = new QLabel(tr("Project &Name:"));
+29:     projectNameLineEdit = new QLineEdit;
+30:     projectNameLabel->setBuddy(projectNameLineEdit);
+31: 
+32:     projectPathLabel = new QLabel(tr("Project &Directory:"));
+33:     projectPathLineEdit = new QLineEdit;
+34:     projectPathLineEdit->setReadOnly(false);
+35:     projectPathLabel->setBuddy(projectPathLineEdit);
+36: 
+37:     projectSpecPathLabel = new QLabel(tr("S&pecification Directory:"));
+38:     projectSpecPathEdit = new QLineEdit;
+39:     projectSpecPathEdit->setReadOnly(true);
+40:     projectSpecPathLabel->setBuddy(projectSpecPathEdit);
+41: 
+42:     QPixmap pixmap(":/images/toolbar_images/folder.png");
+43:     QPixmap scaledPixmap = pixmap.scaled(16, Qt::KeepAspectRatio); // Adjust the size as needed
+44: 
+45:     // Set the icon on the button
+46:     QIcon icon(scaledPixmap);
+47:     openDirectoryButton = new QPushButton;
+48:     openDirectoryButton->setIcon(icon);
+49:     openDirectoryButton->resize(16);
+50: 
+51:     connect(openDirectoryButton, &QPushButton::clicked, this, &CreateProjectPage::getProjectDirectory);
+52: 
+53:     openSpecButton = new QPushButton;
+54:     openSpecButton->setIcon(icon);
+55:     openSpecButton->resize(16, 16);
+56:     connect(openSpecButton, &QPushButton::clicked, this, &CreateProjectPage::getSpecDirectory);
+57: 
+58:     targetLanguageLabel = new QLabel(tr("Target &Language:"));
+59:     targetLanguageBox = new QComboBox;
+60:     targetLanguageBox->addItem("C++");
+61:     targetLanguageBox->addItem("Java");
+62:     targetLanguageBox->addItem("C#");
+63: 
+64:     registerField("project name*", projectNameLineEdit);
+65:     registerField("project path*", projectPathLineEdit);
+66:     registerField("specification path*", projectSpecPathEdit);
+67:     //registerField("target language*", targetLanguageBox);
+68:     registerField("target language*", targetLanguageBox, "currentText", SIGNAL(currentIndexChanged(int)));
+69: 
+70: 
+71:     QGridLayout* layout = new QGridLayout;
+72:     layout->addWidget(projectNameLabel, 0, 0);
+73:     layout->addWidget(projectNameLineEdit, 0, 1);
+74:     layout->addWidget(projectPathLabel, 1, 0);
+75:     layout->addWidget(projectPathLineEdit, 1, 1);
+76:     layout->addWidget(openDirectoryButton, 1, 2);
+77: 
+78:     layout->addWidget(projectSpecPathLabel, 2, 0);
+79:     layout->addWidget(projectSpecPathEdit, 2, 1);
+80:     layout->addWidget(openSpecButton, 2, 1);
+81:     layout->addWidget(targetLanguageLabel, 3, 0);
+82:     layout->addWidget(targetLanguageBox, 3, 1);
+83:     setLayout(layout);
+84: 
+85: }
+86: 
+87: int CreateProjectPage::nextId() const
+88: {
+89:     return GuideWizard::Page_Conclusion;
+90: }
+91: 
+92: bool CreateProjectPage::validatePage()
+93: {
+94:     if (projectNameLineEdit->text().isEmpty()) {
+95:         qDebug() << "projectName is empty.";
+96:         QMessageBox::warning(this, "Input Error", "Please enter your project name before proceeding.");
+97:         return false; // Prevent going to the next page
+98:     }
+99: 
+100:     if (projectPathLineEdit->text().isEmpty()) {
+101:         qDebug() << "projectPath is empty";
+102:         QMessageBox::warning(this, "Input Error", "Please select your project directory before proceeding.");
+103:         return true; // Prevent going to the next page
+104:     }
+105:     return true; // Allow going to the next page
+106: }
+107: 
+108: bool CreateProjectPage::isComplete() const
+109: {
+110:     return targetLanguageBox->currentIndex() >= 0 && !projectNameLineEdit->text().isEmpty()
+111:             && !projectPathLineEdit->text().isEmpty();
+112: }
+113: 
+114: void CreateProjectPage::getProjectDirectory()
+115: {
+116:     const QString proDir = QFileDialog::getExistingDirectory(this, tr("Open Directory"), QDir::currentPath(),
+117:                                                        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+118:     if(!proDir.isEmpty()){
+119:         projectPathLineEdit->setText(proDir);
+120:     }
+121: 
+122: }
+123: 
+124: void CreateProjectPage::getSpecDirectory()
+125: {
+126:     const QString filePath = QFileDialog::getOpenFileName(this);   
+127:     if(!filePath.isEmpty()){
+128:         projectSpecPathEdit->setText(filePath);
+129:     }
+130: }]
+
+SOFL:[
+module UC16_guidewizard
+type
+  projectName, projectPath, specPath: String
+  filePath, proDir: String
+
+process GuideWizard(parent: QWidget) result: UC16_guidewizard
+pre
+  true
+post
+  setPage(Page_Intro, new IntroPage)
+  setPage(Page_CreateNewProject, new CreateProjectPage)
+  setPage(Page_OpenExistingProject, new OpenProjectPage)
+  setPage(Page_Conclusion, new ConclusionPage)
+  setStartId(Page_Intro)
+  if not macOS then setWizardStyle(ModernStyle)
+  setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"))
+  setWindowTitle("HMPP Tool Guide")
+Functional Scenario Form
+wizard initialized with all pages and platform-specific style
+end_process
+
+process CreateProjectPage(parent: QWidget) result: CreateProjectPage
+pre
+  true
+post
+  projectNameLabel, projectPathLabel, projectSpecPathLabel, targetLanguageLabel initialized
+  projectNameLineEdit, projectPathLineEdit, projectSpecPathEdit initialized
+  openDirectoryButton and openSpecButton initialized with folder icon
+  targetLanguageBox contains ["C++", "Java", "C#"]
+  connect openDirectoryButton.clicked to getProjectDirectory
+  connect openSpecButton.clicked to getSpecDirectory
+  registerField("project name*", projectNameLineEdit)
+  registerField("project path*", projectPathLineEdit)
+  registerField("specification path", projectSpecPathEdit)
+  registerField("target language*", targetLanguageBox, "currentText", currentIndexChanged)
+  layout contains all widgets, set as page layout
+Functional Scenario Form
+project creation page initialized with input fields, layout and signals
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  result' = Page_Conclusion
+Functional Scenario Form
+proceed from create project page to conclusion page
+end_process
+
+process validatePage() result: Boolean
+pre
+  true
+post
+  if projectNameLineEdit.text is empty then
+    show warning "Please enter your project name"
+    result' = false
+  else if projectPathLineEdit.text is empty then
+    show warning "Please select your project directory"
+    result' = false
+  else
+    result' = true
+Functional Scenario Form
+valid project name and path && allow proceed or
+missing input && show warning, prevent proceed
+end_process
+
+process isComplete() result: Boolean
+pre
+  true
+post
+  result' = (targetLanguageBox.currentIndex ≥ 0) ∧ (projectNameLineEdit.text ≠ "") ∧ (projectPathLineEdit.text ≠ "")
+Functional Scenario Form
+all required fields completed && isComplete = true or
+any field missing && isComplete = false
+end_process
+
+process getProjectDirectory() result: Void
+pre
+  true
+post
+  proDir = QFileDialog.getExistingDirectory(...)
+  if proDir ≠ "" then
+    projectPathLineEdit.setText(proDir)
+Functional Scenario Form
+user selects project directory && path set or
+user cancels dialog && no path set
+end_process
+
+process getSpecDirectory() result: Void
+pre
+  true
+post
+  filePath = QFileDialog.getOpenFileName(...)
+  if filePath ≠ "" then
+    projectSpecPathEdit.setText(filePath)
+Functional Scenario Form
+user selects specification file && path set or
+user cancels dialog && no path set
+end_process
+
+end_module]
+
+Bug symptoms: [
+#### Test Case 1: Project path validation
+
+**Expected:** User cannot proceed to next step without entering a project path.
+**Observed:** Wizard allows progress even if the project path is empty.
+
+```plaintext
+[INPUT] Project Name: "SampleProject"  
+[INPUT] Project Path: (empty)  
+[ACTION] Clicked "Next"  
+[LOG] Warning dialog shown  
+[STATE] Navigation allowed to next page  
+```
+
+---
+
+#### Test Case 2: Specification path field registration
+
+**Expected:** Specification path field is required during wizard completion.
+**Observed:** Wizard proceeds even if specification path is left empty.
+
+```plaintext
+[STATE] Field "specification path" not marked as required  
+[RESULT] Wizard finished without specification path  
+```
+
+---
+
+#### Test Case 3: Button icon and size rendering
+
+**Expected:** Directory buttons display correctly with proper size and icon
+**Observed:** One button appears misaligned or incorrectly sized
+
+```plaintext
+[UI] openSpecButton: size mismatch  
+[UI] Icon appears cut off or absent  
+```
+
+---
+
+#### Test Case 4: Layout overlap
+
+**Expected:** Two buttons appear in distinct columns
+**Observed:** Two buttons overlap in the same grid cell
+
+```plaintext
+[LAYOUT] openSpecButton placed at (2, 1)  
+[LAYOUT] projectSpecPathEdit also at (2, 1)  
+[RESULT] UI overlap observed  
+```
+
+---
+
+#### Test Case 5: Read-only field setting
+
+**Expected:** Project path field is editable
+**Observed:** Project path field is not editable by default
+
+```plaintext
+[UI] projectPathLineEdit: cannot be edited  
+[NOTE] Expected to allow manual input  
+```]

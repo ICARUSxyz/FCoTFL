@@ -1,0 +1,70 @@
+module UC58_MysqlPool
+
+var 
+  defaultHost: string = '127.0.0.1'
+  defaultPort: int = 3306
+  defaultLimit: int = 10
+
+process constructor(config: record database: string, host: string, port: int, connectionLimit: int) result: MysqlPool
+pre 
+  true
+post 
+  result._config = config &&
+  result._mysqlPool = Mysql.createPool(config) &&
+  if config.database is undefined then result = null
+Functional Scenario Form 
+config.database ≠ undefined && result._mysqlPool = Mysql.createPool(config) or
+config.database = undefined && result = null
+end_process
+
+process initialize(config: record database: string, host: string, port: int, connectionLimit: int) result: Boolean
+pre 
+  true
+post 
+  if config.database = undefined then 
+    result = false 
+  else 
+    _config = config with default host/port/limit applied if missing &&
+    _mysqlPool = Mysql.createPool(_config) &&
+    result = true
+Functional Scenario Form 
+config.database = undefined && result = false or
+config.database ≠ undefined && result = true && _mysqlPool initialized
+end_process
+
+process getPool() result: MysqlPool
+pre 
+  true
+post 
+  result = _mysqlPool
+Functional Scenario Form 
+true && result = _mysqlPool
+end_process
+
+process query(querystr: string, queryparams: sequence of any) result: Promise
+pre 
+  _mysqlPool ≠ null
+post 
+  if connection error then result = rejected(err) 
+  else if query error then result = rejected(err)
+  else result = resolved(rows)
+Functional Scenario Form 
+connection fails && result = rejected(err) or
+connection succeeds && query fails && result = rejected(err) or
+connection succeeds && query succeeds && result = resolved(rows)
+end_process
+
+process cbquery(querystr: string, queryparam: sequence of any, cb: function) result: void
+pre 
+  _mysqlPool ≠ null
+post 
+  if connection fails then cb(err)
+  else if query fails then cb(err)
+  else cb(null, rows)
+Functional Scenario Form 
+connection fails && cb(err) or
+connection succeeds && query fails && cb(err) or
+connection succeeds && query succeeds && cb(null, rows)
+end_process
+
+end_module

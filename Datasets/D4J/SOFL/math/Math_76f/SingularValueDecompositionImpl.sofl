@@ -1,0 +1,240 @@
+module SingularValueDecompositionImpl
+type:
+m, n: int
+
+
+process ctor_fromMatrix(self: SingularValueDecompositionImpl, matrix: RealMatrix) result: void
+pre
+matrix ≠ null
+post
+self.m' = rowDimension(matrix) ∧
+self.n' = columnDimension(matrix) ∧
+self.cachedU' = null ∧ self.cachedUt' = null ∧ self.cachedS' = null ∧ self.cachedV' = null ∧ self.cachedVt' = null ∧
+self.transformer' = new_BiDiagonalTransformer(matrix) ∧
+self.mainBidiagonal' = getMainDiagonalRef(self.transformer') ∧
+self.secondaryBidiagonal' = getSecondaryDiagonalRef(self.transformer') ∧
+let mb == self.mainBidiagonal' in
+let sb == self.secondaryBidiagonal' in
+self.mainTridiagonal' = buildMainTridiagonal(mb, sb) ∧
+self.secondaryTridiagonal' = buildSecondaryTridiagonal(mb, sb) ∧
+self.eigenDecomposition' = new_EigenDecomposition(self.mainTridiagonal', self.secondaryTridiagonal', SAFE_MIN) ∧
+let ev == getRealEigenvalues(self.eigenDecomposition') in
+let p0 == min(rowDimension(matrix), columnDimension(matrix)) in
+let p == trimPositivePrefix(ev, p0) in
+self.singularValues' = sqrtArrayPrefix(ev, p)
+Functional Scenario Form
+valid matrix && fields initialized and singularValues computed or
+null matrix && pre violated
+end_process
+
+process ctor_fromMatrixMax(self: SingularValueDecompositionImpl, matrix: RealMatrix, max: int) result: void
+pre
+matrix ≠ null ∧ max ≥ 1
+post
+self.m' = rowDimension(matrix) ∧
+self.n' = columnDimension(matrix) ∧
+self.cachedU' = null ∧ self.cachedUt' = null ∧ self.cachedS' = null ∧ self.cachedV' = null ∧ self.cachedVt' = null ∧
+self.transformer' = new_BiDiagonalTransformer(matrix) ∧
+self.mainBidiagonal' = getMainDiagonalRef(self.transformer') ∧
+self.secondaryBidiagonal' = getSecondaryDiagonalRef(self.transformer') ∧
+self.mainTridiagonal' = buildMainTridiagonal(self.mainBidiagonal', self.secondaryBidiagonal') ∧
+self.secondaryTridiagonal' = buildSecondaryTridiagonal(self.mainBidiagonal', self.secondaryBidiagonal') ∧
+self.eigenDecomposition' = new_EigenDecomposition(self.mainTridiagonal', self.secondaryTridiagonal', SAFE_MIN) ∧
+let ev == getRealEigenvalues(self.eigenDecomposition') in
+let p0 == min(max, length(ev)) in
+let p == trimPositivePrefix(ev, p0) in
+self.singularValues' = sqrtArrayPrefix(ev, p)
+Functional Scenario Form
+valid inputs && fields initialized with at most max singular values or
+invalid inputs && pre violated
+end_process
+
+process getU(self: SingularValueDecompositionImpl) result: RealMatrix
+pre
+length(self.singularValues) > 0
+post
+if self.cachedU = null
+then self.cachedU' = computeU(self) else self.cachedU' = self.cachedU ∧
+result' = self.cachedU'
+Functional Scenario Form
+cache empty && computeU then return or
+cache present && return cachedU
+end_process
+
+process getUT(self: SingularValueDecompositionImpl) result: RealMatrix
+pre
+true
+post
+if self.cachedUt = null
+then self.cachedUt' = transpose(getU(self)) else self.cachedUt' = self.cachedUt ∧
+result' = self.cachedUt'
+Functional Scenario Form
+no cache && set transpose(U) or
+cached && return cachedUt
+end_process
+
+process getS(self: SingularValueDecompositionImpl) result: RealMatrix
+pre
+length(self.singularValues) > 0
+post
+if self.cachedS = null
+then self.cachedS' = diag(self.singularValues) else self.cachedS' = self.cachedS ∧
+result' = self.cachedS'
+Functional Scenario Form
+no cache && build diagonal S or
+cached && return S
+end_process
+
+process getSingularValues(self: SingularValueDecompositionImpl) result: double[]
+pre
+length(self.singularValues) ≥ 0
+post
+result' = clone(self.singularValues)
+Functional Scenario Form
+any && return a clone of singularValues
+end_process
+
+process getV(self: SingularValueDecompositionImpl) result: RealMatrix
+pre
+length(self.singularValues) > 0
+post
+if self.cachedV = null
+then self.cachedV' = computeV(self) else self.cachedV' = self.cachedV ∧
+result' = self.cachedV'
+Functional Scenario Form
+cache empty && computeV then return or
+cache present && return cachedV
+end_process
+
+process getVT(self: SingularValueDecompositionImpl) result: RealMatrix
+pre
+true
+post
+if self.cachedVt = null
+then self.cachedVt' = transpose(getV(self)) else self.cachedVt' = self.cachedVt ∧
+result' = self.cachedVt'
+Functional Scenario Form
+no cache && set transpose(V) or
+cached && return cachedVt
+end_process
+
+process getCovariance(self: SingularValueDecompositionImpl, minSingularValue: double) result: RealMatrix
+pre
+∃ i ∈ [0 .. length(self.singularValues)−1] • self.singularValues[i] ≥ minSingularValue
+post
+let p == length(self.singularValues) in
+let d == max{ k | 0 ≤ k ≤ p ∧ ∀ i < k • self.singularValues[i] ≥ minSingularValue } in
+let Vt_d == submatrix(getVT(self), 0, d−1, 0, p−1) in
+let W == rowScale(Vt_d, i ↦ 1.0 / self.singularValues[i]) in
+result' = transpose(W) · W
+Functional Scenario Form
+valid cutoff && return Jvᵀ·Jv where rows scaled by 1/σi or
+no σ ≥ cutoff && pre violated
+end_process
+
+process getNorm(self: SingularValueDecompositionImpl) result: double
+pre
+length(self.singularValues) > 0
+post
+result' = self.singularValues[0]
+Functional Scenario Form
+nonempty σ && return largest σ
+end_process
+
+process getConditionNumber(self: SingularValueDecompositionImpl) result: double
+pre
+length(self.singularValues) > 0
+post
+result' = self.singularValues[0] / self.singularValues[length(self.singularValues) − 1]
+Functional Scenario Form
+nonempty σ && return σ_max/σ_min
+end_process
+
+process getRank(self: SingularValueDecompositionImpl) result: int
+pre
+length(self.singularValues) ≥ 0
+post
+let τ == max(self.m, self.n) * ulp(self.singularValues[0]) in
+result' = |{ i | 0 ≤ i < length(self.singularValues) ∧ self.singularValues[i] > τ }|
+Functional Scenario Form
+singular values present && count σi > τ or
+no σ && result = 0
+end_process
+
+process getSolver(self: SingularValueDecompositionImpl) result: DecompositionSolver
+pre
+length(self.singularValues) > 0
+post
+let Ut == getUT(self) in
+let V == getV(self) in
+let Σ⁻¹ == diag( map(i ↦ 1.0 / self.singularValues[i], 0, length(self.singularValues)−1) ) in
+let pinv == V · Σ⁻¹ · Ut in
+let fullRank == (getRank(self) = max(self.m, self.n)) in
+result' = new_SVDSolver(pinv, fullRank)
+Functional Scenario Form
+valid SVD && return solver with pseudo-inverse and rank flag
+end_process
+
+end_module
+
+module SingularValueDecompositionImpl_Solver
+type:
+RealMatrix
+RealVector
+
+process ctor(self: SingularValueDecompositionImpl_Solver, pseudoInverse: RealMatrix, nonSingular: boolean) result: void
+pre
+pseudoInverse ≠ null
+post
+self.pseudoInverse' = pseudoInverse ∧
+self.nonSingular' = nonSingular
+Functional Scenario Form
+valid inputs && fields set
+end_process
+
+process solve_vec(self: SingularValueDecompositionImpl_Solver, b: double[]) result: double[]
+pre
+b ≠ null
+post
+result' = operate(self.pseudoInverse, b)
+Functional Scenario Form
+any b && return pseudoInverse · b
+end_process
+
+process solve_rvec(self: SingularValueDecompositionImpl_Solver, b: RealVector) result: RealVector
+pre
+b ≠ null
+post
+result' = operate(self.pseudoInverse, b)
+Functional Scenario Form
+any b && return pseudoInverse · b
+end_process
+
+process solve_mat(self: SingularValueDecompositionImpl_Solver, b: RealMatrix) result: RealMatrix
+pre
+b ≠ null
+post
+result' = self.pseudoInverse · b
+Functional Scenario Form
+any b && return pseudoInverse · b
+end_process
+
+process isNonSingular(self: SingularValueDecompositionImpl_Solver) result: boolean
+pre
+true
+post
+result' = self.nonSingular
+Functional Scenario Form
+any && return flag
+end_process
+
+process getInverse(self: SingularValueDecompositionImpl_Solver) result: RealMatrix
+pre
+true
+post
+result' = self.pseudoInverse
+Functional Scenario Form
+any && return pseudoInverse
+end_process
+
+end_module

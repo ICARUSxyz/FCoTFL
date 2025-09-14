@@ -1,0 +1,126 @@
+module AbstractEstimator
+
+process setMaxCostEval(self: AbstractEstimator, maxCostEval: Int) result: Unit
+pre
+true
+post
+maxCostEval'(self) = maxCostEval
+Functional Scenario Form
+true && maxCostEval'(self)=maxCostEval
+end_process
+
+process getCostEvaluations(self: AbstractEstimator) result: Int
+pre
+true
+post
+result = costEvaluations(self)
+Functional Scenario Form
+true && result=costEvaluations(self)
+end_process
+
+process getJacobianEvaluations(self: AbstractEstimator) result: Int
+pre
+true
+post
+result = jacobianEvaluations(self)
+Functional Scenario Form
+true && result=jacobianEvaluations(self)
+end_process
+
+process incrementJacobianEvaluationsCounter(self: AbstractEstimator) result: Unit
+pre
+true
+post
+jacobianEvaluations'(self) = jacobianEvaluations(self) + 1
+Functional Scenario Form
+true && jacobianEvaluations'(self)=jacobianEvaluations(self)+1
+end_process
+
+process updateJacobian(self: AbstractEstimator) result: Unit
+pre
+rows(self) = |measurements(self)| ∧ cols(self) = |parameters(self)| ∧ |jacobian(self)| = rows(self)cols(self)
+post
+jacobianEvaluations'(self) = jacobianEvaluations(self) + 1
+∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒
+jacobian'(self)[icols(self)+j] = -sqrt(weight(measurements(self)[i])) * ∂(measurements(self)[i]) / ∂(parameters(self)[j]))
+Functional Scenario Form
+valid sizes && jacobianEvaluations inc by 1 and jacobian'[i*cols+j]= -sqrt(w_i)*partial_i_j
+end_process
+
+process updateResidualsAndCost(self: AbstractEstimator) result: Unit
+pre
+rows(self) = |measurements(self)| ∧ |residuals(self)| = rows(self)
+post
+(costEvaluations(self)+1 ≤ maxCostEval(self) ⇒
+costEvaluations'(self) = costEvaluations(self)+1
+∧ (∀i • 0≤i<rows(self) ⇒ residuals'(self)[i] = sqrt(weight(measurements(self)[i])) * residual(measurements(self)[i]))
+∧ cost'(self) = sqrt(Σ_{i=0..rows(self)-1} weight(measurements(self)[i]) * residual(measurements(self)[i])^2))
+∧ (costEvaluations(self)+1 > maxCostEval(self) ⇒ raises EstimationException)
+Functional Scenario Form
+costEvaluations+1 ≤ maxCostEval && residuals'[i]=sqrt(w_i)r_i ∧ cost'=sqrt(Σ w_ir_i^2) or costEvaluations+1 > maxCostEval && throws EstimationException
+end_process
+
+process getRMS(self: AbstractEstimator, problem: EstimationProblem) result: Real
+pre
+|problem.measurements| > 0
+post
+result = sqrt((Σ_{i=0..|problem.measurements|-1} weight(problem.measurements[i]) * residual(problem.measurements[i])^2) / |problem.measurements|)
+Functional Scenario Form
+|meas|>0 && result = sqrt( Σ w_i*r_i^2 / |meas|)
+end_process
+
+process getChiSquare(self: AbstractEstimator, problem: EstimationProblem) result: Real
+pre
+(∀i • 0≤i<|problem.measurements| ⇒ weight(problem.measurements[i])>0)
+post
+result = Σ_{i=0..|problem.measurements|-1} (residual(problem.measurements[i])^2 / weight(problem.measurements[i]))
+Functional Scenario Form
+weights>0 && result = Σ (r_i^2 / w_i)
+end_process
+
+process getCovariances(self: AbstractEstimator, problem: EstimationProblem) result: RealArray2D
+pre
+initializeEstimate previously aligned self with problem ∧ cols(self)=|problem.unboundParameters| ∧ rows(self)=|problem.measurements|
+post
+updateJacobian executed
+∧ let J be rows(self)×cols(self) with J[i,j]= -sqrt(weight(measurements(self)[i])) * ∂(measurements(self)[i]) / ∂(parameters(self)[j]) in
+(Jᵀ·J is invertible ⇒ result = (Jᵀ·J)^{-1})
+∧ (Jᵀ·J not invertible ⇒ raises EstimationException)
+Functional Scenario Form
+(Jᵀ·J invertible) && result=(Jᵀ·J)^{-1} or (Jᵀ·J singular) && throws EstimationException
+end_process
+
+process guessParametersErrors(self: AbstractEstimator, problem: EstimationProblem) result: RealArray1D
+pre
+let m=|problem.measurements|, p=|problem.unboundParameters| in m>p
+post
+let c = sqrt(getChiSquare(self,problem)/(m-p)), COV = getCovariances(self,problem) in
+|result| = p ∧ (∀k • 0≤k<p ⇒ result[k] = sqrt(COV[k][k]) * c)
+Functional Scenario Form
+m>p && result[k]=sqrt(cov[k][k])*sqrt(ChiSquare/(m-p)) with cov=getCovariances
+end_process
+
+process initializeEstimate(self: AbstractEstimator, problem: EstimationProblem) result: Unit
+pre
+true
+post
+costEvaluations'(self)=0 ∧ jacobianEvaluations'(self)=0
+∧ measurements'(self)=problem.measurements ∧ parameters'(self)=problem.unboundParameters
+∧ rows'(self)=|measurements'(self)| ∧ cols'(self)=|parameters'(self)|
+∧ |jacobian'(self)| = rows'(self)*cols'(self) ∧ |residuals'(self)|=rows'(self)
+∧ cost'(self)=+∞
+Functional Scenario Form
+true && counters reset ∧ fields bound to problem ∧ arrays allocated ∧ cost'=+∞
+end_process
+
+process estimate(self: AbstractEstimator, problem: EstimationProblem) result: Unit
+pre
+true
+post
+(on normal return) problem parameters represent a converged least-squares estimate minimizing cost consistent with measurements
+∨ (failure) raises EstimationException
+Functional Scenario Form
+converges && parameters in problem updated to best estimate or fails && throws EstimationException
+end_process
+
+end_module

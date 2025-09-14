@@ -1,0 +1,110 @@
+
+module GrayPaintScale  
+type:  
+ lowerBound: double
+ upperBound: double 
+
+process constructor()  
+pre true  
+post  
+  this(lowerBound: 0.0, upperBound: 1.0)  
+
+Functional Scenario Form  
+default initialization  
+    && lowerBound=0.0, upperBound=1.0  
+end_process  
+
+process constructor(lowerBound: double, upperBound: double)  
+pre true  
+post  
+  lowerBound < upperBound  
+    ⇒ lowerBound' = lowerBound ∧  
+      upperBound' = upperBound  
+  else  
+    errorMsg = "Requires lowerBound < upperBound." ∧  
+    result = IllegalArgumentException  
+
+Functional Scenario Form  
+valid bounds (0.0, 10.0)  
+    && sets bounds  
+invalid bounds (5.0, 5.0)  
+    && throws exception  
+invalid bounds (8.0, 2.0)  
+    && throws exception  
+end_process  
+
+process getLowerBound() result: double  
+pre true  
+post  
+  result' = lowerBound  
+
+Functional Scenario Form  
+lowerBound=2.5  
+    && returns 2.5  
+end_process  
+
+process getUpperBound() result: double  
+pre true  
+post  
+  result' = upperBound  
+
+Functional Scenario Form  
+upperBound=7.8  
+    && returns 7.8  
+end_process  
+
+process getPaint(value: double) result: Paint  
+pre true  
+post  
+  v = max(min(value, upperBound), lowerBound) ∧  
+  g = (int) ((v - lowerBound) / (upperBound - lowerBound) * 255.0) ∧  
+  result' = new Color(g, g, g)  
+
+Functional Scenario Form  
+value=0.0 in [0,1]  
+    && returns Color(0,0,0)  
+value=1.0 in [0,1]  
+    && returns Color(255,255,255)  
+value=0.5 in [0,1]  
+    && returns Color(127,127,127)  
+value=-5.0 in [0,10]  
+    && returns Color(0,0,0)  
+value=15.0 in [0,10]  
+    && returns Color(255,255,255)  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof GrayPaintScale) ⇒ result' = false  
+    else  
+      that = (GrayPaintScale) obj ∧  
+      (  
+        this.lowerBound ≠ that.lowerBound ∨  
+        this.upperBound ≠ that.upperBound  
+          ⇒ result' = false  
+        else  
+          result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+same object && returns true  
+different type && returns false  
+same bounds && returns true  
+different lowerBound && returns false  
+different upperBound && returns false  
+end_process  
+
+process clone() result: GrayPaintScale  
+pre true  
+post  
+  result' = (GrayPaintScale) super.clone()  
+
+Functional Scenario Form  
+original instance  
+    && returns cloned instance  
+end_process  
+end_module  

@@ -1,0 +1,163 @@
+module UniformRealDistribution
+type
+  upper: double
+  solverAbsoluteAccuracy: double
+  lower: double
+
+var
+  DEFAULT_INVERSE_ABSOLUTE_ACCURACY: real = 1e-9
+  serialVersionUID: long = 20120109L
+
+process UniformRealDistribution() result: UniformRealDistribution
+post 
+  result = UniformRealDistribution(0, 1, DEFAULT_INVERSE_ABSOLUTE_ACCURACY)
+Functional Scenario Form 
+defaultConstructorCreated
+end_process
+
+process UniformRealDistribution(lower: real, upper: real) result: UniformRealDistribution
+pre 
+  lower < upper
+post 
+  result = UniformRealDistribution(
+    new Well19937c(), 
+    lower, 
+    upper, 
+    DEFAULT_INVERSE_ABSOLUTE_ACCURACY
+  )
+Functional Scenario Form 
+validBounds&&objectCreated || 
+lowerNotBelowUpper&&exceptionThrown
+end_process
+
+process UniformRealDistribution(
+  lower: real, 
+  upper: real, 
+  inverseCumAccuracy: real
+) result: UniformRealDistribution
+pre 
+  lower < upper ∧ inverseCumAccuracy > 0
+post 
+  result = UniformRealDistribution(
+    new Well19937c(), 
+    lower, 
+    upper, 
+    inverseCumAccuracy
+  )
+Functional Scenario Form 
+validParameters&&objectCreated || 
+lowerNotBelowUpper&&exceptionThrown || 
+invalidAccuracy&&defaultAccuracyUsed
+end_process
+
+process UniformRealDistribution(
+  rng: RandomGenerator,
+  lower: real,
+  upper: real,
+  inverseCumAccuracy: real
+) result: UniformRealDistribution
+pre 
+  rng ≠ null ∧ lower < upper ∧ inverseCumAccuracy > 0
+post 
+  result.lower = lower ∧
+  result.upper = upper ∧
+  result.solverAbsoluteAccuracy = inverseCumAccuracy
+Functional Scenario Form 
+validParameters&&fullyInitialized || 
+nullRng&&exceptionThrown || 
+lowerNotBelowUpper&&exceptionThrown || 
+negativeAccuracy&&defaultAccuracyUsed
+end_process
+
+
+process density(x: real) result: real
+post 
+  (x < this.lower ∨ x > this.upper ⇒ result = 0) ∧
+  (this.lower ≤ x ≤ this.upper ⇒ result = 1 / (this.upper - this.lower))
+Functional Scenario Form 
+insideSupport&&constantDensity || 
+outsideSupport&&zeroDensity || 
+boundaryPoint&&included
+end_process
+
+process cumulativeProbability(x: real) result: real
+post 
+  (x ≤ this.lower ⇒ result = 0) ∧
+  (x ≥ this.upper ⇒ result = 1) ∧
+  (this.lower < x < this.upper ⇒ 
+      result = (x - this.lower) / (this.upper - this.lower))
+Functional Scenario Form 
+belowLowerBound&&returnsZero || 
+aboveUpperBound&&returnsOne || 
+insideSupport&&linearCDF
+end_process
+
+process sample() result: real
+pre 
+  this.random ≠ null
+post 
+  u = this.random.nextDouble() ∧ 
+  result = u * this.upper + (1 - u) * this.lower
+Functional Scenario Form 
+validRandom&&uniformSample || 
+nullRandom&&exceptionThrown
+end_process
+
+process getSolverAbsoluteAccuracy() result: real
+post 
+  result = this.solverAbsoluteAccuracy
+Functional Scenario Form 
+alwaysReturnsStoredAccuracy
+end_process
+
+process getNumericalMean() result: real
+post 
+  result = 0.5 * (this.lower + this.upper)
+Functional Scenario Form 
+alwaysReturnsMidpoint
+end_process
+
+process getNumericalVariance() result: real
+post 
+  range = this.upper - this.lower ∧
+  result = (range * range) / 12
+Functional Scenario Form 
+alwaysReturnsVariance
+end_process
+
+process getSupportLowerBound() result: real
+post 
+  result = this.lower
+Functional Scenario Form 
+alwaysReturnsLowerBound
+end_process
+
+process getSupportUpperBound() result: real
+post 
+  result = this.upper
+Functional Scenario Form 
+alwaysReturnsUpperBound
+end_process
+
+process isSupportLowerBoundInclusive() result: bool
+post 
+  result = true
+Functional Scenario Form 
+alwaysReturnsTrue
+end_process
+
+process isSupportUpperBoundInclusive() result: bool
+post 
+  result = true
+Functional Scenario Form 
+alwaysReturnsTrue
+end_process
+
+process isSupportConnected() result: bool
+post 
+  result = true
+Functional Scenario Form 
+alwaysReturnsTrue
+end_process
+
+end_module

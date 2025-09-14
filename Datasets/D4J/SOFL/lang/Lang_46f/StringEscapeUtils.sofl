@@ -1,0 +1,108 @@
+module StringEscapeUtils
+type 
+  str: String
+  out: Writer
+  result: String
+  escapeSingleQuotes: Boolean
+  escapeForwardSlash: Boolean
+  ch: char
+  i: int
+  sz: int
+
+var 
+  CSV_DELIMITER: char = ','
+  CSV_QUOTE: char = '"'
+  CSV_QUOTE_STR: String = "\""
+  CSV_SEARCH_CHARS: sequence of char = [',', '"', '\r', '\n']
+
+process escapeJava(str: String) result: String
+pre  true
+post result = escapeJavaStyleString(str, false, false)
+Functional Scenario Form
+true && result = escapeJavaStyleString(str, false, false)
+end_process
+
+process escapeJava(out: Writer, str: String) result: String
+pre  out ≠ null
+post escapeJavaStyleString(out, str, false, false)
+Functional Scenario Form
+out ≠ null && escapeJavaStyleString(out, str, false, false)
+end_process
+
+process escapeJavaScript(str: String) result: String
+pre  true
+post result = escapeJavaStyleString(str, true, true)
+Functional Scenario Form
+true && result = escapeJavaStyleString(str, true, true)
+end_process
+
+process escapeJavaScript(out: Writer, str: String) result: String
+pre  out ≠ null
+post escapeJavaStyleString(out, str, true, true)
+Functional Scenario Form
+out ≠ null && escapeJavaStyleString(out, str, true, true)
+end_process
+
+process escapeJavaStyleString(str: String, escapeSingleQuote: Boolean, escapeForwardSlash: Boolean) result: String
+pre  true
+post 
+  (str = null ⇒ result = null) ∧
+  (str ≠ null ⇒
+    result = concatenation over each character ch in str of:
+      if codePoint(ch) > 0xfff then "\\u" + hex(ch) else
+      if codePoint(ch) > 0xff then "\\u0" + hex(ch) else
+      if codePoint(ch) > 0x7f then "\\u00" + hex(ch) else
+      if codePoint(ch) < 32 then
+        if ch = '\b' then "\\b" else
+        if ch = '\n' then "\\n" else
+        if ch = '\t' then "\\t" else
+        if ch = '\f' then "\\f" else
+        if ch = '\r' then "\\r" else
+          if codePoint(ch) > 0xf then "\\u00" + hex(ch) else "\\u000" + hex(ch)
+      else
+        if ch = '\'' ∧ escapeSingleQuote = true then "\\'" else
+        if ch = '\'' ∧ escapeSingleQuote = false then "'" else
+        if ch = '"' then "\\\"" else
+        if ch = '\\' then "\\\\" else
+        if ch = '/' ∧ escapeForwardSlash = true then "\\/" else
+        if ch = '/' ∧ escapeForwardSlash = false then "/" else
+        String.valueOf(ch)
+  )
+
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ≠ null) &&
+(for each ch in str:
+  (codePoint(ch) > 0xfff) && (result contains "\\u" + hex(ch)) or
+  (0xff < codePoint(ch) ≤ 0xfff) && (result contains "\\u0" + hex(ch)) or
+  (0x7f < codePoint(ch) ≤ 0xff) && (result contains "\\u00" + hex(ch)) or
+  (codePoint(ch) < 32) &&
+    (
+      (ch = '\b') && (result contains "\\b") or
+      (ch = '\n') && (result contains "\\n") or
+      (ch = '\t') && (result contains "\\t") or
+      (ch = '\f') && (result contains "\\f") or
+      (ch = '\r') && (result contains "\\r") or
+      (ch ≠ any above) &&
+        (
+          (codePoint(ch) > 0xf) && (result contains "\\u00" + hex(ch)) or
+          (codePoint(ch) ≤ 0xf) && (result contains "\\u000" + hex(ch))
+        )
+    ) or
+  (codePoint(ch) ≥ 32) &&
+    (
+      (ch = '\'') && (
+        (escapeSingleQuote = true && result contains "\\'") or
+        (escapeSingleQuote = false && result contains "'")
+      ) or
+      (ch = '"') && (result contains "\\\"") or
+      (ch = '\\') && (result contains "\\\\") or
+      (ch = '/') && (
+        (escapeForwardSlash = true && result contains "\\/") or
+        (escapeForwardSlash = false && result contains "/")
+      ) or
+      (ch ≠ any above) && (result contains ch)
+    )
+)
+end_process
+end_module

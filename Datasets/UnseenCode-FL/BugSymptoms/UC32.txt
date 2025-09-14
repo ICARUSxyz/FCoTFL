@@ -1,0 +1,108 @@
+**Bug Report: Payment Processing Logic Anomalies in Point and Coupon Handling**
+
+---
+
+**Test Case 1: Full Payment with Points**
+
+**Action:**
+User selects "use points" and has more points than the discounted amount.
+
+**Expected:**
+Payment is fully covered by points, and balance remains unchanged.
+
+**Observed:**
+Points are deducted, but the balance is still reduced.
+
+**Log Output:**
+
+```plaintext
+[INFO] User point: 1000  
+[INFO] Discounted amount: 800  
+[DEBUG] Balance before: 5000  
+[DEBUG] Balance after: 4200  
+[WARN] Unexpected balance deduction despite full point usage
+```
+
+---
+
+**Test Case 2: Partial Payment with Points**
+
+**Action:**
+User uses points, but the available points are fewer than the discounted amount.
+
+**Expected:**
+Points are deducted, and only the remaining amount is taken from the balance.
+
+**Observed:**
+No points are deducted or miscalculated deduction.
+
+**Log Output:**
+
+```plaintext
+[INFO] User point: 300  
+[INFO] Discounted amount: 800  
+[DEBUG] Points used: 0  
+[WARN] Point deduction not reflected
+```
+
+---
+
+**Test Case 3: Point Accumulation After Payment**
+
+**Action:**
+User completes payment without using points.
+
+**Expected:**
+Earned points = discountedAmount / 100 (e.g., ¥800 → 8 points).
+
+**Observed:**
+Excessive point accumulation (e.g., ¥800 → 80 points).
+
+**Log Output:**
+
+```plaintext
+[INFO] Discounted amount: 800  
+[DEBUG] Earned point: 80  
+[WARN] Unexpectedly high point award
+```
+
+---
+
+**Test Case 4: Payment Log Entry with Coupon Use**
+
+**Action:**
+User applies a coupon and completes payment.
+
+**Expected:**
+All relevant payment details, including coupon usage, are logged.
+
+**Observed:**
+Application crashes or throws error due to missing log parameter.
+
+**Log Output:**
+
+```plaintext
+[ERROR] save() missing 1 required argument: 'couponRate'  
+[DEBUG] Payment not recorded in history
+```
+
+---
+
+**Test Case 5: UI Update After Payment**
+
+**Action:**
+Complete payment and check UI refresh behavior.
+
+**Expected:**
+Main frame updates properly via `updatePages()`.
+
+**Observed:**
+No response or `NullPointerException`.
+
+**Log Output:**
+
+```plaintext
+[ERROR] Method getwindowAncestor not found  
+[DEBUG] mainFrame is null  
+[WARN] updatePages() skipped due to missing frame reference
+```

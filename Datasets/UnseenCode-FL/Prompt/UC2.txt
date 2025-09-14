@@ -1,0 +1,210 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "requirementtreeview.h"
+2: #include "syntaxrule.h"
+3: #include <QMenu>
+4: #include <QAction>
+5: #include <QVBoxLayout>
+6: #include <QHBoxLayout>
+7: #include <QInputDialog>
+8: #include <QFileDialog>
+9: #include <QFont>
+10: #include <QMessageBox>
+11: #include <QLabel>
+12: #include "ui_cscrtooldialog.h"
+13: 
+14: RequirementTreeView::RequirementTreeView(QWidget *parent) : QTreeView(parent)
+15: {
+16:     setContextMenuPolicy(Qt::CustomContextMenu);
+17:     connect(this, &RequirementTreeView::customContextMenuRequested, this, &RequirementTreeView::showContextMenu);
+18: }
+19: 
+20: void RequirementTreeView::showContextMenu(const QPoint &pos)
+21: {
+22:     QModelIndex index = indexAt(pos);
+23:     if (index.isValid()) {
+24:         QMenu menu(this);
+25:         QAction *action1 = menu.addAction("Complete the Requirement");
+26: 
+27:         QAction *selectedAction = menu.exec(viewport()->mapToGlobal(pos));
+28:         if (selectedAction = action1) {
+29:      
+30:             emit complete(index);
+31:         }
+32:     }
+33: }
+34: 
+35: // Add items from QStringList
+36: void BuildProFromSpecDialog::addItemsFromStringList(const QStringList& stringList) {
+37:     existingClassList = stringList;
+38:     for (const QString& str : stringList) {
+39:         QTreeWidgetItem* funcItem = new QTreeWidgetItem(treeWidget);
+40:         funcItem->setText(0, str);
+41:         funcItem->setIcon(0, QIcon(":/images/toolbar_images/class.svg"));
+42:         funcItem->setData(0, Qt::UserRole, classUserRole);
+43:         funcItem->setData(0, Qt::UserRole + 1, true);  // Mark as non-modifiable (from QStringList)
+44:     }
+45: }
+46: 
+47: // Check if the item is from QStringList
+48: bool BuildProFromSpecDialog::isItemFromExistingClassList(QTreeWidgetItem* item) {
+49:     return item->data(0, Qt::UserRole - 1).toBool();
+50: }
+51: 
+52: // Demote the selected item to a function root
+53: void BuildProFromSpecDialog::demoteToIndependentFunction() {
+54:     QTreeWidgetItem* currentItem = treeWidget->currentItem();
+55:     if (!currentItem || isItemFromExistingClassList(currentItem)) {
+56:         return;  // Do nothing if the item is from QStringList
+57:     }
+58:     if (currentItem->data(0, Qt::UserRole).toString() == classUserRole) {
+59:         currentItem->setText(0, toLowerCamelCase(currentItem->text(0)));
+60:         currentItem->setData(0, Qt::UserRole, globalFunctionUserRole);
+61:         currentItem->setIcon(0, QIcon(":/images/toolbar_images/memberfunc.svg"));
+62:     }else if(currentItem->data(0, Qt::UserRole).toString() == classFunctionUserRole){
+63:         // Ensure the current item is removed from its current position if necessary
+64:         QTreeWidgetItem* parentItem = currentItem->parent();
+65:         if (parentItem) {
+66:             parentItem->removeChild(currentItem);  // Remove it from its current parent
+67:         } else {
+68:             int index = treeWidget->indexOfTopLevelItem(currentItem);
+69:             if (index != -1) {
+70:                 treeWidget->takeTopLevelItem();  // Remove from top-level if it is a root item
+71:             }
+72:         }
+73:         currentItem->setIcon(0, QIcon(":/images/toolbar_images/memberfunc.svg"));
+74:         currentItem->setData(0, Qt::UserRole, globalFunctionUserRole);
+75:         treeWidget->addTopLevelItem(currentItem);
+76:     }
+77:     treeWidget->setCurrentItem(currentItem);
+78: }]
+
+SOFL:[
+module UC20_requirementtreeview
+type
+  indexValid: Boolean
+  stringList: sequence of String
+  str: String
+  index: int
+  result: Boolean
+
+process RequirementTreeView() result: RequirementTreeView
+pre
+  true
+post
+  this.contextMenuPolicy' = Qt::CustomContextMenu
+  connect customContextMenuRequested to showContextMenu
+Functional Scenario Form
+tree view initialized && context menu connection set
+end_process
+
+process showContextMenu(pos: QPoint) result: Void
+pre
+  pos ≠ null
+post
+  if indexAt(pos).isValid then
+    show menu with "Complete the Requirement"
+    if action selected then emit complete(indexAt(pos))
+Functional Scenario Form
+valid index right-clicked && user selects action && emit complete signal or
+valid index right-clicked && no action selected && do nothing
+end_process
+
+process addItemsFromStringList(stringList: sequence of String) result: Void
+pre
+  stringList ≠ null
+post
+  for each str in stringList:
+    create QTreeWidgetItem with str as text
+    set icon = class.svg
+    set UserRole = classUserRole
+    set UserRole+1 = true
+    add item to treeWidget
+Functional Scenario Form
+stringList processed && items added to tree as class nodes
+end_process
+
+process isItemFromExistingClassList(item: QTreeWidgetItem) result: Boolean
+pre
+  item ≠ null
+post
+  result' = item.data(UserRole+1).toBool()
+Functional Scenario Form
+item has UserRole+1 true && return true or
+otherwise && return false
+end_process
+
+process demoteToIndependentFunction() result: Void
+pre
+  treeWidget ≠ null
+post
+  if currentItem is null or from existing class list then return
+  if currentItem.UserRole = classUserRole then
+    change name to camelCase
+    set UserRole = globalFunctionUserRole
+    change icon to memberfunc.svg
+  else if UserRole = classFunctionUserRole then
+    remove from parent or top level
+    set UserRole = globalFunctionUserRole
+    set icon = memberfunc.svg
+    add as top-level item
+  set currentItem as selected
+Functional Scenario Form
+currentItem is class && demoted to global function or
+currentItem is class member && moved to top-level as global function or
+currentItem is from existing list && ignored
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report: CodeHistory
+
+Test Input:
+
+```cpp
+CodeHistory editor;
+editor.show();
+```
+
+Observed Behavior:
+
+* Compilation error: no matching function call to `setEditorFont(const char*)`.
+* Runtime warning: `lineNumberAreaPaintEvent()` called with missing argument.
+* Line numbers are not displayed correctly for documents with 10 or more lines.
+
+Expected Behavior:
+
+* Editor initializes with monospaced font (e.g., Courier, size 10).
+* Line number area paints correctly alongside text.
+* Line numbers adapt dynamically based on total line count.
+
+Actual Behavior:
+
+* Font initialization incomplete due to missing argument.
+* Line number paint event causes runtime warning or visual artifacts.
+* Line number area width does not increase at 10 lines, causing overlap or truncation.]

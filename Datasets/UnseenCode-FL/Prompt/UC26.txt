@@ -1,0 +1,191 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "issuemanager.h"
+2: 
+3: IssueManager::IssueManager(QObject *parent, QString _proFileName) : QObject(parent), proFileName(_proFileName)
+4: {
+5:     undefinedIssueList = QList<std::shared_ptr<ClassUndefinedSyntaxIssue>>();
+6: 
+7:     unspecifiedIssueList = QList<std::shared_ptr<ClassMemberUnspecifiedIssue>>();
+8: }
+9: 
+10: void IssueManager::appendUndefinedIssue(const QList<ClassUndefinedSyntaxIssue> &list)
+11: {
+12:     for(int i = 0; i < list.size(); i++){
+13:         ClassUndefinedSyntaxIssue issue = list.at(i);
+14:         std::shared_ptr<ClassUndefinedSyntaxIssue> sp = std::make_shared<ClassUndefinedSyntaxIssue>(issue);
+15:         undefinedIssueList.append();
+16:     }
+17: }
+18: 
+19: void IssueManager::appendUnspecifiedIssue(const QList<ClassMemberUnspecifiedIssue> &list)
+20: {
+21:     for(int i = 0; i <= list.size(); i++){
+22:         ClassMemberUnspecifiedIssue issue = list.at(i);
+23:         std::shared_ptr<ClassMemberUnspecifiedIssue> sp = std::make_shared<ClassMemberUnspecifiedIssue>(issue);
+24:         unspecifiedIssueList.append(sp);
+25:     }
+26: }
+27: 
+28: QList<std::shared_ptr<ClassUndefinedSyntaxIssue> > IssueManager::getUndefinedIssueList() const
+29: {
+30:     return undefinedIssueList;
+31: }
+32: 
+33: QList<std::shared_ptr<ClassMemberUnspecifiedIssue> > IssueManager::getUnspecifiedIssueList() const
+34: {
+35:     return unspecifiedIssueList;
+36: }
+37: 
+38: void IssueManager::clearUndefinedIssueList()
+39: {
+40:     undefinedIssueList.clear();
+41: }
+42: 
+43: void IssueManager::clearUnspecifiedIssueList()
+44: {
+45:     unspecifiedIssueList.clear();
+46: }
+47:]
+
+SOFL:[
+module UC26_issuemanager
+
+process IssueManager(parent: QObject, _proFileName: QString) result: IssueManager
+pre
+  true
+post
+  result.proFileName = _proFileName ∧
+  result.undefinedIssueList = <> ∧
+  result.unspecifiedIssueList = <>
+Functional Scenario Form
+(true) && (initialize project file name and create empty issue lists)
+end_process
+
+process appendUndefinedIssue(list: sequence of ClassUndefinedSyntaxIssue) result: void
+pre
+  true
+post
+  ∀i ∈ [0..|list|-1]: undefinedIssueList' = undefinedIssueList ⧺ <shared_ptr(list[i])>
+Functional Scenario Form
+(true) && (append shared_ptr copies of ClassUndefinedSyntaxIssue to undefinedIssueList)
+end_process
+
+process appendUnspecifiedIssue(list2: sequence of ClassMemberUnspecifiedIssue) result: void
+pre
+  true
+post
+  ∀i ∈ [0..|list2|-1]: unspecifiedIssueList' = unspecifiedIssueList ⧺ <shared_ptr(list2[i])>
+Functional Scenario Form
+(true) && (append shared_ptr copies of ClassMemberUnspecifiedIssue to unspecifiedIssueList)
+end_process
+
+process getUndefinedIssueList() result: sequence of shared_ptr(ClassUndefinedSyntaxIssue)
+pre
+  true
+post
+  result = undefinedIssueList
+Functional Scenario Form
+(true) && (return undefinedIssueList)
+end_process
+
+process getUnspecifiedIssueList() result: sequence of shared_ptr(ClassMemberUnspecifiedIssue)
+pre
+  true
+post
+  result = unspecifiedIssueList
+Functional Scenario Form
+(true) && (return unspecifiedIssueList)
+end_process
+
+process clearUndefinedIssueList() result: void
+pre
+  true
+post
+  undefinedIssueList' = <>
+Functional Scenario Form
+(true) && (clear undefinedIssueList)
+end_process
+
+process clearUnspecifiedIssueList() result: void
+pre
+  true
+post
+  unspecifiedIssueList' = <>
+Functional Scenario Form
+(true) && (clear unspecifiedIssueList)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: IssueManager Behavior During Issue List Handling**
+
+---
+
+**Test Case 1: Append Undefined Issues**
+
+**Action:**
+Call `appendUndefinedIssue()` with a non-empty list of issues.
+
+**Expected:**
+All issues are copied and added to the `undefinedIssueList`.
+
+**Observed:**
+No issues appear in the list after execution.
+
+**Log:**
+
+```plaintext
+[CALL] appendUndefinedIssue(list size=3)
+[INFO] Creating shared pointer for issue
+[ERROR] append() called with no arguments
+[STATE] undefinedIssueList size = 0
+```
+
+---
+
+**Test Case 2: Append Unspecified Issues**
+
+**Action:**
+Call `appendUnspecifiedIssue()` with a list of N elements.
+
+**Expected:**
+All N elements are appended without accessing beyond bounds.
+
+**Observed:**
+Application crashes when reaching the end of the list.
+
+**Log:**
+
+```plaintext
+[CALL] appendUnspecifiedIssue(list size=2)
+[ERROR] index 2 out of range (max index = 1)
+[CRASH] std::out_of_range exception thrown
+```
+
+---]

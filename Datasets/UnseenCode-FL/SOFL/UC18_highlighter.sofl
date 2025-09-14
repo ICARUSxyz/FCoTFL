@@ -1,0 +1,100 @@
+module UC18_highlighter
+type
+  targetStr: String
+  i: int
+  keywordPatterns: sequence of String
+  pattern: String
+
+process TextBlockData() result: TextBlockData
+pre
+  true
+post
+  m_parentheses = empty sequence
+  m_todoNotes = empty sequence
+Functional Scenario Form
+TextBlockData constructed && empty vectors initialized
+end_process
+
+process parentheses() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_parentheses
+Functional Scenario Form
+returns stored parenthesis markers
+end_process
+
+process todoNotes() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_todoNotes
+Functional Scenario Form
+returns stored todo markers
+end_process
+
+process getInfos(targetStr: String) result: sequence of MarkInfo
+pre
+  targetStr ≠ null
+post
+  if targetStr = "{" then
+    result' = parentheses()
+  else if targetStr = "/* todo:" then
+    result' = todoNotes()
+  else
+    result' = empty sequence
+Functional Scenario Form
+target is parenthesis && return parentheses or
+target is todo && return todoNotes or
+target does not match && return empty
+end_process
+
+process insertParenthesisInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_parentheses ordered by position
+Functional Scenario Form
+info inserted into parentheses vector in position-sorted order
+end_process
+
+process insertToDoNoteInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_todoNotes ordered by position
+Functional Scenario Form
+info inserted into todoNotes vector in position-sorted order
+end_process
+
+process Highlighter(parent: QTextDocument) result: UC18_highlighter
+pre
+  parent ≠ null
+post
+  keywordFormat.foreground = Qt::darkBlue
+  keywordFormat.fontWeight = QFont::Bold
+  keywordPatterns initialized with list of C++ keywords
+  for each pattern in keywordPatterns:
+    rule.pattern = QRegExp(pattern)
+    rule.format = keywordFormat
+    highlightingRules.append(rule)
+
+  classFormat set to bold and darkMagenta
+  rule with pattern "\\bQ[A-Za-z]+\\b" and classFormat appended
+
+  singleLineCommentFormat.foreground = Qt::darkGreen
+  rule with pattern "//[^\\n]*" and singleLineCommentFormat appended
+
+  singleLineRequireFormat.foreground = Qt::red
+  rule with pattern "(>>>[^\\n]*)|(<<<)" and singleLineRequireFormat appended
+
+  quotationFormat.foreground = Qt::darkGreen
+  rule with pattern "\".*\"" and quotationFormat appended
+
+  functionFormat set to italic and blue
+  rule with pattern "\\b[A-Za-z0-9_]+(?=\\()" and functionFormat appended
+Functional Scenario Form
+document highlighter initialized with rules for keywords, class names, comments, strings, functions
+end_process
+
+end_module

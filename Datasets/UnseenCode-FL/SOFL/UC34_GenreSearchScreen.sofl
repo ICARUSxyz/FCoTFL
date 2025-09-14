@@ -1,0 +1,50 @@
+module UC34_GenreSearchScreen
+type
+  genres: sequence of string
+  selectedGenres: set of string
+  row: sequence of string
+  genreCell: string
+  genreMatched: Boolean
+
+process collectSelectedGenres(checkboxStates: sequence of (string × Boolean)) result: set of string
+pre
+  ∀(g, sel) ∈ checkboxStates • g ≠ ""
+post
+  result = {g | (g, sel) ∈ checkboxStates ∧ sel = true}
+Functional Scenario Form
+(checkboxStates well-formed) &&
+(result = set of genres where checkbox is selected)
+end_process
+
+process searchMangaByGenres(mangaDB: sequence of Manga, selectedGenres: set of string) result: Manga
+pre
+  ∀m ∈ mangaDB • m.genres ≠ ""
+post
+  (∃m ∈ mangaDB • ∃g ∈ selectedGenres • g ∈ m.genres) ⇒ 
+    result = first m ∈ mangaDB such that ∃g ∈ selectedGenres • g ∈ m.genres
+  ∧
+  (∀m ∈ mangaDB • ∀g ∈ selectedGenres • g ∉ m.genres) ⇒ result = null
+Functional Scenario Form
+(exists manga whose genre overlaps with selectedGenres) && 
+(result = first such manga)
+or
+(no manga matches selectedGenres) && 
+(result = null)
+end_process
+
+process handleSearchButtonClick(checkboxStates: sequence of (string × Boolean), mangaDB: sequence of Manga) result: string
+pre
+  true
+post
+  (∃m ∈ mangaDB • ∃g ∈ collectSelectedGenres(checkboxStates) • g ∈ m.genres) ⇒
+    result = "検索結果: " + searchMangaByGenres(mangaDB, collectSelectedGenres(checkboxStates)).title
+  ∧
+  (∀m ∈ mangaDB • ∀g ∈ collectSelectedGenres(checkboxStates) • g ∉ m.genres) ⇒
+    result = "該当する漫画が見つかりませんでした"
+Functional Scenario Form
+(matching manga found) && (result = title message)
+or
+(no matching manga) && (result = "not found" message)
+end_process
+
+end_module

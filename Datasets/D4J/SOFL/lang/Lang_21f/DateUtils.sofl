@@ -1,0 +1,318 @@
+module DateUtils
+type 
+  date1, date2: Date
+  cal1, cal2: Calendar
+  str: String
+  parsePatterns: sequence of String
+  result: Boolean
+  parsed: Date
+  validFragments = composed type of {Calendar.YEAR, Calendar.MONTH, Calendar.DAY_OF_YEAR, Calendar.DATE, Calendar.HOUR_OF_DAY, Calendar.MINUTE, Calendar.SECOND, Calendar.MILLISECOND}
+
+process isSameDay(date1: Date, date2: Date) result: Boolean
+pre  
+  date1 ≠ null ∧ date2 ≠ null
+post 
+  result = (date1 and date2 have same ERA, YEAR, and DAY_OF_YEAR)
+Functional Scenario Form 
+(date1 = null ∨ date2 = null) && (exception thrown) or
+(date1 and date2 represent same day) && (result = true) or
+(date1 and date2 represent different days) && (result = false)
+end_process
+
+process isSameDayCalendar(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  
+  cal1 ≠ null ∧ cal2 ≠ null
+post 
+  result = (cal1 and cal2 have same ERA, YEAR, and DAY_OF_YEAR)
+Functional Scenario Form 
+(cal1 = null ∨ cal2 = null) && (exception thrown) or
+(cal1 and cal2 represent same day) && (result = true) or
+(cal1 and cal2 represent different days) && (result = false)
+end_process
+
+process isSameInstant(date1: Date, date2: Date) result: Boolean
+pre  
+  date1 ≠ null ∧ date2 ≠ null
+post 
+  result = (date1.getTime() = date2.getTime())
+Functional Scenario Form 
+(date1 = null ∨ date2 = null) && (exception thrown) or
+(date1 and date2 are same millisecond) && (result = true) or
+(date1 and date2 are not same millisecond) && (result = false)
+end_process
+
+process isSameInstantCalendar(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  
+  cal1 ≠ null ∧ cal2 ≠ null
+post 
+  result = (cal1.getTime().getTime() = cal2.getTime().getTime())
+Functional Scenario Form 
+(cal1 = null ∨ cal2 = null) && (exception thrown) or
+(cal1 and cal2 are same millisecond) && (result = true) or
+(cal1 and cal2 are not same millisecond) && (result = false)
+end_process
+
+process isSameLocalTime(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  
+  cal1 ≠ null ∧ cal2 ≠ null
+post 
+  result = (all relevant calendar fields are equal ∧ cal1.getClass() = cal2.getClass())
+Functional Scenario Form 
+(cal1 = null ∨ cal2 = null) && (exception thrown) or
+(all fields and class equal) && (result = true) or
+(any field or class not equal) && (result = false)
+end_process
+
+process parseDate(str: String, parsePatterns: sequence of String) parsed: Date
+pre  
+  str ≠ null ∧ parsePatterns ≠ null
+post 
+  (∃ pattern ∈ parsePatterns. str fully parsed by pattern with lenient = true) ⇒ parsed = parsed date ∧
+  (¬∃ such pattern) ⇒ exception thrown
+Functional Scenario Form 
+(str = null ∨ parsePatterns = null) && (exception thrown) or
+(valid pattern found) && (parsed = date from pattern) or
+(no pattern matches) && (ParseException thrown)
+end_process
+
+process parseDateStrictly(str: String, parsePatterns: sequence of String) parsed: Date
+pre  
+  str ≠ null ∧ parsePatterns ≠ null
+post 
+  (∃ pattern ∈ parsePatterns. str fully parsed by pattern with lenient = false) ⇒ parsed = parsed date ∧
+  (¬∃ such pattern) ⇒ exception thrown
+Functional Scenario Form 
+(str = null ∨ parsePatterns = null) && (exception thrown) or
+(strict valid pattern found) && (parsed = date from pattern) or
+(no pattern matches) && (ParseException thrown)
+end_process
+
+process isSameDay(date1: Date, date2: Date) result: Boolean
+pre  date1 ≠ null ∧ date2 ≠ null
+post result = (date1 and date2 represent the same calendar day)
+Functional Scenario Form
+(date1 and date2 are on the same calendar day) && (result = true) or
+(date1 and date2 are not on the same calendar day) && (result = false)
+end_process
+
+process isSameDayCalendar(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  cal1 ≠ null ∧ cal2 ≠ null
+post result = (cal1 and cal2 represent the same day, ERA and DAY_OF_YEAR equal)
+Functional Scenario Form
+(cal1 and cal2 same ERA, YEAR, and DAY_OF_YEAR) && (result = true) or
+(otherwise) && (result = false)
+end_process
+
+process isSameInstant(date1: Date, date2: Date) result: Boolean
+pre  date1 ≠ null ∧ date2 ≠ null
+post result = (date1.getTime() = date2.getTime())
+Functional Scenario Form
+(times equal) && (result = true) or
+(times not equal) && (result = false)
+end_process
+
+process isSameInstantCalendar(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  cal1 ≠ null ∧ cal2 ≠ null
+post result = (cal1.getTime().getTime() = cal2.getTime().getTime())
+Functional Scenario Form
+(instants equal) && (result = true) or
+(instants not equal) && (result = false)
+end_process
+
+process isSameLocalTime(cal1: Calendar, cal2: Calendar) result: Boolean
+pre  cal1 ≠ null ∧ cal2 ≠ null
+post result = (all corresponding calendar fields match and class types are equal)
+Functional Scenario Form
+(all calendar fields match) && (result = true) or
+(any mismatch) && (result = false)
+end_process
+
+process parseDate(str: String, parsePatterns: sequence of String) resultDate: Date
+pre  str ≠ null ∧ parsePatterns ≠ null
+post resultDate = parsed Date object using lenient=true, or ParseException is thrown
+Functional Scenario Form
+(any pattern matches fully under lenient parse) && (resultDate = parsed Date) or
+(no pattern matches) && (ParseException thrown)
+end_process
+
+process parseDateStrictly(str: String, parsePatterns: sequence of String) resultDate: Date
+pre  str ≠ null ∧ parsePatterns ≠ null
+post resultDate = parsed Date object using lenient=false, or ParseException is thrown
+Functional Scenario Form
+(any pattern matches fully under strict parse) && (resultDate = parsed Date) or
+(no pattern matches) && (ParseException thrown)
+end_process
+
+process round(Object, int)(date: Object, field: int) result: Date
+pre  date ≠ null ∧ (date ∈ Date ∨ date ∈ Calendar)
+post (date ∈ Date ∧ result = round((Date)date, field)) ∨ 
+     (date ∈ Calendar ∧ result = round((Calendar)date, field).getTime())
+Functional Scenario Form 
+(date ≠ null ∧ date ∈ Date) && (result = round((Date)date, field)) or
+(date ≠ null ∧ date ∈ Calendar) && (result = round((Calendar)date, field).getTime())
+end_process
+
+process truncate(Object, int)(date: Object, field: int) result: Date
+pre  date ≠ null ∧ (date ∈ Date ∨ date ∈ Calendar)
+post (date ∈ Date ∧ result = truncate((Date)date, field)) ∨ 
+     (date ∈ Calendar ∧ result = truncate((Calendar)date, field).getTime())
+Functional Scenario Form 
+(date ≠ null ∧ date ∈ Date) && (result = truncate((Date)date, field)) or
+(date ≠ null ∧ date ∈ Calendar) && (result = truncate((Calendar)date, field).getTime())
+end_process
+
+process ceiling(Object, int)(date: Object, field: int) result: Date
+pre  date ≠ null ∧ (date ∈ Date ∨ date ∈ Calendar)
+post (date ∈ Date ∧ result = ceiling((Date)date, field)) ∨ 
+     (date ∈ Calendar ∧ result = ceiling((Calendar)date, field).getTime())
+Functional Scenario Form 
+(date ≠ null ∧ date ∈ Date) && (result = ceiling((Date)date, field)) or
+(date ≠ null ∧ date ∈ Calendar) && (result = ceiling((Calendar)date, field).getTime())
+end_process
+
+process iterator(focus: Date, rangeStyle: int) result: Iterator of Calendar
+pre  focus ≠ null ∧ rangeStyle ∈ {1, 2, 3, 4, 5, 6}
+post result = iterator(truncate(focus, relevantField(rangeStyle)), rangeStyle)
+     where relevantField returns Calendar.MONTH for rangeStyle ∈ {1, 2}, Calendar.DATE otherwise
+Functional Scenario Form 
+(focus ≠ null ∧ rangeStyle ∈ {1..6}) && (result = iterator(...))
+end_process
+
+process iterator(focus: Calendar, rangeStyle: int) result: Iterator of Calendar
+pre  focus ≠ null ∧ rangeStyle ∈ {1, 2, 3, 4, 5, 6}
+post result = iterator(start, end)
+     where start and end are truncated and aligned to the specified range
+Functional Scenario Form 
+(focus ≠ null ∧ rangeStyle ∈ {1..6}) && (result = iterator(...))
+end_process
+
+process iterator(focus: Object, rangeStyle: int) result: Iterator
+pre  focus ≠ null ∧ (focus ∈ Date ∨ focus ∈ Calendar) ∧ rangeStyle ∈ {1..6}
+post if (focus ∈ Date) then result = iterator((Date)focus, rangeStyle)
+     else if (focus ∈ Calendar) then result = iterator((Calendar)focus, rangeStyle)
+Functional Scenario Form 
+(focus ∈ Date ∧ rangeStyle ∈ {1..6}) && (result = iterator((Date)focus, rangeStyle)) or
+(focus ∈ Calendar ∧ rangeStyle ∈ {1..6}) && (result = iterator((Calendar)focus, rangeStyle))
+end_process
+
+process getFragmentInMilliseconds(date: Date, fragment: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(date, fragment, Calendar.MILLISECOND)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(date, fragment, MILLISECOND))
+end_process
+
+process getFragmentInSeconds(date: Date, fragment: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(date, fragment, Calendar.SECOND)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(date, fragment, SECOND))
+end_process
+
+process getFragmentInMinutes(date: Date, fragment: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(date, fragment, Calendar.MINUTE)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(date, fragment, MINUTE))
+end_process
+
+process getFragmentInHours(date: Date, fragment: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(date, fragment, Calendar.HOUR_OF_DAY)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(date, fragment, HOUR_OF_DAY))
+end_process
+
+process getFragmentInDays(date: Date, fragment: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(date, fragment, Calendar.DAY_OF_YEAR)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(date, fragment, DAY_OF_YEAR))
+end_process
+
+process getFragmentInMilliseconds(calendar: Calendar, fragment: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(calendar, fragment, Calendar.MILLISECOND)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(calendar, fragment, MILLISECOND))
+end_process
+
+process getFragmentInSeconds(calendar: Calendar, fragment: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(calendar, fragment, Calendar.SECOND)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(calendar, fragment, SECOND))
+end_process
+
+process getFragmentInMinutes(calendar: Calendar, fragment: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(calendar, fragment, Calendar.MINUTE)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(calendar, fragment, MINUTE))
+end_process
+
+process getFragmentInHours(calendar: Calendar, fragment: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(calendar, fragment, Calendar.HOUR_OF_DAY)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(calendar, fragment, HOUR_OF_DAY))
+end_process
+
+process getFragmentInDays(calendar: Calendar, fragment: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments
+post result = getFragment(calendar, fragment, Calendar.DAY_OF_YEAR)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments) && (result = getFragment(calendar, fragment, DAY_OF_YEAR))
+end_process
+
+process getFragment(date: Date, fragment: int, unit: int) result: long
+pre  date ≠ null ∧ fragment ∈ validFragments ∧ unit ∈ validUnits
+post result = getFragment(Calendar with date, fragment, unit)
+Functional Scenario Form 
+(date ≠ null ∧ fragment ∈ validFragments ∧ unit ∈ validUnits) && (result = getFragment(calendar, fragment, unit))
+end_process
+
+process getFragment(calendar: Calendar, fragment: int, unit: int) result: long
+pre  calendar ≠ null ∧ fragment ∈ validFragments ∧ unit ∈ validUnits
+post result = computeUnits(calendar, fragment, unit)
+Functional Scenario Form 
+(calendar ≠ null ∧ fragment ∈ validFragments ∧ unit ∈ validUnits) && (result = computeUnits(calendar, fragment, unit))
+end_process
+
+process truncatedEquals(cal1: Calendar, cal2: Calendar, field: int) result: Boolean
+pre  cal1 ≠ null ∧ cal2 ≠ null
+post result = (truncatedCompareTo(cal1, cal2, field) = 0)
+Functional Scenario Form 
+(cal1 ≠ null ∧ cal2 ≠ null) && (result = (truncatedCompareTo(cal1, cal2, field) = 0))
+end_process
+
+process truncatedEquals(date1: Date, date2: Date, field: int) result: Boolean
+pre  date1 ≠ null ∧ date2 ≠ null
+post result = (truncatedCompareTo(date1, date2, field) = 0)
+Functional Scenario Form 
+(date1 ≠ null ∧ date2 ≠ null) && (result = (truncatedCompareTo(date1, date2, field) = 0))
+end_process
+
+process truncatedCompareTo(cal1: Calendar, cal2: Calendar, field: int) result: int
+pre  cal1 ≠ null ∧ cal2 ≠ null
+post result = compare(truncate(cal1, field), truncate(cal2, field))
+Functional Scenario Form 
+(cal1 ≠ null ∧ cal2 ≠ null) && (result = compare(truncate(cal1, field), truncate(cal2, field)))
+end_process
+
+process truncatedCompareTo(date1: Date, date2: Date, field: int) result: int
+pre  date1 ≠ null ∧ date2 ≠ null
+post result = compare(truncate(date1, field), truncate(date2, field))
+Functional Scenario Form 
+(date1 ≠ null ∧ date2 ≠ null) && (result = compare(truncate(date1, field), truncate(date2, field)))
+end_process
+
+process getMillisPerUnit(unit: int) result: long
+pre  unit ∈ validUnits
+post result = correspondingMillisPerUnit(unit)
+Functional Scenario Form 
+(unit ∈ validUnits) && (result = correspondingMillisPerUnit(unit))
+end_process
+
+
+end_module

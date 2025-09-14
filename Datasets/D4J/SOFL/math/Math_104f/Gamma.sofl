@@ -1,0 +1,96 @@
+module Gamma
+type
+lanczos: Sequence of Real
+
+var
+DEFAULT_EPSILON: Real = 1.0E-14
+HALF_LOG_2_PI: Real = 0.5 * ln(2.0 * π)
+LANCZOS_G: Real = 607.0 / 128.0
+
+process logGamma(x: Real) result: Real
+pre
+true
+post
+(isNaN(x) ∨ x ≤ 0.0) ⇒ result = NaN
+∧ (x > 0.0 ⇒
+let
+g = LANCZOS_G,
+L(x) = lanczos[0] + Σ(i:1..|lanczos|-1) lanczos[i] / (x + i),
+tmp = x + g + 0.5
+in
+result = (x + 0.5) * ln(tmp) - tmp + HALF_LOG_2_PI + ln(L(x) / x)
+)
+Functional Scenario Form
+x≤0 or NaN(x) && result=NaN
+x>0 && result=(x+0.5)ln(x+g+0.5)−(x+g+0.5)+HALF_LOG_2_PI+ln(L(x)/x)
+end_process
+
+process regularizedGammaP(a: Real, x: Real) result: Real
+pre
+true
+post
+result = regularizedGammaP(a, x, DEFAULT_EPSILON, Integer_MAX)
+Functional Scenario Form
+always && result=regularizedGammaP(a,x,DEFAULT_EPSILON,Integer_MAX)
+end_process
+
+process regularizedGammaP(a: Real, x: Real, epsilon: Real, maxIterations: Integer) result: Real
+pre
+epsilon > 0 ∧ maxIterations ≥ 1
+post
+(isNaN(a) ∨ isNaN(x) ∨ a ≤ 0.0 ∨ x < 0.0) ⇒ result = NaN
+∧ (x = 0.0 ∧ a > 0.0) ⇒ result = 0.0
+∧ (a ≥ 1.0 ∧ x > a) ⇒ result = 1.0 − regularizedGammaQ(a, x, epsilon, maxIterations)
+∧ (a > 0.0 ∧ x ≥ 0.0 ∧ ¬(a ≥ 1.0 ∧ x > a) ⇒
+(∃ n≤maxIterations •
+let
+// series terms: a0 = 1/a, a_{k+1} = a_k * (x / (a + k + 1))
+sum = Σ(k:0..n) a_k with a_0=1/a, a_{k+1}=a_k*(x/(a+k+1))
+in
+(|a_n| ≤ epsilon ∧
+result = exp(−x + a*ln(x) − logGamma(a)) * sum)
+)
+∨ (∀ n≤maxIterations • |a_n| > epsilon ∧ throws MaxIterationsExceededException)
+)
+Functional Scenario Form
+invalid (a≤0 or x<0 or NaN) && result=NaN
+x=0 && result=0
+a≥1 and x>a && result=1−regularizedGammaQ(a,x,ε,maxIt)
+series converged && result=exp(−x+a·ln x−logGamma(a))·Σ a_k
+series not converged within maxIterations && throw MaxIterationsExceededException
+end_process
+
+process regularizedGammaQ(a: Real, x: Real) result: Real
+pre
+true
+post
+result = regularizedGammaQ(a, x, DEFAULT_EPSILON, Integer_MAX)
+Functional Scenario Form
+always && result=regularizedGammaQ(a,x,DEFAULT_EPSILON,Integer_MAX)
+end_process
+
+process regularizedGammaQ(a: Real, x: Real, epsilon: Real, maxIterations: Integer) result: Real
+pre
+epsilon > 0 ∧ maxIterations ≥ 1
+post
+(isNaN(a) ∨ isNaN(x) ∨ a ≤ 0.0 ∨ x < 0.0) ⇒ result = NaN
+∧ (x = 0.0 ∧ a > 0.0) ⇒ result = 1.0
+∧ ((x < a) ∨ (a < 1.0)) ⇒ result = 1.0 − regularizedGammaP(a, x, epsilon, maxIterations)
+∧ (x ≥ a ∧ a ≥ 1.0 ⇒
+(let
+// Continued fraction with A_n(x) = (2n+1)−a+x, B_n(x) = n(a−n)
+CF(x) = evaluate_continued_fraction(A_n,B_n, x, epsilon, maxIterations)
+in
+(CF(x) defined ⇒ result = exp(−x + a*ln(x) − logGamma(a)) / CF(x))
+∨ (CF(x) undefined within maxIterations ∧ throws MaxIterationsExceededException)
+)
+)
+Functional Scenario Form
+invalid (a≤0 or x<0 or NaN) && result=NaN
+x=0 && result=1
+x<a or a<1 && result=1−regularizedGammaP(a,x,ε,maxIt)
+CF converged && result=exp(−x+a·ln x−logGamma(a)) / CF(x)
+CF not converged within maxIterations && throw MaxIterationsExceededException
+end_process
+
+end_module

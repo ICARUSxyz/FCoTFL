@@ -1,0 +1,64 @@
+**Bug Report: Triangle Validation Function – Symptom Summary**
+
+---
+
+### **Test Case 1: Method Returns No Value**
+
+**Input:**
+
+```java
+isValidTriangle(3.0, 4.0, 5.0)
+```
+
+**Expected Output:**
+
+```
+Result: true
+```
+
+**Observed Output:**
+
+```
+Compilation error: method must return a boolean value
+```
+
+---
+
+### **Test Case 2: Incorrect Format String Causes Print Error**
+
+**Input:**
+
+```java
+{4.73336, 19.0923, 15.002}
+```
+
+**Expected Console Log:**
+
+```
+isValidTriangle(4.7, 19.1, 15.0) = true
+```
+
+**Observed Console Log / Output Error:**
+
+```
+IllegalFormatConversionException or truncated float format
+```
+
+---
+
+### **Test Case 3: Fuzzed Method Call Fails**
+
+**Input:**
+
+```java
+fuzzerTestOneInput(consumeDouble() → a, b, c)
+```
+
+**Expected Behavior:**
+Calls `isValidTriangle` on the generated values.
+
+**Observed Behavior:**
+
+```
+Error: Cannot resolve method 'isValidTriangle' in 'C01_TriangleValidation'
+```

@@ -1,0 +1,86 @@
+module StrBuilder
+type 
+  buffer: sequence of char
+  size: int
+  newLine: String
+  nullText: String
+  obj: Object
+  value: int
+  width: int
+  padChar: char
+  result: StrBuilder
+
+process appendFixedWidthPadLeft(obj: Object, width: int, padChar: char) result: StrBuilder
+pre  width ≥ 0
+post 
+  if width = 0 then
+    result = this
+  else
+    let str = (obj = null ⇒ nullText else obj.toString()) in
+    let strVal = (str = null ⇒ "" else str) in
+    if length(strVal) ≥ width then
+      strVal[length(strVal) - width .. length(strVal) - 1] is copied into buffer[size .. size + width - 1]
+    else
+      padChar is copied width - length(strVal) times into buffer[size .. size + padLen - 1]
+      strVal is copied into buffer[size + padLen .. size + width - 1]
+    size is updated to size + width
+    result = this
+
+Functional Scenario Form 
+(width = 0) && (result = this) or
+(width > 0) &&
+(
+  (obj = null && nullText = null && result.buffer appended with width copies of padChar) or
+  (obj = null && nullText ≠ null && length(nullText) ≥ width && result.buffer appended with last width characters of nullText) or
+  (obj = null && nullText ≠ null && length(nullText) < width &&
+    result.buffer appended with (width - length(nullText)) padChar + nullText) or
+  (obj ≠ null && length(obj.toString()) ≥ width &&
+    result.buffer appended with last width characters of obj.toString()) or
+  (obj ≠ null && length(obj.toString()) < width &&
+    result.buffer appended with (width - length(obj.toString())) padChar + obj.toString())
+)
+
+end_process
+
+process appendFixedWidthPadLeft(value: int, width: int, padChar: char) result: StrBuilder
+pre  true
+post result = appendFixedWidthPadLeft(String.valueOf(value), width, padChar)
+
+Functional Scenario Form 
+result = appendFixedWidthPadLeft(String.valueOf(value), width, padChar)
+
+end_process
+
+process appendFixedWidthPadRight(obj: Object, width: int, padChar: char) result: StrBuilder
+pre  width ≥ 0
+post 
+  if width = 0 then
+    result = this
+  else
+    let str = (obj = null ⇒ nullText else obj.toString()) in
+    let strVal = (str = null ⇒ "" else str) in
+    if length(strVal) ≥ width then
+      strVal[0 .. width - 1] is copied into buffer[size .. size + width - 1]
+    else
+      strVal is copied into buffer[size .. size + length(strVal) - 1]
+      padChar is copied width - length(strVal) times into buffer[size + length(strVal) .. size + width - 1]
+    size is updated to size + width
+    result = this
+
+Functional Scenario Form 
+(width = 0) && (result = this) or
+(width > 0) &&
+(
+  (obj = null && nullText = null && result.buffer appended with width copies of padChar) or
+  (obj = null && nullText ≠ null && length(nullText) ≥ width && result.buffer appended with first width characters of nullText) or
+  (obj = null && nullText ≠ null && length(nullText) < width &&
+    result.buffer appended with nullText + (width - length(nullText)) padChar) or
+  (obj ≠ null && length(obj.toString()) ≥ width &&
+    result.buffer appended with first width characters of obj.toString()) or
+  (obj ≠ null && length(obj.toString()) < width &&
+    result.buffer appended with obj.toString() + (width - length(obj.toString())) padChar)
+)
+
+end_process
+
+end_module

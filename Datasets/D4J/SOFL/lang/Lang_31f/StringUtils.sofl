@@ -1,0 +1,1481 @@
+module StringUtils
+type
+  cs: CharSequence
+  str: String
+  ts: String
+  result: Boolean
+  trimmedStr: String
+
+process isEmpty(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs = null) ∨ (cs.length = 0)
+Functional Scenario Form
+(cs = null) && (result = true) or
+(cs.length = 0) && (result = true) or
+(cs ≠ null ∧ cs.length > 0) && (result = false)
+end_process
+
+process isNotEmpty(cs: CharSequence) result: Boolean
+pre  true
+post result = ¬(cs = null ∨ cs.length = 0)
+Functional Scenario Form
+(cs = null ∨ cs.length = 0) && (result = false) or
+(cs ≠ null ∧ cs.length > 0) && (result = true)
+end_process
+
+process isBlank(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs = null) ∨ (cs.length = 0) ∨ (∀ i ∈ [0..cs.length-1], Character.isWhitespace(cs.charAt(i)))
+Functional Scenario Form
+(cs = null ∨ cs.length = 0 ∨ all characters in cs are whitespace) && (result = true) or
+(cs ≠ null ∧ cs contains any non-whitespace) && (result = false)
+end_process
+
+process isNotBlank(cs: CharSequence) result: Boolean
+pre  true
+post result = ¬((cs = null) ∨ (cs.length = 0) ∨ (∀ i ∈ [0..cs.length-1], Character.isWhitespace(cs.charAt(i))))
+Functional Scenario Form
+(cs = null ∨ cs.length = 0 ∨ all characters are whitespace) && (result = false) or
+(cs ≠ null ∧ contains non-whitespace) && (result = true)
+end_process
+
+process trim(str: String) trimmedStr: String
+pre  true
+post (str = null → trimmedStr = null) ∧ (str ≠ null → trimmedStr = str.trim())
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(str ≠ null) && (trimmedStr = str.trim())
+end_process
+
+process trimToNull(str: String) trimmedStr: String
+pre  true
+post (str = null ∨ str.trim().length = 0) → trimmedStr = null ∧
+     (str ≠ null ∧ str.trim().length > 0) → trimmedStr = str.trim()
+Functional Scenario Form
+(str = null ∨ str.trim().length = 0) && (trimmedStr = null) or
+(str ≠ null ∧ str.trim().length > 0) && (trimmedStr = str.trim())
+end_process
+
+process trimToEmpty(str: String) trimmedStr: String
+pre  true
+post trimmedStr = (str = null → "") ⊕ (str ≠ null → str.trim())
+Functional Scenario Form
+(str = null) && (trimmedStr = "") or
+(str ≠ null) && (trimmedStr = str.trim())
+end_process
+
+process strip(str: String) trimmedStr: String
+pre  true
+post trimmedStr = (str = null → null) ⊕ (str ≠ null → strip(str, null))
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(str ≠ null) && (trimmedStr = strip(str, null))
+end_process
+
+process stripToNull(str: String) trimmedStr: String
+pre  true
+post str = null → trimmedStr = null ∧
+     str ≠ null ∧ strip(str, null).length = 0 → trimmedStr = null ∧
+     str ≠ null ∧ strip(str, null).length > 0 → trimmedStr = strip(str, null)
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(strip(str, null).length = 0) && (trimmedStr = null) or
+(strip(str, null).length > 0) && (trimmedStr = strip(str, null))
+end_process
+
+process stripToEmpty(str: String) trimmedStr: String
+pre  true
+post str = null → trimmedStr = "" ∧ str ≠ null → trimmedStr = strip(str, null)
+Functional Scenario Form
+(str = null) && (trimmedStr = "") or
+(str ≠ null) && (trimmedStr = strip(str, null))
+end_process
+
+process strip(str: String, stripChars: String) trimmedStr: String
+pre  true
+post trimmedStr = (str = null → null) ∧
+     (str ≠ null ∧ str.length = 0 → "") ∧
+     (str ≠ null ∧ str.length > 0 → stripEnd(stripStart(str, stripChars), stripChars))
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(str ≠ null ∧ str.length = 0) && (trimmedStr = "") or
+(str ≠ null ∧ str.length > 0) && (trimmedStr = stripEnd(stripStart(str, stripChars), stripChars))
+end_process
+
+process stripStart(str: String, stripChars: String) trimmedStr: String
+pre  true
+post trimmedStr = (str = null → null) ∧
+     (str ≠ null ∧ stripChars = null → remove leading whitespace) ∧
+     (str ≠ null ∧ stripChars ≠ null → remove leading chars ∈ stripChars)
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(stripChars = null) && (trimmedStr = str with leading whitespace removed) or
+(stripChars ≠ null) && (trimmedStr = str with leading chars in stripChars removed)
+end_process
+
+process stripEnd(str: String, stripChars: String) trimmedStr: String
+pre  true
+post trimmedStr = (str = null → null) ∧
+     (str ≠ null ∧ stripChars = null → remove trailing whitespace) ∧
+     (str ≠ null ∧ stripChars ≠ null → remove trailing chars ∈ stripChars)
+Functional Scenario Form
+(str = null) && (trimmedStr = null) or
+(stripChars = null) && (trimmedStr = str with trailing whitespace removed) or
+(stripChars ≠ null) && (trimmedStr = str with trailing chars in stripChars removed)
+end_process
+
+process stripAll(strs: sequence of String) stripped: sequence of String
+pre  true
+post (strs = null → stripped = null) ∧
+     (strs ≠ null → stripped = [strip(s, null) for each s in strs])
+Functional Scenario Form
+(strs = null) && (stripped = null) or
+(strs ≠ null) && (stripped = sequence where each s is strip(s, null))
+end_process
+
+process stripAll(strs: sequence of String, stripChars: String) stripped: sequence of String
+pre  true
+post (strs = null → stripped = null) ∧
+     (strs ≠ null → stripped = [strip(s, stripChars) for each s in strs])
+Functional Scenario Form
+(strs = null) && (stripped = null) or
+(strs ≠ null) && (stripped = sequence where each s is strip(s, stripChars))
+end_process
+
+process stripAccents(input: String) result: String
+pre  true
+post (input = null → result = null) ∧
+     (input ≠ null ∧ Java6 available → result = removeAccentsJava6(input)) ∧
+     (input ≠ null ∧ Java6 unavailable ∧ SUN available → result = removeAccentsSUN(input))
+Functional Scenario Form
+(input = null) && (result = null) or
+(Java6 Normalizer available) && (result = removeAccentsJava6(input)) or
+(Java6 unavailable ∧ SUN Normalizer available) && (result = removeAccentsSUN(input))
+end_process
+
+process equals(cs1: CharSequence, cs2: CharSequence) result: Boolean
+pre  true
+post result = (cs1 = cs2) ∨ (cs1 ≠ null ∧ cs2 ≠ null ∧ 
+      ((cs1 instanceof String ∧ cs2 instanceof String ∧ cs1.equals(cs2)) ∨
+       CharSequenceUtils.regionMatches(cs1, false, 0, cs2, 0, max(cs1.length, cs2.length))))
+Functional Scenario Form
+(cs1 = cs2) && (result = true) or
+(cs1 = null ∨ cs2 = null) && (result = false) or
+(cs1 ≠ null ∧ cs2 ≠ null ∧ cs1, cs2 both String ∧ cs1.equals(cs2)) && (result = true) or
+(cs1 ≠ null ∧ cs2 ≠ null ∧ otherwise) && (result = regionMatches result)
+end_process
+
+process equalsIgnoreCase(str1: CharSequence, str2: CharSequence) result: Boolean
+pre  true
+post result = (str1 = str2) ∨ 
+      (str1 ≠ null ∧ str2 ≠ null ∧ CharSequenceUtils.regionMatches(str1, true, 0, str2, 0, max(str1.length, str2.length)))
+Functional Scenario Form
+(str1 = str2) && (result = true) or
+(str1 = null ∨ str2 = null) && (result = false) or
+(str1 ≠ null ∧ str2 ≠ null) && (result = regionMatches ignoring case)
+end_process
+
+process indexOf(seq: CharSequence, searchChar: int) index: int
+pre  true
+post index = (seq = null ∨ seq.length = 0 → -1) ∧
+     (seq ≠ null ∧ seq.length > 0 → CharSequenceUtils.indexOf(seq, searchChar, 0))
+Functional Scenario Form
+(seq = null ∨ seq.length = 0) && (index = -1) or
+(seq ≠ null ∧ seq.length > 0) && (index = index of searchChar in seq)
+end_process
+
+process indexOf(seq: CharSequence, searchChar: int, startPos: int) index: int
+pre  true
+post index = (seq = null ∨ seq.length = 0 → -1) ∧
+     (seq ≠ null ∧ seq.length > 0 → CharSequenceUtils.indexOf(seq, searchChar, startPos))
+Functional Scenario Form
+(seq = null ∨ seq.length = 0) && (index = -1) or
+(seq ≠ null ∧ seq.length > 0) && (index = index of searchChar in seq from startPos)
+end_process
+
+process indexOf(seq: CharSequence, searchSeq: CharSequence) index: int
+pre  true
+post index = (seq = null ∨ searchSeq = null → -1) ∧
+     (seq ≠ null ∧ searchSeq ≠ null → CharSequenceUtils.indexOf(seq, searchSeq, 0))
+Functional Scenario Form
+(seq = null ∨ searchSeq = null) && (index = -1) or
+(seq ≠ null ∧ searchSeq ≠ null) && (index = index of searchSeq in seq)
+end_process
+
+process indexOf(seq: sequence of char, searchSeq: sequence of char, startPos: int) result: int
+pre
+    true
+post
+    (seq = null ∨ searchSeq = null) → result = -1 ∧
+    (startPos < 0 → startPos' = 0) ∧
+    (searchSeq = []) → result = startPos' ∧
+    (startPos' > length(seq) - length(searchSeq)) → result = -1 ∧
+    (searchSeq occurs in seq from index startPos') → result = index of first such occurrence ∧
+    (searchSeq does not occur) → result = -1
+
+Functional Scenario Form
+(seq = null ∨ searchSeq = null) && (result = -1) or
+(searchSeq = []) && (result = max(0, startPos)) or
+(searchSeq exists in seq at or after startPos) && (result = first such index) or
+(searchSeq not found) && (result = -1)
+end_process
+
+process ordinalIndexOf(str: sequence of char, searchStr: sequence of char, ordinal: int) result: int
+pre
+    true
+post
+    (str = null ∨ searchStr = null ∨ ordinal ≤ 0) → result = -1 ∧
+    (searchStr = []) → result = 0 ∧
+    (searchStr occurs at least ordinal times in str) → result = index of the ordinal-th occurrence from start ∧
+    (searchStr occurs fewer than ordinal times) → result = -1
+
+Functional Scenario Form
+(str = null ∨ searchStr = null ∨ ordinal ≤ 0) && (result = -1) or
+(searchStr = []) && (result = 0) or
+(searchStr occurs ≥ ordinal times in str) && (result = index of ordinal-th occurrence) or
+(searchStr occurs < ordinal times) && (result = -1)
+end_process
+
+process lastIndexOf(seq: sequence of char, searchSeq: sequence of char, startPos: int) result: int
+pre
+    true
+post
+    (seq = null ∨ searchSeq = null) → result = -1 ∧
+    (startPos < 0) → result = -1 ∧
+    (searchSeq = []) ∧ (startPos ≥ 0) → result = min(startPos, length(seq)) ∧
+    (searchSeq occurs in seq at or before startPos) → result = last such index ≤ startPos ∧
+    (searchSeq does not occur) → result = -1
+
+Functional Scenario Form
+(seq = null ∨ searchSeq = null) && (result = -1) or
+(startPos < 0) && (result = -1) or
+(searchSeq = [] ∧ startPos ≥ 0) && (result = min(startPos, length(seq))) or
+(searchSeq occurs at or before startPos) && (result = last matching index) or
+(searchSeq does not occur) && (result = -1)
+end_process
+
+process lastIndexOfIgnoreCase(str: sequence of char, searchStr: sequence of char, startPos: int) result: int
+pre
+    true
+post
+    (str = null ∨ searchStr = null) → result = -1 ∧
+    (startPos < 0) → result = -1 ∧
+    (searchStr = []) → result = min(startPos, length(str)) ∧
+    (searchStr occurs in str ignoring case at or before startPos) → result = last matching index ∧
+    (searchStr not found) → result = -1
+
+Functional Scenario Form
+(str = null ∨ searchStr = null ∨ startPos < 0) && (result = -1) or
+(searchStr = []) && (result = min(startPos, length(str))) or
+(searchStr occurs ignoring case ≤ startPos) && (result = last matching index) or
+(searchStr not found) && (result = -1)
+end_process
+
+process contains(seq: sequence of char, searchChar: char) found: Boolean
+pre
+    true
+post
+    (seq = null ∨ length(seq) = 0) → found = false ∧
+    (searchChar occurs in seq) → found = true ∧
+    (searchChar does not occur) → found = false
+
+Functional Scenario Form
+(seq = null ∨ length(seq) = 0) && (found = false) or
+(searchChar ∈ seq) && (found = true) or
+(searchChar ∉ seq) && (found = false)
+end_process
+
+process containsSubstring(seq: sequence of char, searchSeq: sequence of char) found: Boolean
+pre
+    true
+post
+    (seq = null ∨ searchSeq = null) → found = false ∧
+    (searchSeq = []) → found = true ∧
+    (searchSeq occurs in seq) → found = true ∧
+    (searchSeq does not occur) → found = false
+
+Functional Scenario Form
+(seq = null ∨ searchSeq = null) && (found = false) or
+(searchSeq = []) && (found = true) or
+(searchSeq ∈ seq) && (found = true) or
+(searchSeq ∉ seq) && (found = false)
+end_process
+
+process containsIgnoreCase(str: sequence of char, searchStr: sequence of char) found: Boolean
+pre
+    true
+post
+    (str = null ∨ searchStr = null) → found = false ∧
+    (searchStr = []) → found = true ∧
+    (searchStr exists in str ignoring case) → found = true ∧
+    (searchStr does not exist) → found = false
+
+Functional Scenario Form
+(str = null ∨ searchStr = null) && (found = false) or
+(searchStr = []) && (found = true) or
+(searchStr ∈ str ignoring case) && (found = true) or
+(searchStr ∉ str ignoring case) && (found = false)
+end_process
+
+process containsWhitespace(seq: sequence of char) found: Boolean
+pre
+    true
+post
+    (seq = null ∨ length(seq) = 0) → found = false ∧
+    (∃i ∈ [0..length(seq)-1], Character.isWhitespace(seq[i])) → found = true ∧
+    (¬∃i ∈ [0..length(seq)-1], Character.isWhitespace(seq[i])) → found = false
+
+Functional Scenario Form
+(seq = null ∨ length(seq) = 0) && (found = false) or
+(seq contains whitespace) && (found = true) or
+(seq contains no whitespace) && (found = false)
+end_process
+
+process containsAny(cs: CharSequence, searchChars: sequence of char) result: Boolean
+pre  true
+post result = false if cs = null or searchChars = null or cs.length = 0 or searchChars.length = 0
+     else result = ∃i:0..cs.length-1, j:0..searchChars.length-1 • cs[i] = searchChars[j]
+Functional Scenario Form
+(cs = null or searchChars = null or cs.length = 0 or searchChars.length = 0) && (result = false) or
+(∃i,j • cs[i] = searchChars[j]) && (result = true)
+end_process
+
+process containsAny(cs: CharSequence, searchChars: CharSequence) result: Boolean
+pre  true
+post result = containsAny(cs, toCharArray(searchChars))
+Functional Scenario Form
+(searchChars = null) && (result = false) or
+(searchChars ≠ null) && (result = containsAny(cs, toCharArray(searchChars)))
+end_process
+
+process indexOfAnyBut(cs: CharSequence, searchChars: sequence of char) result: int
+pre  true
+post result = -1 if cs = null or searchChars = null or cs.length = 0 or searchChars.length = 0
+     else result = first index i such that cs[i] not in searchChars, otherwise -1
+Functional Scenario Form
+(cs = null or searchChars = null or cs.length = 0 or searchChars.length = 0) && (result = -1) or
+(∃i:0..cs.length-1 • ∀j:0..searchChars.length-1 • cs[i] ≠ searchChars[j]) && (result = i)
+end_process
+
+process indexOfAnyBut(seq: CharSequence, searchChars: CharSequence) result: int
+pre  true
+post result = indexOfAnyBut(seq, toCharArray(searchChars))
+Functional Scenario Form
+(seq = null or searchChars = null) && (result = -1) or
+otherwise && (result = indexOfAnyBut(seq, toCharArray(searchChars)))
+end_process
+
+process containsOnly(cs: CharSequence, valid: sequence of char) result: Boolean
+pre  true
+post result = false if cs = null or valid = null or (valid.length = 0 and cs.length > 0)
+     else result = (∀i:0..cs.length-1 • cs[i] in valid)
+Functional Scenario Form
+(cs = null or valid = null) && (result = false) or
+(cs.length = 0) && (result = true) or
+(valid.length = 0 and cs.length > 0) && (result = false) or
+(∀i • cs[i] ∈ valid) && (result = true)
+end_process
+
+process containsOnly(cs: CharSequence, validChars: CharSequence) result: Boolean
+pre  true
+post result = containsOnly(cs, toCharArray(validChars))
+Functional Scenario Form
+(cs = null or validChars = null) && (result = false) or
+otherwise && (result = containsOnly(cs, toCharArray(validChars)))
+end_process
+
+process containsNone(cs: CharSequence, searchChars: sequence of char) result: Boolean
+pre  true
+post result = true if cs = null or searchChars = null or cs.length = 0
+     else result = (∀i:0..cs.length-1 • cs[i] ∉ searchChars)
+Functional Scenario Form
+(cs = null or searchChars = null or cs.length = 0) && (result = true) or
+(∃i • cs[i] ∈ searchChars) && (result = false) or
+(∀i • cs[i] ∉ searchChars) && (result = true)
+end_process
+
+process isEmpty(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs = null) or (cs.length = 0)
+Functional Scenario Form
+(cs = null) && (result = true) or
+(cs.length = 0) && (result = true) or
+(cs ≠ null ∧ cs.length ≠ 0) && (result = false)
+end_process
+
+process isNotEmpty(cs: CharSequence) result: Boolean
+pre  true
+post result = not ((cs = null) or (cs.length = 0))
+Functional Scenario Form
+(cs ≠ null ∧ cs.length ≠ 0) && (result = true) or
+((cs = null) or (cs.length = 0)) && (result = false)
+end_process
+
+process isBlank(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs = null) or (cs.length = 0) or (∀i ∈ [0..cs.length-1], Character.isWhitespace(cs.charAt(i)))
+Functional Scenario Form
+(cs = null) && (result = true) or
+(cs.length = 0) && (result = true) or
+(∀i ∈ [0..cs.length-1], Character.isWhitespace(cs.charAt(i))) && (result = true) or
+(∃i ∈ [0..cs.length-1], not Character.isWhitespace(cs.charAt(i))) && (result = false)
+end_process
+
+process isNotBlank(cs: CharSequence) result: Boolean
+pre  true
+post result = not ((cs = null) or (cs.length = 0) or (∀i ∈ [0..cs.length-1], Character.isWhitespace(cs.charAt(i))))
+Functional Scenario Form
+(cs = null or cs.length = 0 or all whitespace) && (result = false) or
+(cs ≠ null ∧ some non-whitespace) && (result = true)
+end_process
+
+process trim(str: String) output: String
+pre  true
+post str = null → output = null
+     ∧ str ≠ null → output = str.trim()
+Functional Scenario Form
+(str = null) && (output = null) or
+(str ≠ null) && (output = str.trim())
+end_process
+
+process trimToNull(str: String) output: String
+pre  true
+post str = null → output = null
+     ∧ str ≠ null → let ts = str.trim() in if ts = "" then output = null else output = ts
+Functional Scenario Form
+(str = null) && (output = null) or
+(str ≠ null ∧ str.trim() = "") && (output = null) or
+(str ≠ null ∧ str.trim() ≠ "") && (output = str.trim())
+end_process
+
+process trimToEmpty(str: String) output: String
+pre  true
+post str = null → output = ""
+     ∧ str ≠ null → output = str.trim()
+Functional Scenario Form
+(str = null) && (output = "") or
+(str ≠ null) && (output = str.trim())
+end_process
+
+process left(str: String, len: int) output: String
+pre  true
+post str = null → output = null
+     ∧ str ≠ null ∧ len < 0 → output = ""
+     ∧ str ≠ null ∧ len ≥ str.length → output = str
+     ∧ str ≠ null ∧ 0 ≤ len < str.length → output = str.substring(0, len)
+Functional Scenario Form
+(str = null) && (output = null) or
+(str ≠ null ∧ len < 0) && (output = "") or
+(str ≠ null ∧ len ≥ str.length) && (output = str) or
+(str ≠ null ∧ 0 ≤ len < str.length) && (output = str.substring(0, len))
+end_process
+
+process right(str: String, len: int) output: String
+pre  true
+post str = null → output = null
+     ∧ str ≠ null ∧ len < 0 → output = ""
+     ∧ str ≠ null ∧ len ≥ str.length → output = str
+     ∧ str ≠ null ∧ 0 ≤ len < str.length → output = str.substring(str.length - len)
+Functional Scenario Form
+(str = null) && (output = null) or
+(str ≠ null ∧ len < 0) && (output = "") or
+(str ≠ null ∧ len ≥ str.length) && (output = str) or
+(str ≠ null ∧ 0 ≤ len < str.length) && (output = str.substring(str.length - len))
+end_process
+
+process mid(str: String, pos: int, len: int) result: String
+pre  true
+post if str = null then result = null
+     else if len < 0 or pos > |str| then result = ""
+     else if pos < 0 and |str| <= len then result = str
+     else if pos < 0 then result = str[0 .. |str| - 1]
+     else if |str| <= pos + len then result = str[pos .. |str| - 1]
+     else result = str[pos .. pos + len - 1]
+Functional Scenario Form 
+(str = null) && (result = null) or
+(len < 0 or pos > |str|) && (result = "") or
+(pos < 0 and |str| <= len) && (result = str) or
+(pos < 0) && (result = str[0 .. |str| - 1]) or
+(|str| <= pos + len) && (result = str[pos .. |str| - 1]) or
+(true) && (result = str[pos .. pos + len - 1])
+end_process
+
+process substringBefore(str: String, separator: String) result: String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = str
+     else if separator = "" then result = ""
+     else if separator ∉ str then result = str
+     else result = str[0 .. indexOf(str, separator) - 1]
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null) && (result = str) or
+(separator = "") && (result = "") or
+(separator ∉ str) && (result = str) or
+(true) && (result = str[0 .. indexOf(str, separator) - 1])
+end_process
+
+process substringAfter(str: String, separator: String) result: String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = ""
+     else if separator ∉ str then result = ""
+     else result = str[indexOf(str, separator) + |separator| .. |str| - 1]
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null or separator ∉ str) && (result = "") or
+(true) && (result = str[indexOf(str, separator) + |separator| .. |str| - 1])
+end_process
+
+process substringBeforeLast(str: String, separator: String) result: String
+pre  true
+post if str = null then result = null
+     else if separator = null or separator = "" then result = str
+     else if lastIndexOf(str, separator) = -1 then result = str
+     else result = str[0 .. lastIndexOf(str, separator) - 1]
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null or separator = "") && (result = str) or
+(separator ∉ str) && (result = str) or
+(true) && (result = str[0 .. lastIndexOf(str, separator) - 1])
+end_process
+
+process substringAfterLast(str: String, separator: String) result: String
+pre  true
+post if str = null then result = null
+     else if separator = null or separator = "" then result = ""
+     else if lastIndexOf(str, separator) = -1 or str ends with separator then result = ""
+     else result = str[lastIndexOf(str, separator) + |separator| .. |str| - 1]
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null or separator = "") && (result = "") or
+(lastIndexOf(str, separator) = -1 or str ends with separator) && (result = "") or
+(true) && (result = str[lastIndexOf(str, separator) + |separator| .. |str| - 1])
+end_process
+
+process substringBetween(str: String, tag: String) result: String
+pre  true
+post result = substringBetween(str, tag, tag)
+Functional Scenario Form 
+(true) && (result = substringBetween(str, tag, tag))
+end_process
+
+process substringBetween(str: String, open: String, close: String) result: String
+pre  true
+post if str = null or open = null or close = null then result = null
+     else if open ∉ str or close ∉ str after open then result = null
+     else result = str[indexOf(str, open) + |open| .. indexOf(str, close, indexOf(str, open) + |open|) - 1]
+Functional Scenario Form 
+(str = null or open = null or close = null) && (result = null) or
+(open ∉ str or close ∉ str after open) && (result = null) or
+(true) && (result = str[indexOf(str, open) + |open| .. indexOf(str, close, indexOf(str, open) + |open|) - 1])
+end_process
+
+process substringsBetween(str: String, open: String, close: String) result: sequence of String
+pre  true
+post if str = null or open = null or close = null or open = "" or close = "" then result = null
+     else if str = "" then result = <>
+     else if ∀ i. str[i..] does not contain open and close in order then result = null
+     else result = all substrings x such that x is between open and close in str
+Functional Scenario Form 
+(str = null or open = null or close = null or open = "" or close = "") && (result = null) or
+(str = "") && (result = <>) or
+(no open-close pair in str) && (result = null) or
+(true) && (result = all substrings between open and close in str)
+end_process
+
+process split(str: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = split str by whitespace as defined by Character.isWhitespace
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = str split by whitespace)
+end_process
+
+process split(str: String, separatorChar: char) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = str split by separatorChar, excluding empty tokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = str split by separatorChar, ignoring adjacent separators)
+end_process
+
+process split(str: String, separatorChars: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separatorChars = null then result = str split by whitespace
+     else result = str split by any char in separatorChars
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separatorChars = null) && (result = str split by whitespace) or
+(true) && (result = str split by any char in separatorChars)
+end_process
+
+process split(str: String, separatorChars: String, max: int) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separatorChars = null then result = str split by whitespace with limit max
+     else result = str split by any char in separatorChars with limit max
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separatorChars = null) && (result = whitespace-based split with limit max) or
+(true) && (result = str split by any char in separatorChars with limit max)
+end_process
+
+process splitByWholeSeparator(str: String, separator: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = str split by whitespace
+     else result = str split by whole separator string
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null) && (result = str split by whitespace) or
+(true) && (result = str split by separator as whole string)
+end_process
+
+process splitByWholeSeparator(str: String, separator: String, max: int) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = str split by whitespace with limit max
+     else result = str split by whole separator string with limit max
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null) && (result = str split by whitespace with limit max) or
+(true) && (result = str split by whole separator string with limit max)
+end_process
+
+process splitByWholeSeparatorPreserveAllTokens(str: String, separator: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = whitespace-based split preserving empty tokens
+     else result = str split by whole separator string, preserving all tokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null) && (result = str split by whitespace preserving empty tokens) or
+(true) && (result = str split by separator preserving empty tokens)
+end_process
+
+process splitByWholeSeparatorPreserveAllTokens(str: String, separator: String, max: int) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separator = null then result = whitespace-based split preserving all tokens with limit max
+     else result = str split by separator preserving all tokens with limit max
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null) && (result = whitespace-based split with limit max preserving all tokens) or
+(true) && (result = str split by separator with limit max preserving all tokens)
+end_process
+
+process splitPreserveAllTokens(str: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = str split by whitespace, preserving all tokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = whitespace-based split preserving all tokens)
+end_process
+
+process splitPreserveAllTokens(str: String, separatorChar: char) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = str split by separatorChar, preserving all tokens (including empty tokens)
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = str split by separatorChar, preserving all tokens)
+end_process
+
+process splitPreserveAllTokens(str: String, separatorChars: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separatorChars = null then result = str split by whitespace, preserving all tokens
+     else result = str split by any char in separatorChars, preserving all tokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separatorChars = null) && (result = whitespace-based split preserving all tokens) or
+(true) && (result = split by separatorChars preserving all tokens)
+end_process
+
+process splitPreserveAllTokens(str: String, separatorChars: String, max: int) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separatorChars = null then result = whitespace-based split with limit max, preserving all tokens
+     else result = str split by any char in separatorChars, limit max, preserving all tokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separatorChars = null) && (result = whitespace-based split preserving all tokens with limit max) or
+(true) && (result = split by separatorChars preserving all tokens with limit max)
+end_process
+
+process splitByWholeSeparatorWorker(str: String, separator: String, max: int, preserveAllTokens: Boolean) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separator = null or separator = "" then result = str split by whitespace with limit max, preserveAllTokens
+     else result = str split by separator as whole string with limit max, preserveAllTokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separator = null or separator = "") && (result = whitespace split with limit max, preserveAllTokens) or
+(true) && (result = split by separator string with limit max, preserveAllTokens)
+end_process
+
+process splitWorker(str: String, separatorChar: char, preserveAllTokens: Boolean) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = str split by separatorChar, preserveAllTokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = split by separatorChar, preserveAllTokens)
+end_process
+
+process splitWorker(str: String, separatorChars: String, max: int, preserveAllTokens: Boolean) result: sequence of String
+pre  true
+post if str = null then result = null
+     else if separatorChars = null then result = str split by whitespace with max and preserveAllTokens
+     else result = str split by separatorChars with max and preserveAllTokens
+Functional Scenario Form 
+(str = null) && (result = null) or
+(separatorChars = null) && (result = whitespace split with limit max, preserveAllTokens) or
+(true) && (result = split by separatorChars with limit max, preserveAllTokens)
+end_process
+
+process splitByCharacterType(str: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = segments of contiguous characters of same Character.getType
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = segments by Character.getType)
+end_process
+
+process splitByCharacterTypeCamelCase(str: String) result: sequence of String
+pre  true
+post if str = null then result = null
+     else result = segments by Character.getType, with uppercase followed by lowercase moved to lowercase group
+Functional Scenario Form 
+(str = null) && (result = null) or
+(true) && (result = camel-case type group segments)
+end_process
+
+process join(elements: sequence of T) result: String
+pre  true
+post if elements = null then result = null
+     else result = concatenation of elements without separator
+Functional Scenario Form 
+(elements = null) && (result = null) or
+(true) && (result = elements joined without separator)
+end_process
+
+process join(array: sequence of Object, separator: char) result: String
+pre  true
+post if array = null then result = null
+     else result = elements joined by separator
+Functional Scenario Form 
+(array = null) && (result = null) or
+(true) && (result = join(array, separator))
+end_process
+
+process join(array: sequence of Object, separator: char, startIndex: int, endIndex: int) result: String
+pre  true
+post if array = null then result = null
+     else if endIndex <= startIndex then result = ""
+     else result = array[startIndex .. endIndex) joined by separator
+Functional Scenario Form 
+(array = null) && (result = null) or
+(endIndex <= startIndex) && (result = "") or
+(true) && (result = join subset by separator)
+end_process
+
+process join(array: sequence of Object, separator: String) result: String
+pre  true
+post if array = null then result = null
+     else result = elements joined by separator ("" if separator = null)
+Functional Scenario Form 
+(array = null) && (result = null) or
+(true) && (result = elements joined with String separator or "")
+end_process
+
+process join(array: sequence of Object, separator: String, startIndex: int, endIndex: int) result: String
+pre  true
+post if array = null then result = null
+     else if endIndex <= startIndex then result = ""
+     else result = array[startIndex .. endIndex) joined by separator or ""
+Functional Scenario Form 
+(array = null) && (result = null) or
+(endIndex <= startIndex) && (result = "") or
+(true) && (result = joined elements by separator or "")
+end_process
+
+process join(iterator: Iterator of Object, separator: char) result: String
+pre  true
+post if iterator = null then result = null
+     else result = joined elements in iteration with separator, null or empty converted to ""
+Functional Scenario Form 
+(iterator = null) && (result = null) or
+(true) && (result = iterator values joined by separator)
+end_process
+
+process joinIteratorWithSeparator(iterator: Iterator of Object, separator: String) result: String
+pre  true
+post (iterator = null → result = null) ∧
+     (¬hasNext(iterator) → result = "") ∧
+     (hasNext(iterator) ∧ separator = null →
+         result = joinWithSeparator(iterator, "")) ∧
+     (hasNext(iterator) ∧ separator ≠ null →
+         result = joinWithSeparator(iterator, separator))
+Functional Scenario Form
+(iterator = null) && (result = null) or
+(¬hasNext(iterator)) && (result = "") or
+(hasNext(iterator) && separator = null) && (result = joinWithSeparator(iterator, "")) or
+(hasNext(iterator) && separator ≠ null) && (result = joinWithSeparator(iterator, separator))
+end_process
+
+process joinIterableWithSeparator(iterable: Iterable of Object, separator: String) result: String
+pre  true
+post (iterable = null → result = null) ∧
+     (iterable ≠ null → result = join(iterable.iterator(), separator))
+Functional Scenario Form
+(iterable = null) && (result = null) or
+(iterable ≠ null) && (result = join(iterable.iterator(), separator))
+end_process
+
+process deleteWhitespace(str: String) result: String
+pre  true
+post (str = null → result = null) ∧
+     (str ≠ null ∧ str.length = 0 → result = "") ∧
+     (str ≠ null ∧ str.length > 0 → result = str with all whitespace removed)
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null && str.length = 0) && (result = "") or
+(str ≠ null && str.length > 0) && (result = str with all whitespace removed)
+end_process
+
+process removeStart(str: String, remove: String) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(remove) → result = str) ∧
+     (startsWith(str, remove) → result = substring from remove.length) ∧
+     (¬startsWith(str, remove) → result = str)
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(remove)) && (result = str) or
+(startsWith(str, remove)) && (result = str.substring(remove.length)) or
+(¬startsWith(str, remove)) && (result = str)
+end_process
+
+process removeStartIgnoreCase(str: String, remove: String) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(remove) → result = str) ∧
+     (startsWithIgnoreCase(str, remove) → result = substring from remove.length) ∧
+     (¬startsWithIgnoreCase(str, remove) → result = str)
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(remove)) && (result = str) or
+(startsWithIgnoreCase(str, remove)) && (result = str.substring(remove.length)) or
+(¬startsWithIgnoreCase(str, remove)) && (result = str)
+end_process
+
+process removeEnd(str: String, remove: String) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(remove) → result = str) ∧
+     (endsWith(str, remove) → result = str.substring(0, str.length - remove.length)) ∧
+     (¬endsWith(str, remove) → result = str)
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(remove)) && (result = str) or
+(endsWith(str, remove)) && (result = str.substring(0, str.length - remove.length)) or
+(¬endsWith(str, remove)) && (result = str)
+end_process
+
+process removeEndIgnoreCase(str: String, remove: String) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(remove) → result = str) ∧
+     (endsWithIgnoreCase(str, remove) → result = str.substring(0, str.length - remove.length)) ∧
+     (¬endsWithIgnoreCase(str, remove) → result = str)
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(remove)) && (result = str) or
+(endsWithIgnoreCase(str, remove)) && (result = str.substring(0, str.length - remove.length)) or
+(¬endsWithIgnoreCase(str, remove)) && (result = str)
+end_process
+
+process removeSubstring(str: String, remove: String) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(remove) → result = str) ∧
+     (otherwise → result = str with all occurrences of remove replaced by "")
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(remove)) && (result = str) or
+(¬isEmpty(str) ∧ ¬isEmpty(remove)) && (result = replace(str, remove, "", -1))
+end_process
+
+process removeChar(str: String, remove: char) result: String
+pre  true
+post (str = null → result = null) ∧
+     (str ≠ null ∧ indexOf(str, remove) = -1 → result = str) ∧
+     (otherwise → result = str with all occurrences of remove removed)
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null ∧ indexOf(str, remove) = -1) && (result = str) or
+(otherwise) && (result = str with all remove characters deleted)
+end_process
+
+process replaceOnce(text: String, searchString: String, replacement: String) result: String
+pre  true
+post result = replace(text, searchString, replacement, 1)
+Functional Scenario Form
+true && (result = replace(text, searchString, replacement, 1))
+end_process
+
+process replaceAll(text: String, searchString: String, replacement: String) result: String
+pre  true
+post result = replace(text, searchString, replacement, -1)
+Functional Scenario Form
+true && (result = replace(text, searchString, replacement, -1))
+end_process
+
+process replace(String text, String searchString, String replacement, int max) result: String
+pre  true
+post if text = null ∨ searchString = null ∨ searchString = "" ∨ replacement = null ∨ max = 0 then
+         result = text
+     else
+         result = text where at most max occurrences of searchString are replaced with replacement
+Functional Scenario Form
+(text = null ∨ searchString = null ∨ searchString = "" ∨ replacement = null ∨ max = 0) && (result = text) or
+(text ≠ null ∧ searchString ≠ null ∧ searchString ≠ "" ∧ replacement ≠ null ∧ max > 0) && (result = text after replacing up to max occurrences of searchString with replacement)
+end_process
+
+process replaceEach(String text, sequence of String searchList, sequence of String replacementList) result: String
+pre  |searchList| = |replacementList|
+post if text = null ∨ |searchList| = 0 then
+         result = text
+     else
+         result = text after replacing each searchList[i] with replacementList[i] once
+Functional Scenario Form
+(text = null ∨ |searchList| = 0) && (result = text) or
+(text ≠ null ∧ |searchList| = |replacementList| > 0) && (result = text after one-time replace of each searchList[i] with replacementList[i])
+end_process
+
+process replaceEachRepeatedly(String text, sequence of String searchList, sequence of String replacementList) result: String
+pre  |searchList| = |replacementList|
+post if text = null ∨ |searchList| = 0 then
+         result = text
+     else
+         result = text after repeatedly replacing searchList[i] with replacementList[i] until fixed point
+Functional Scenario Form
+(text = null ∨ |searchList| = 0) && (result = text) or
+(text ≠ null ∧ |searchList| = |replacementList| > 0) && (result = fixpoint after replacing each searchList[i] with replacementList[i] repeatedly)
+end_process
+
+process replaceChars(String str, char searchChar, char replaceChar) result: String
+pre  true
+post if str = null then
+         result = null
+     else
+         result = str where all occurrences of searchChar are replaced with replaceChar
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str after replacing all searchChar with replaceChar)
+end_process
+
+process replaceChars(String str, String searchChars, String replaceChars) result: String
+pre  true
+post if str = null ∨ searchChars = null ∨ searchChars = "" then
+         result = str
+     else
+         result = str where for each char in searchChars, replaced with char at same index in replaceChars (or deleted if out of range)
+Functional Scenario Form
+(str = null ∨ searchChars = null ∨ searchChars = "") && (result = str) or
+(str ≠ null ∧ searchChars ≠ null ∧ searchChars ≠ "") && (result = str after replacing/deleting based on mapping from searchChars to replaceChars)
+end_process
+
+process overlay(str: String, overlay: String, start: int, end: int) result: String
+pre  true
+post if str = null then result = null
+     else let ov = (if overlay = null then "" else overlay),
+              l = str.length,
+              s = (if start < 0 then 0 else if start > l then l else start),
+              e = (if end < 0 then 0 else if end > l then l else end),
+              s1 = (if s > e then e else s),
+              e1 = (if s > e then s else e)
+          in result = str.substring(0, s1) + ov + str.substring(e1)
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ≠ null ∧ overlay = null) && (result = str with "" inserted from start to end) or
+(str ≠ null ∧ overlay ≠ null) && (result = str with overlay inserted from min(start,end) to max(start,end))
+end_process
+process chomp(str: String) result: String
+pre  true
+post if str = null then result = null
+     else if str ends with "\r\n" then result = str[0 .. |str|-2)
+     else if str ends with "\r" or str ends with "\n" then result = str[0 .. |str|-1)
+     else result = str
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ends with "\r\n") && (result = str without last 2 characters) or
+(str ends with "\r" or "\n") && (result = str without last character) or
+(else) && (result = str)
+end_process
+process chop(str: String) result: String
+pre  true
+post if str = null then result = null
+     else if |str| < 2 then result = ""
+     else if str ends with "\r\n" then result = str[0 .. |str|-2)
+     else result = str[0 .. |str|-1)
+Functional Scenario Form 
+(str = null) && (result = null) or
+(|str| < 2) && (result = "") or
+(str ends with "\r\n") && (result = str without last 2 characters) or
+(else) && (result = str without last character)
+end_process
+
+process repeat(str: String, repeat: int) result: String
+pre  true
+post if str = null then result = null
+     else if repeat <= 0 then result = ""
+     else result = str concatenated with itself repeat times
+Functional Scenario Form 
+(str = null) && (result = null) or
+(repeat <= 0) && (result = "") or
+(else) && (result = str * repeat)
+end_process
+
+process repeat(str: String, separator: String, repeat: int) result: String
+pre  true
+post if str = null or separator = null then result = repeat(str, repeat)
+     else result = str + separator + str + ... + str (repeat times, joined with separator)
+Functional Scenario Form 
+(str = null or separator = null) && (result = repeat(str, repeat)) or
+(else) && (result = str + separator + ... + str (repeat times, joined))
+end_process
+
+process repeat(ch: char, repeat: int) result: String
+pre  true
+post if repeat <= 0 then result = ""
+     else result = string of ch repeated repeat times
+Functional Scenario Form 
+(repeat <= 0) && (result = "") or
+(repeat > 0) && (result = ch * repeat)
+end_process
+
+process rightPad(str: String, size: int) result: String
+pre  true
+post if str = null then result = null
+     else if size <= str.length then result = str
+     else result = str + (' ' repeated size - str.length times)
+Functional Scenario Form 
+(str = null) && (result = null) or
+(size <= |str|) && (result = str) or
+(size > |str|) && (result = str right-padded with spaces to size)
+end_process
+
+process rightPad(str: String, size: int, padChar: char) result: String
+pre  true
+post (str = null -> result = null) ∧
+     (str ≠ null ∧ size - length(str) ≤ 0 -> result = str) ∧
+     (str ≠ null ∧ size - length(str) > 0 ∧ size - length(str) ≤ 8192 ->
+        result = str ⧺ repeat(padChar, size - length(str))) ∧
+     (str ≠ null ∧ size - length(str) > 8192 ->
+        result = rightPad(str, size, String.valueOf(padChar)))
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ≠ null ∧ size - length(str) ≤ 0) && (result = str) or
+(str ≠ null ∧ 0 < size - length(str) ≤ 8192) && (result = str ⧺ repeat(padChar, size - length(str))) or
+(str ≠ null ∧ size - length(str) > 8192) && (result = rightPad(str, size, String.valueOf(padChar)))
+end_process
+
+process leftPad(str: String, size: int, padChar: char) result: String
+pre  true
+post (str = null -> result = null) ∧
+     (str ≠ null ∧ size - length(str) ≤ 0 -> result = str) ∧
+     (str ≠ null ∧ size - length(str) > 0 ∧ size - length(str) ≤ 8192 ->
+        result = repeat(padChar, size - length(str)) ⧺ str) ∧
+     (str ≠ null ∧ size - length(str) > 8192 ->
+        result = leftPad(str, size, String.valueOf(padChar)))
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ≠ null ∧ size - length(str) ≤ 0) && (result = str) or
+(str ≠ null ∧ 0 < size - length(str) ≤ 8192) && (result = repeat(padChar, size - length(str)) ⧺ str) or
+(str ≠ null ∧ size - length(str) > 8192) && (result = leftPad(str, size, String.valueOf(padChar)))
+end_process
+
+process center(str: String, size: int, padChar: char) result: String
+pre  true
+post (str = null ∨ size ≤ 0 -> result = str) ∧
+     (str ≠ null ∧ size > 0 ∧ size - length(str) ≤ 0 -> result = str) ∧
+     (str ≠ null ∧ pads = size - length(str) ∧ pads > 0 ->
+        result = rightPad(leftPad(str, length(str) + pads ÷ 2, padChar), size, padChar))
+Functional Scenario Form 
+(str = null ∨ size ≤ 0) && (result = str) or
+(str ≠ null ∧ size > 0 ∧ size - length(str) ≤ 0) && (result = str) or
+(str ≠ null ∧ size > 0 ∧ size - length(str) > 0) && 
+(result = rightPad(leftPad(str, length(str) + (size - length(str)) ÷ 2, padChar), size, padChar))
+end_process
+
+process upperCase(str: String) result: String
+pre  true
+post (str = null → result = null) ∧ (str ≠ null → result = str.toUpperCase())
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str.toUpperCase())
+end_process
+
+process upperCase_locale(str: String, locale: Locale) result: String
+pre  true
+post (str = null → result = null) ∧ (str ≠ null → result = str.toUpperCase(locale))
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str.toUpperCase(locale))
+end_process
+
+process lowerCase(str: String) result: String
+pre  true
+post (str = null → result = null) ∧ (str ≠ null → result = str.toLowerCase())
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str.toLowerCase())
+end_process
+
+process lowerCase_locale(str: String, locale: Locale) result: String
+pre  true
+post (str = null → result = null) ∧ (str ≠ null → result = str.toLowerCase(locale))
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str.toLowerCase(locale))
+end_process
+
+process capitalize(str: String) result: String
+pre  true
+post (str = null ∨ str.length = 0 → result = str) ∧
+     (str ≠ null ∧ str.length > 0 → result = Character.toTitleCase(str.charAt(0)) + str.substring(1))
+Functional Scenario Form
+(str = null ∨ str.length = 0) && (result = str) or
+(str ≠ null ∧ str.length > 0) && (result = Character.toTitleCase(str.charAt(0)) + str.substring(1))
+end_process
+
+process uncapitalize(str: String) result: String
+pre  true
+post (str = null ∨ str.length = 0 → result = str) ∧
+     (str ≠ null ∧ str.length > 0 → result = Character.toLowerCase(str.charAt(0)) + str.substring(1))
+Functional Scenario Form
+(str = null ∨ str.length = 0) && (result = str) or
+(str ≠ null ∧ str.length > 0) && (result = Character.toLowerCase(str.charAt(0)) + str.substring(1))
+end_process
+
+process swapCase(str: String) result: String
+pre  true
+post (str = null ∨ str.length = 0 → result = str) ∧
+     (str ≠ null ∧ str.length > 0 → result = str with case of each char toggled)
+Functional Scenario Form
+(str = null ∨ str.length = 0) && (result = str) or
+(str ≠ null ∧ str.length > 0) && (result = case-toggled version of str)
+end_process
+
+process isAlpha(cs: CharSequence) result: Boolean
+pre  true
+post (cs = null ∨ cs.length = 0 → result = false) ∧
+     (cs ≠ null ∧ cs.length > 0 → result = ∀i ∈ [0, cs.length - 1], Character.isLetter(cs.charAt(i)))
+Functional Scenario Form
+(cs = null ∨ cs.length = 0) && (result = false) or
+(cs ≠ null ∧ cs.length > 0 ∧ ∀i, Character.isLetter(cs.charAt(i))) && (result = true) or
+(cs ≠ null ∧ ∃i, ¬Character.isLetter(cs.charAt(i))) && (result = false)
+end_process
+
+process isAlphaSpace(cs: CharSequence) result: Boolean
+pre  true
+post (cs = null → result = false) ∧
+     (cs ≠ null → result = ∀i ∈ [0, cs.length - 1], Character.isLetter(cs.charAt(i)) ∨ cs.charAt(i) = ' ')
+Functional Scenario Form
+(cs = null) && (result = false) or
+(cs ≠ null ∧ ∀i, Character.isLetter(cs.charAt(i)) ∨ cs.charAt(i) = ' ') && (result = true) or
+(cs ≠ null ∧ ∃i, ¬Character.isLetter(cs.charAt(i)) ∧ cs.charAt(i) ≠ ' ') && (result = false)
+end_process
+
+process isAlphanumeric(cs: CharSequence) result: Boolean
+pre  true
+post (cs = null ∨ cs.length = 0 → result = false) ∧
+     (cs ≠ null ∧ cs.length > 0 → result = ∀i ∈ [0, cs.length - 1], Character.isLetterOrDigit(cs.charAt(i)))
+Functional Scenario Form
+(cs = null ∨ cs.length = 0) && (result = false) or
+(cs ≠ null ∧ ∀i, Character.isLetterOrDigit(cs.charAt(i))) && (result = true) or
+(cs ≠ null ∧ ∃i, ¬Character.isLetterOrDigit(cs.charAt(i))) && (result = false)
+end_process
+
+process isAlphanumericSpace(cs: CharSequence) result: Boolean
+pre  true
+post (cs = null → result = false) ∧
+     (cs ≠ null → result = ∀i ∈ [0, cs.length - 1], Character.isLetterOrDigit(cs.charAt(i)) ∨ cs.charAt(i) = ' ')
+Functional Scenario Form
+(cs = null) && (result = false) or
+(cs ≠ null ∧ ∀i, Character.isLetterOrDigit(cs.charAt(i)) ∨ cs.charAt(i) = ' ') && (result = true) or
+(cs ≠ null ∧ ∃i, ¬Character.isLetterOrDigit(cs.charAt(i)) ∧ cs.charAt(i) ≠ ' ') && (result = false)
+end_process
+
+process isAsciiPrintable(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null) ∧ (∀i ∈ [0..cs.length()-1] • isAsciiPrintable(cs[i]))
+Functional Scenario Form
+(cs = null) && (result = false) or
+(cs ≠ null ∧ ∃i • cs[i] ∉ ASCII printable) && (result = false) or
+(cs ≠ null ∧ ∀i • cs[i] ∈ ASCII printable) && (result = true)
+end_process
+
+process isNumeric(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null ∧ cs.length() > 0) ∧ (∀i ∈ [0..cs.length()-1] • isDigit(cs[i]))
+Functional Scenario Form
+(cs = null ∨ cs.length() = 0) && (result = false) or
+(∃i • ¬isDigit(cs[i])) && (result = false) or
+(∀i • isDigit(cs[i])) && (result = true)
+end_process
+
+process isNumericSpace(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null) ∧ (∀i ∈ [0..cs.length()-1] • isDigit(cs[i]) ∨ cs[i] = ' ')
+Functional Scenario Form
+(cs = null) && (result = false) or
+(∃i • cs[i] ≠ digit ∧ cs[i] ≠ ' ') && (result = false) or
+(∀i • cs[i] = digit ∨ cs[i] = ' ') && (result = true)
+end_process
+
+process isWhitespace(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null) ∧ (∀i ∈ [0..cs.length()-1] • isWhitespace(cs[i]))
+Functional Scenario Form
+(cs = null) && (result = false) or
+(∃i • ¬isWhitespace(cs[i])) && (result = false) or
+(∀i • isWhitespace(cs[i])) && (result = true)
+end_process
+
+process isAllLowerCase(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null ∧ cs.length() > 0) ∧ (∀i ∈ [0..cs.length()-1] • isLowerCase(cs[i]))
+Functional Scenario Form
+(cs = null ∨ cs.length() = 0) && (result = false) or
+(∃i • ¬isLowerCase(cs[i])) && (result = false) or
+(∀i • isLowerCase(cs[i])) && (result = true)
+end_process
+
+process isAllUpperCase(cs: CharSequence) result: Boolean
+pre  true
+post result = (cs ≠ null ∧ cs.length() > 0) ∧ (∀i ∈ [0..cs.length()-1] • isUpperCase(cs[i]))
+Functional Scenario Form
+(cs = null ∨ cs.length() = 0) && (result = false) or
+(∃i • ¬isUpperCase(cs[i])) && (result = false) or
+(∀i • isUpperCase(cs[i])) && (result = true)
+end_process
+
+process defaultString(str: String) result: String
+pre  true
+post result = if str = null then "" else str
+Functional Scenario Form
+(str = null) && (result = "") or
+(str ≠ null) && (result = str)
+end_process
+
+process defaultString2(str: String, defaultStr: String) result: String
+pre  true
+post result = if str = null then defaultStr else str
+Functional Scenario Form
+(str = null) && (result = defaultStr) or
+(str ≠ null) && (result = str)
+end_process
+
+process defaultIfBlank(str: CharSequence, defaultStr: CharSequence) result: CharSequence
+pre  true
+post result = if isBlank(str) then defaultStr else str
+Functional Scenario Form
+(isBlank(str)) && (result = defaultStr) or
+(¬isBlank(str)) && (result = str)
+end_process
+
+process defaultIfEmpty(str: CharSequence, defaultStr: CharSequence) result: CharSequence
+pre  true
+post result = if isEmpty(str) then defaultStr else str
+Functional Scenario Form
+(isEmpty(str)) && (result = defaultStr) or
+(¬isEmpty(str)) && (result = str)
+end_process
+
+process reverse(str: String) result: String
+pre  true
+post result = if str = null then null else reverse(str)
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = str reversed)
+end_process
+process reverseDelimited(str: String, separatorChar: char) result: String
+pre  true
+post (str = null -> result = null) ∧
+     (str ≠ null -> result = join(reverse(split(str, separatorChar)), separatorChar))
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = join(reverse(split(str, separatorChar)), separatorChar))
+end_process
+
+process abbreviate(str: String, maxWidth: int) result: String
+pre  true
+post result = abbreviate(str, 0, maxWidth)
+Functional Scenario Form
+true && (result = abbreviate(str, 0, maxWidth))
+end_process
+
+process abbreviate(str: String, offset: int, maxWidth: int) result: String
+pre  true
+post (str = null -> result = null) ∧
+     (str ≠ null ∧ maxWidth < 4 -> exception) ∧
+     (str ≠ null ∧ maxWidth ≥ 4 ∧ length(str) ≤ maxWidth -> result = str) ∧
+     (str ≠ null ∧ maxWidth ≥ 4 ∧ length(str) > maxWidth ∧ offset ≤ 4 -> result = substring(str, 0, maxWidth - 3) + "...") ∧
+     (str ≠ null ∧ maxWidth ≥ 7 ∧ offset > 4 ∧ offset + maxWidth - 3 < length(str) -> result = "..." + abbreviate(substring(str, offset), maxWidth - 3)) ∧
+     (str ≠ null ∧ maxWidth ≥ 7 ∧ offset > 4 ∧ offset + maxWidth - 3 ≥ length(str) -> result = "..." + substring(str, length(str) - (maxWidth - 3)))
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null ∧ maxWidth < 4) && (exception) or
+(str ≠ null ∧ maxWidth ≥ 4 ∧ length(str) ≤ maxWidth) && (result = str) or
+(str ≠ null ∧ maxWidth ≥ 4 ∧ length(str) > maxWidth ∧ offset ≤ 4) && (result = substring(str, 0, maxWidth - 3) + "...") or
+(str ≠ null ∧ maxWidth ≥ 7 ∧ offset > 4 ∧ offset + maxWidth - 3 < length(str)) && (result = "..." + abbreviate(substring(str, offset), maxWidth - 3)) or
+(str ≠ null ∧ maxWidth ≥ 7 ∧ offset > 4 ∧ offset + maxWidth - 3 ≥ length(str)) && (result = "..." + substring(str, length(str) - (maxWidth - 3)))
+end_process
+
+process abbreviateMiddle(str: String, middle: String, length: int) result: String
+pre  true
+post (isEmpty(str) ∨ isEmpty(middle) ∨ length ≥ length(str) ∨ length < length(middle) + 2 -> result = str) ∧
+     (otherwise -> result = substring(str, 0, ⌈(length - length(middle))/2⌉) + middle + substring(str, length(str) - ⌊(length - length(middle))/2⌋))
+Functional Scenario Form
+(isEmpty(str) ∨ isEmpty(middle) ∨ length ≥ length(str) ∨ length < length(middle) + 2) && (result = str) or
+(otherwise) && (result = substring(str, 0, ⌈(length - length(middle))/2⌉) + middle + substring(str, length(str) - ⌊(length - length(middle))/2⌋))
+end_process
+
+process difference(str1: String, str2: String) result: String
+pre  true
+post (str1 = null -> result = str2) ∧
+     (str2 = null -> result = str1) ∧
+     (str1 ≠ null ∧ str2 ≠ null ∧ indexOfDifference(str1, str2) = -1 -> result = "") ∧
+     (otherwise -> result = substring(str2, indexOfDifference(str1, str2)))
+Functional Scenario Form
+(str1 = null) && (result = str2) or
+(str2 = null) && (result = str1) or
+(str1 ≠ null ∧ str2 ≠ null ∧ indexOfDifference(str1, str2) = -1) && (result = "") or
+(otherwise) && (result = substring(str2, indexOfDifference(str1, str2)))
+end_process
+
+process indexOfDifference(cs1: CharSequence, cs2: CharSequence) result: int
+pre  true
+post (cs1 = cs2 -> result = -1) ∧
+     ((cs1 = null ∨ cs2 = null) -> result = 0) ∧
+     (cs1 ≠ cs2 ∧ cs1 ≠ null ∧ cs2 ≠ null ∧ ∃i ∈ [0, min(length(cs1), length(cs2))) . cs1[i] ≠ cs2[i] -> result = min such i) ∧
+     (otherwise -> result = -1)
+Functional Scenario Form
+(cs1 = cs2) && (result = -1) or
+((cs1 = null ∨ cs2 = null)) && (result = 0) or
+(∃i . cs1[i] ≠ cs2[i]) && (result = min such i) or
+(otherwise) && (result = -1)
+end_process
+
+process indexOfDifference(css: sequence of CharSequence) result: int
+pre  true
+post (css = null ∨ length(css) ≤ 1 -> result = -1) ∧
+     (∀i . css[i] = null ∧ ∃j . css[j] ≠ null -> result = 0) ∧
+     (∃i ≠ j . css[i] ≠ css[j] -> result = first differing index) ∧
+     (∀i,j . css[i] = css[j] -> result = -1)
+Functional Scenario Form
+(css = null ∨ length(css) ≤ 1) && (result = -1) or
+(∃i . css[i] ≠ null ∧ ∃j . css[j] = null) && (result = 0) or
+(∃i ≠ j . css[i] ≠ css[j]) && (result = first index k where css[i][k] ≠ css[j][k]) or
+(∀i,j . css[i] = css[j]) && (result = -1)
+end_process
+
+process reverseDelimited(str: String, separatorChar: char) result: String
+pre  true
+post (str = null → result = null) ∧ 
+     (str ≠ null → 
+        result = join(reverse(split(str, separatorChar)), separatorChar))
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null) && (result = join(reverse(split(str, separatorChar)), separatorChar))
+end_process
+
+process abbreviate(str: String, maxWidth: int) result: String
+pre  true
+post (str = null → result = null) ∧ 
+     (str ≠ null ∧ str.length ≤ maxWidth → result = str) ∧
+     (str ≠ null ∧ str.length > maxWidth ∧ maxWidth ≥ 4 → 
+        result = str[0..maxWidth−4] + "...")
+Functional Scenario Form
+(str = null) && (result = null) or
+(str ≠ null ∧ str.length ≤ maxWidth) && (result = str) or
+(str ≠ null ∧ str.length > maxWidth ∧ maxWidth ≥ 4) && 
+(result = str[0..maxWidth−4] + "...")
+end_process
+
+process abbreviateOffset(str: String, offset: int, maxWidth: int) result: String
+pre  true
+post (str = null → result = null) ∧ 
+     (str ≠ null ∧ str.length ≤ maxWidth → result = str) ∧
+     (str ≠ null ∧ maxWidth ≥ 7 ∧ offset > 4 ∧ str.length − offset ≥ maxWidth − 3 → 
+        result = "..." + abbreviate(str[offset..], maxWidth − 3)) ∧
+     (str ≠ null ∧ maxWidth ≥ 4 ∧ offset ≤ 4 → 
+        result = str[0..maxWidth−4] + "...")
+Functional Scenario Form
+(str = null) && (result = null) or
+(str.length ≤ maxWidth) && (result = str) or
+(offset ≤ 4 ∧ str.length > maxWidth ∧ maxWidth ≥ 4) && 
+(result = str[0..maxWidth−4] + "...") or
+(offset > 4 ∧ maxWidth ≥ 7 ∧ str.length − offset ≥ maxWidth − 3) &&
+(result = "..." + abbreviate(str[offset..], maxWidth − 3))
+end_process
+
+process abbreviateMiddle(str: String, middle: String, length: int) result: String
+pre  true
+post (str = null ∨ middle = null ∨ length ≥ str.length ∨ length < middle.length + 2 → 
+        result = str) ∧
+     (str ≠ null ∧ middle ≠ null ∧ length < str.length ∧ length ≥ middle.length + 2 → 
+        result = str[0..⌈(length−middle.length)/2⌉−1] + middle + str[str.length−⌊(length−middle.length)/2⌋..])
+Functional Scenario Form
+(str = null ∨ middle = null ∨ length ≥ str.length ∨ length < middle.length + 2) &&
+(result = str) or
+(length < str.length ∧ length ≥ middle.length + 2) &&
+(result = prefix + middle + suffix)
+end_process
+
+process difference(str1: String, str2: String) result: String
+pre  true
+post (str1 = null → result = str2) ∧ 
+     (str2 = null → result = str1) ∧ 
+     (str1 ≠ null ∧ str2 ≠ null → 
+        result = str2[indexOfDifference(str1, str2)..])
+Functional Scenario Form
+(str1 = null) && (result = str2) or
+(str2 = null) && (result = str1) or
+(str1 ≠ null ∧ str2 ≠ null) && (result = str2[indexOfDifference(str1, str2)..])
+end_process
+
+process indexOfDifference(cs1: CharSequence, cs2: CharSequence) result: int
+pre  true
+post (cs1 = cs2 → result = -1) ∧ 
+     ((cs1 = null ∨ cs2 = null) → result = 0) ∧ 
+     (otherwise → result = first i where cs1[i] ≠ cs2[i])
+Functional Scenario Form
+(cs1 = cs2) && (result = -1) or
+((cs1 = null ∨ cs2 = null)) && (result = 0) or
+(cs1 ≠ cs2 ∧ cs1[i] ≠ cs2[i]) && (result = i)
+end_process
+
+process indexOfDifferenceArray(css: sequence of CharSequence) result: int
+pre  true
+post (css = null ∨ css.length ≤ 1 → result = -1) ∧
+     (∀x ∈ css. x = null → result = -1) ∧
+     (∃i. css[i] ≠ null ∧ ∃j. css[j] ≠ css[i] → 
+        result = first position where any pair differs)
+Functional Scenario Form
+(css = null ∨ css.length ≤ 1 ∨ all null) && (result = -1) or
+(css contains differing non-null strings) && (result = first differing index)
+end_process
+
+process getCommonPrefix(strs: sequence of String) result: String
+pre  true
+post (strs = null ∨ strs.length = 0 → result = "") ∧
+     (∀s ∈ strs. s = strs[0] → result = strs[0]) ∧
+     (∃i. ∃j. strs[i][j] ≠ strs[k][j] → result = strs[0][0..j−1])
+Functional Scenario Form
+(strs = null ∨ strs.length = 0) && (result = "") or
+(all strs equal) && (result = strs[0]) or
+(strs differ at position j) && (result = common prefix to position j)
+end_process
+
+
+end_module

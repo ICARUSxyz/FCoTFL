@@ -1,0 +1,1876 @@
+module PiePlot
+type
+  interiorGap: double
+  circular: boolean
+  startAngle: double
+  direction: Rotation
+  sectionPaintMap: PaintMap
+  baseSectionPaint: Paint
+  sectionOutlinesVisible: boolean
+  sectionOutlinePaintMap: PaintMap
+  baseSectionOutlinePaint: Paint
+  sectionOutlineStrokeMap: StrokeMap
+  baseSectionOutlineStroke: Stroke
+  explodePercentages: Map
+  labelGenerator: PieSectionLabelGenerator
+  labelFont: Font
+  labelPaint: Paint
+  labelBackgroundPaint: Paint
+  labelOutlinePaint: Paint
+  labelOutlineStroke: Stroke
+  labelShadowPaint: Paint
+  labelDistributor: AbstractPieLabelDistributor
+  toolTipGenerator: PieToolTipGenerator
+  urlGenerator: PieURLGenerator
+  legendLabelGenerator: PieSectionLabelGenerator
+  legendLabelToolTipGenerator: PieSectionLabelGenerator
+  legendLabelURLGenerator: PieURLGenerator
+  ignoreNullValues: boolean
+  ignoreZeroValues: boolean
+  legendItemShape: Shape
+  labelLinksVisible: boolean
+
+var
+  serialVersionUID: long = -795612466005590431L
+  DEFAULT_INTERIOR_GAP: double = 0.08
+  MAX_INTERIOR_GAP: double = 0.40
+  DEFAULT_START_ANGLE: double = 90.0
+  DEFAULT_MINIMUM_ARC_ANGLE_TO_DRAW: double = 0.00001
+  pieIndex: int = 0
+  shadowXOffset: double = 4.0
+  shadowYOffset: double = 4.0
+  DEBUG_DRAW_INTERIOR: boolean = false
+  DEBUG_DRAW_LINK_AREA: boolean = false
+  DEBUG_DRAW_PIE_AREA: boolean = false
+  simpleLabels: boolean = true  maximumLabelWidth: double = 0.14
+  labelGap: double = 0.025
+  labelLinkMargin: double = 0.025
+
+process PiePlot(dataset: PieDataset?)  
+pre true  
+post  
+  this.dataset' = dataset ∧  
+  (dataset ≠ null ⇒ dataset'.addChangeListener(this)) ∧  
+  this.pieIndex' = 0 ∧  
+  this.interiorGap' = DEFAULT_INTERIOR_GAP ∧  
+  this.circular' = true ∧  
+  this.startAngle' = DEFAULT_START_ANGLE ∧  
+  this.direction' = Rotation.CLOCKWISE ∧  ...
+
+Functional Scenario Form  
+dataset = null && all defaults initialized ||  
+dataset ≠ null && listener registered && all defaults initialized  
+end_process
+
+process getDataset() result: PieDataset?  
+pre true  
+post result' = this.dataset  
+
+Functional Scenario Form  
+dataset = null && returns null ||  
+dataset ≠ null && returns dataset  
+end_process
+
+process setDataset(dataset: PieDataset?)  
+pre true  
+post  
+  let existing = this.dataset in  
+  (existing ≠ null ⇒ existing'.removeChangeListener(this)) ∧  
+  this.dataset' = dataset ∧  
+  (dataset ≠ null ⇒ dataset'.addChangeListener(this)) ∧  
+  fireDatasetChangeEvent(dataset)  
+
+Functional Scenario Form  
+existing = null && new = null && no change ||  
+existing = null && new ≠ null && listener added  ||  
+existing ≠ null && new = null && listener removed  ||  
+existing ≠ null && new ≠ null && listener replaced   
+end_process
+
+process getPieIndex() result: int  
+pre true  
+post result' = this.pieIndex  
+
+Functional Scenario Form  
+current index ≥ 0 && returns index  
+end_process
+
+process setPieIndex(index: int)  
+pre true  
+post this.pieIndex' = index  
+
+Functional Scenario Form  
+index ≥ 0 && pieIndex updated ||  
+index < 0 && pieIndex updated  
+end_process
+
+process getStartAngle() result: double  
+pre true  
+post result' = this.startAngle  
+
+Functional Scenario Form  
+startAngle ∈ [0.0, 360.0] && returns angle  
+end_process
+
+process setStartAngle(angle: double)  
+pre true  
+post  
+  this.startAngle' = angle ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+angle ∈ [0.0, 360.0] && angle updated   
+end_process
+
+process getDirection() result: Rotation  
+pre true  
+post result' = this.direction  
+
+Functional Scenario Form  
+direction ≠ null && returns direction  
+end_process
+
+process setDirection(direction: Rotation)  
+pre direction ≠ null  // Explicit non-null guard  
+post  
+  this.direction' = direction ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+direction ≠ null && direction updated   
+end_process
+
+process getInteriorGap() result: double  
+pre true  
+post result' = this.interiorGap  
+
+Functional Scenario Form  
+interiorGap ∈ [0.0, MAX_INTERIOR_GAP] && returns gap  
+end_process
+
+process setInteriorGap(percent: double)  
+pre percent ≥ 0.0 ∧ percent ≤ MAX_INTERIOR_GAP  
+post  
+  if percent ≠ this.interiorGap then  
+    this.interiorGap' = percent ∧  
+    notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+percent = current gap && no change ||  
+percent ≠ current gap && gap updated   
+end_process
+
+process isCircular() result: bool  
+pre true  
+post result' = this.circular  
+
+Functional Scenario Form  
+circular = true && returns true ||  
+circular = false && returns false  
+end_process
+
+process setCircular(flag: bool)  
+pre true  
+post  
+  this.circular' = flag ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+flag = true && circular set to true  ||  
+flag = false && circular set to false   
+end_process
+
+process setCircular(circular: bool, notify: bool)  
+pre true  
+post  
+  this.circular' = circular ∧  
+  (notify ⇒ notifyListeners(new PlotChangeEvent(this)))  
+
+Functional Scenario Form  
+notify = true && circular updated  ||  
+notify = false && circular updated && no event  
+end_process
+
+process getIgnoreNullValues() result: bool  
+pre true  
+post result' = this.ignoreNullValues  
+
+Functional Scenario Form  
+ignoreNullValues = true && returns true ||  
+ignoreNullValues = false && returns false  
+end_process
+
+process setIgnoreNullValues(flag: bool)  
+pre true  
+post  
+  this.ignoreNullValues' = flag ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+flag = true && ignoreNullValues set true  ||  
+flag = false && ignoreNullValues set false   
+end_process
+
+process getIgnoreZeroValues() result: bool  
+pre true  
+post result' = this.ignoreZeroValues  
+
+Functional Scenario Form  
+ignoreZeroValues = true && returns true ||  
+ignoreZeroValues = false && returns false  
+end_process
+
+process setIgnoreZeroValues(flag: bool)  
+pre true  
+post  
+  this.ignoreZeroValues' = flag ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+
+Functional Scenario Form  
+flag = true && ignoreZeroValues set true  ||  
+flag = false && ignoreZeroValues set false   
+end_process
+
+process lookupSectionPaint(key: Comparable) result: Paint  
+pre true  
+post result' = lookupSectionPaint(key, false)  
+
+Functional Scenario Form  
+key exists in sectionPaintMap && returns mapped paint ||  
+key not exists && returns baseSectionPaint  
+end_process
+
+process lookupSectionPaint(key: Comparable, autoPopulate: bool) result: Paint  
+pre true  
+post  
+  if sectionPaintMap.contains(key) then  
+    result' = sectionPaintMap.getPaint(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextPaint() ∧  
+    sectionPaintMap'.put(key, result')  
+  else  
+    result' = baseSectionPaint  
+
+Functional Scenario Form  
+sectionPaintMap contains key && returns mapped paint ||  
+sectionPaintMap !contains key && autoPopulate=true && drawingSupplier exists && new paint generated and stored ||  
+sectionPaintMap !contains key && autoPopulate=false && returns baseSectionPaint ||  
+sectionPaintMap !contains key && autoPopulate=true && drawingSupplier null && returns baseSectionPaint  
+end_process
+
+process getSectionKey(section: int) result: Comparable  
+pre true  
+post  
+  if dataset ≠ null ∧ section ≥ 0 ∧ section < dataset.getItemCount() then  
+    result' = dataset.getKey(section)  
+  else  
+    result' = new Integer(section)  
+
+Functional Scenario Form  
+dataset ≠ null ∧ valid section index && returns dataset key ||  
+dataset = null || invalid section index && returns Integer(section)  
+end_process
+
+process getSectionPaint(key: Comparable) result: Paint?  
+pre key ≠ null  // Explicit non-null guard  
+post result' = sectionPaintMap.getPaint(key)  
+
+Functional Scenario Form  
+key exists in map && returns paint ||  
+key not exists && returns null  
+end_process
+
+process setSectionPaint(key: Comparable, paint: Paint)  
+pre key ≠ null  
+post  
+  sectionPaintMap'.put(key, paint) ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && paint added to map   
+end_process  
+
+process getBaseSectionPaint() result: Paint  
+pre true  
+post result' = baseSectionPaint  
+Functional Scenario Form  
+baseSectionPaint ≠ null && returns paint  
+end_process  
+
+process setBaseSectionPaint(paint: Paint)  
+pre paint ≠ null  
+post  
+  baseSectionPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && base paint updated   
+end_process  
+
+process getSectionOutlinesVisible() result: bool  
+pre true  
+post result' = sectionOutlinesVisible  
+Functional Scenario Form  
+sectionOutlinesVisible = true && returns true ||  
+sectionOutlinesVisible = false && returns false  
+end_process  
+
+process setSectionOutlinesVisible(visible: bool)  
+pre true  
+post  
+  sectionOutlinesVisible' = visible ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+visible = true && outlines visible set true  ||  
+visible = false && outlines visible set false   
+end_process  
+
+process lookupSectionOutlinePaint(key: Comparable) result: Paint  
+pre true  
+post result' = lookupSectionOutlinePaint(key, false)  
+Functional Scenario Form  
+key exists in outlineMap && returns mapped paint ||  
+key not exists && returns baseOutlinePaint  
+end_process  
+
+process lookupSectionOutlinePaint(key: Comparable, autoPopulate: bool) result: Paint  
+pre true  
+post  
+  if sectionOutlinePaintMap.contains(key) then  
+    result' = sectionOutlinePaintMap.getPaint(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextOutlinePaint() ∧  
+    sectionOutlinePaintMap'.put(key, result')  
+  else  
+    result' = baseSectionOutlinePaint  
+Functional Scenario Form  
+map contains key && returns paint ||  
+map !contains key && autoPopulate=true && supplier exists && new paint stored ||  
+map !contains key && autoPopulate=true && supplier null && returns base paint ||  
+map !contains key && autoPopulate=false && returns base paint  
+end_process  
+
+process getSectionOutlinePaint(key: Comparable) result: Paint 
+pre key ≠ null  
+post result' = sectionOutlinePaintMap.getPaint(key)  
+Functional Scenario Form  
+key exists in map && returns paint ||  
+key not exists && returns null  
+end_process  
+
+process setSectionOutlinePaint(key: Comparable, paint: Paint)  
+pre key ≠ null  
+post  
+  sectionOutlinePaintMap'.put(key, paint) ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && outline paint added to map   
+end_process  
+
+process getBaseSectionOutlinePaint() result: Paint  
+pre true  
+post result' = baseSectionOutlinePaint  
+Functional Scenario Form  
+baseOutlinePaint ≠ null && returns paint  
+end_process  
+
+process setBaseSectionOutlinePaint(paint: Paint)  
+pre paint ≠ null  
+post  
+  baseSectionOutlinePaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && base outline paint updated   
+end_process  
+
+process lookupSectionOutlineStroke(key: Comparable) result: Stroke  
+pre true  
+post result' = lookupSectionOutlineStroke(key, false)  
+Functional Scenario Form  
+key exists in strokeMap && returns stroke ||  
+key not exists && returns baseOutlineStroke  
+end_process  
+
+process lookupSectionOutlineStroke(key: Comparable, autoPopulate: bool) result: Stroke  
+pre true  
+post  
+  if sectionOutlineStrokeMap.contains(key) then  
+    result' = sectionOutlineStrokeMap.getStroke(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextOutlineStroke() ∧  
+    sectionOutlineStrokeMap'.put(key, result')  
+  else  
+    result' = baseSectionOutlineStroke  
+Functional Scenario Form  
+map contains key && returns stroke ||  
+map !contains key && autoPopulate=true && supplier exists && new stroke stored ||  
+map !contains key && autoPopulate=true && supplier null && returns base stroke ||  
+map !contains key && autoPopulate=false && returns base stroke  
+end_process  
+
+process getSectionOutlineStroke(key: Comparable) result: Stroke
+pre key ≠ null  
+post result' = sectionOutlineStrokeMap.getStroke(key)  
+Functional Scenario Form  
+key exists in map && returns stroke ||  
+key not exists && returns null  
+end_process  
+
+process setSectionOutlineStroke(key: Comparable, stroke: Stroke)  
+pre key ≠ null  
+post  
+  sectionOutlineStrokeMap'.put(key, stroke) ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && outline stroke added   
+end_process  
+
+process getBaseSectionOutlineStroke() result: Stroke  
+pre true  
+post result' = baseSectionOutlineStroke  
+Functional Scenario Form  
+baseOutlineStroke ≠ null && returns stroke  
+end_process  
+
+process setBaseSectionOutlineStroke(stroke: Stroke)  
+pre stroke ≠ null  
+post  
+  baseSectionOutlineStroke' = stroke ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+stroke ≠ null && base outline stroke updated   
+end_process  
+
+process getShadowPaint() result: Paint?  
+pre true  
+post result' = this.shadowPaint  
+Functional Scenario Form  
+shadowPaint ≠ null && returns paint ||  
+shadowPaint = null && returns null  
+end_process  
+
+process setShadowPaint(paint: Paint?)  
+pre true  
+post  
+  this.shadowPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && shadowPaint set to new value  ||  
+paint = null && shadowPaint cleared   
+end_process  
+
+process getShadowXOffset() result: double  
+pre true  
+post result' = this.shadowXOffset  
+Functional Scenario Form  
+true && returns current x-offset  
+end_process  
+
+process setShadowXOffset(offset: double)  
+pre true  
+post  
+  this.shadowXOffset' = offset ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+offset ≥ 0.0 && offset updated  ||  
+offset < 0.0 && offset updated   
+end_process  
+
+process getShadowYOffset() result: double  
+pre true  
+post result' = this.shadowYOffset  
+Functional Scenario Form  
+true && returns current y-offset  
+end_process  
+
+process setShadowYOffset(offset: double)  
+pre true  
+post  
+  this.shadowYOffset' = offset ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+offset ≥ 0.0 && offset updated  ||  
+offset < 0.0 && offset updated   
+end_process  
+
+process getExplodePercent(key: Comparable) result: double  
+pre key ≠ null  
+post  
+  if explodePercentages ≠ null ∧ explodePercentages.contains(key) then  
+    result' = explodePercentages.get(key).doubleValue()  
+  else  
+    result' = 0.0  
+Functional Scenario Form  
+key ≠ null && explodePercentages contains key && returns percent ||  
+key ≠ null && explodePercentages !contains key && returns 0.0  
+end_process  
+
+process setExplodePercent(key: Comparable, percent: double)  
+pre key ≠ null  
+post  
+  if explodePercentages = null then  
+    explodePercentages' = new TreeMap()  
+  explodePercentages'.put(key, percent) ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && explodePercentages was null && map created && percent stored  ||  
+key ≠ null && explodePercentages existed && percent updated   
+end_process  
+
+process getMaximumExplodePercent() result: double  
+pre true  
+post  
+  if dataset = null then  
+    result' = 0.0  
+  else  
+    result' = max{ explodePercentages.values() } Functional Scenario Form  
+dataset = null && returns 0.0 ||  
+dataset ≠ null && no explodePercentages && returns 0.0 ||  
+dataset ≠ null && has explodePercentages && returns max percent  
+end_process  
+
+process getLabelGenerator() result: PieSectionLabelGenerator?  
+pre true  
+post result' = labelGenerator  
+Functional Scenario Form  
+labelGenerator ≠ null && returns generator ||  
+labelGenerator = null && returns null  
+end_process  
+
+process setLabelGenerator(generator: PieSectionLabelGenerator?)  
+pre true  
+post  
+  labelGenerator' = generator ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+generator ≠ null && labelGenerator updated  ||  
+generator = null && labelGenerator cleared   
+end_process  
+
+process getLabelGap() result: double  
+pre true  
+post result' = labelGap  
+Functional Scenario Form  
+true && returns current gap  
+end_process  
+
+process setLabelGap(gap: double)  
+pre true  
+post  
+  labelGap' = gap ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+gap ≥ 0.0 && gap updated  ||  
+gap < 0.0 && gap updated   
+end_process  
+
+process getMaximumLabelWidth() result: double  
+pre true  
+post result' = maximumLabelWidth  
+Functional Scenario Form  
+true && returns current max width  
+end_process  
+
+process setMaximumLabelWidth(width: double)  
+pre true  
+post  
+  maximumLabelWidth' = width ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+width ≥ 0.0 && width updated  ||  
+width < 0.0 && width updated   
+end_process  
+
+process getLabelLinksVisible() result: bool  
+pre true  
+post result' = labelLinksVisible  
+Functional Scenario Form  
+labelLinksVisible = true && returns true ||  
+labelLinksVisible = false && returns false  
+end_process  
+
+process setLabelLinksVisible(visible: bool)  
+pre true  
+post  
+  labelLinksVisible' = visible ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+visible = true && links visible set true  ||  
+visible = false && links visible set false   
+end_process  
+
+process getLabelLinkMargin() result: double  
+pre true  
+post result' = labelLinkMargin  
+Functional Scenario Form  
+true && returns current margin  
+end_process  
+
+process setLabelLinkMargin(margin: double)  
+pre true  
+post  
+  labelLinkMargin' = margin ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+margin ≥ 0.0 && margin updated  ||  
+margin < 0.0 && margin updated   
+end_process  
+
+process getLabelLinkPaint() result: Paint  
+pre true  
+post result' = labelLinkPaint  
+Functional Scenario Form  
+labelLinkPaint ≠ null && returns paint  
+end_process  
+
+process setLabelLinkPaint(paint: Paint)  
+pre paint ≠ null  
+post  
+  labelLinkPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && link paint updated   
+end_process  
+
+process getLabelLinkStroke() result: Stroke  
+pre true  
+post result' = labelLinkStroke  
+Functional Scenario Form  
+labelLinkStroke ≠ null && returns stroke  
+end_process  
+
+process setLabelLinkStroke(stroke: Stroke)  
+pre stroke ≠ null  
+post  
+  labelLinkStroke' = stroke ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+stroke ≠ null && link stroke updated   
+end_process  
+
+process getLabelFont() result: Font  
+pre true  
+post result' = labelFont  
+Functional Scenario Form  
+labelFont ≠ null && returns font  
+end_process  
+
+process setLabelFont(font: Font)  
+pre font ≠ null  
+post  
+  labelFont' = font ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+font ≠ null && label font updated   
+end_process  
+
+process getLabelPaint() result: Paint  
+pre true  
+post result' = labelPaint  
+Functional Scenario Form  
+labelPaint ≠ null && returns paint  
+end_process  
+
+process setLabelPaint(paint: Paint)  
+pre paint ≠ null  
+post  
+  labelPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && label text color updated   
+end_process  
+
+process getLabelBackgroundPaint() result: Paint?  
+pre true  
+post result' = labelBackgroundPaint  
+Functional Scenario Form  
+labelBackgroundPaint ≠ null && returns paint ||  
+labelBackgroundPaint = null && returns null  
+end_process  
+
+process setLabelBackgroundPaint(paint: Paint?)  
+pre true  
+post  
+  labelBackgroundPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && background paint set  ||  
+paint = null && background cleared   
+end_process  
+
+process getLabelOutlinePaint() result: Paint?  
+pre true  
+post result' = labelOutlinePaint  
+Functional Scenario Form  
+labelOutlinePaint ≠ null && returns paint ||  
+labelOutlinePaint = null && returns null  
+end_process  
+
+process setLabelOutlinePaint(paint: Paint?)  
+pre true  
+post  
+  labelOutlinePaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && outline color set  ||  
+paint = null && outline color cleared   
+end_process  
+
+process getLabelOutlineStroke() result: Stroke?  
+pre true  
+post result' = labelOutlineStroke  
+Functional Scenario Form  
+labelOutlineStroke ≠ null && returns stroke ||  
+labelOutlineStroke = null && returns null  
+end_process  
+
+process setLabelOutlineStroke(stroke: Stroke?)  
+pre true  
+post  
+  labelOutlineStroke' = stroke ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+stroke ≠ null && outline stroke set  ||  
+stroke = null && outline stroke cleared   
+end_process  
+
+process getLabelShadowPaint() result: Paint?  
+pre true  
+post result' = labelShadowPaint  
+Functional Scenario Form  
+labelShadowPaint ≠ null && returns shadow paint ||  
+labelShadowPaint = null && returns null  
+end_process  
+
+process setLabelShadowPaint(paint: Paint?)  
+pre true  
+post  
+  labelShadowPaint' = paint ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && shadow paint set  ||  
+paint = null && shadow paint cleared  
+end_process  
+
+process getLabelPadding() result: RectangleInsets  
+pre true  
+post result' = labelPadding  
+Functional Scenario Form  
+labelPadding ≠ null && returns padding  
+end_process  
+
+process setLabelPadding(padding: RectangleInsets)  
+pre padding ≠ null  
+post  
+  labelPadding' = padding ∧  
+  notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+padding ≠ null && label padding updated   
+end_process  
+
+
+process setIgnoreZeroValues(flag: bool)  
+pre true  
+post this.ignoreZeroValues' = flag ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+flag = true && ignoreZeroValues set true ||  
+flag = false && ignoreZeroValues set false  
+end_process  
+
+process lookupSectionPaint(key: Comparable) result: Paint  
+pre true  
+post result' = lookupSectionPaint(key, false)  
+Functional Scenario Form  
+sectionPaintMap contains key && returns mapped paint ||  
+sectionPaintMap !contains key && returns baseSectionPaint  
+end_process  
+
+process lookupSectionPaint(key: Comparable, autoPopulate: bool) result: Paint  
+pre true  
+post  
+  if sectionPaintMap.contains(key) then  
+    result' = sectionPaintMap.getPaint(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextPaint() ∧  
+    sectionPaintMap'.put(key, result')  
+  else  
+    result' = baseSectionPaint  
+Functional Scenario Form  
+map contains key && returns paint ||  
+map !contains key && autoPopulate=true && supplier exists && new paint generated ||  
+map !contains key && autoPopulate=true && supplier null && returns base paint ||  
+map !contains key && autoPopulate=false && returns base paint  
+end_process  
+
+process getSectionKey(section: int) result: Comparable  
+pre true  
+post  
+  if dataset ≠ null ∧ section ≥ 0 ∧ section < dataset.getItemCount() then  
+    result' = dataset.getKey(section)  
+  else  
+    result' = new Integer(section)  
+Functional Scenario Form  
+dataset ≠ null ∧ valid index && returns dataset key ||  
+dataset = null || invalid index && returns Integer(section)  
+end_process  
+
+process getSectionPaint(key: Comparable) result: Paint?  
+pre key ≠ null  
+post result' = sectionPaintMap.getPaint(key)  
+Functional Scenario Form  
+key exists in map && returns paint ||  
+key not exists && returns null  
+end_process  
+
+process setSectionPaint(key: Comparable, paint: Paint)  
+pre key ≠ null  
+post sectionPaintMap'.put(key, paint) ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && paint added to map  
+end_process  
+
+process getBaseSectionPaint() result: Paint  
+pre true  
+post result' = baseSectionPaint  
+Functional Scenario Form  
+baseSectionPaint ≠ null && returns paint  
+end_process  
+
+process setBaseSectionPaint(paint: Paint)  
+pre paint ≠ null  
+post baseSectionPaint' = paint ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && base paint updated  
+end_process  
+
+process getSectionOutlinesVisible() result: bool  
+pre true  
+post result' = sectionOutlinesVisible  
+Functional Scenario Form  
+sectionOutlinesVisible = true && returns true ||  
+sectionOutlinesVisible = false && returns false  
+end_process  
+
+process setSectionOutlinesVisible(visible: bool)  
+pre true  
+post sectionOutlinesVisible' = visible ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+visible = true && outlines visible set true ||  
+visible = false && outlines visible set false  
+end_process  
+
+process lookupSectionOutlinePaint(key: Comparable) result: Paint  
+pre true  
+post result' = lookupSectionOutlinePaint(key, false)  
+Functional Scenario Form  
+outlineMap contains key && returns mapped paint ||  
+outlineMap !contains key && returns baseOutlinePaint  
+end_process  
+
+process lookupSectionOutlinePaint(key: Comparable, autoPopulate: bool) result: Paint  
+pre true  
+post  
+  if sectionOutlinePaintMap.contains(key) then  
+    result' = sectionOutlinePaintMap.getPaint(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextOutlinePaint() ∧  
+    sectionOutlinePaintMap'.put(key, result')  
+  else  
+    result' = baseSectionOutlinePaint  
+Functional Scenario Form  
+map contains key && returns paint ||  
+map !contains key && autoPopulate=true && supplier exists && new paint generated ||  
+map !contains key && autoPopulate=true && supplier null && returns base paint ||  
+map !contains key && autoPopulate=false && returns base paint  
+end_process  
+
+process getSectionOutlinePaint(key: Comparable) result: Paint?  
+pre key ≠ null  
+post result' = sectionOutlinePaintMap.getPaint(key)  
+Functional Scenario Form  
+key exists in map && returns paint ||  
+key not exists && returns null  
+end_process  
+
+process setSectionOutlinePaint(key: Comparable, paint: Paint)  
+pre key ≠ null  
+post sectionOutlinePaintMap'.put(key, paint) ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && outline paint added to map  
+end_process  
+
+process getBaseSectionOutlinePaint() result: Paint  
+pre true  
+post result' = baseSectionOutlinePaint  
+Functional Scenario Form  
+baseOutlinePaint ≠ null && returns paint  
+end_process  
+
+process setBaseSectionOutlinePaint(paint: Paint)  
+pre paint ≠ null  
+post baseSectionOutlinePaint' = paint ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && base outline paint updated  
+end_process  
+
+process lookupSectionOutlineStroke(key: Comparable) result: Stroke  
+pre true  
+post result' = lookupSectionOutlineStroke(key, false)  
+Functional Scenario Form  
+strokeMap contains key && returns mapped stroke ||  
+strokeMap !contains key && returns baseOutlineStroke  
+end_process  
+
+process lookupSectionOutlineStroke(key: Comparable, autoPopulate: bool) result: Stroke  
+pre true  
+post  
+  if sectionOutlineStrokeMap.contains(key) then  
+    result' = sectionOutlineStrokeMap.getStroke(key)  
+  else if autoPopulate ∧ getDrawingSupplier() ≠ null then  
+    result' = getDrawingSupplier().getNextOutlineStroke() ∧  
+    sectionOutlineStrokeMap'.put(key, result')  
+  else  
+    result' = baseSectionOutlineStroke  
+Functional Scenario Form  
+map contains key && returns stroke ||  
+map !contains key && autoPopulate=true && supplier exists && new stroke generated ||  
+map !contains key && autoPopulate=true && supplier null && returns base stroke ||  
+map !contains key && autoPopulate=false && returns base stroke  
+end_process  
+
+process getSectionOutlineStroke(key: Comparable) result: Stroke?  
+pre key ≠ null  
+post result' = sectionOutlineStrokeMap.getStroke(key)  
+Functional Scenario Form  
+key exists in map && returns stroke ||  
+key not exists && returns null  
+end_process  
+
+process setSectionOutlineStroke(key: Comparable, stroke: Stroke)  
+pre key ≠ null  
+post sectionOutlineStrokeMap'.put(key, stroke) ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+key ≠ null && outline stroke added to map  
+end_process  
+
+process getBaseSectionOutlineStroke() result: Stroke  
+pre true  
+post result' = baseSectionOutlineStroke  
+Functional Scenario Form  
+baseOutlineStroke ≠ null && returns stroke  
+end_process  
+
+process setBaseSectionOutlineStroke(stroke: Stroke)  
+pre stroke ≠ null  
+post baseSectionOutlineStroke' = stroke ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+stroke ≠ null && base outline stroke updated  
+end_process  
+
+process getShadowPaint() result: Paint?  
+pre true  
+post result' = shadowPaint  
+Functional Scenario Form  
+shadowPaint ≠ null && returns paint ||  
+shadowPaint = null && returns null  
+end_process  
+
+process setShadowPaint(paint: Paint?)  
+pre true  
+post shadowPaint' = paint ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+paint ≠ null && shadowPaint set ||  
+paint = null && shadowPaint cleared  
+end_process  
+
+process getShadowXOffset() result: double  
+pre true  
+post result' = shadowXOffset  
+Functional Scenario Form  
+true && returns current offset  
+end_process  
+
+process setShadowXOffset(offset: double)  
+pre true  
+post shadowXOffset' = offset ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+offset changed  
+end_process  
+
+process getShadowYOffset() result: double  
+pre true  
+post result' = shadowYOffset  
+Functional Scenario Form  
+true && returns current offset  
+end_process  
+
+process setShadowYOffset(offset: double)  
+pre true  
+post shadowYOffset' = offset ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+offset changed  
+end_process  
+
+process getMinimumArcAngleToDraw() result: double  
+pre true  
+post result' = minimumArcAngleToDraw  
+Functional Scenario Form  
+true && returns current angle  
+end_process  
+
+process setMinimumArcAngleToDraw(angle: double)  
+pre true  
+post minimumArcAngleToDraw' = angle  
+Functional Scenario Form  
+angle changed  
+end_process  
+
+process getLegendItemShape() result: Shape  
+pre true  
+post result' = legendItemShape  
+Functional Scenario Form  
+legendItemShape ≠ null && returns shape  
+end_process  
+
+process setLegendItemShape(shape: Shape)  
+pre shape ≠ null  
+post legendItemShape' = shape ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+shape ≠ null && legend shape updated  
+end_process  
+
+process getLegendLabelGenerator() result: PieSectionLabelGenerator  
+pre true  
+post result' = legendLabelGenerator  
+Functional Scenario Form  
+legendLabelGenerator ≠ null && returns generator  
+end_process  
+
+process setLegendLabelGenerator(generator: PieSectionLabelGenerator)  
+pre generator ≠ null  
+post legendLabelGenerator' = generator ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+generator ≠ null && legend label generator updated  
+end_process  
+
+process getLegendLabelToolTipGenerator() result: PieSectionLabelGenerator?  
+pre true  
+post result' = legendLabelToolTipGenerator  
+Functional Scenario Form  
+generator ≠ null && returns tooltip generator ||  
+generator = null && returns null  
+end_process  
+
+process setLegendLabelToolTipGenerator(generator: PieSectionLabelGenerator?)  
+pre true  
+post legendLabelToolTipGenerator' = generator ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+generator ≠ null && tooltip generator set ||  
+generator = null && tooltip generator cleared  
+end_process  
+
+process getLegendLabelURLGenerator() result: PieURLGenerator?  
+pre true  
+post result' = legendLabelURLGenerator  
+Functional Scenario Form  
+generator ≠ null && returns URL generator ||  
+generator = null && returns null  
+end_process  
+
+process setLegendLabelURLGenerator(generator: PieURLGenerator?)  
+pre true  
+post legendLabelURLGenerator' = generator ∧ notifyListeners(new PlotChangeEvent(this))  
+Functional Scenario Form  
+generator ≠ null && URL generator set ||  
+generator = null && URL generator cleared  
+end_process  
+
+process initialise(g2: Graphics2D, plotArea: Rectangle2D, plot: PiePlot, index: Integer?, info: PlotRenderingInfo?) result: PiePlotState  
+pre plotArea ≠ null  
+post  
+  state = new PiePlotState(info) ∧  
+  state'.passesRequired = 2 ∧  
+  (dataset ≠ null ⇒ state'.total = DatasetUtilities.calculatePieDatasetTotal(plot.dataset)) ∧  
+  state'.latestAngle = plot.getStartAngle()  
+Functional Scenario Form  
+dataset ≠ null && state with total calculated ||  
+dataset = null && state without total  
+end_process  
+
+process draw(g2: Graphics2D, area: Rectangle2D, anchor: Point2D?, parentState: PlotState?, info: PlotRenderingInfo?)  
+pre area ≠ null  
+post  
+
+  area' = area.trimmedBy(getInsets()) ∧  
+  (info ≠ null ⇒ (info'.plotArea = area' ∧ info'.dataArea = area')) ∧  
+    drawBackground(g2, area') ∧  
+  drawOutline(g2, area') ∧  
+  
+
+  savedClip = g2.getClip() ∧  
+  g2'.clip(area') ∧  
+  originalComposite = g2.getComposite() ∧  
+  g2'.setComposite(AlphaComposite.SRC_OVER with getForegroundAlpha()) ∧  
+
+  if DatasetUtilities.isEmptyOrNull(dataset) then  
+    drawNoDataMessage(g2, area')  
+  else  
+    drawPie(g2, area', info)  
+ 
+  g2'.setClip(savedClip) ∧  
+  g2'.setComposite(originalComposite) ∧  
+  drawOutline(g2, area')  
+Functional Scenario Form  
+dataset not empty && pie drawn ||  
+dataset empty && no data message drawn  
+end_process  
+
+process drawPie(g2: Graphics2D, plotArea: Rectangle2D, info: PlotRenderingInfo?)  
+pre plotArea ≠ null  
+post  
+  state = initialise(g2, plotArea, this, null, info)  
+  labelReserve = if (labelGenerator ≠ null ∧ ¬simpleLabels) then labelGap + maximumLabelWidth else 0.0  
+  gapHorizontal = plotArea.width × (interiorGap + labelReserve) × 2.0  
+  gapVertical = plotArea.height × interiorGap × 2.0  
+  linkX = plotArea.x + gapHorizontal ÷ 2  
+  linkY = plotArea.y + gapVertical ÷ 2  
+  linkW = plotArea.width - gapHorizontal  
+  linkH = plotArea.height - gapVertical  
+  circular ⇒  
+    min = min(linkW, linkH) ÷ 2  
+    linkX = (linkX × 2 + linkW) ÷ 2 - min  
+    linkY = (linkY × 2 + linkH) ÷ 2 - min  
+    linkW = 2 × min  
+    linkH = 2 × min  
+  linkArea = new Rectangle2D.Double(linkX, linkY, linkW, linkH)  
+  state.linkArea' = linkArea  
+  DEBUG_DRAW_INTERIOR ⇒ drawDebugRectangle(g2, plotArea)  
+  DEBUG_DRAW_LINK_AREA ⇒ drawDebugLinkArea(g2, linkArea)  
+  lm = if ¬simpleLabels then labelLinkMargin else 0.0  
+  hh = linkArea.width × lm × 2.0  
+  vv = linkArea.height × lm × 2.0  
+  explodeArea = new Rectangle2D.Double(linkX + hh ÷ 2, linkY + vv ÷ 2, linkW - hh, linkH - vv)  
+  state.explodedPieArea' = explodeArea  
+  maximumExplodePercent = getMaximumExplodePercent()  
+  percent = maximumExplodePercent ÷ (1.0 + maximumExplodePercent)  
+  h1 = explodeArea.width × percent  
+  v1 = explodeArea.height × percent  
+  pieArea = new Rectangle2D.Double(explodeArea.x + h1 ÷ 2, explodeArea.y + v1 ÷ 2, explodeArea.width - h1, explodeArea.height - v1)  
+  state.pieArea' = pieArea  
+  state.pieCenterX' = pieArea.centerX  
+  state.pieCenterY' = pieArea.centerY  
+  state.pieWRadius' = pieArea.width ÷ 2  
+  state.pieHRadius' = pieArea.height ÷ 2  
+  DEBUG_DRAW_PIE_AREA ⇒ drawDebugPieArea(g2, pieArea)  
+  dataset ≠ null ∧ dataset.getKeys().size() > 0 ⇒  
+    totalValue = DatasetUtilities.calculatePieDatasetTotal(dataset)  
+    passesRequired = state.passesRequired  
+    ∀ pass ∈ [0, passesRequired-1]: ∀ section ∈ [0, dataset.getKeys().size()-1]:  
+      dataset.getValue(section) > 0 ⇒ drawItem(g2, section, explodeArea, state, pass)  
+    simpleLabels ⇒ drawSimpleLabels(g2, dataset.getKeys(), totalValue, plotArea, linkArea, state)  
+    ¬simpleLabels ⇒ drawLabels(g2, dataset.getKeys(), totalValue, plotArea, linkArea, state)  
+  dataset = null ∨ dataset.getKeys().size() = 0 ⇒ drawNoDataMessage(g2, plotArea)  
+
+Functional Scenario Form  
+dataset ≠ null && dataset.getKeys().size() > 0 && simpleLabels = true && passesRequired = 2  
+    && all positive sections drawn in two passes && simple labels drawn  
+dataset ≠ null && dataset.getKeys().size() > 0 && simpleLabels = false && passesRequired = 2  
+    && all positive sections drawn in two passes && extended labels drawn  
+dataset = null  
+    && no data message drawn  
+dataset.getKeys().size() = 0  
+    && no data message drawn  
+DEBUG_DRAW_INTERIOR = true  
+    && debug rectangle drawn  
+DEBUG_DRAW_LINK_AREA = true  
+    && debug link area drawn  
+DEBUG_DRAW_PIE_AREA = true  
+    && debug pie area drawn  
+circular = true && linkW ≠ linkH  
+    && circular area adjusted  
+end_process  
+
+
+process drawItem(g2: Graphics2D, section: int, dataArea: Rectangle2D, state: PiePlotState, currentPass: int)  
+pre dataArea ≠ null ∧ state ≠ null  
+post  
+  n = dataset.getValue(section) ∧  
+  n ≠ null ⇒ (  
+    value = n.doubleValue() ∧  
+    (  
+      direction = Rotation.CLOCKWISE ⇒  
+        angle1 = state.latestAngle ∧  
+        angle2 = angle1 - (value ÷ state.total) × 360.0  
+      direction = Rotation.ANTICLOCKWISE ⇒  
+        angle1 = state.latestAngle ∧  
+        angle2 = angle1 + (value ÷ state.total) × 360.0  
+    ) ∧  
+    angle = |angle2 - angle1| ∧  
+    (  
+      angle > getMinimumArcAngleToDraw() ⇒  
+        ep = if getMaximumExplodePercent() > 0.0  
+             then getExplodePercent(getSectionKey(section)) ÷ getMaximumExplodePercent()  
+             else 0.0 ∧  
+        arcBounds = getArcBounds(state.pieArea, state.explodedPieArea, angle1, angle, ep) ∧  
+        arc = new Arc2D.Double(arcBounds, angle1, angle, Arc2D.PIE) ∧  
+        (  
+          currentPass = 0 ⇒  
+            (  
+              shadowPaint ≠ null ⇒  
+                shadowArc = ShapeUtilities.createTranslatedShape(arc, shadowXOffset, shadowYOffset) ∧  
+                g2'.setPaint(shadowPaint) ∧  
+                g2'.fill(shadowArc)  
+            )  
+          currentPass = 1 ⇒  
+            key = getSectionKey(section) ∧  
+            g2'.setPaint(lookupSectionPaint(key, true)) ∧  
+            g2'.fill(arc) ∧  
+            (  
+              sectionOutlinesVisible ⇒  
+                g2'.setPaint(lookupSectionOutlinePaint(key)) ∧  
+                g2'.setStroke(lookupSectionOutlineStroke(key)) ∧  
+                g2'.draw(arc)  
+            ) ∧  
+            (  
+              state.info ≠ null ⇒  
+                entities = state.entityCollection ∧  
+                entities ≠ null ⇒  
+                  tip = if toolTipGenerator ≠ null  
+                        then toolTipGenerator.generateToolTip(dataset, key)  
+                        else null ∧  
+                  url = if urlGenerator ≠ null  
+                        then urlGenerator.generateURL(dataset, key, pieIndex)  
+                        else null ∧  
+                  entity = new PieSectionEntity(arc, dataset, pieIndex, section, key, tip, url) ∧  
+                  entities'.add(entity)  
+            )  
+        )  
+    ) ∧  
+    state.latestAngle' = angle2  
+  )  
+
+Functional Scenario Form  
+n = null  
+    && no operation  
+n ≠ null && direction = CLOCKWISE && angle > minAngle && currentPass = 0 && shadowPaint ≠ null  
+    && shadow drawn  
+n ≠ null && direction = CLOCKWISE && angle > minAngle && currentPass = 0 && shadowPaint = null  
+    && no shadow drawn  
+n ≠ null && direction = CLOCKWISE && angle > minAngle && currentPass = 1 && sectionOutlinesVisible = true && state.info ≠ null  
+    && section filled && outline drawn && entity added  
+n ≠ null && direction = CLOCKWISE && angle > minAngle && currentPass = 1 && sectionOutlinesVisible = false  
+    && section filled && no outline  
+n ≠ null && direction = CLOCKWISE && angle ≤ minAngle  
+    && angle updated without drawing  
+n ≠ null && direction = ANTICLOCKWISE && angle > minAngle && currentPass = 1 && toolTipGenerator = null && urlGenerator ≠ null  
+    && section filled && entity added with URL only  
+end_process  
+
+process drawSimpleLabels(g2: Graphics2D, keys: List, totalValue: double, plotArea: Rectangle2D, pieArea: Rectangle2D, state: PiePlotState)  
+pre pieArea ≠ null  
+post  
+  originalComposite = g2.getComposite() ∧  
+  g2'.setComposite(AlphaComposite.SRC_OVER with 1.0f) ∧  
+  labelInsets = new RectangleInsets(UnitType.RELATIVE, 0.18, 0.18, 0.18, 0.18) ∧  
+  labelsArea = labelInsets.createInsetRectangle(pieArea) ∧  
+  runningTotal = 0.0 ∧  
+  ∀ key ∈ keys: (  
+    n = dataset.getValue(key) ∧  
+    include = (  
+      (n = null ∧ ¬ignoreNullValues) ∨  
+      (n ≠ null ∧ (ignoreZeroValues ? n.doubleValue() > 0.0 : n.doubleValue() ≥ 0.0))  
+    ) ∧  
+    include ⇒ (  
+      v = if n ≠ null then n.doubleValue() else 0.0 ∧  
+      runningTotal' = runningTotal + v ∧  
+      mid = startAngle + (direction.getFactor() × (runningTotal - v ÷ 2.0) × 360 ÷ totalValue) ∧  
+      arc = new Arc2D.Double(labelsArea, startAngle, mid - startAngle, Arc2D.OPEN) ∧  
+      x = arc.getEndPoint().x ∧  
+      y = arc.getEndPoint().y ∧  
+      (  
+        labelGenerator ≠ null ⇒  
+          label = labelGenerator.generateSectionLabel(dataset, key) ∧  
+          label ≠ null ⇒ (  
+            g2'.setFont(labelFont) ∧  
+            fm = g2.getFontMetrics() ∧  
+            bounds = TextUtilities.getTextBounds(label, g2, fm) ∧  
+            out = labelPadding.createOutsetRectangle(bounds) ∧  
+            bg = ShapeUtilities.createTranslatedShape(out, x - bounds.centerX, y - bounds.centerY) ∧  
+            (  
+              labelShadowPaint ≠ null ⇒  
+                shadow = ShapeUtilities.createTranslatedShape(bg, shadowXOffset, shadowYOffset) ∧  
+                g2'.setPaint(labelShadowPaint) ∧  
+                g2'.fill(shadow)  
+            ) ∧  
+            (  
+              labelBackgroundPaint ≠ null ⇒  
+                g2'.setPaint(labelBackgroundPaint) ∧  
+                g2'.fill(bg)  
+            ) ∧  
+            (  
+              labelOutlinePaint ≠ null ∧ labelOutlineStroke ≠ null ⇒  
+                g2'.setPaint(labelOutlinePaint) ∧  
+                g2'.setStroke(labelOutlineStroke) ∧  
+                g2'.draw(bg)  
+            ) ∧  
+            g2'.setPaint(labelPaint) ∧  
+            g2'.setFont(labelFont) ∧  
+            TextUtilities.drawAlignedString(label, g2, x, y, TextAnchor.CENTER)  
+          )  
+      )  
+    )  
+  ) ∧  
+  g2''.setComposite(originalComposite)  
+
+Functional Scenario Form  
+for a key: n = null && ignoreNullValues = false  
+    && key included && label drawn if generator returns non-null  
+for a key: n ≠ null && v > 0 && ignoreZeroValues = true  
+    && key included && label drawn  
+for a key: n ≠ null && v = 0 && ignoreZeroValues = true  
+    && key excluded  
+for a key: labelGenerator = null  
+    && label not drawn  
+for a key: labelGenerator ≠ null && label = null  
+    && label not drawn  
+labelShadowPaint ≠ null  
+    && shadow drawn  
+labelBackgroundPaint ≠ null  
+    && background drawn  
+labelOutlinePaint ≠ null && labelOutlineStroke ≠ null  
+    && outline drawn  
+labelShadowPaint = null  
+    && no shadow  
+labelBackgroundPaint = null  
+    && no background  
+labelOutlinePaint = null  
+    && no outline  
+end_process  
+
+process drawLabels(g2: Graphics2D, keys: List, totalValue: double, plotArea: Rectangle2D, linkArea: Rectangle2D, state: PiePlotState)  
+pre plotArea ≠ null ∧ linkArea ≠ null  
+post  
+  originalComposite = g2.getComposite() ∧  
+  g2'.setComposite(AlphaComposite.SRC_OVER with 1.0f) ∧  
+  leftKeys = new DefaultKeyedValues() ∧  
+  rightKeys = new DefaultKeyedValues() ∧  
+  runningTotal = 0.0 ∧  
+  ∀ key ∈ keys: (  
+    n = dataset.getValue(key) ∧  
+    include = (  
+      (n = null ∧ ¬ignoreNullValues) ∨  
+      (n ≠ null ∧ (ignoreZeroValues ? n.doubleValue() > 0.0 : n.doubleValue() ≥ 0.0))  
+    ) ∧  
+    include ⇒ (  
+      v = if n ≠ null then n.doubleValue() else 0.0 ∧  
+      runningTotal' = runningTotal + v ∧  
+      mid = startAngle + (direction.getFactor() × (runningTotal - v ÷ 2.0) × 360 ÷ totalValue) ∧  
+      (  
+        cos(radians(mid)) < 0.0 ⇒ leftKeys'.addValue(key, mid)  
+        cos(radians(mid)) ≥ 0.0 ⇒ rightKeys'.addValue(key, mid)  
+      )  
+    )  
+  ) ∧  
+  g2''.setFont(labelFont) ∧  
+  marginX = plotArea.x + interiorGap × plotArea.width ∧  
+  gap = plotArea.width × labelGap ∧  
+  ww = linkArea.x - gap - marginX ∧  
+  labelWidth = labelPadding.trimWidth(ww) ∧  
+  (  
+    labelGenerator ≠ null ⇒ (  
+      drawLeftLabels(leftKeys, g2, plotArea, linkArea, labelWidth, state) ∧  
+      drawRightLabels(rightKeys, g2, plotArea, linkArea, labelWidth, state)  
+    )  
+  ) ∧  
+  g2'''.setComposite(originalComposite)  
+
+Functional Scenario Form  
+for a key: include = true && cos(mid) < 0.0  
+    && added to leftKeys  
+for a key: include = true && cos(mid) ≥ 0.0  
+    && added to rightKeys  
+for a key: n = null && ignoreNullValues = true  
+    && excluded  
+for a key: n ≠ null && v = 0 && ignoreZeroValues = true  
+    && excluded  
+labelGenerator ≠ null && leftKeys.size() > 0  
+    && left labels drawn  
+labelGenerator ≠ null && rightKeys.size() > 0  
+    && right labels drawn  
+labelGenerator = null  
+    && no labels drawn  
+end_process  
+
+process drawLeftLabels(leftKeys: KeyedValues, g2: Graphics2D, plotArea: Rectangle2D, linkArea: Rectangle2D, maxLabelWidth: float, state: PiePlotState)  
+pre leftKeys ≠ null ∧ plotArea ≠ null ∧ linkArea ≠ null  
+post  
+  labelDistributor.clear() ∧  
+  lGap = plotArea.width × labelGap ∧  
+  verticalLinkRadius = linkArea.height ÷ 2.0 ∧  
+  ∀ i ∈ [0, leftKeys.getItemCount()-1]: (  
+    label = labelGenerator.generateSectionLabel(dataset, leftKeys.getKey(i)) ∧  
+    label ≠ null ⇒ (  
+      block = TextUtilities.createTextBlock(label, labelFont, labelPaint, maxLabelWidth, new G2TextMeasurer(g2)) ∧  
+      labelBox = new TextBox(block) ∧  
+      labelBox.backgroundPaint' = labelBackgroundPaint ∧  
+      labelBox.outlinePaint' = labelOutlinePaint ∧  
+      labelBox.outlineStroke' = labelOutlineStroke ∧  
+      labelBox.shadowPaint' = labelShadowPaint ∧  
+      labelBox.interiorGap' = labelPadding ∧  
+      theta = radians(leftKeys.getValue(i)) ∧  
+      baseY = state.pieCenterY - sin(theta) × verticalLinkRadius ∧  
+      hh = labelBox.getHeight(g2) ∧  
+      labelDistributor'.addPieLabelRecord(new PieLabelRecord(  
+        leftKeys.getKey(i), theta, baseY, labelBox, hh,  
+        lGap ÷ 2.0 + lGap ÷ 2.0 × (-cos(theta)),  
+        0.9 + getExplodePercent(leftKeys.getKey(i))  
+      ))  
+    )  
+  ) ∧  
+  labelDistributor''.distributeLabels(plotArea.y, plotArea.height) ∧  
+  ∀ j ∈ [0, labelDistributor.getItemCount()-1]:  
+    drawLeftLabel(g2, state, labelDistributor.getPieLabelRecord(j))  
+
+Functional Scenario Form  
+for an item: label = null  
+    && skipped  
+for an item: label ≠ null  
+    && label box created and added to distributor  
+labelDistributor.getItemCount() > 0  
+    && labels distributed  
+labelDistributor.getItemCount() = 0  
+    && no labels drawn  
+end_process  
+
+process drawRightLabels(keys: KeyedValues, g2: Graphics2D, plotArea: Rectangle2D, linkArea: Rectangle2D, maxLabelWidth: float, state: PiePlotState)  
+pre keys ≠ null ∧ plotArea ≠ null ∧ linkArea ≠ null  
+post  
+  labelDistributor.clear() ∧  
+  lGap = plotArea.width × labelGap ∧  
+  verticalLinkRadius = linkArea.height ÷ 2.0 ∧  
+  ∀ i ∈ [0, keys.getItemCount()-1]: (  
+    label = labelGenerator.generateSectionLabel(dataset, keys.getKey(i)) ∧  
+    label ≠ null ⇒ (  
+      block = TextUtilities.createTextBlock(label, labelFont, labelPaint, maxLabelWidth, new G2TextMeasurer(g2)) ∧  
+      labelBox = new TextBox(block) ∧  
+      labelBox.backgroundPaint' = labelBackgroundPaint ∧  
+      labelBox.outlinePaint' = labelOutlinePaint ∧  
+      labelBox.outlineStroke' = labelOutlineStroke ∧  
+      labelBox.shadowPaint' = labelShadowPaint ∧  
+      labelBox.interiorGap' = labelPadding ∧  
+      theta = radians(keys.getValue(i)) ∧  
+      baseY = state.pieCenterY - sin(theta) × verticalLinkRadius ∧  
+      hh = labelBox.getHeight(g2) ∧  
+      labelDistributor'.addPieLabelRecord(new PieLabelRecord(  
+        keys.getKey(i), theta, baseY, labelBox, hh,  
+        lGap ÷ 2.0 + lGap ÷ 2.0 × cos(theta),  
+        0.9 + getExplodePercent(keys.getKey(i))  
+      ))  
+    )  
+  ) ∧  
+  labelDistributor''.distributeLabels(plotArea.y, plotArea.height) ∧  
+  ∀ j ∈ [0, labelDistributor.getItemCount()-1]:  
+    drawRightLabel(g2, state, labelDistributor.getPieLabelRecord(j))  
+
+Functional Scenario Form  
+for an item: label = null  
+    && skipped  
+for an item: label ≠ null  
+    && label box created and added to distributor  
+labelDistributor.getItemCount() > 0  
+    && labels distributed  
+labelDistributor.getItemCount() = 0  
+    && no labels drawn  
+end_process  
+
+process getLegendItems() result: LegendItemCollection  
+pre true  
+post  
+  result' = new LegendItemCollection() ∧  
+  (  
+    dataset ≠ null ⇒  
+      keys = dataset.getKeys() ∧  
+      section = 0 ∧  
+      ∀ key ∈ keys: (  
+        n = dataset.getValue(key) ∧  
+        include = (  
+          (n = null ∧ ¬ignoreNullValues) ∨  
+          (n ≠ null ∧ (  
+            n.doubleValue() = 0.0 ⇒ ¬ignoreZeroValues  
+            n.doubleValue() ≠ 0.0 ⇒ n.doubleValue() > 0.0  
+          ))  
+        ) ∧  
+        (  
+          include ⇒ (  
+            label = legendLabelGenerator.generateSectionLabel(dataset, key) ∧  
+            label ≠ null ⇒ (  
+              description = label ∧  
+              toolTipText = if legendLabelToolTipGenerator ≠ null  
+                           then legendLabelToolTipGenerator.generateSectionLabel(dataset, key)  
+                           else null ∧  
+              urlText = if legendLabelURLGenerator ≠ null  
+                       then legendLabelURLGenerator.generateURL(dataset, key, pieIndex)  
+                       else null ∧  
+              paint = lookupSectionPaint(key, true) ∧  
+              outlinePaint = lookupSectionOutlinePaint(key) ∧  
+              outlineStroke = lookupSectionOutlineStroke(key) ∧  
+              item = new LegendItem(label, description, toolTipText, urlText,  
+                                    true, getLegendItemShape(), true, paint,  
+                                    true, outlinePaint, outlineStroke,  
+                                    false, new Line2D.Float(), new BasicStroke(), Color.black) ∧  
+              item.dataset' = dataset ∧  
+              result'.add(item)  
+            ) ∧  
+            section' = section + 1  
+          ) ∨  
+          ¬include ⇒ section' = section + 1  
+        )  
+      )  
+  )  
+
+Functional Scenario Form  
+dataset = null  
+    && returns empty collection  
+for a key: n = null && ignoreNullValues = false  
+    && included && legend item added if label non-null  
+for a key: n ≠ null && v = 0 && ignoreZeroValues = true  
+    && excluded  
+for a key: n ≠ null && v > 0  
+    && included && legend item added  
+legendLabelGenerator returns null  
+    && legend item not added  
+end_process  
+
+process getArcBounds(unexploded: Rectangle2D, exploded: Rectangle2D, angle: double, extent: double, explodePercent: double) result: Rectangle2D  
+pre unexploded ≠ null ∧ exploded ≠ null  
+post  
+  (  
+    explodePercent = 0.0 ⇒ result' = unexploded  
+    explodePercent ≠ 0.0 ⇒  
+      arc1 = new Arc2D.Double(unexploded, angle, extent ÷ 2, Arc2D.OPEN) ∧  
+      point1 = arc1.getEndPoint() ∧  
+      arc2 = new Arc2D.Double(exploded, angle, extent ÷ 2, Arc2D.OPEN) ∧  
+      point2 = arc2.getEndPoint() ∧  
+      deltaX = (point1.x - point2.x) × explodePercent ∧  
+      deltaY = (point1.y - point2.y) × explodePercent ∧  
+      result' = new Rectangle2D.Double(  
+        unexploded.x - deltaX,  
+        unexploded.y - deltaY,  
+        unexploded.width,  
+        unexploded.height  
+      )  
+  )  
+
+Functional Scenario Form  
+explodePercent = 0.0  
+    && returns unexploded rectangle  
+explodePercent > 0.0  
+    && returns offset rectangle  
+end_process  
+
+process drawLeftLabel(g2: Graphics2D, state: PiePlotState, record: PieLabelRecord)  
+pre state ≠ null ∧ record ≠ null  
+post  
+  anchorX = state.linkArea.x ∧  
+  targetX = anchorX - record.getGap() ∧  
+  targetY = record.getAllocatedY() ∧  
+  (  
+    labelLinksVisible ⇒  
+      theta = record.getAngle() ∧  
+      linkX = state.pieCenterX + cos(theta) × state.pieWRadius × record.getLinkPercent() ∧  
+      linkY = state.pieCenterY - sin(theta) × state.pieHRadius × record.getLinkPercent() ∧  
+      elbowX = state.pieCenterX + cos(theta) × state.linkArea.width ÷ 2.0 ∧  
+      elbowY = state.pieCenterY - sin(theta) × state.linkArea.height ÷ 2.0 ∧  
+      anchorY = elbowY ∧  
+      g2'.setPaint(labelLinkPaint) ∧  
+      g2'.setStroke(labelLinkStroke) ∧  
+      g2'.draw(new Line2D.Double(linkX, linkY, elbowX, elbowY)) ∧  
+      g2'.draw(new Line2D.Double(anchorX, anchorY, elbowX, elbowY)) ∧  
+      g2'.draw(new Line2D.Double(anchorX, anchorY, targetX, targetY))  
+  ) ∧  
+  tb = record.getLabel() ∧  
+  tb.draw(g2, targetX, targetY, RectangleAnchor.RIGHT)  
+
+Functional Scenario Form  
+labelLinksVisible = true  
+    && three-part connecting line drawn  
+labelLinksVisible = false  
+    && no connecting lines drawn  
+end_process  
+
+process drawRightLabel(g2: Graphics2D, state: PiePlotState, record: PieLabelRecord)  
+pre state ≠ null ∧ record ≠ null  
+post  
+  anchorX = state.linkArea.x + state.linkArea.width ∧  
+  targetX = anchorX + record.getGap() ∧  
+  targetY = record.getAllocatedY() ∧  
+  (  
+    labelLinksVisible ⇒  
+      theta = record.getAngle() ∧  
+      linkX = state.pieCenterX + cos(theta) × state.pieWRadius × record.getLinkPercent() ∧  
+      linkY = state.pieCenterY - sin(theta) × state.pieHRadius × record.getLinkPercent() ∧  
+      elbowX = state.pieCenterX + cos(theta) × state.linkArea.width ÷ 2.0 ∧  
+      elbowY = state.pieCenterY - sin(theta) × state.linkArea.height ÷ 2.0 ∧  
+      anchorY = elbowY ∧  
+      g2'.setPaint(labelLinkPaint) ∧  
+      g2'.setStroke(labelLinkStroke) ∧  
+      g2'.draw(new Line2D.Double(linkX, linkY, elbowX, elbowY)) ∧  
+      g2'.draw(new Line2D.Double(anchorX, anchorY, elbowX, elbowY)) ∧  
+      g2'.draw(new Line2D.Double(anchorX, anchorY, targetX, targetY))  
+  ) ∧  
+  tb = record.getLabel() ∧  
+  tb.draw(g2, targetX, targetY, RectangleAnchor.LEFT)  
+
+Functional Scenario Form  
+labelLinksVisible = true  
+    && three-part connecting line drawn  
+labelLinksVisible = false  
+    && no connecting lines drawn  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof PiePlot) ⇒ result' = false  
+    ¬super.equals(obj) ⇒ result' = false  
+    else  
+      that = (PiePlot) obj ∧  
+      (  
+        this.pieIndex ≠ that.pieIndex ⇒ result' = false  
+        this.interiorGap ≠ that.interiorGap ⇒ result' = false  
+        this.circular ≠ that.circular ⇒ result' = false  
+        this.startAngle ≠ that.startAngle ⇒ result' = false  
+        this.direction ≠ that.direction ⇒ result' = false  
+        this.ignoreZeroValues ≠ that.ignoreZeroValues ⇒ result' = false  
+        this.ignoreNullValues ≠ that.ignoreNullValues ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.sectionPaintMap, that.sectionPaintMap) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.baseSectionPaint, that.baseSectionPaint) ⇒ result' = false  
+        this.sectionOutlinesVisible ≠ that.sectionOutlinesVisible ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.sectionOutlinePaintMap, that.sectionOutlinePaintMap) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.baseSectionOutlinePaint, that.baseSectionOutlinePaint) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.sectionOutlineStrokeMap, that.sectionOutlineStrokeMap) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.baseSectionOutlineStroke, that.baseSectionOutlineStroke) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.shadowPaint, that.shadowPaint) ⇒ result' = false  
+        this.shadowXOffset ≠ that.shadowXOffset ⇒ result' = false  
+        this.shadowYOffset ≠ that.shadowYOffset ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.explodePercentages, that.explodePercentages) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.labelGenerator, that.labelGenerator) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.labelFont, that.labelFont) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.labelPaint, that.labelPaint) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.labelBackgroundPaint, that.labelBackgroundPaint) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.labelOutlinePaint, that.labelOutlinePaint) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.labelOutlineStroke, that.labelOutlineStroke) ⇒ result' = false  
+        ¬PaintUtilities.equal(this.labelShadowPaint, that.labelShadowPaint) ⇒ result' = false  
+        this.simpleLabels ≠ that.simpleLabels ⇒ result' = false  
+        ¬this.simpleLabelOffset.equals(that.simpleLabelOffset) ⇒ result' = false  
+        ¬this.labelPadding.equals(that.labelPadding) ⇒ result' = false  
+        this.maximumLabelWidth ≠ that.maximumLabelWidth ⇒ result' = false  
+        this.labelGap ≠ that.labelGap ⇒ result' = false  
+        this.labelLinkMargin ≠ that.labelLinkMargin ⇒ result' = false  
+        this.labelLinksVisible ≠ that.labelLinksVisible ⇒ result' = false  
+        ¬PaintUtilities.equal(this.labelLinkPaint, that.labelLinkPaint) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.labelLinkStroke, that.labelLinkStroke) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.toolTipGenerator, that.toolTipGenerator) ⇒ result' = false  
+        ¬ObjectUtilities.equal(this.urlGenerator, that.urlGenerator) ⇒ result' = false  
+        this.minimumArcAngleToDraw ≠ that.minimumArcAngleToDraw ⇒ result' = false  
+        else result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+obj = this  
+    && result = true  
+¬(obj instanceof PiePlot)  
+    && result = false  
+¬super.equals(obj)  
+    && result = false  
+this.pieIndex ≠ that.pieIndex  
+    && result = false  
+this.interiorGap ≠ that.interiorGap  
+    && result = false  
+this.circular ≠ that.circular  
+    && result = false  
+this.startAngle ≠ that.startAngle  
+    && result = false  
+this.direction ≠ that.direction  
+    && result = false  
+this.ignoreZeroValues ≠ that.ignoreZeroValues  
+    && result = false  
+this.ignoreNullValues ≠ that.ignoreNullValues  
+    && result = false  
+¬ObjectUtilities.equal(this.sectionPaintMap, that.sectionPaintMap)  
+    && result = false  
+¬PaintUtilities.equal(this.baseSectionPaint, that.baseSectionPaint)  
+    && result = false  
+this.sectionOutlinesVisible ≠ that.sectionOutlinesVisible  
+    && result = false  
+¬ObjectUtilities.equal(this.sectionOutlinePaintMap, that.sectionOutlinePaintMap)  
+    && result = false  
+¬PaintUtilities.equal(this.baseSectionOutlinePaint, that.baseSectionOutlinePaint)  
+    && result = false  
+¬ObjectUtilities.equal(this.sectionOutlineStrokeMap, that.sectionOutlineStrokeMap)  
+    && result = false  
+¬ObjectUtilities.equal(this.baseSectionOutlineStroke, that.baseSectionOutlineStroke)  
+    && result = false  
+¬PaintUtilities.equal(this.shadowPaint, that.shadowPaint)  
+    && result = false  
+this.shadowXOffset ≠ that.shadowXOffset  
+    && result = false  
+this.shadowYOffset ≠ that.shadowYOffset  
+    && result = false  
+¬ObjectUtilities.equal(this.explodePercentages, that.explodePercentages)  
+    && result = false  
+¬ObjectUtilities.equal(this.labelGenerator, that.labelGenerator)  
+    && result = false  
+¬ObjectUtilities.equal(this.labelFont, that.labelFont)  
+    && result = false  
+¬PaintUtilities.equal(this.labelPaint, that.labelPaint)  
+    && result = false  
+¬PaintUtilities.equal(this.labelBackgroundPaint, that.labelBackgroundPaint)  
+    && result = false  
+¬PaintUtilities.equal(this.labelOutlinePaint, that.labelOutlinePaint)  
+    && result = false  
+¬ObjectUtilities.equal(this.labelOutlineStroke, that.labelOutlineStroke)  
+    && result = false  
+¬PaintUtilities.equal(this.labelShadowPaint, that.labelShadowPaint)  
+    && result = false  
+this.simpleLabels ≠ that.simpleLabels  
+    && result = false  
+¬this.simpleLabelOffset.equals(that.simpleLabelOffset)  
+    && result = false  
+¬this.labelPadding.equals(that.labelPadding)  
+    && result = false  
+this.maximumLabelWidth ≠ that.maximumLabelWidth  
+    && result = false  
+this.labelGap ≠ that.labelGap  
+    && result = false  
+this.labelLinkMargin ≠ that.labelLinkMargin  
+    && result = false  
+this.labelLinksVisible ≠ that.labelLinksVisible  
+    && result = false  
+¬PaintUtilities.equal(this.labelLinkPaint, that.labelLinkPaint)  
+    && result = false  
+¬ObjectUtilities.equal(this.labelLinkStroke, that.labelLinkStroke)  
+    && result = false  
+¬ObjectUtilities.equal(this.toolTipGenerator, that.toolTipGenerator)  
+    && result = false  
+¬ObjectUtilities.equal(this.urlGenerator, that.urlGenerator)  
+    && result = false  
+this.minimumArcAngleToDraw ≠ that.minimumArcAngleToDraw  
+    && result = false  
+all other attributes equal  
+    && result = true  
+end_process  
+process clone() result: PiePlot  
+pre true  
+post  
+  result' = (PiePlot) super.clone() ∧  
+  (result.dataset ≠ null ⇒ result.dataset.addChangeListener(result)) ∧  
+  (urlGenerator instanceof PublicCloneable ⇒ result.urlGenerator = ObjectUtilities.clone(urlGenerator)) ∧  
+  result.legendItemShape' = ShapeUtilities.clone(legendItemShape) ∧  
+  (legendLabelGenerator ≠ null ⇒ result.legendLabelGenerator = ObjectUtilities.clone(legendLabelGenerator)) ∧  
+  (legendLabelToolTipGenerator ≠ null ⇒ result.legendLabelToolTipGenerator = ObjectUtilities.clone(legendLabelToolTipGenerator)) ∧  
+  (legendLabelURLGenerator instanceof PublicCloneable ⇒ result.legendLabelURLGenerator = ObjectUtilities.clone(legendLabelURLGenerator))  
+
+Functional Scenario Form  
+result.dataset ≠ null  
+    && change listener added to cloned object  
+urlGenerator instanceof PublicCloneable  
+    && urlGenerator cloned  
+legendLabelGenerator ≠ null  
+    && legend label generator cloned  
+legendLabelToolTipGenerator ≠ null  
+    && tooltip generator cloned  
+legendLabelURLGenerator instanceof PublicCloneable  
+    && URL generator cloned  
+end_process  
+
+process writeObject(stream: ObjectOutputStream)  
+pre true  
+post  
+  stream.defaultWriteObject() ∧  
+  SerialUtilities.writePaint(baseSectionPaint, stream) ∧  
+  SerialUtilities.writePaint(baseSectionOutlinePaint, stream) ∧  
+  SerialUtilities.writeStroke(baseSectionOutlineStroke, stream) ∧  
+  SerialUtilities.writePaint(shadowPaint, stream) ∧  
+  SerialUtilities.writePaint(labelPaint, stream) ∧  
+  SerialUtilities.writePaint(labelBackgroundPaint, stream) ∧  
+  SerialUtilities.writePaint(labelOutlinePaint, stream) ∧  
+  SerialUtilities.writeStroke(labelOutlineStroke, stream) ∧  
+  SerialUtilities.writePaint(labelShadowPaint, stream) ∧  
+  SerialUtilities.writePaint(labelLinkPaint, stream) ∧  
+  SerialUtilities.writeStroke(labelLinkStroke, stream) ∧  
+  SerialUtilities.writeShape(legendItemShape, stream)  
+
+Functional Scenario Form  
+baseSectionPaint serialized  
+    && paint serialized  
+baseSectionOutlinePaint serialized  
+    && outline paint serialized  
+baseSectionOutlineStroke serialized  
+    && outline stroke serialized  
+shadowPaint serialized  
+    && shadow paint serialized  
+labelPaint serialized  
+    && label paint serialized  
+labelBackgroundPaint serialized  
+    && background paint serialized  
+labelOutlinePaint serialized  
+    && outline paint serialized  
+labelOutlineStroke serialized  
+    && outline stroke serialized  
+labelShadowPaint serialized  
+    && shadow paint serialized  
+labelLinkPaint serialized  
+    && link paint serialized  
+labelLinkStroke serialized  
+    && link stroke serialized  
+legendItemShape serialized  
+    && legend shape serialized  
+end_process  
+
+process readObject(stream: ObjectInputStream)  
+pre true  
+post  
+  stream.defaultReadObject() ∧  
+  baseSectionPaint' = SerialUtilities.readPaint(stream) ∧  
+  baseSectionOutlinePaint' = SerialUtilities.readPaint(stream) ∧  
+  baseSectionOutlineStroke' = SerialUtilities.readStroke(stream) ∧  
+  shadowPaint' = SerialUtilities.readPaint(stream) ∧  
+  labelPaint' = SerialUtilities.readPaint(stream) ∧  
+  labelBackgroundPaint' = SerialUtilities.readPaint(stream) ∧  
+  labelOutlinePaint' = SerialUtilities.readPaint(stream) ∧  
+  labelOutlineStroke' = SerialUtilities.readStroke(stream) ∧  
+  labelShadowPaint' = SerialUtilities.readPaint(stream) ∧  
+  labelLinkPaint' = SerialUtilities.readPaint(stream) ∧  
+  labelLinkStroke' = SerialUtilities.readStroke(stream) ∧  
+  legendItemShape' = SerialUtilities.readShape(stream)  
+
+Functional Scenario Form  
+baseSectionPaint deserialized  
+    && paint deserialized  
+baseSectionOutlinePaint deserialized  
+    && outline paint deserialized  
+baseSectionOutlineStroke deserialized  
+    && outline stroke deserialized  
+shadowPaint deserialized  
+    && shadow paint deserialized  
+labelPaint deserialized  
+    && label paint deserialized  
+labelBackgroundPaint deserialized  
+    && background paint deserialized  
+labelOutlinePaint deserialized  
+    && outline paint deserialized  
+labelOutlineStroke deserialized  
+    && outline stroke deserialized  
+labelShadowPaint deserialized  
+    && shadow paint deserialized  
+labelLinkPaint deserialized  
+    && link paint deserialized  
+labelLinkStroke deserialized  
+    && link stroke deserialized  
+legendItemShape deserialized  
+    && legend shape deserialized  
+end_process  
+
+end_module

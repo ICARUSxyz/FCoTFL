@@ -1,0 +1,837 @@
+module CMAESOptimizer
+type
+  iterations: int
+  historySize: int
+  maxIterations: int
+  dimension: int
+  fitnessHistory: double[]
+  ccovmuSep: double
+  ccov1Sep: double
+  chiN: double
+  ccovmu: double
+  ccov1: double
+  damps: double
+  cs: double
+  cc: double
+  sigma: double
+  mueff: double
+  logMu2: double
+  stopTolHistFun: double
+  stopTolFun: double
+  stopTolX: double
+  stopTolUpX: double
+  stopFitness: double
+
+var
+  DEFAULT_CHECKFEASABLECOUNT: int = 0
+  DEFAULT_STOPFITNESS: real = 0.0
+  DEFAULT_ISACTIVECMA: bool = true
+  DEFAULT_MAXITERATIONS: int = 30000
+  DEFAULT_DIAGONALONLY: int = 0
+
+process CMAESOptimizer() result: CMAESOptimizer
+post 
+  result = CMAESOptimizer(0)  // Delegate to single-param constructor
+Functional Scenario Form 
+validInvocation&&objectCreated
+end_process
+
+process CMAESOptimizer(lambda: int) result: CMAESOptimizer
+post 
+  result = CMAESOptimizer(lambda, null, DEFAULT_MAXITERATIONS, DEFAULT_STOPFITNESS,
+                          DEFAULT_ISACTIVECMA, DEFAULT_DIAGONALONLY,
+                          DEFAULT_CHECKFEASABLECOUNT, DEFAULT_RANDOMGENERATOR, false)
+Functional Scenario Form 
+lambda>=0&&validInitialization || 
+lambda<0&&preViolated
+end_process
+
+process CMAESOptimizer(lambda: int, inputSigma: double[]) result: CMAESOptimizer
+post 
+  result = CMAESOptimizer(lambda, inputSigma, DEFAULT_MAXITERATIONS, DEFAULT_STOPFITNESS,
+                          DEFAULT_ISACTIVECMA, DEFAULT_DIAGONALONLY,
+                          DEFAULT_CHECKFEASABLECOUNT, DEFAULT_RANDOMGENERATOR, false)
+Functional Scenario Form 
+lambda>=1&&sigmaDefined&&objectInitialized || 
+lambda<=0&&preViolated || 
+inputSigma=null&&partialInitialization
+end_process
+
+process CMAESOptimizer(
+  lambda: int, 
+  inputSigma: double[], 
+  maxIterations: int, 
+  stopFitness: real, 
+  isActiveCMA: bool, 
+  diagonalOnly: int, 
+  checkFeasableCount: int, 
+  random: RandomGenerator, 
+  generateStatistics: bool
+) result: CMAESOptimizer
+pre 
+  random ≠ null  // Critical non-null check
+post 
+  result.lambda = lambda ∧
+  result.inputSigma = inputSigma ∧
+  result.maxIterations = maxIterations ∧
+  result.isActiveCMA = isActiveCMA ∧
+  result.diagonalOnly = diagonalOnly ∧
+  result.random = random
+Functional Scenario Form 
+validLambda&&nonNullRandom&&fullInitialization || 
+random=null&&preViolated || 
+maxIterations<0&&defaultValueUsed
+end_process
+
+process CMAESOptimizer(
+  lambda: int,
+  inputSigma: double[],
+  maxIterations: int,
+  stopFitness: real,
+  isActiveCMA: bool,
+  diagonalOnly: int,
+  checkFeasableCount: int,
+  random: RandomGenerator,
+  generateStatistics: bool,
+  checker: ConvergenceChecker
+) result: CMAESOptimizer
+pre
+  random ≠ null ∧
+  checker ≠ null
+post
+  result.lambda = lambda ∧
+  result.inputSigma = (inputSigma ≠ null ? clone(inputSigma) : null) ∧
+  result.maxIterations = maxIterations ∧
+  result.stopFitness = stopFitness ∧
+  result.isActiveCMA = isActiveCMA ∧
+  result.diagonalOnly = diagonalOnly ∧
+  result.checkFeasableCount = checkFeasableCount ∧
+  result.random = random ∧
+  result.generateStatistics = generateStatistics
+Functional Scenario Form 
+validParams&&fullInitialization || 
+randomNull&&preViolated || 
+checkerNull&&preViolated
+end_process
+
+process getStatisticsSigmaHistory() result: List
+post
+  result = this.statisticsSigmaHistory
+Functional Scenario Form 
+objectInitialized&&returnsHistory || 
+objectNotInitialized&&returnsEmptyList
+end_process
+
+process getStatisticsMeanHistory() result: List
+post
+  result = this.statisticsMeanHistory
+Functional Scenario Form 
+generateStatisticsEnabled&&returnsHistory || 
+generateStatisticsDisabled&&returnsEmptyList
+end_process
+
+process getStatisticsFitnessHistory() result: List
+post
+  result = this.statisticsFitnessHistory
+Functional Scenario Form 
+historyPopulated&&returnsNonEmptyList || 
+historyEmpty&&returnsEmptyList
+end_process
+
+process getStatisticsDHistory() result: List
+post
+  result = this.statisticsDHistory
+Functional Scenario Form 
+optimizationPerformed&&returnsMatrixHistory || 
+noOptimization&&returnsEmptyList
+end_process
+
+process doOptimize() result: PointValuePair
+pre 
+  this.lambda ≥ 1 ∧ 
+  this.dimension > 0 ∧ 
+  this.maxIterations > 0
+post
+
+  result = optimum ∧ 
+  optimum.value = (this.isMinimize ? bestFitness : -bestFitness) ∧
+  
+
+  (stopFitness ≠ 0 ∧ bestFitness < (isMinimize ? stopFitness : -stopFitness) ⇒ 
+    terminationTriggered) ∧
+  
+  (exists i: int • (0≤i<dimension) ∧ 
+    sigma * max(abs(pcCol[i]), sqrtDiagC[i]) ≤ stopTolX ⇒ 
+    allDimensionsConverged) ∧
+  
+  (exists i: int • (0≤i<dimension) ∧ 
+    sigma * sqrtDiagC[i] > stopTolUpX ⇒ 
+    dimensionExceeded) ∧
+  
+  (iterations > 2 ∧ 
+    max(max(fitnessHistory), worstFitness) - min(min(fitnessHistory), bestFitness) < stopTolFun ⇒ 
+    fitnessConverged) ∧
+  
+  (iterations > size(fitnessHistory) ∧ 
+    max(fitnessHistory) - min(fitnessHistory) < stopTolHistFun ⇒ 
+    historyConverged) ∧
+  
+  (max(diagD)/min(diagD) > 1e7 ⇒ 
+    covarianceConditionExceeded) ∧
+
+  (bestValue == fitness[arindex[floor(0.1 + lambda/4.0)]] ⇒ 
+    sigma' = sigma * exp(0.2 + cs/damps)) ∧
+  
+  (iterations > 2 ∧ 
+    max(max(fitnessHistory), bestFitness) - min(min(fitnessHistory), bestFitness) == 0 ⇒ 
+    sigma' = sigma * exp(0.2 + cs/damps)) ∧
+  
+
+  (generateStatistics ⇒ 
+    statisticsSigmaHistory' = append(statisticsSigmaHistory, sigma) ∧
+    statisticsFitnessHistory' = append(statisticsFitnessHistory, bestFitness) ∧
+    statisticsMeanHistory' = append(statisticsMeanHistory, transpose(xmean)) ∧
+    statisticsDHistory' = append(statisticsDHistory, scalarMultiply(transpose(diagD), 1e5)))
+
+Functional Scenario Form 
+validParams&&returnsOptimum || 
+lambda<1&&preViolated || 
+dimension≤0&&preViolated || 
+tooManyEvaluations&&earlyTermination || 
+convergenceReached&&resultReturned || 
+stopFitnessMet&&loopTerminated || 
+allDimensionsConverged&&loopTerminated || 
+dimensionExceeded&&loopTerminated || 
+fitnessConverged&&loopTerminated || 
+historyConverged&&loopTerminated || 
+covarianceConditionExceeded&&loopTerminated || 
+sigmaAdjusted&&searchExpanded || 
+flatFitness&&sigmaIncreased || 
+statisticsRecorded&&dataUpdated
+end_process
+
+process checkParameters()
+pre 
+  startPointDefined: getStartPoint() ≠ null ∧ 
+  boundsConsistent: size(getLowerBound()) = size(getUpperBound())
+post
+  // Boundary validation logic
+  finiteBoundsExist: 
+    exists i: int • (0≤i<size(lB)) ∧ 
+      (!isInfinite(lB[i]) ∨ !isInfinite(uB[i])) ⇒ 
+        boundaries ≠ null
+  
+  mixedBoundsForbidden: 
+    (finiteBoundsExist ∧ exists j: int • (0≤j<size(lB)) ∧ 
+      (isInfinite(lB[j]) ∨ isInfinite(uB[j]))) ⇒ 
+        throw MathUnsupportedOperationException
+  
+  // Boundary overflow check
+  rangeOverflow: 
+    forall k: int • (0≤k<size(lB)) ∧ finiteBoundsExist ∧ !hasInfiniteBounds ⇒ 
+      (isInfinite(uB[k] - lB[k]) ⇒ 
+        throw NumberIsTooLargeException(uB[k], Double.MAX_VALUE + lB[k], true))
+  
+  // inputSigma validation
+  sigmaDimensionMismatch: 
+    inputSigma ≠ null ∧ size(inputSigma) ≠ size(init) ⇒ 
+      throw DimensionMismatchException(size(inputSigma), size(init))
+  
+  sigmaNegativeValue: 
+    inputSigma ≠ null ∧ exists m: int • (0≤m<size(inputSigma)) ∧ 
+      inputSigma[m] < 0 ⇒ 
+        throw NotPositiveException(inputSigma[m])
+  
+  sigmaOutOfBounds: 
+    boundaries ≠ null ∧ inputSigma ≠ null ∧ exists n: int • (0≤n<size(inputSigma)) ∧ 
+      inputSigma[n] > (uB[n] - lB[n]) ⇒ 
+        throw OutOfRangeException(inputSigma[n], 0, uB[n] - lB[n])
+Functional Scenario Form 
+validParameters&&noAction || 
+mixedFiniteInfiniteBounds&&operationExceptionThrown || 
+boundaryOverflow&&tooLargeExceptionThrown || 
+sigmaSizeMismatch&&dimensionExceptionThrown || 
+negativeSigma¬PositiveExceptionThrown || 
+sigmaExceedsRange&&outOfRangeExceptionThrown
+end_process
+
+process initializeCMA(guess: double[])
+pre 
+  dimension = size(guess) ∧ dimension > 0
+post
+  // Lambda auto-configuration
+  lambda' = (lambda ≤ 0 ? 4 + floor(3 * log(dimension)) : lambda) ∧
+  
+  // Sigma initialization
+  sigma' = max(insigma) ∧
+  insigma = [i: 0..dimension-1] • 
+    (boundaries = null ? 0.3 : inputSigma[i]) / 
+    (boundaries ≠ null ? boundaries[1][i] - boundaries[0][i] : 1.0) ∧
+  
+  // Termination criteria setup
+  stopTolUpX' = 1000 * max(insigma) ∧
+  stopTolX' = 1e-11 * max(insigma) ∧
+  stopTolFun' = 1e-12 ∧
+  stopTolHistFun' = 1e-13 ∧
+  
+  // Selection parameters
+  mu' = floor(lambda / 2.0) ∧
+  logMu2' = log(mu + 0.5) ∧
+  weights' = normalize(log(sequence(1, mu, 1)).scalarMultiply(-1).scalarAdd(logMu2)) ∧
+  mueff' = (sumw * sumw) / sumwq  // Variance-effectiveness
+  
+  // Dynamic parameters
+  cc' = (4.0 + mueff/dimension) / (dimension + 4.0 + 2.0*mueff/dimension) ∧
+  cs' = (mueff + 2.0) / (dimension + mueff + 3.0) ∧
+  damps' = (1.0 + 2.0*max(0, sqrt((mueff-1.0)/(dimension+1.0)) - 1.0)) * 
+           max(0.3, 1.0 - dimension/min(maxIterations, getMaxEvaluations()/lambda)) + cs ∧
+  ccov1' = 2.0 / ((dimension+1.3)*(dimension+1.3) + mueff) ∧
+  ccovmu' = min(1.0 - ccov1, 2.0*(mueff - 2.0 + 1.0/mueff)/((dimension+2.0)*(dimension+2.0) + mueff)) ∧
+  ccov1Sep' = min(1.0, ccov1*(dimension+1.5)/3.0) ∧
+  ccovmuSep' = min(1.0 - ccov1, ccovmu*(dimension+1.5)/3.0) ∧
+  chiN' = sqrt(dimension) * (1.0 - 1.0/(4.0*dimension) + 1.0/(21.0*dimension*dimension)) ∧
+  
+  // Internal state initialization
+  xmean' = createColumnMatrix(guess) ∧
+  diagD' = insigma.scalarMultiply(1.0/sigma) ∧
+  diagC' = square(diagD) ∧
+  pc' = zeros(dimension, 1) ∧
+  ps' = zeros(dimension, 1) ∧
+  normps' = 0 ∧
+  B' = identity(dimension) ∧
+  D' = ones(dimension, 1) ∧
+  BD' = multiply(B, repmat(transpose(diagD), dimension, 1)) ∧
+  C' = multiply(B, multiply(diag(square(D)), transpose(B))) ∧
+  
+  // Fitness history
+  historySize' = 10 + floor(3.0 * 10.0 * dimension / lambda) ∧
+  fitnessHistory' = [i: 0..historySize-1] • Double.MAX_VALUE
+
+Functional Scenario Form 
+validGuess&&parametersInitialized || 
+invalidDimension&&preViolated || 
+autoLambdaConfigured&&lambdaAdjusted || 
+boundariesDefined&&sigmaScaled || 
+boundariesNull&&defaultSigmaUsed
+end_process
+
+process updateEvolutionPaths(zmean: RealMatrix, xold: RealMatrix) result: bool
+pre 
+  zmean ≠ null ∧ xold ≠ null ∧ dimension > 0
+post
+  ps' = multiply(ps, 1.0 - cs) + 
+         multiply(B, zmean).scalarMultiply(sqrt(cs * (2.0 - cs) * mueff)) ∧
+  normps' = frobeniusNorm(ps') ∧
+  result = (normps' / sqrt(1.0 - power(1.0 - cs, 2.0 * iterations)) / chiN < 1.4 + 2.0/(dimension + 1.0)) ∧
+  pc' = multiply(pc, 1.0 - cc) + 
+        (result ? 
+          add(pc, multiply(subtract(xmean, xold), sqrt(cc * (2.0 - cc) * mueff) / sigma)) : 
+          pc)
+
+Functional Scenario Form 
+hsigTrue&&pcUpdated || 
+hsigFalse&&pcUnchanged || 
+largeNormps&&hsigFalse || 
+smallDimension&&hsigTrue
+end_process
+
+process updateCovarianceDiagonalOnly(hsig: bool, bestArz: RealMatrix, xold: RealMatrix)
+pre 
+  diagC ≠ null ∧ diagD ≠ null ∧ dimension > 0
+post
+
+  oldFac = (hsig ? 0 : ccov1Sep * cc * (2 - cc)) + (1 - ccov1Sep - ccovmuSep) ∧
+  diagC' = diagC.scalarMultiply(oldFac)
+               .add(square(pc).scalarMultiply(ccov1Sep))
+               .add(times(diagC, square(bestArz).multiply(weights)).scalarMultiply(ccovmuSep) ∧
+  diagD' = sqrt(diagC') ∧
+  
+
+  (diagonalOnly > 1 ∧ iterations > diagonalOnly ⇒ 
+    diagonalOnly' = 0 ∧ 
+    B' = eye(dimension, dimension) ∧ 
+    BD' = diag(diagD') ∧ 
+    C' = diag(diagC'))
+Functional Scenario Form 
+validParams&&covarianceUpdated || 
+hsigTrue&&noCorrection || 
+hsigFalse&&minorCorrection || 
+diagonalOnlyExceeded&&fullCovarianceEnabled
+end_process
+
+process updateCovariance(
+  hsig: bool, 
+  bestArx: RealMatrix, 
+  arz: RealMatrix, 
+  arindex: int[], 
+  xold: RealMatrix
+)
+pre 
+  ccov1 + ccovmu > 0 ∧ dimension > 0 ∧ mu = size(weights)
+post  arpos = bestArx.subtract(repmat(xold, 1, mu)).scalarMultiply(1/sigma) ∧
+  roneu = pc.multiply(pc.transpose()).scalarMultiply(ccov1) ∧
+  
+
+  (isActiveCMA ⇒ 
+    negccov = (1 - ccovmu) * 0.25 * mueff / (pow(dimension + 2, 1.5) + 2 * mueff) ∧
+    arReverseIndex = reverse(arindex) ∧
+    arzneg = selectColumns(arz, copyOf(arReverseIndex, mu)) ∧
+    arnorms = sqrt(sumRows(square(arzneg))) ∧
+    idxnorms = sortedIndices(arnorms.getRow(0)) ∧
+    ... 
+    C' = C.scalarMultiply(oldFac)
+          .add(roneu)
+          .add(arpos.scalarMultiply(ccovmu + (1 - negalphaold)*negccov)
+                   .multiply(times(repmat(weights, 1, dimension), arpos.transpose()))
+          .subtract(Cneg.scalarMultiply(negccov))
+  ) ∧
+  
+
+  (!isActiveCMA ⇒ 
+    oldFac = (hsig ? 0 : ccov1 * cc * (2 - cc)) + (1 - ccov1 - ccovmu) ∧
+    C' = C.scalarMultiply(oldFac)
+          .add(roneu)
+          .add(arpos.scalarMultiply(ccovmu)
+                   .multiply(times(repmat(weights, 1, dimension), arpos.transpose()))
+  ) ∧
+  
+  updateBD(negccov)
+Functional Scenario Form 
+activeMode&&negativeUpdateApplied || 
+standardMode&&positiveUpdateOnly || 
+smallPopulation&&negccovAdjusted || 
+invalidWeights&&updateSkipped
+end_process
+
+process updateBD(negccov: real)
+pre 
+  C ≠ null ∧ dimension > 0
+post
+  // Condition for update
+  (ccov1 + ccovmu + negccov > 0 ∧ 
+   (iterations % (1.0 / (ccov1 + ccovmu + negccov) / dimension / 10.0) < 1) ⇒
+      // Enforce symmetry
+      C' = triu(C,0).add(triu(C,1).transpose()) ∧
+      // Eigen decomposition
+      eig = new EigenDecomposition(C') ∧
+      B' = eig.getV() ∧
+      D' = eig.getD() ∧
+      diagD' = diag(D') ∧
+      // Ensure non-negative eigenvalues
+      (min(diagD') ≤ 0 ⇒ 
+          diagD' = diagD'.mapEntries(λ(i,val) • if val < 0 then 0 else val) ∧
+          tfac = max(diagD') / 1e14 ∧
+          C' = C'.add(eye(dimension, dimension).scalarMultiply(tfac)) ∧
+          diagD' = diagD'.add(ones(dimension,1).scalarMultiply(tfac))
+      ) ∧
+      // Check condition number
+      (max(diagD') > 1e14 * min(diagD') ⇒ 
+          tfac2 = max(diagD') / 1e14 - min(diagD') ∧
+          C' = C'.add(eye(dimension, dimension).scalarMultiply(tfac2)) ∧
+          diagD' = diagD'.add(ones(dimension,1).scalarMultiply(tfac2))
+      ) ∧
+      diagC' = diag(C') ∧
+      diagD'' = sqrt(diagD') ∧  // Now D contains standard deviations
+      BD' = times(B', repmat(diagD''.transpose(), dimension, 1))
+  )
+Functional Scenario Form 
+conditionMet&&bdUpdated || 
+conditionNotMet&&noUpdate || 
+negativeEigenvaluesCorrected || 
+largeConditionNumberCorrected
+end_process
+
+process push(vals: real[], val: real)
+pre 
+  vals ≠ null ∧ length(vals) > 0
+post
+  // Shift all values to the right and insert at the front
+  for i from length(vals)-1 downto 1 • vals'[i] = vals[i-1] ∧
+  vals'[0] = val
+Functional Scenario Form 
+validInput&&historyUpdated
+end_process
+
+process sortedIndices(doubles: real[]) result: int[]
+pre 
+  doubles ≠ null
+post
+  // Create an array of DoubleIndex objects, sort them, then extract indices
+  dis = array of DoubleIndex, size = length(doubles) ∧
+  for i in [0, length(doubles)-1] • dis[i] = new DoubleIndex(doubles[i], i) ∧
+  sortedDis = Arrays.sort(dis) ∧
+  result = array of integers, size = length(doubles) ∧
+  for i in [0, length(doubles)-1] • result[i] = sortedDis[i].index
+Functional Scenario Form 
+validInput&&indicesReturned
+end_process
+
+process FitnessFunction() result: FitnessFunction
+post 
+  result.valueRange = 1.0 ∧ result.isRepairMode = true
+Functional Scenario Form 
+defaultInitialization
+end_process
+
+process encode(ff: FitnessFunction, x: double[]) result: double[]
+post 
+  (boundaries = null ⇒ result = x) ∧
+  (boundaries ≠ null ⇒ 
+    result = new double[size(x)] ∧
+    forall i: int • (0≤i<size(x)) ⇒ 
+      result[i] = x[i] / (boundaries[1][i] - boundaries[0][i]))
+Functional Scenario Form 
+noBoundaries&&identityReturn || 
+withBoundaries&&normalizedValues
+end_process
+
+process decode(ff: FitnessFunction, x: double[]) result: double[]
+post 
+  (boundaries = null ⇒ result = x) ∧
+  (boundaries ≠ null ⇒ 
+    result = new double[size(x)] ∧
+    forall i: int • (0≤i<size(x)) ⇒ 
+      result[i] = x[i] * (boundaries[1][i] - boundaries[0][i]))
+Functional Scenario Form 
+noBoundaries&&identityReturn || 
+withBoundaries&&denormalizedValues
+end_process
+
+process repair(ff: FitnessFunction, x: double[]) result: double[]
+post 
+  result = new double[size(x)] ∧
+  forall i: int • (0≤i<size(x)) ⇒ 
+    (x[i] < 0 ⇒ result[i] = 0) ∧
+    (x[i] > 1.0 ⇒ result[i] = 1.0) ∧
+    (0 ≤ x[i] ∧ x[i] ≤ 1.0 ⇒ result[i] = x[i])
+Functional Scenario Form 
+allValid&&unchanged || 
+negativeValuesClipped || 
+excessValuesClipped || 
+mixedInputs&&repaired
+end_process
+
+process repairAndDecode(ff: FitnessFunction, x: double[]) result: double[]
+post 
+  (boundaries ≠ null ∧ ff.isRepairMode ⇒ 
+      result = decode(ff, repair(ff, x))) ∧
+  (boundaries = null ∨ ¬ff.isRepairMode ⇒ 
+      result = decode(ff, x))
+Functional Scenario Form 
+activeRepair&&repairedDecoded || 
+inactiveRepair&&directDecoded
+end_process
+
+process isFeasible(ff: FitnessFunction, x: double[]) result: bool
+post 
+  (boundaries = null ⇒ result = true) ∧
+  (boundaries ≠ null ⇒ 
+    bLoEnc = encode(ff, boundaries[0]) ∧
+    bHiEnc = encode(ff, boundaries[1]) ∧
+    result = forall i: int • (0≤i<size(x)) ⇒ 
+               x[i] ≥ bLoEnc[i] ∧ x[i] ≤ bHiEnc[i])
+Functional Scenario Form 
+noBoundaries&&alwaysFeasible || 
+withinBounds&&true || 
+outOfBounds&&false
+end_process
+
+process value(ff: FitnessFunction, point: double[]) result: real
+post 
+  (boundaries ≠ null ∧ ff.isRepairMode ⇒ 
+      repaired = repair(ff, point) ∧
+      decoded = decode(ff, repaired) ∧
+      baseValue = computeObjectiveValue(decoded) ∧
+      p = penalty(ff, point, repaired) ∧
+      total = baseValue + p ∧
+      result = (isMinimize ? total : -total)) ∧
+  (boundaries = null ∨ ¬ff.isRepairMode ⇒ 
+      decoded = decode(ff, point) ∧
+      baseValue = computeObjectiveValue(decoded) ∧
+      result = (isMinimize ? baseValue : -baseValue))
+Functional Scenario Form 
+repairActive&&penalizedValue || 
+repairInactive&&directValue
+end_process
+
+process penalty(ff: FitnessFunction, x: double[], repaired: double[]) result: real
+post 
+  penalty = 0.0 ∧
+  forall i: int • (0≤i<size(x)) ⇒ 
+      penalty = penalty + abs(x[i] - repaired[i]) ∧
+  penalty = penalty * ff.valueRange ∧
+  result = (isMinimize ? penalty : -penalty)
+Functional Scenario Form 
+noDeviation&&zeroPenalty || 
+deviationsExist&&scaledPenalty
+end_process
+
+process log(m: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null ∧ ∀i,j • m[i][j] > 0  // Positive elements required
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • result[i][j] = ln(m[i][j])
+Functional Scenario Form 
+validMatrix&&logComputed || 
+nonPositiveElement&&domainException
+end_process
+
+process sqrt(m: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null ∧ ∀i,j • m[i][j] ≥ 0  // Non-negative elements
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • result[i][j] = sqrt(m[i][j])
+Functional Scenario Form 
+nonNegativeMatrix&&sqrtComputed || 
+negativeElement&&domainException
+end_process
+
+process square(m: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • result[i][j] = m[i][j] * m[i][j]
+Functional Scenario Form 
+validMatrix&&squared || 
+nullInput&&returnsNull
+end_process
+
+process times(m: RealMatrix, n: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null ∧ n ≠ null ∧ m.rows = n.rows ∧ m.cols = n.cols
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • result[i][j] = m[i][j] * n[i][j]
+Functional Scenario Form 
+sameDimensions&&multiplied || 
+dimensionMismatch&&returnsNull
+end_process
+
+process divide(m: RealMatrix, n: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null ∧ n ≠ null ∧ m.rows = n.rows ∧ m.cols = n.cols ∧
+  ∀i,j • n[i][j] ≠ 0  // No division by zero
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • result[i][j] = m[i][j] / n[i][j]
+Functional Scenario Form 
+validDivision&&quotientComputed || 
+zeroDivisor&&arithmeticException
+end_process
+
+process selectColumns(m: RealMatrix, cols: int[]) result: RealMatrix
+pre 
+  m ≠ null ∧ cols ≠ null ∧ ∀c • 0 ≤ c < cols.length ⇒ cols[c] < m.cols
+post 
+  result.rows = m.rows ∧ result.cols = cols.length ∧
+  ∀i,j • result[i][j] = m[i][cols[j]]
+Functional Scenario Form 
+validSelection&&columnsExtracted || 
+invalidColumnIndex&&indexOutOfBounds
+end_process
+
+process triu(m: RealMatrix, k: int) result: RealMatrix
+pre 
+  m ≠ null
+post 
+  result.rows = m.rows ∧ result.cols = m.cols ∧
+  ∀i,j • (i ≤ j - k ⇒ result[i][j] = m[i][j]) ∧ 
+          (i > j - k ⇒ result[i][j] = 0)
+Functional Scenario Form 
+validMatrix&&upperTriangular || 
+k>cols&&zeroMatrix
+end_process
+
+process sumRows(m: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null
+post 
+  result.rows = 1 ∧ result.cols = m.cols ∧
+  ∀j • result[0][j] = sum_{i=0}^{m.rows-1} m[i][j]
+Functional Scenario Form 
+validMatrix&&rowSumsComputed || 
+emptyMatrix&&zeroRow
+end_process
+
+process diag(m: RealMatrix) result: RealMatrix
+pre 
+  m ≠ null
+post 
+  (m.cols = 1 ⇒ 
+      result = square matrix with size m.rows × m.rows ∧
+      ∀i,j • (i=j ⇒ result[i][j] = m[i][0]) ∧ (i≠j ⇒ result[i][j]=0)
+  ) ∧
+  (m.cols ≠ 1 ⇒ 
+      result = column matrix with size m.rows × 1 ∧
+      ∀i • result[i][0] = m[i][i]  // Assumes square matrix
+  )
+Functional Scenario Form 
+columnVector&&diagonalMatrixCreated || 
+squareMatrix&&diagonalExtracted || 
+nonSquareInput&&lastElementUsed
+end_process
+
+process copyColumn(m1: RealMatrix, col1: int, m2: RealMatrix, col2: int)
+pre 
+  m1 ≠ null ∧ m2 ≠ null ∧ 
+  0 ≤ col1 < m1.cols ∧ 0 ≤ col2 < m2.cols ∧
+  m1.rows = m2.rows  // Row dimension must match
+post 
+  ∀i • (0≤i<m1.rows) ⇒ m2'[i][col2] = m1[i][col1]
+Functional Scenario Form 
+validCopy&&columnUpdated || 
+rowMismatch&&operationSkipped || 
+invalidColumn&&indexOutOfBounds
+end_process
+
+process ones(n: int, m: int) result: RealMatrix
+pre 
+  n > 0 ∧ m > 0
+post 
+  result.rows = n ∧ result.cols = m ∧
+  ∀i,j • result[i][j] = 1.0
+Functional Scenario Form 
+positiveDimensions&&onesMatrix || 
+nonPositiveDimension&&returnsNull
+end_process
+
+process eye(n: int, m: int) result: RealMatrix
+pre 
+  n > 0 ∧ m > 0
+post 
+  result.rows = n ∧ result.cols = m ∧
+  ∀i,j • (i=j ∧ i<min(n,m) ⇒ result[i][j]=1.0) ∧ 
+          (i≠j ∨ i≥min(n,m) ⇒ result[i][j]=0.0)
+Functional Scenario Form 
+rectangularMatrix&&identityPattern || 
+squareMatrix&&identityDiagonal
+end_process
+
+process zeros(n: int, m: int) result: RealMatrix
+pre 
+  n > 0 ∧ m > 0
+post 
+  result.rows = n ∧ result.cols = m ∧
+  ∀i,j • result[i][j] = 0.0
+Functional Scenario Form 
+positiveDimensions&&zerosMatrix || 
+nonPositiveDimension&&returnsNull
+end_process
+
+process repmat(mat: RealMatrix, n: int, m: int) result: RealMatrix
+pre 
+  mat ≠ null ∧ n > 0 ∧ m > 0
+post 
+  result.rows = n * mat.rows ∧ result.cols = m * mat.cols ∧
+  ∀i,j • result[i][j] = mat[i % mat.rows][j % mat.cols]
+Functional Scenario Form 
+validInput&&tiledMatrix || 
+invalidReplication&&returnsNull
+end_process
+
+process sequence(start: real, end: real, step: real) result: RealMatrix
+pre 
+  step ≠ 0 ∧ ((start ≤ end ∧ step > 0) ∨ (start ≥ end ∧ step < 0))
+post 
+  size = ceil((end - start)/step) + 1 ∧
+  result.rows = size ∧ result.cols = 1 ∧
+  ∀k • (0≤k<size) ⇒ result[k][0] = start + k * step
+Functional Scenario Form 
+ascendingSequence&&columnMatrix || 
+descendingSequence&&columnMatrix || 
+zeroStep&&invalidOperation || 
+infiniteLoop&&stepSignMismatch
+end_process
+
+process max(m: RealMatrix) result: real
+pre 
+  m ≠ null ∧ m.rows > 0 ∧ m.cols > 0
+post 
+  result = max_{i,j} m[i][j]  // Maximum element value
+Functional Scenario Form 
+nonEmptyMatrix&&maxValueFound || 
+emptyMatrix&&returnsMinDouble || 
+nullInput&&returnsMinDouble
+end_process
+
+process min(m: RealMatrix) result: real
+pre 
+  m ≠ null ∧ m.rows > 0 ∧ m.cols > 0
+post 
+  result = min_{i,j} m[i][j]  // Minimum element value
+Functional Scenario Form 
+nonEmptyMatrix&&minValueFound || 
+emptyMatrix&&returnsMaxDouble || 
+nullInput&&returnsMaxDouble
+end_process
+
+process max(arr: double[]) result: real
+pre 
+  arr ≠ null ∧ length(arr) > 0
+post 
+  result = max_{i} arr[i]  // Maximum array element
+Functional Scenario Form 
+nonEmptyArray&&maxValueFound || 
+emptyArray&&returnsMinDouble
+end_process
+
+process min(arr: double[]) result: real
+pre 
+  arr ≠ null ∧ length(arr) > 0
+post 
+  result = min_{i} arr[i]  // Minimum array element
+Functional Scenario Form 
+nonEmptyArray&&minValueFound || 
+emptyArray&&returnsMaxDouble
+end_process
+
+process inverse(indices: int[]) result: int[]
+pre 
+  indices ≠ null ∧ ∀i • 0 ≤ indices[i] < indices.length  // Valid permutation
+post 
+  result.length = indices.length ∧
+  ∀i • (0≤i<indices.length) ⇒ result[indices[i]] = i
+Functional Scenario Form 
+validPermutation&&inverseCreated || 
+duplicateIndex&&undefinedBehavior || 
+outOfBoundIndex&&indexException
+end_process
+
+process reverse(indices: int[]) result: int[]
+pre 
+  indices ≠ null
+post 
+  result.length = indices.length ∧
+  ∀i • (0≤i<indices.length) ⇒ result[i] = indices[indices.length - i - 1]
+Functional Scenario Form 
+nonEmptyArray&&reversedOrder || 
+emptyArray&&emptyResult
+end_process
+
+process randn(size: int) result: double[]
+pre 
+  size ≥ 0 ∧ this.random ≠ null
+post 
+  result.length = size ∧
+  ∀i • (0≤i<size) ⇒ result[i] = Gaussian(0,1)  // Normal distribution
+Functional Scenario Form 
+positiveSize&&gaussianArray || 
+zeroSize&&emptyArray || 
+nullRandom&&exceptionThrown
+end_process
+
+process randn1(rows: int, cols: int) result: RealMatrix
+pre 
+  rows ≥ 0 ∧ cols ≥ 0 ∧ this.random ≠ null
+post 
+  result.rows = rows ∧ result.cols = cols ∧
+  ∀i,j • result[i][j] = Gaussian(0,1)
+Functional Scenario Form 
+validDimensions&&gaussianMatrix || 
+zeroDimension&&emptyMatrix
+end_process
+
+end_module

@@ -1,0 +1,82 @@
+**Bug Report: VideoRecorder Functionality Issues**
+
+---
+
+**Test Case 1: Immediate Termination on Object Destruction**
+
+**Action:**
+Create and immediately destroy a `VideoRecorder` instance.
+
+**Expected:**
+No recording starts or stops unexpectedly.
+
+**Observed:**
+`stopRecording()` is triggered during destruction even though recording was never started.
+
+**Log:**
+
+```plaintext
+[DEBUG] VideoRecorder destructor called  
+[INFO] Attempting to stop recording...  
+[ERROR] No ongoing recording to stop.
+```
+
+---
+
+**Test Case 2: File Naming Issue**
+
+**Action:**
+Start a recording session.
+
+**Expected:**
+File is created with `.mp4` extension.
+
+**Observed:**
+File is saved with incorrect name, missing file extension.
+
+**Log:**
+
+```plaintext
+[INFO] Recording started. Saving to: video_20250808mp4  
+[WARN] File extension may be malformed
+```
+
+---
+
+**Test Case 3: Frame Rate Simulation**
+
+**Action:**
+Observe simulated frame rate during recording loop.
+
+**Expected:**
+Frames written approximately every 33ms (30fps).
+
+**Observed:**
+Delay is shorter than expected, causing frame overflow.
+
+**Log:**
+
+```plaintext
+[INFO] Writing frame at 30ms interval  
+[DEBUG] Frame timestamps too dense; expected 33ms
+```
+
+---
+
+**Test Case 4: Output Stream Error on Stop**
+
+**Action:**
+Stop a recording session.
+
+**Expected:**
+Recording stops and path is printed correctly.
+
+**Observed:**
+Error in printing output due to malformed stream output expression.
+
+**Log:**
+
+```plaintext
+[INFO] Recording stopped. File saved at: video_20250808.mp4std:endl;
+[ERROR] Unexpected characters in log output
+```

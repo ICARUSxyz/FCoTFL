@@ -1,0 +1,175 @@
+module ArrayUtils
+type 
+    array: Object,
+    stringIfNull: String,
+    array1: Object,
+    array2: Object,
+    resultString: String,
+    resultMap: Map of Object,
+    items: sequence of T,
+    clonedArray: sequence of T
+
+var 
+    EMPTY_OBJECT_ARRAY: sequence of Object = [],
+    EMPTY_CLASS_ARRAY: sequence of Class = [],
+    EMPTY_STRING_ARRAY: sequence of String = [],
+    EMPTY_LONG_ARRAY: sequence of long = [],
+    EMPTY_LONG_OBJECT_ARRAY: sequence of Long = [],
+    EMPTY_INT_ARRAY: sequence of int = [],
+    EMPTY_INTEGER_OBJECT_ARRAY: sequence of Integer = [],
+    EMPTY_SHORT_ARRAY: sequence of short = [],
+    EMPTY_SHORT_OBJECT_ARRAY: sequence of Short = [],
+    EMPTY_BYTE_ARRAY: sequence of byte = [],
+    EMPTY_BYTE_OBJECT_ARRAY: sequence of Byte = [],
+    EMPTY_DOUBLE_ARRAY: sequence of double = [],
+    EMPTY_DOUBLE_OBJECT_ARRAY: sequence of Double = [],
+    EMPTY_FLOAT_ARRAY: sequence of float = [],
+    EMPTY_FLOAT_OBJECT_ARRAY: sequence of Float = [],
+    EMPTY_BOOLEAN_ARRAY: sequence of boolean = [],
+    EMPTY_BOOLEAN_OBJECT_ARRAY: sequence of Boolean = [],
+    EMPTY_CHAR_ARRAY: sequence of char = [],
+    EMPTY_CHARACTER_OBJECT_ARRAY: sequence of Character = [],
+    INDEX_NOT_FOUND: int = -1
+
+process toString(array: Object) result: String
+pre 
+    true
+post 
+    result = toString(array, "{}")
+Functional Scenario Form
+true && (result = toString(array, "{}"))
+end_process
+
+process toString(array: Object, stringIfNull: String) result: String
+pre 
+    true
+post 
+    (array = null ⇒ result = stringIfNull) ∧ 
+    (array ≠ null ⇒ result = new ToStringBuilder(array, SIMPLE_STYLE).append(array).toString())
+Functional Scenario Form
+(array = null) && (result = stringIfNull) or 
+(array ≠ null) && (result = new ToStringBuilder(array, SIMPLE_STYLE).append(array).toString())
+end_process
+
+process isEquals(array1: Object, array2: Object) result: Boolean
+pre 
+    true
+post 
+    result = new EqualsBuilder().append(array1, array2).isEquals()
+Functional Scenario Form
+true && (result = new EqualsBuilder().append(array1, array2).isEquals())
+end_process
+
+process toMap(array: sequence of Object) result: Map of Object
+pre 
+    true
+post 
+    (array = null ⇒ result = null) ∧ 
+    (array ≠ null ⇒ result = map such that 
+        for each object in array:
+            if object is Map.Entry then
+                map.put(object.key, object.value)
+            else if object is Object[2+] then
+                map.put(object[0], object[1])
+            else
+                throw IllegalArgumentException)
+Functional Scenario Form
+(array = null) && (result = null) or 
+(array ≠ null && all object in array are Map.Entry or Object[2+]) && (result = constructed Map) or
+(array ≠ null && exists object in array invalid) && (exception thrown)
+end_process
+
+process toArray(items: sequence of T) result: sequence of T
+pre 
+    true
+post 
+    result = items
+Functional Scenario Form
+true && (result = items)
+end_process
+
+process clone(array: sequence of T) result: sequence of T
+pre 
+    true
+post 
+    (array = null ⇒ result = null) ∧ 
+    (array ≠ null ⇒ result = shallow copy of array)
+Functional Scenario Form
+(array = null) && (result = null) or 
+(array ≠ null) && (result = shallow copy of array)
+end_process
+process cloneChar(array: sequence of char) result: sequence of char
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒ result = array)
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null) && (result = array)
+end_process
+
+process cloneByte(array: sequence of byte) result: sequence of byte
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒ result = array)
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null) && (result = array)
+end_process
+
+process cloneDouble(array: sequence of double) result: sequence of double
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒ result = array)
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null) && (result = array)
+end_process
+
+process cloneFloat(array: sequence of float) result: sequence of float
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒ result = array)
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null) && (result = array)
+end_process
+
+process cloneBoolean(array: sequence of Boolean) result: sequence of Boolean
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒ result = array)
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null) && (result = array)
+end_process
+
+process subarrayShort(array: sequence of short, startIndexInclusive: int, endIndexExclusive: int) result: sequence of short
+pre
+    true
+post
+    (array = null ⇒ result = null) ∧
+    (array ≠ null ⇒
+        let start = if startIndexInclusive < 0 then 0 else startIndexInclusive in
+        let end = if endIndexExclusive > length(array) then length(array) else endIndexExclusive in
+        let size = end - start in
+        (size ≤ 0 ⇒ result = EMPTY_SHORT_ARRAY) ∧
+        (size > 0 ⇒ result = array[start .. end - 1])
+    )
+Functional Scenario Form
+(array = null) && (result = null) or
+(array ≠ null && (endIndexExclusive - startIndexInclusive) ≤ 0) && (result = EMPTY_SHORT_ARRAY) or
+(array ≠ null && (endIndexExclusive - startIndexInclusive) > 0) &&
+(result = array[max(startIndexInclusive, 0) .. min(endIndexExclusive, length(array)) - 1])
+end_process
+
+end_module

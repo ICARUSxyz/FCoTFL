@@ -1,0 +1,8 @@
+openai==1.2.0
+torch==2.1.0
+transformers==4.35.0
+accelerate==0.22.0
+sentencepiece           
+safetensors             
+tiktoken             
+numpy                  

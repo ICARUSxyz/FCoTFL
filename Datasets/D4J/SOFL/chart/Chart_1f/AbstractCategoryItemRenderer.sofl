@@ -1,0 +1,866 @@
+module AbstractCategoryItemRenderer
+type
+  plot: CategoryPlot
+  itemLabelGeneratorList: ObjectList
+  baseItemLabelGenerator: CategoryItemLabelGenerator
+  toolTipGeneratorList: ObjectList
+  baseToolTipGenerator: CategoryToolTipGenerator
+  urlGeneratorList: ObjectList
+  baseURLGenerator: CategoryURLGenerator
+  legendItemLabelGenerator: CategorySeriesLabelGenerator
+  legendItemToolTipGenerator: CategorySeriesLabelGenerator
+  legendItemURLGenerator: CategorySeriesLabelGenerator
+  backgroundAnnotations: List
+  foregroundAnnotations: List
+  rowCount: int
+  columnCount: int
+  generator: CategoryItemLabelGenerator
+  notify: boolean
+  rowCount: int
+  columnCount: int
+  visibleSeriesTemp: array<int>
+  visibleSeries: array<int>
+  selectionState: CategoryDatasetSelectionState
+  boundsRange: Range
+  rowKey: Comparable
+  columnKey: Comparable
+  orientation: PlotOrientation
+  line: Line2D
+  value: double
+  PublicCloneable: <interface>
+  CategoryAxis
+  datasetIndex: int
+var
+  serialVersionUID: long = 1247553218442497391
+
+process Constructor()  this: AbstractCategoryItemRenderer
+pre true
+post
+  this.itemLabelGeneratorList = new ObjectList() ∧
+  this.toolTipGeneratorList = new ObjectList() ∧
+  this.urlGeneratorList = new ObjectList() ∧
+  this.legendItemLabelGenerator = new StandardCategorySeriesLabelGenerator() ∧
+  this.backgroundAnnotations = new ArrayList() ∧
+  this.foregroundAnnotations = new ArrayList()
+Functional Scenario Form 
+true && initializes all collection fields with empty instances
+end_process
+
+process getPassCount()  result: int
+pre true
+post result = 1
+Functional Scenario Form 
+true && returns fixed pass count 1
+end_process
+
+process getPlot()  result: CategoryPlot
+pre true
+post result = this.plot
+Functional Scenario Form 
+true && returns current assigned plot instance
+end_process
+
+process setPlot( plot: CategoryPlot)
+pre plot ≠ null
+post this.plot' = plot
+Functional Scenario Form 
+plot ≠ null && updates renderer's plot reference
+end_process
+
+process getItemLabelGenerator( row: int,  column: int,  selected: boolean)  result: CategoryItemLabelGenerator
+pre true
+post 
+  (∃gen: this.itemLabelGeneratorList[row] | result = gen) ∨
+  (this.itemLabelGeneratorList[row] = null ∧ result = this.baseItemLabelGenerator)
+Functional Scenario Form 
+itemLabelGeneratorList contains row entry && returns specific generator or
+itemLabelGeneratorList row entry null && returns base generator
+end_process
+
+process getSeriesItemLabelGenerator( series: int)  result: CategoryItemLabelGenerator
+pre series ≥ 0
+post result = this.itemLabelGeneratorList[series]
+Functional Scenario Form 
+valid series index && returns generator from list position
+end_process
+
+process setSeriesItemLabelGenerator( series: int,  generator: CategoryItemLabelGenerator)
+pre series ≥ 0
+post 
+  this.itemLabelGeneratorList'[series] = generator ∧
+  this.itemLabelGeneratorList' = this.itemLabelGeneratorList ⊕ [series ↦ generator]
+Functional Scenario Form 
+valid series index && updates list entry at position
+end_process
+
+process setSeriesItemLabelGeneratorWithNotify( series: int,  generator: CategoryItemLabelGenerator,  notify: boolean)
+pre series ≥ 0
+post 
+  this.itemLabelGeneratorList'[series] = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+notification enabled && triggers renderer change event or
+notification disabled && silent update
+end_process
+
+process getBaseItemLabelGenerator()  result: CategoryItemLabelGenerator
+pre true
+post result = this.baseItemLabelGenerator
+Functional Scenario Form 
+direct return of base label generator instance
+end_process
+
+process setBaseItemLabelGenerator( generator: CategoryItemLabelGenerator,  notify: boolean)
+pre true
+post 
+  this.baseItemLabelGenerator' = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+base generator update with notification conditional
+end_process
+
+process getToolTipGenerator( row: int,  column: int,  selected: boolean)  result: CategoryToolTipGenerator
+pre true
+post 
+  (∃tipGen: this.toolTipGeneratorList[row] | result = tipGen) ∨
+  (this.toolTipGeneratorList[row] = null ∧ result = this.baseToolTipGenerator)
+Functional Scenario Form 
+series tooltip exists || fallback to base tooltip generator
+end_process
+
+process getSeriesToolTipGenerator( series: int)  result: CategoryToolTipGenerator
+pre series ≥ 0
+post result = this.toolTipGeneratorList[series]
+Functional Scenario Form 
+valid series index && direct lookup from tooltip list
+end_process
+
+process setSeriesToolTipGenerator( series: int,  generator: CategoryToolTipGenerator)
+pre series ≥ 0
+post 
+  this.toolTipGeneratorList'[series] = generator ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+default notify case with event triggering
+end_process
+
+process setSeriesToolTipGeneratorWithNotify( series: int,  generator: CategoryToolTipGenerator,  notify: boolean)
+pre series ≥ 0
+post 
+  this.toolTipGeneratorList'[series] = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+conditional notification based on boolean flag
+end_process
+
+process getBaseToolTipGenerator()  result: CategoryToolTipGenerator
+pre true
+post result = this.baseToolTipGenerator
+Functional Scenario Form 
+direct return of base tooltip generator
+end_process
+
+process setBaseToolTipGenerator( generator: CategoryToolTipGenerator,  notify: boolean)
+pre true
+post 
+  this.baseToolTipGenerator' = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+update base generator with notification constraint
+end_process
+
+process getURLGenerator( row: int,  column: int,  selected: boolean)  result: CategoryURLGenerator
+pre true
+post 
+  (∃gen: this.urlGeneratorList[row] | result = gen) ∨
+  (this.urlGeneratorList[row] = null ∧ result = this.baseURLGenerator)
+Functional Scenario Form 
+row-specific URL generator exists or fallback to base
+end_process
+
+process getSeriesURLGenerator( series: int)  result: CategoryURLGenerator
+pre series ≥ 0
+post result = this.urlGeneratorList[series]
+Functional Scenario Form 
+direct URL generator lookup by series index
+end_process
+
+process setSeriesURLGenerator( series: int,  generator: CategoryURLGenerator)
+pre series ≥ 0
+post 
+  this.urlGeneratorList'[series] = generator ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+default notification case for URL generator update
+end_process
+
+process setSeriesURLGeneratorWithNotify( series: int,  generator: CategoryURLGenerator,  notify: boolean)
+pre series ≥ 0
+post 
+  this.urlGeneratorList'[series] = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+conditional event trigger based on notify flag
+end_process
+
+process getBaseURLGenerator()  result: CategoryURLGenerator
+pre true
+post result = this.baseURLGenerator
+Functional Scenario Form 
+direct return of base URL generator
+end_process
+
+process setBaseURLGenerator( generator: CategoryURLGenerator,  notify: boolean)
+pre true
+post 
+  this.baseURLGenerator' = generator ∧
+  (notify ⇒ eventListeners'.size > eventListeners.size)
+Functional Scenario Form 
+update base generator with notification constraint
+end_process
+
+process addAnnotation( annotation: CategoryAnnotation)
+pre annotation ≠ null
+post 
+  this.foregroundAnnotations' = this.foregroundAnnotations ⊕ [annotation] ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+default foreground layer addition with notification
+end_process
+
+process addAnnotationWithLayer( annotation: CategoryAnnotation,  layer: Layer)
+pre annotation ≠ null ∧ layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  (layer = FOREGROUND ⇒ 
+    this.foregroundAnnotations' = this.foregroundAnnotations ⊕ [annotation]) ∧
+  (layer = BACKGROUND ⇒ 
+    this.backgroundAnnotations' = this.backgroundAnnotations ⊕ [annotation]) ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+layer-specific annotation addition with event
+end_process
+
+process removeAnnotation( annotation: CategoryAnnotation)  result: boolean
+pre annotation ≠ null
+post 
+  result = (annotation ∈ this.foregroundAnnotations ∨ annotation ∈ this.backgroundAnnotations) ∧
+  this.foregroundAnnotations' = this.foregroundAnnotations \ {annotation} ∧
+  this.backgroundAnnotations' = this.backgroundAnnotations \ {annotation} ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+removes annotation from both layers and triggers notification
+end_process
+
+process removeAnnotations()
+pre true
+post 
+  this.foregroundAnnotations' = ∅ ∧
+  this.backgroundAnnotations' = ∅ ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+clears all annotations and triggers notification
+end_process
+
+process getLegendItemLabelGenerator()  result: CategorySeriesLabelGenerator
+pre true
+post result = this.legendItemLabelGenerator
+Functional Scenario Form 
+direct return of label generator instance
+end_process
+
+process setLegendItemLabelGenerator( generator: CategorySeriesLabelGenerator)
+pre generator ≠ null
+post 
+  this.legendItemLabelGenerator' = generator ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+non-null generator update with enforced notification
+end_process
+
+process getLegendItemToolTipGenerator()  result: CategorySeriesLabelGenerator
+pre true
+post result = this.legendItemToolTipGenerator
+Functional Scenario Form 
+returns current tooltip generator (nullable)
+end_process
+
+process setLegendItemToolTipGenerator( generator: CategorySeriesLabelGenerator)
+pre true
+post 
+  this.legendItemToolTipGenerator' = generator ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+tooltip generator update with notification
+end_process
+
+process getLegendItemURLGenerator()  result: CategorySeriesLabelGenerator
+pre true
+post result = this.legendItemURLGenerator
+Functional Scenario Form 
+returns current URL generator (nullable)
+end_process
+
+process setLegendItemURLGenerator( generator: CategorySeriesLabelGenerator)
+pre true
+post 
+  this.legendItemURLGenerator' = generator ∧
+  eventListeners'.size > eventListeners.size
+Functional Scenario Form 
+URL generator update with notification
+end_process
+
+process getRowCount()  result: int
+pre true
+post result = this.rowCount
+Functional Scenario Form 
+returns current dataset row count
+end_process
+
+process getColumnCount()  result: int
+pre true
+post result = this.columnCount
+Functional Scenario Form 
+returns current dataset column count
+end_process
+
+process createState( info: PlotRenderingInfo)  state: CategoryItemRendererState
+pre true
+post 
+  state = new CategoryItemRendererState(info) ∧
+  (∃arr: array<int> | arr.length = this.rowCount ∧
+    ∀i ∈ 0..this.rowCount-1 | 
+      (isSeriesVisible(i) ⇒ arr.contains(i)) ∧
+      state.visibleSeriesArray' = arr.compact())
+Functional Scenario Form 
+initializes state with visible series indices through array compaction
+end_process
+
+process initialise(
+     g2: Graphics2D,
+     dataArea: Rectangle2D,
+     plot: CategoryPlot,
+     dataset: CategoryDataset,
+     info: PlotRenderingInfo
+)  state: CategoryItemRendererState
+pre true
+post 
+  (dataset ≠ null ⇒ 
+    this.rowCount' = dataset.rowCount ∧ 
+    this.columnCount' = dataset.columnCount) ∧
+  (dataset = null ⇒ 
+    this.rowCount' = 0 ∧ 
+    this.columnCount' = 0) ∧
+  state' = createState(info) ∧
+  selectionState' = resolveSelectionState(dataset, info)
+Functional Scenario Form 
+handles dataset presence/absence && delegates to selection resolution logic
+end_process
+
+process findRangeBounds( dataset: CategoryDataset,  includeInterval: boolean)  result: Range
+pre true
+post 
+  (dataset = null ⇒ result = null) ∧
+  (dataset ≠ null ∧ getDataBoundsIncludesVisibleSeriesOnly() ⇒
+    ∃keys = { s ∈ 0..dataset.rowCount-1 | isSeriesVisible(s) ⇒ dataset.getRowKey(s) } 
+      result = DatasetUtilities.findRangeBounds(dataset, keys, includeInterval)) ∧
+  (dataset ≠ null ∧ ¬getDataBoundsIncludesVisibleSeriesOnly() ⇒
+    result = DatasetUtilities.findRangeBounds(dataset, includeInterval))
+Functional Scenario Form 
+conditionally applies visible series filtering for bounds calculation
+end_process
+
+process getItemMiddle(
+     rowKey: Comparable,
+     columnKey: Comparable,
+     dataset: CategoryDataset,
+     axis: CategoryAxis,
+     area: Rectangle2D,
+     edge: RectangleEdge
+)  result: double
+pre true
+post result = axis.getCategoryMiddle(columnKey, dataset.getColumnKeys(), area, edge)
+Functional Scenario Form 
+computes category middle position through axis API
+end_process
+
+process drawBackground(
+     g2: Graphics2D,
+     plot: CategoryPlot,
+     dataArea: Rectangle2D
+)
+pre true
+post plot.drawBackground(g2, dataArea)
+Functional Scenario Form 
+delegates background drawing to plot component
+end_process
+
+process drawOutline(
+     g2: Graphics2D,
+     plot: CategoryPlot,
+     dataArea: Rectangle2D
+)
+pre true
+post plot.drawOutline(g2, dataArea)
+Functional Scenario Form 
+delegates outline rendering to plot
+end_process
+
+process drawDomainLine(
+     g2: Graphics2D,
+     plot: CategoryPlot,
+     dataArea: Rectangle2D,
+     value: double,
+     paint: Paint,
+     stroke: Stroke
+)
+pre paint ≠ null ∧ stroke ≠ null
+post 
+  (plot.orientation = HORIZONTAL ⇒
+    line = new Line2D.Double(dataArea.minX, value, dataArea.maxX, value)) ∨
+  (plot.orientation = VERTICAL ⇒
+    line = new Line2D.Double(value, dataArea.minY, value, dataArea.maxY)) ∧
+  g2.draw(line)
+Functional Scenario Form 
+draws horizontal/vertical line based on plot orientation
+end_process
+
+process drawRangeLine(
+     g2: Graphics2D,
+     plot: CategoryPlot,
+     axis: ValueAxis,
+     dataArea: Rectangle2D,
+     value: double,
+     paint: Paint,
+     stroke: Stroke
+)
+pre paint ≠ null ∧ stroke ≠ null
+post 
+  (value ∈ axis.range ⇒
+    (plot.orientation = HORIZONTAL ⇒
+      line = new Line2D.Double(v(axis,value,dataArea), dataArea.minY, v(axis,value,dataArea), dataArea.maxY)) ∨
+    (plot.orientation = VERTICAL ⇒
+      line = new Line2D.Double(dataArea.minX, v(axis,value,dataArea), dataArea.maxX, v(axis,value,dataArea))) ∧
+    g2.draw(line))
+  ∨
+  value ∉ axis.range ⇒ NOP
+Functional Scenario Form 
+conditionally draws range-aligned line based on value inclusion
+end_process
+
+process drawDomainMarker(
+    g2: Graphics2D,
+    plot: CategoryPlot,
+    axis: CategoryAxis,
+    marker: CategoryMarker,
+    dataArea: Rectangle2D
+)
+pre
+  marker ≠ null ∧
+  plot.indexOf(this) ≥ 0 ∧
+  dataset = plot.dataset[plot.indexOf(this)] 
+post
+  (category = marker.key ∧ columnIndex = dataset.columnIndexOf(category) ∧
+    (columnIndex < 0 ⇒ NOP) ∨
+    (columnIndex ≥ 0 ⇒
+      g2.composite' = αComposite(marker.alpha) ∧
+      (marker.drawAsLine ⇒
+        line = createOrientedLine(orientation, dataArea, axis, columnIndex, dataset) ∧
+        g2.draw(line) ∧ bounds = line.bounds) ∨
+      (¬marker.drawAsLine ⇒
+        area = createOrientedArea(orientation, dataArea, axis, columnIndex, dataset) ∧
+        g2.fill(area) ∧ bounds = area) ∧
+      (marker.label ≠ null ⇒
+        coordinates = calculateDomainMarkerTextAnchorPoint(g2, orientation, dataArea, bounds, 
+                         marker.labelOffset, marker.labelOffsetType, marker.labelAnchor) ∧
+        drawAlignedString(g2, marker.label, coordinates.x, coordinates.y, marker.textAnchor)) ∧
+      g2.composite'' = g2.composite)) 
+Functional Scenario Form 
+valid marker category && draw line/area with label or
+invalid category index && no operation
+end_process
+
+
+process drawRangeMarker(
+    g2: Graphics2D,
+    plot: CategoryPlot,
+    axis: ValueAxis,
+    marker: Marker,
+    dataArea: Rectangle2D
+)
+pre marker ≠ null
+post
+  case marker of
+    ValueMarker vm =>
+      (vm.value ∉ axis.range ⇒ NOP) ∨
+      (vm.value ∈ axis.range ⇒
+        applyComposite(g2, vm.alpha) ∧
+        drawOrientedLine(g2, plot.orientation, dataArea, axis.valueToJava2D(vm.value, dataArea)) ∧
+        addLabelIfExists(g2, vm, calculateLabelPoint(vm, dataArea)) ∧
+        restoreComposite(g2))
+    
+    IntervalMarker im =>
+      (im.start..end ∩ axis.range = ∅ ⇒ NOP) ∨
+      (im.start..end ∩ axis.range ≠ ∅ ⇒
+        applyComposite(g2, im.alpha) ∧
+        computeIntervalRectangle(im, axis, dataArea) ∧
+        applyGradientTransform(im, rect) ∧
+        g2.fill(rect) ∧
+        drawOutlineIfRequired(g2, im, rect) ∧
+        restoreComposite(g2))
+Functional Scenario Form 
+value marker with valid range → draw vertical/horizontal line with label ||
+interval marker overlapping axis → fill gradient rectangle with bounds
+end_process
+
+process calculateDomainMarkerTextAnchorPoint(
+    g2: Graphics2D,
+    orientation: PlotOrientation,
+    dataArea: Rectangle2D,
+    markerArea: Rectangle2D,
+    markerOffset: RectangleInsets,
+    labelOffsetType: LengthAdjustmentType,
+    anchor: RectangleAnchor
+) result: Point2D
+pre true
+post 
+  case orientation of
+    HORIZONTAL ⇒
+      anchorRect = markerOffset.createAdjustedRectangle(markerArea, CONTRACT, labelOffsetType)
+    VERTICAL ⇒
+      anchorRect = markerOffset.createAdjustedRectangle(markerArea, labelOffsetType, CONTRACT)
+  end_case ∧
+  result = RectangleAnchor.coordinates(anchorRect, anchor)
+Functional Scenario Form 
+orientation-dependent rectangle adjustment && anchor coordinate calculation
+end_process
+
+process calculateRangeMarkerTextAnchorPoint(
+    g2: Graphics2D,
+    orientation: PlotOrientation,
+    dataArea: Rectangle2D,
+    markerArea: Rectangle2D,
+    markerOffset: RectangleInsets,
+    labelOffsetType: LengthAdjustmentType,
+    anchor: RectangleAnchor
+) result: Point2D
+pre true
+post 
+  case orientation of
+    HORIZONTAL ⇒
+      anchorRect = markerOffset.createAdjustedRectangle(markerArea, labelOffsetType, CONTRACT)
+    VERTICAL ⇒
+      anchorRect = markerOffset.createAdjustedRectangle(markerArea, CONTRACT, labelOffsetType)
+  end_case ∧
+  result = RectangleAnchor.coordinates(anchorRect, anchor)
+Functional Scenario Form 
+range marker specific rectangle adjustment with reversed contract parameters
+end_process
+
+process getLegendItem(
+    datasetIndex: int,
+    series: int
+) result: LegendItem
+pre 
+  this.plot ≠ null ∧
+  isSeriesVisible(series) ∧
+  isSeriesVisibleInLegend(series)
+post
+  let dataset = this.plot.dataset[datasetIndex] in
+    result.label = this.legendItemLabelGenerator.generateLabel(dataset, series) ∧
+    result.toolTip = this.legendItemToolTipGenerator?.generateLabel(dataset, series) ∧
+    result.url = this.legendItemURLGenerator?.generateLabel(dataset, series) ∧
+    result.shape = lookupLegendShape(series) ∧
+    result.paint = lookupSeriesPaint(series) ∧
+    result.outlinePaint = lookupSeriesOutlinePaint(series) ∧
+    result.outlineStroke = lookupSeriesOutlineStroke(series) ∧
+    result.labelFont = lookupLegendTextFont(series) ∧
+    (labelPaint = lookupLegendTextPaint(series) ⇒ result.labelPaint = labelPaint) ∧
+    result.seriesKey = dataset.rowKey(series) ∧
+    result.dataset = dataset
+Functional Scenario Form 
+constructs legend item with visible series properties && applies style lookups
+end_process
+
+process equals(obj: Object) result: boolean
+pre true
+post
+  (obj = this ⇒ result = true) ∨
+  (obj ∉ AbstractCategoryItemRenderer ⇒ result = false) ∨
+  (that = (AbstractCategoryItemRenderer)obj ⇒
+    result = (
+      this.itemLabelGeneratorList = that.itemLabelGeneratorList ∧
+      this.baseItemLabelGenerator = that.baseItemLabelGenerator ∧
+      this.toolTipGeneratorList = that.toolTipGeneratorList ∧
+      this.baseToolTipGenerator = that.baseToolTipGenerator ∧
+      this.urlGeneratorList = that.urlGeneratorList ∧
+      this.baseURLGenerator = that.baseURLGenerator ∧
+      this.legendItemLabelGenerator = that.legendItemLabelGenerator ∧
+      this.legendItemToolTipGenerator = that.legendItemToolTipGenerator ∧
+      this.legendItemURLGenerator = that.legendItemURLGenerator ∧
+      this.backgroundAnnotations = that.backgroundAnnotations ∧
+      this.foregroundAnnotations = that.foregroundAnnotations ∧
+      super.equals(obj)
+    )
+  )
+Functional Scenario Form 
+identity check || type check || deep field comparison with super.equals()
+end_process
+
+process hashCode() result: int
+pre true
+post result = super.hashCode()
+Functional Scenario Form 
+inheritance-based hash code generation
+end_process
+
+process getDrawingSupplier() result: DrawingSupplier
+pre true
+post 
+  (this.plot ≠ null ⇒ 
+    result = this.plot.drawingSupplier) ∨
+  (this.plot = null ⇒ 
+    result = null)
+Functional Scenario Form 
+delegates to plot's drawing supplier when available
+end_process
+
+process updateCrosshairValues(
+    crosshairState: CategoryCrosshairState,
+    rowKey: Comparable,
+    columnKey: Comparable,
+    value: double,
+    datasetIndex: int,
+    transX: double,
+    transY: double,
+    orientation: PlotOrientation
+)
+pre orientation ≠ null
+post 
+  (crosshairState ≠ null ∧
+    (this.plot.rangeCrosshairLockedOnData ⇒
+      crosshairState.updateCrosshairPoint(rowKey, columnKey, value, datasetIndex, transX, transY, orientation)) ∨
+    (¬this.plot.rangeCrosshairLockedOnData ⇒
+      crosshairState.updateCrosshairX(rowKey, columnKey, datasetIndex, transX, orientation))
+  ) ∨
+  crosshairState = null ⇒ NOP
+Functional Scenario Form 
+valid crosshair state && full/partial coordinate update based on plot configuration
+end_process
+
+process drawItemLabel(
+    g2: Graphics2D,
+    orientation: PlotOrientation,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean,
+    x: double,
+    y: double,
+    negative: boolean
+)
+pre true
+post 
+  (generator = getItemLabelGenerator(row, column, selected) ∧ generator ≠ null ⇒
+    font = getItemLabelFont(row, column, selected) ∧
+    paint = getItemLabelPaint(row, column, selected) ∧
+    label = generator.generateLabel(dataset, row, column) ∧
+    position = (¬negative ⇒ getPositiveItemLabelPosition(row, column, selected)) ∨ 
+               (negative ⇒ getNegativeItemLabelPosition(row, column, selected)) ∧
+    anchorPoint = calculateLabelAnchorPoint(position.itemLabelAnchor, x, y, orientation) ∧
+    drawRotatedString(g2, label, anchorPoint.x, anchorPoint.y, position.textAnchor, position.angle, position.rotationAnchor)
+  )
+Functional Scenario Form 
+valid label generator exists → apply style && calculate position && render rotated text
+end_process
+
+process drawAnnotations(
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    domainAxis: CategoryAxis,
+    rangeAxis: ValueAxis,
+    layer: Layer,
+    info: PlotRenderingInfo
+)
+pre layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  (layer = FOREGROUND ⇒ iterator = this.foregroundAnnotations.iterator()) ∨
+  (layer = BACKGROUND ⇒ iterator = this.backgroundAnnotations.iterator()) ∧
+  ∀annotation ∈ iterator ∧ hasNext ⇒
+    annotation.draw(g2, this.plot, dataArea, domainAxis, rangeAxis, 0, info)
+exception
+  layer ∉ {FOREGROUND, BACKGROUND} ⇒ throw RuntimeException
+Functional Scenario Form 
+iterate layer-specific annotations && delegate drawing to each annotation
+end_process
+
+process clone() result: AbstractCategoryItemRenderer
+pre true
+post
+  result = super.clone() ∧
+  (itemLabelGeneratorList ≠ null ⇒ clone.itemLabelGeneratorList = itemLabelGeneratorList.clone()) ∧
+  (baseItemLabelGenerator ≠ null ∧ baseItemLabelGenerator ∈ PublicCloneable ⇒ clone.baseItemLabelGenerator = baseItemLabelGenerator.clone()) ∧
+  (toolTipGeneratorList ≠ null ⇒ clone.toolTipGeneratorList = toolTipGeneratorList.clone()) ∧
+  (baseToolTipGenerator ∈ PublicCloneable ⇒ clone.baseToolTipGenerator = baseToolTipGenerator.clone()) ∧
+  (urlGeneratorList ≠ null ⇒ clone.urlGeneratorList = urlGeneratorList.clone()) ∧
+  (baseURLGenerator ∈ PublicCloneable ⇒ clone.baseURLGenerator = baseURLGenerator.clone()) ∧
+  (legendItemLabelGenerator ∈ PublicCloneable ⇒ clone.legendItemLabelGenerator = legendItemLabelGenerator.clone()) ∧
+  (legendItemToolTipGenerator ∈ PublicCloneable ⇒ clone.legendItemToolTipGenerator = legendItemToolTipGenerator.clone()) ∧
+  (legendItemURLGenerator ∈ PublicCloneable ⇒ clone.legendItemURLGenerator = legendItemURLGenerator.clone())
+exception
+  (baseItemLabelGenerator ≠ null ∧ baseItemLabelGenerator ∉ PublicCloneable) ∨
+  (baseToolTipGenerator ≠ null ∧ baseToolTipGenerator ∉ PublicCloneable) ∨
+  (baseURLGenerator ≠ null ∧ baseURLGenerator ∉ PublicCloneable)
+Functional Scenario Form 
+itemLabelGeneratorList exists && clones collection of item label generators or
+base item label generator implements cloneable && clones base label generator or
+base item label generator missing clone support && throws CloneNotSupportedException
+end_process
+
+process getDomainAxis(plot: CategoryPlot, dataset: CategoryDataset) result: CategoryAxis
+pre plot ≠ null ∧ dataset ≠ null
+post 
+  result = plot.getDomainAxisForDataset(plot.indexOf(dataset))
+Functional Scenario Form 
+valid plot and dataset references && returns domain axis mapped to dataset index
+end_process
+
+process getRangeAxis(plot: CategoryPlot, index: int) result: ValueAxis
+pre true
+post 
+  (plot.getRangeAxis(index) ≠ null ⇒ result = plot.getRangeAxis(index)) ∨
+  (plot.getRangeAxis(index) = null ⇒ result = plot.getRangeAxis())
+Functional Scenario Form 
+requested range axis exists && returns indexed axis or
+axis index unavailable && falls back to primary range axis
+end_process
+
+process getLegendItems() result: LegendItemCollection
+pre true
+post 
+  (this.plot = null ⇒ result = new LegendItemCollection()) ∨
+  (this.plot ≠ null ∧ 
+    let index = this.plot.getIndexOf(this), dataset = this.plot.getDataset(index) in
+      (dataset = null ⇒ result = new LegendItemCollection()) ∨
+      (dataset ≠ null ∧ seriesCount = dataset.rowCount ∧
+        (plot.rowRenderingOrder = ASCENDING ⇒
+          ∀i ∈ 0..seriesCount-1 | isSeriesVisibleInLegend(i) ⇒ result.add(getLegendItem(index, i))) ∨
+        (plot.rowRenderingOrder ≠ ASCENDING ⇒
+          ∀i ∈ seriesCount-1..0 | isSeriesVisibleInLegend(i) ⇒ result.add(getLegendItem(index, i)))
+      )
+  )
+Functional Scenario Form 
+plot null && returns empty collection or
+dataset missing && returns empty collection or
+valid dataset && ascending order && adds visible legend items in order or
+valid dataset && descending order && adds visible items in reverse
+end_process
+
+process addEntity(
+    entities: EntityCollection,
+    hotspot: Shape,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean
+)
+pre hotspot ≠ null
+post 
+  addEntity(entities, hotspot, dataset, row, column, selected, 0.0, 0.0)
+Functional Scenario Form 
+valid hotspot provided && delegates to extended addEntity method
+end_process
+
+process addEntity(
+    entities: EntityCollection,
+    hotspot: Shape,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean,
+    entityX: double,
+    entityY: double
+)
+pre getItemCreateEntity(row, column, selected) = true
+post 
+  (hotspot = null ⇒ 
+    s = createDefaultShape(plot.orientation, entityX, entityY, getDefaultEntityRadius()) ∧
+    entities.add(new CategoryItemEntity(s, generateToolTip(dataset, row, column), 
+             generateURL(dataset, row, column), dataset, rowKey, columnKey))) ∨
+  (hotspot ≠ null ⇒
+    entities.add(new CategoryItemEntity(hotspot, generateToolTip(dataset, row, column),
+             generateURL(dataset, row, column), dataset, rowKey, columnKey)))
+Functional Scenario Form 
+entity creation enabled && hotspot missing && generates default elliptical shape with tooltip/url or
+hotspot provided && adds entity with specified shape and metadata
+end_process
+
+process createHotSpotShape(
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    plot: CategoryPlot,
+    domainAxis: CategoryAxis,
+    rangeAxis: ValueAxis,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean,
+    state: CategoryItemRendererState
+) result: Shape
+pre true
+post throw new RuntimeException("Not implemented")
+Functional Scenario Form 
+true && throws RuntimeException with "Not implemented"
+end_process
+
+process createHotSpotBounds(
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    plot: CategoryPlot,
+    domainAxis: CategoryAxis,
+    rangeAxis: ValueAxis,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean,
+    state: CategoryItemRendererState,
+    result: Rectangle2D
+) outResult: Rectangle2D
+pre dataset.columnKey(column) ≠ null
+post 
+  (result = null ⇒ result' = new Rectangle()) ∧
+  (y = dataset.getValue(row, column) = null ⇒ outResult = null) ∨
+  (y ≠ null ⇒ 
+    xx = domainAxis.getCategoryMiddle(key, plot.getCategoriesForAxis(domainAxis), dataArea, plot.domainAxisEdge) ∧
+    yy = rangeAxis.valueToJava2D(y.doubleValue(), dataArea, plot.rangeAxisEdge) ∧
+    result'.setRect(xx-2, yy-2, 4, 4) ∧
+    outResult = result')
+Functional Scenario Form 
+result input null && initializes new Rectangle() or
+dataset value null && returns null or
+valid coordinates && sets bounds rectangle with 4x4 area
+end_process
+
+process hitTest(
+    xx: double,
+    yy: double,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    plot: CategoryPlot,
+    domainAxis: CategoryAxis,
+    rangeAxis: ValueAxis,
+    dataset: CategoryDataset,
+    row: int,
+    column: int,
+    selected: boolean,
+    state: CategoryItemRendererState
+) result: boolean
+pre dataset ≠ null ∧ domainAxis ≠ null
+post 
+  (bounds = createHotSpotBounds(...) = null ⇒ result = false) ∨
+  (bounds ≠ null ⇒ result = bounds.contains(xx, yy))
+Functional Scenario Form 
+bounds creation failed && returns false or
+valid bounds && checks point containment within bounds
+end_process
+
+end_module

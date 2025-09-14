@@ -1,0 +1,60 @@
+module UC32_page2
+type
+  discountedAmount: int
+  currentPoint: int
+  updatedPoint: int
+  updatedBalance: int
+  earnedPoint: int
+  usedPoint: int
+  couponRate: int
+  now: string
+
+var
+  COUPON_RATES: sequence of int = <0, 10, 20, 30, 40, 50>
+
+process processPayment(discountedAmount: int, usePoint: Boolean, currentPoint: int, balance: int, couponRate: int) result: string
+pre
+  discountedAmount ≥ 0 ∧ currentPoint ≥ 0 ∧ balance ≥ 0 ∧ couponRate ∈ COUPON_RATES
+post
+  if usePoint then
+    if currentPoint ≥ discountedAmount then
+      updatedPoint = currentPoint - discountedAmount ∧
+      discountedAmount = 0
+    else
+      discountedAmount = discountedAmount - currentPoint ∧
+      updatedPoint = 0
+  else
+    updatedPoint = currentPoint
+
+  updatedBalance = balance - discountedAmount ∧
+  earnedPoint = discountedAmount div 100 ∧
+  updatedPoint = updatedPoint + earnedPoint ∧
+  usedPoint = if usePoint then min(currentPoint, discountedAmount) else 0 ∧
+  now = current_time() ∧
+  PaymentLog.save(discountedAmount, usedPoint, now, couponRate) ∧
+  result = "決済が完了しました。"
+Functional Scenario Form
+(usePoint ∧ currentPoint ≥ discountedAmount) &&
+  (updatedPoint = currentPoint - discountedAmount) &&
+  (discountedAmount = 0) &&
+  (updatedBalance = balance - 0) &&
+  (earnedPoint = 0) &&
+  (PaymentLog 保存成功) &&
+  (result = "決済が完了しました。") or
+
+(usePoint ∧ currentPoint < discountedAmount) &&
+  (updatedPoint = 0) &&
+  (discountedAmount = discountedAmount - currentPoint) &&
+  (updatedBalance = balance - discountedAmount) &&
+  (earnedPoint = discountedAmount div 100) &&
+  (PaymentLog 保存成功) &&
+  (result = "決済が完了しました。") or
+
+(¬usePoint) &&
+  (updatedPoint = currentPoint + (discountedAmount div 100)) &&
+  (updatedBalance = balance - discountedAmount) &&
+  (PaymentLog 保存成功) &&
+  (result = "決済が完了しました。")
+end_process
+
+end_module

@@ -1,0 +1,1252 @@
+module LocalDate  
+type:  
+  iLocalMillis: long  
+  iChronology: Chronology  
+  iHash: transient int  
+
+var:  
+  serialVersionUID: long = -8775358157899L  
+  YEAR: int = 0  
+  MONTH_OF_YEAR: int = 1  
+  DAY_OF_MONTH: int = 2  
+ 
+// Current date methods
+process now() result: LocalDate  
+pre true  
+post  
+  result' = new LocalDate()  // ISO default chronology  
+
+Functional Scenario Form  
+returns current system date  
+end_process  
+
+process now(zone: DateTimeZone?) result: LocalDate  
+pre zone ≠ null  
+post  
+  result' = new LocalDate(zone)  
+
+Functional Scenario Form  
+zone=UTC && returns UTC date  
+zone=America/New_York && returns EST date  
+end_process  
+
+process now(chronology: Chronology?) result: LocalDate  
+pre chronology ≠ null  
+post  
+  result' = new LocalDate(chronology)  
+
+Functional Scenario Form  
+chronology=ISOChronology.getInstanceUTC() && returns ISO date  
+end_process  
+
+// Parsing methods
+process parse(str: String?) result: LocalDate  
+pre str ≠ null  
+post  
+  result' = parse(str, ISODateTimeFormat.localDateParser())  
+
+Functional Scenario Form  
+str="2023-12-25" && returns Christmas 2023  
+end_process  
+
+process parse(str: String?, formatter: DateTimeFormatter?) result: LocalDate  
+pre str ≠ null ∧ formatter ≠ null  
+post  
+  result' = formatter.parseLocalDate(str)  
+
+Functional Scenario Form  
+str="25/12/2023" formatter=dd/MM/yyyy && returns correct date  
+end_process  
+
+// Calendar conversion
+process fromCalendarFields(calendar: Calendar?) result: LocalDate  
+pre calendar ≠ null  
+post  
+  era = calendar.get(Calendar.ERA)  
+  yearOfEra = calendar.get(Calendar.YEAR)  
+  year = (era = GregorianCalendar.AD ? yearOfEra : 1 - yearOfEra)  
+  month = calendar.get(Calendar.MONTH) + 1  
+  day = calendar.get(Calendar.DAY_OF_MONTH)  
+  result' = new LocalDate(year, month, day)  
+
+Functional Scenario Form  
+calendar=GregorianCalendar(2023, Calendar.DECEMBER, 25)  
+  && returns 2023-12-25  
+calendar with BC era && handles negative year  
+end_process  
+
+// Date conversion
+process fromDateFields(date: Date?) result: LocalDate  
+pre date ≠ null  
+post  
+  date.getTime() < 0  
+    ? cal = new GregorianCalendar()  
+      cal.setTime(date)  
+      result' = fromCalendarFields(cal)  
+    : result' = new LocalDate(  
+          date.getYear() + 1900,  
+          date.getMonth() + 1,  
+          date.getDate()  
+      )  
+
+Functional Scenario Form  
+date=Date(122, 11, 25) // 2022-12-25 && returns 2022-12-25  
+date=Date(-2000, 0, 1) // 公元前 && uses calendar conversion  
+end_process  
+
+// Constructors
+process constructor()  
+pre true  
+post  
+  this' = new LocalDate(DateTimeUtils.currentTimeMillis(), ISOChronology.getInstance())  
+
+Functional Scenario Form  
+creates current date in default timezone  
+end_process  
+
+process constructor(zone: DateTimeZone?)  
+pre true  
+post  
+  zone ≠ null  
+    ? chrono = ISOChronology.getInstance(zone)  
+    : chrono = ISOChronology.getInstance()  
+  this' = new LocalDate(DateTimeUtils.currentTimeMillis(), chrono)  
+
+Functional Scenario Form  
+zone=UTC && creates UTC date  
+zone=null && uses default timezone  
+end_process  
+
+process constructor(chronology: Chronology?)  
+pre true  
+post  
+  chronology ≠ null  
+    ? chrono = chronology  
+    : chrono = ISOChronology.getInstance()  
+  this' = new LocalDate(DateTimeUtils.currentTimeMillis(), chrono)  
+
+Functional Scenario Form  
+chronology=BuddhistChronology && creates Buddhist date  
+chronology=null && uses ISO default  
+end_process  
+
+process constructor(instant: long)  
+pre true  
+post  
+  this' = new LocalDate(instant, ISOChronology.getInstance())  
+
+Functional Scenario Form  
+instant=0 (1970-01-01) && returns 1970-01-01  
+end_process  
+
+process constructor(instant: long, zone: DateTimeZone?)  
+pre true  
+post  
+  zone ≠ null  
+    ? chrono = ISOChronology.getInstance(zone)  
+    : chrono = ISOChronology.getInstance()  
+  this' = new LocalDate(instant, chrono)  
+
+Functional Scenario Form  
+instant=1672444800000 (2023-01-01) zone=Paris && returns Paris date  
+end_process  
+
+process constructor(instant: long, chronology: Chronology?)  
+pre true  
+post  
+  chrono = DateTimeUtils.getChronology(chronology)  
+  zone = chrono.getZone()  
+  localMillis = zone.getMillisKeepLocal(DateTimeZone.UTC, instant)  
+  chronoUTC = chrono.withUTC()  
+  iLocalMillis' = chronoUTC.dayOfMonth().roundFloor(localMillis)  
+  iChronology' = chronoUTC  
+
+Functional Scenario Form  
+instant=0 chronology=JulianChronology && returns Julian 1969-12-19  
+end_process  
+
+process constructor(instant: Object?)  
+pre instant ≠ null  
+post  
+  this' = new LocalDate(instant, null)  // Actual implementation uses converter  
+
+Functional Scenario Form  
+instant="2023-12-25" && parses to date  
+end_process  
+
+// Object + Zone constructor
+process constructor(instant: Object?, zone: DateTimeZone?)  
+pre instant ≠ null  
+post  
+  converter = ConverterManager.getInstance().getPartialConverter(instant)  
+  chronology = converter.getChronology(instant, zone)  
+  chronology' = DateTimeUtils.getChronology(chronology).withUTC()  
+  values = converter.getPartialValues(this, instant, chronology', ISODateTimeFormat.localDateParser())  
+  iLocalMillis' = chronology'.getDateTimeMillis(values[0], values[1], values[2], 0)  
+  iChronology' = chronology'  
+
+Functional Scenario Form  
+instant="2023-12-25" zone=UTC && parses correctly  
+instant=Date object zone=null && uses default zone  
+end_process  
+
+// Object + Chronology constructor
+process constructor(instant: Object?, chronology: Chronology?)  
+pre instant ≠ null  
+post  
+  converter = ConverterManager.getInstance().getPartialConverter(instant)  
+  chrono = converter.getChronology(instant, chronology)  
+  chrono' = DateTimeUtils.getChronology(chrono).withUTC()  
+  values = converter.getPartialValues(this, instant, chrono', ISODateTimeFormat.localDateParser())  
+  iLocalMillis' = chrono'.getDateTimeMillis(values[0], values[1], values[2], 0)  
+  iChronology' = chrono'  
+
+Functional Scenario Form  
+instant="2023-12-25" chronology=JulianChronology && parses to Julian date  
+end_process  
+
+// Year-month-day constructor
+process constructor(year: int, monthOfYear: int, dayOfMonth: int)  
+pre true  
+post  
+  this' = new LocalDate(year, monthOfYear, dayOfMonth, ISOChronology.getInstanceUTC())  
+
+Functional Scenario Form  
+2023, 12, 25 → 2023-12-25  
+end_process  
+
+// Year-month-day with chronology
+process constructor(year: int, monthOfYear: int, dayOfMonth: int, chronology: Chronology?)  
+pre true  
+post  
+  chrono = DateTimeUtils.getChronology(chronology).withUTC()  
+  instant = chrono.getDateTimeMillis(year, monthOfYear, dayOfMonth, 0)  
+  iLocalMillis' = instant  
+  iChronology' = chrono  
+
+Functional Scenario Form  
+2023, 12, 25, BuddhistChronology → Buddhist date  
+end_process  
+
+// Serialization fix
+process readResolve() result: Object  
+pre true  
+post  
+  iChronology = null  
+    ? result' = new LocalDate(iLocalMillis, ISOChronology.getInstanceUTC())  
+  ¬DateTimeZone.UTC.equals(iChronology.getZone())  
+    ? result' = new LocalDate(iLocalMillis, iChronology.withUTC())  
+  else  
+    result' = this  
+
+Functional Scenario Form  
+broken serialization (null chronology) → fixes to ISO UTC  
+non-UTC chronology → converts to UTC  
+valid object → returns itself  
+end_process  
+
+// Field size
+process size() result: int  
+pre true  
+post  
+  result' = 3  
+
+Functional Scenario Form  
+always returns 3  
+end_process  
+
+// Field access
+process getField(index: int, chrono: Chronology) result: DateTimeField  
+pre chrono ≠ null  
+post  
+  index = YEAR  
+    ? result' = chrono.year()  
+  index = MONTH_OF_YEAR  
+    ? result' = chrono.monthOfYear()  
+  index = DAY_OF_MONTH  
+    ? result' = chrono.dayOfMonth()  
+  else  
+    error = IndexOutOfBoundsException  
+
+Functional Scenario Form  
+index=0 → year field  
+index=1 → month field  
+index=2 → day field  
+index=3 → throws exception  
+end_process  
+
+// Field value by index
+process getValue(index: int) result: int  
+pre true  
+post  
+  index = YEAR  
+    ? result' = getChronology().year().get(getLocalMillis())  
+  index = MONTH_OF_YEAR  
+    ? result' = getChronology().monthOfYear().get(getLocalMillis())  
+  index = DAY_OF_MONTH  
+    ? result' = getChronology().dayOfMonth().get(getLocalMillis())  
+  else  
+    error = IndexOutOfBoundsException  
+
+Functional Scenario Form  
+index=0 && returns year value  
+index=1 && returns month value  
+index=2 && returns day value  
+index=3 && throws exception  
+end_process  
+
+// Field value by type
+process get(fieldType: DateTimeFieldType?) result: int  
+pre fieldType ≠ null  
+post  
+  isSupported(fieldType) = false  
+    ? error = IllegalArgumentException  
+    : result' = fieldType.getField(getChronology()).get(getLocalMillis())  
+
+Functional Scenario Form  
+fieldType=year() && returns year  
+fieldType=hourOfDay() && throws exception  
+end_process  
+
+// Field type support
+process isSupported(fieldType: DateTimeFieldType?) result: boolean  
+pre true  
+post  
+  fieldType = null  
+    ? result' = false  
+    : durType = fieldType.getDurationType()  
+      (DATE_DURATION_TYPES.contains(durType) ∨  
+        durType.getField(getChronology()).getUnitMillis() ≥  
+          getChronology().days().getUnitMillis()  
+      )  
+        ? result' = fieldType.getField(getChronology()).isSupported()  
+        : result' = false  
+
+Functional Scenario Form  
+fieldType=year() && true  
+fieldType=centuryOfEra() && true  
+fieldType=secondOfMinute() && false  
+fieldType=null && false  
+end_process  
+
+// Duration type support
+process isSupported(durType: DurationFieldType?) result: boolean  
+pre true  
+post  
+  durType = null  
+    ? result' = false  
+    : (DATE_DURATION_TYPES.contains(durType) ∨  
+        durType.getField(getChronology()).getUnitMillis() ≥  
+          getChronology().days().getUnitMillis()  
+      )  
+        ? result' = durType.getField(getChronology()).isSupported()  
+        : result' = false  
+
+Functional Scenario Form  
+durType=months() && true  
+durType=eras() && true  
+durType=minutes() && false  
+durType=null && false  
+end_process  
+
+// Millisecond access
+process getLocalMillis() result: long  
+pre true  
+post  
+  result' = iLocalMillis  
+
+Functional Scenario Form  
+returns stored milliseconds  
+end_process  
+
+// Chronology access
+process getChronology() result: Chronology  
+pre true  
+post  
+  result' = iChronology  
+
+Functional Scenario Form  
+returns stored chronology  
+end_process  
+
+// Equality check
+process equals(partial: Object?) result: boolean  
+pre true  
+post  
+  partial = this  
+    ? result' = true  
+  partial instanceof LocalDate  
+    ? other = (LocalDate) partial  
+      getChronology().equals(other.getChronology())  
+        ? result' = (getLocalMillis() = other.getLocalMillis())  
+        : result' = false  
+    : result' = super.equals(partial)  
+
+Functional Scenario Form  
+same instance && true  
+same date same chronology && true  
+same date different chronology && false  
+different date && false  
+non-LocalDate object && uses super.equals  
+end_process  
+
+// Hash code calculation
+process hashCode() result: int  
+pre true  
+post  
+  hash = iHash  
+  hash = 0  
+    ? iHash' = super.hashCode()  
+      result' = iHash'  
+    : result' = hash  
+
+Functional Scenario Form  
+iHash=0 && computes and stores hash  
+iHash≠0 && returns cached hash  
+end_process  
+
+// Date comparison
+process compareTo(partial: ReadablePartial?) result: int  
+pre partial ≠ null  
+post  
+  partial = this  
+    ? result' = 0  
+  partial instanceof LocalDate  
+    ? other = (LocalDate) partial  
+      iChronology.equals(other.iChronology)  
+        ? (iLocalMillis < other.iLocalMillis ? result' = -1  
+          : iLocalMillis = other.iLocalMillis ? result' = 0  
+          : result' = 1  
+        )  
+        : result' = super.compareTo(partial)  
+    : result' = super.compareTo(partial)  
+
+Functional Scenario Form  
+same instance && 0  
+same date same chronology && 0  
+this earlier than other && -1  
+this later than other && 1  
+different chronology && uses super.compareTo  
+non-LocalDate object && uses super.compareTo  
+end_process  
+
+// Convert to start of day
+process toDateTimeAtStartOfDay() result: DateTime  
+pre true  
+post  
+  result' = toDateTimeAtStartOfDay(null)  
+
+Functional Scenario Form  
+returns start of day in default timezone  
+end_process  
+
+process toDateTimeAtStartOfDay(zone: DateTimeZone?) result: DateTime  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone)  
+  chrono = getChronology().withZone(zone')  
+  localMillisAdjusted = getLocalMillis() + 6 * MILLIS_PER_HOUR  
+  instantUTC = zone'.convertLocalToUTC(localMillisAdjusted, false)  
+  instantDayStart = chrono.dayOfMonth().roundFloor(instantUTC)  
+  result' = new DateTime(instantDayStart, chrono)  
+
+Functional Scenario Form  
+zone=null && uses default zone  
+zone=UTC && handles UTC correctly  
+daylight saving transition day && returns 01:00 when midnight invalid  
+end_process  
+
+// Deprecated midnight conversion
+process toDateTimeAtMidnight(zone: DateTimeZone?) result: DateTime  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone)  
+  chrono = getChronology().withZone(zone')  
+  result' = new DateTime(  
+        getYear(), getMonthOfYear(), getDayOfMonth(),  
+        0, 0, 0, 0, chrono  
+    )  
+Functional Scenario Form  
+zone=null && creates midnight in default zone  
+zone=America/New_York && creates NY midnight  
+daylight saving gap && may throw exception  
+end_process  
+
+// Current time conversion
+process toDateTimeAtCurrentTime() result: DateTime  
+pre true  
+post  
+  result' = toDateTimeAtCurrentTime(null)  
+Functional Scenario Form  
+returns current time with date  
+end_process  
+
+process toDateTimeAtCurrentTime(zone: DateTimeZone?) result: DateTime  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone)  
+  chrono = getChronology().withZone(zone')  
+  instantMillis = DateTimeUtils.currentTimeMillis()  
+  resolved = chrono.set(this, instantMillis)  
+  result' = new DateTime(resolved, chrono)  
+Functional Scenario Form  
+zone=UTC && combines date with current UTC time  
+zone=Asia/Tokyo && combines date with current Tokyo time  
+end_process  
+
+// DateMidnight conversion
+process toDateMidnight() result: DateMidnight  
+pre true  
+post  
+  result' = toDateMidnight(null)  
+Functional Scenario Form  
+returns DateMidnight in default zone  
+end_process  
+
+process toDateMidnight(zone: DateTimeZone?) result: DateMidnight  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone)  
+  chrono = getChronology().withZone(zone')  
+  result' = new DateMidnight(  
+        getYear(), getMonthOfYear(), getDayOfMonth(), chrono  
+    )  
+Functional Scenario Form  
+zone=Europe/London && creates London midnight  
+end_process  
+
+// LocalDateTime combination
+process toLocalDateTime(time: LocalTime?) result: LocalDateTime  
+pre time ≠ null  
+  getChronology() = time.getChronology()  
+post  
+  localMillisCombined = getLocalMillis() + time.getLocalMillis()  
+  result' = new LocalDateTime(localMillisCombined, getChronology())  
+Functional Scenario Form  
+time=LocalTime.MIDNIGHT && returns start of day  
+time=LocalTime.NOON && returns noon on date  
+end_process  
+
+// DateTime combination
+process toDateTime(time: LocalTime?) result: DateTime  
+pre true  
+post  
+  result' = toDateTime(time, null)  
+Functional Scenario Form  
+time=null && uses current time  
+time=given && combines date and time  
+end_process  
+
+process toDateTime(time: LocalTime?, zone: DateTimeZone?) result: DateTime  
+pre time ≠ null ⇒ getChronology() = time.getChronology()  
+post  
+  chrono = getChronology().withZone(zone)  
+  instant = DateTimeUtils.currentTimeMillis()  
+  instantDate = chrono.set(this, instant)  
+  time ≠ null  
+    ? instantDateTime = chrono.set(time, instantDate)  
+    : instantDateTime = instantDate  
+  result' = new DateTime(instantDateTime, chrono)  
+Functional Scenario Form  
+time=null zone=null && date with current system time  
+time=LocalTime.NOON zone=UTC && date at noon UTC  
+end_process  
+
+// Interval conversion
+process toInterval() result: Interval  
+pre true  
+post  
+  result' = toInterval(null)  
+Functional Scenario Form  
+uses default zone  
+end_process  
+
+process toInterval(zone: DateTimeZone?) result: Interval  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone)  
+  start = toDateTimeAtStartOfDay(zone')  
+  end = plusDays(1).toDateTimeAtStartOfDay(zone')  
+  result' = new Interval(start, end)  
+Functional Scenario Form  
+zone=America/Los_Angeles && creates 24-hour interval in LA  
+daylight saving transition && handles variable day length  
+end_process  
+
+// Java Date conversion
+process toDate() result: Date  
+pre true  
+post  
+  dom = getDayOfMonth()  
+  date = new Date(getYear() - 1900, getMonthOfYear() - 1, dom)  
+  check = LocalDate.fromDateFields(date)  
+  check.isBefore(this)  
+    ? while ¬check.equals(this)  
+        date.setTime(date.getTime() + MILLIS_PER_HOUR)  
+        check = LocalDate.fromDateFields(date)  
+      while date.getDate() = dom  
+        date.setTime(date.getTime() - 1000)  
+      date.setTime(date.getTime() + 1000)  
+  check.equals(this)  
+    ? earlier = new Date(date.getTime() - TimeZone.getDefault().getDSTSavings())  
+      earlier.getDate() = dom  
+        ? date' = earlier  
+  result' = date  
+Functional Scenario Form  
+no DST issues && returns correct Date  
+DST gap day && adjusts to valid time  
+DST overlap day && selects earliest valid midnight  
+end_process  
+
+// Internal millis adjustment
+process withLocalMillis(newMillis: long) result: LocalDate  
+pre true  
+post  
+  newMillis' = iChronology.dayOfMonth().roundFloor(newMillis)  
+  newMillis' = getLocalMillis()  
+    ? result' = this  
+    : result' = new LocalDate(newMillis', getChronology())  
+Functional Scenario Form  
+newMillis same as current && returns this  
+newMillis different && creates new instance  
+end_process  
+
+// Partial fields update
+process withFields(partial: ReadablePartial?) result: LocalDate  
+pre true  
+post  
+  partial = null  
+    ? result' = this  
+    : result' = withLocalMillis(getChronology().set(partial, getLocalMillis()))  
+Functional Scenario Form  
+partial=null && returns this  
+partial=other date && updates fields  
+end_process  
+
+// Single field update
+process withField(fieldType: DateTimeFieldType?, value: int) result: LocalDate  
+pre fieldType ≠ null  
+  isSupported(fieldType)  
+post  
+  instant = fieldType.getField(getChronology()).set(getLocalMillis(), value)  
+  result' = withLocalMillis(instant)  
+Functional Scenario Form  
+fieldType=year() value=2024 && updates year  
+invalid fieldType && throws exception  
+end_process  
+
+// Field addition
+process withFieldAdded(fieldType: DurationFieldType?, amount: int) result: LocalDate  
+pre fieldType ≠ null  
+  isSupported(fieldType)  
+post  
+  amount = 0  
+    ? result' = this  
+    : instant = fieldType.getField(getChronology()).add(getLocalMillis(), amount)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+amount=0 && returns this  
+fieldType=months() amount=3 && adds 3 months  
+end_process  
+
+// Period addition
+process withPeriodAdded(period: ReadablePeriod?, scalar: int) result: LocalDate  
+pre true  
+post  
+  period = null ∨ scalar = 0  
+    ? result' = this  
+    : instant = getLocalMillis()  
+      chrono = getChronology()  
+      for i from 0 to period.size()-1  
+        value = FieldUtils.safeMultiply(period.getValue(i), scalar)  
+        type = period.getFieldType(i)  
+        isSupported(type)  
+          ? instant' = type.getField(chrono).add(instant, value)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+period=null scalar=1 && returns this  
+period=Period.months(2) scalar=2 && adds 4 months  
+end_process  
+
+// Plus operations
+process plus(period: ReadablePeriod?) result: LocalDate  
+pre true  
+post  
+  result' = withPeriodAdded(period, 1)  
+Functional Scenario Form  
+period=Period.years(1) && adds 1 year  
+end_process  
+
+process plusYears(years: int) result: LocalDate  
+pre true  
+post  
+  years = 0  
+    ? result' = this  
+    : instant = getChronology().years().add(getLocalMillis(), years)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+years=0 && returns this  
+years=5 && adds 5 years  
+end_process  
+
+process plusMonths(months: int) result: LocalDate  
+pre true  
+post  
+  months = 0  
+    ? result' = this  
+    : instant = getChronology().months().add(getLocalMillis(), months)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+months=0 && returns this  
+months=3 && adds 3 months  
+end_process  
+
+process plusWeeks(weeks: int) result: LocalDate  
+pre true  
+post  
+  weeks = 0  
+    ? result' = this  
+    : instant = getChronology().weeks().add(getLocalMillis(), weeks)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+weeks=0 && returns this  
+weeks=2 && adds 2 weeks  
+end_process  
+
+process plusDays(days: int) result: LocalDate  
+pre true  
+post  
+  days = 0  
+    ? result' = this  
+    : instant = getChronology().days().add(getLocalMillis(), days)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+days=0 && returns this  
+days=7 && adds 7 days  
+end_process  
+
+// Minus operations
+process minus(period: ReadablePeriod?) result: LocalDate  
+pre true  
+post  
+  result' = withPeriodAdded(period, -1)  
+Functional Scenario Form  
+period=Period.months(1) && subtracts 1 month  
+end_process  
+
+process minusYears(years: int) result: LocalDate  
+pre true  
+post  
+  years = 0  
+    ? result' = this  
+    : instant = getChronology().years().subtract(getLocalMillis(), years)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+years=0 && returns this  
+years=1 && subtracts 1 year  
+end_process  
+
+process minusMonths(months: int) result: LocalDate  
+pre true  
+post  
+  months = 0  
+    ? result' = this  
+    : instant = getChronology().months().subtract(getLocalMillis(), months)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+months=0 && returns this  
+months=6 && subtracts 6 months  
+end_process  
+
+process minusWeeks(weeks: int) result: LocalDate  
+pre true  
+post  
+  weeks = 0  
+    ? result' = this  
+    : instant = getChronology().weeks().subtract(getLocalMillis(), weeks)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+weeks=0 && returns this  
+weeks=4 && subtracts 4 weeks  
+end_process  
+
+process minusDays(days: int) result: LocalDate  
+pre true  
+post  
+  days = 0  
+    ? result' = this  
+    : instant = getChronology().days().subtract(getLocalMillis(), days)  
+      result' = withLocalMillis(instant)  
+Functional Scenario Form  
+days=0 && returns this  
+days=10 && subtracts 10 days  
+end_process  
+
+// Property access
+process property(fieldType: DateTimeFieldType?) result: Property  
+pre fieldType ≠ null  
+  isSupported(fieldType)  
+post  
+  field = fieldType.getField(getChronology())  
+  result' = new Property(this, field)  
+Functional Scenario Form  
+fieldType=monthOfYear() && returns month property  
+unsupported fieldType && throws exception  
+end_process  
+// Era operations
+process getEra() result: int  
+pre true  
+post  
+  result' = getChronology().era().get(getLocalMillis())  
+Functional Scenario Form  
+returns era value  
+end_process  
+
+process withEra(era: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().era().set(getLocalMillis(), era))  
+Functional Scenario Form  
+era=1 && sets era to AD  
+era=0 && sets era to BC  
+end_process  
+
+// Century operations
+process getCenturyOfEra() result: int  
+pre true  
+post  
+  result' = getChronology().centuryOfEra().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 21  
+end_process  
+
+process withCenturyOfEra(century: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().centuryOfEra().set(getLocalMillis(), century))  
+Functional Scenario Form  
+century=20 && sets to 20th century  
+end_process  
+
+// Year of era operations
+process getYearOfEra() result: int  
+pre true  
+post  
+  result' = getChronology().yearOfEra().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 2023  
+end_process  
+
+process withYearOfEra(year: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().yearOfEra().set(getLocalMillis(), year))  
+Functional Scenario Form  
+year=2024 && sets year of era  
+end_process  
+
+// Year of century operations
+process getYearOfCentury() result: int  
+pre true  
+post  
+  result' = getChronology().yearOfCentury().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 23  
+end_process  
+
+process withYearOfCentury(year: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().yearOfCentury().set(getLocalMillis(), year))  
+Functional Scenario Form  
+year=99 && sets last year of century  
+end_process  
+
+// Year operations
+process getYear() result: int  
+pre true  
+post  
+  result' = getChronology().year().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 2023  
+end_process  
+
+process withYear(year: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().year().set(getLocalMillis(), year))  
+Functional Scenario Form  
+year=2024 && sets year  
+end_process  
+
+// Weekyear operations
+process getWeekyear() result: int  
+pre true  
+post  
+  result' = getChronology().weekyear().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 2023  
+end_process  
+
+process withWeekyear(weekyear: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().weekyear().set(getLocalMillis(), weekyear))  
+Functional Scenario Form  
+weekyear=2024 && sets weekyear  
+end_process  
+
+// Month operations
+process getMonthOfYear() result: int  
+pre true  
+post  
+  result' = getChronology().monthOfYear().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 12  
+end_process  
+
+process withMonthOfYear(month: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().monthOfYear().set(getLocalMillis(), month))  
+Functional Scenario Form  
+month=1 && sets to January  
+end_process  
+
+// Week operations
+process getWeekOfWeekyear() result: int  
+pre true  
+post  
+  result' = getChronology().weekOfWeekyear().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 52  
+end_process  
+
+process withWeekOfWeekyear(week: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().weekOfWeekyear().set(getLocalMillis(), week))  
+Functional Scenario Form  
+week=1 && sets to first week  
+end_process  
+
+// Day of year operations
+process getDayOfYear() result: int  
+pre true  
+post  
+  result' = getChronology().dayOfYear().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 359  
+end_process  
+
+process withDayOfYear(day: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().dayOfYear().set(getLocalMillis(), day))  
+Functional Scenario Form  
+day=1 && sets to January 1  
+end_process  
+
+// Day of month operations
+process getDayOfMonth() result: int  
+pre true  
+post  
+  result' = getChronology().dayOfMonth().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 && returns 25  
+end_process  
+
+// Day of week operations
+process getDayOfWeek() result: int  
+pre true  
+post  
+  result' = getChronology().dayOfWeek().get(getLocalMillis())  
+Functional Scenario Form  
+for 2023-12-25 (Monday) && returns 1  
+end_process  
+
+// Day operations
+process withDayOfMonth(day: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().dayOfMonth().set(getLocalMillis(), day))  
+Functional Scenario Form  
+day=15 && sets day to 15th  
+invalid day (e.g. 32) && throws exception  
+end_process  
+
+process withDayOfWeek(day: int) result: LocalDate  
+pre true  
+post  
+  result' = withLocalMillis(getChronology().dayOfWeek().set(getLocalMillis(), day))  
+Functional Scenario Form  
+day=DateTimeConstants.MONDAY && sets to Monday  
+end_process  
+
+// Property accessors
+process era() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().era())  
+Functional Scenario Form  
+returns era property  
+end_process  
+
+process centuryOfEra() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().centuryOfEra())  
+Functional Scenario Form  
+returns century property  
+end_process  
+
+process yearOfCentury() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().yearOfCentury())  
+Functional Scenario Form  
+returns year of century property  
+end_process  
+
+process yearOfEra() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().yearOfEra())  
+Functional Scenario Form  
+returns year of era property  
+end_process  
+
+process year() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().year())  
+Functional Scenario Form  
+returns year property  
+end_process  
+
+process weekyear() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().weekyear())  
+Functional Scenario Form  
+returns weekyear property  
+end_process  
+
+process monthOfYear() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().monthOfYear())  
+Functional Scenario Form  
+returns month property  
+end_process  
+
+process weekOfWeekyear() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().weekOfWeekyear())  
+Functional Scenario Form  
+returns week of year property  
+end_process  
+
+process dayOfYear() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().dayOfYear())  
+Functional Scenario Form  
+returns day of year property  
+end_process  
+
+process dayOfMonth() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().dayOfMonth())  
+Functional Scenario Form  
+returns day of month property  
+end_process  
+
+process dayOfWeek() result: Property  
+pre true  
+post  
+  result' = new Property(this, getChronology().dayOfWeek())  
+Functional Scenario Form  
+returns day of week property  
+end_process  
+
+// String representations
+process toString() result: String  
+pre true  
+post  
+  result' = ISODateTimeFormat.date().print(this)  
+Functional Scenario Form  
+for 2023-12-25 && returns "2023-12-25"  
+end_process  
+
+process toString(pattern: String?) result: String  
+pre true  
+post  
+  pattern = null  
+    ? result' = toString()  
+    : result' = DateTimeFormat.forPattern(pattern).print(this)  
+Functional Scenario Form  
+pattern="dd/MM/yyyy" && returns "25/12/2023"  
+pattern=null && uses ISO format  
+end_process  
+
+process toString(pattern: String?, locale: Locale?) result: String  
+pre true  
+post  
+  pattern = null  
+    ? result' = toString()  
+    : result' = DateTimeFormat.forPattern(pattern).withLocale(locale).print(this)  
+Functional Scenario Form  
+pattern="MMMM dd, yyyy" locale=US && returns "December 25, 2023"  
+end_process  
+
+end_module  
+
+### **Property Class**  
+```sofl
+module Property  
+const:  
+  serialVersionUID: long = -3193829732634L  
+
+var:  
+  iInstant: LocalDate  
+  iField: DateTimeField  
+
+// Constructor
+process constructor(instant: LocalDate, field: DateTimeField)  
+pre true  
+post  
+  iInstant' = instant  
+  iField' = field  
+Functional Scenario Form  
+creates property with given date and field  
+end_process  
+
+// Serialization
+process writeObject(oos: ObjectOutputStream?)  
+pre oos ≠ null  
+post  
+  oos.writeObject(iInstant)  
+  oos.writeObject(iField.getType())  
+Functional Scenario Form  
+serializes property  
+end_process  
+
+process readObject(oos: ObjectInputStream?)  
+pre oos ≠ null  
+post  
+  iInstant' = (LocalDate) oos.readObject()  
+  type = (DateTimeFieldType) oos.readObject()  
+  iField' = type.getField(iInstant'.getChronology())  
+Functional Scenario Form  
+deserializes property  
+end_process  
+
+// Field access
+process getField() result: DateTimeField  
+pre true  
+post  
+  result' = iField  
+Functional Scenario Form  
+returns associated field  
+end_process  
+
+process getMillis() result: long  
+pre true  
+post  
+  result' = iInstant.getLocalMillis()  
+Functional Scenario Form  
+returns date's millis  
+end_process  
+
+process getChronology() result: Chronology  
+pre true  
+post  
+  result' = iInstant.getChronology()  
+Functional Scenario Form  
+returns date's chronology  
+end_process  
+
+process getLocalDate() result: LocalDate  
+pre true  
+post  
+  result' = iInstant  
+Functional Scenario Form  
+returns associated date  
+end_process  
+
+// Date manipulation
+process addToCopy(value: int) result: LocalDate  
+pre true  
+post  
+  newMillis = iField.add(iInstant.getLocalMillis(), value)  
+  result' = iInstant.withLocalMillis(newMillis)  
+Functional Scenario Form  
+value=5 && adds 5 units  
+end_process  
+
+process addWrapFieldToCopy(value: int) result: LocalDate  
+pre true  
+post  
+  newMillis = iField.addWrapField(iInstant.getLocalMillis(), value)  
+  result' = iInstant.withLocalMillis(newMillis)  
+Functional Scenario Form  
+value=15 && adds with wrap-around  
+end_process  
+
+process setCopy(value: int) result: LocalDate  
+pre true  
+post  
+  newMillis = iField.set(iInstant.getLocalMillis(), value)  
+  result' = iInstant.withLocalMillis(newMillis)  
+Functional Scenario Form  
+value=2024 && sets field to 2024  
+end_process  
+
+process setCopy(text: String?, locale: Locale?) result: LocalDate  
+pre text ≠ null  
+post  
+  newMillis = iField.set(iInstant.getLocalMillis(), text, locale)  
+  result' = iInstant.withLocalMillis(newMillis)  
+Functional Scenario Form  
+text="2024" && sets field to 2024  
+end_process  
+
+process setCopy(text: String?) result: LocalDate  
+pre text ≠ null  
+post  
+  result' = setCopy(text, null)  
+Functional Scenario Form  
+text="June" && sets month to June  
+end_process  
+
+process withMaximumValue() result: LocalDate  
+pre true  
+post  
+  result' = setCopy(iField.getMaximumValue())  
+Functional Scenario Form  
+sets to maximum value (e.g. Dec 31)  
+end_process  
+
+process withMinimumValue() result: LocalDate  
+pre true  
+post  
+  result' = setCopy(iField.getMinimumValue())  
+Functional Scenario Form  
+sets to minimum value (e.g. Jan 1)  
+end_process  
+
+process roundFloorCopy() result: LocalDate  
+pre true  
+post  
+  newMillis = iField.roundFloor(iInstant.getLocalMillis())  
+  result' = iInstant.withLocalMillis(newMillis)  
+Functional Scenario Form  
+rounds to floor of field  
+end_process 
+
+
+
+end_module  

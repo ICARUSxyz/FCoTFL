@@ -1,0 +1,128 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "screenfactor.h"
+2: #include <QScreen>
+3: #include <QApplication>
+4: 
+5: ScreenFactor::ScreenFactor(QObject *parent) : QObject(parent)
+6: {
+7: 
+8: }
+9: 
+10: double ScreenFactor::getScreenFactor()
+11: {
+12: 
+13:     QScreen *screen = qApp->primaryScreen();
+14:     const int baseValue = 90;    
+15:     qreal dpiVal = screen->logicalDotsPerInch();
+16:     qreal dpiVal = screen->devicePixelRatio();
+17: 
+18:     //qDebug() << dpiVal << ratioVal;
+19:     screenFactor = dpiVal * ratioVal / baseValue;
+20:     return screenFactor;
+21: }]
+
+SOFL:[
+module UC28_screenfactor
+type
+  dpiVal: real
+  ratioVal: real
+  screenFactor: real
+  baseValue: int
+
+var
+  baseValue = 96
+
+process ScreenFactor(parent: QObject) result: ScreenFactor
+pre
+  true
+post
+  result ≠ null
+Functional Scenario Form
+(true) && (construct a ScreenFactor object with QObject parent)
+end_process
+
+process getScreenFactor() result: real
+pre
+  qApp.primaryScreen() ≠ null
+post
+  dpiVal = screen.logicalDotsPerInch() ∧
+  ratioVal = screen.devicePixelRatio() ∧
+  result = dpiVal × ratioVal ÷ baseValue
+Functional Scenario Form
+(screen ≠ null) && (return screen.logicalDotsPerInch() × screen.devicePixelRatio() ÷ 96)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: ScreenFactor Calculation Anomalies**
+
+---
+
+**Test Case 1: DPI-Based UI Scaling**
+
+**Action:**
+Launch UI on different monitors with varying DPI and observe scaling.
+
+**Expected:**
+UI elements scale proportionally based on logical DPI and pixel ratio.
+
+**Observed:**
+Scaling appears inconsistent across devices. Some elements are disproportionately large or small.
+
+**Log:**
+
+```plaintext
+[INIT] Primary screen DPI: 120  
+[INFO] Scaling base value: 90  
+[WARN] Scaling factor exceeds expected bounds  
+[RESULT] UI rendered with abnormal element size
+```
+
+---
+
+**Test Case 2: Screen Factor Calculation**
+
+**Action:**
+Call `getScreenFactor()` during UI initialization.
+
+**Expected:**
+A meaningful factor is returned based on both DPI and pixel ratio.
+
+**Observed:**
+Returned value is unexpectedly large or zero; layout shifts occur.
+
+**Log:**
+
+```plaintext
+[CALL] getScreenFactor()  
+[INFO] logicalDPI: 120  
+[INFO] devicePixelRatio: 2.0  
+[ERROR] ratioVal undefined  
+[WARN] screenFactor = 240.0 (unexpected)
+```]

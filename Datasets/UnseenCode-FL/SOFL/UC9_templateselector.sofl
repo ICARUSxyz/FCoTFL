@@ -1,0 +1,37 @@
+module UC9_templateselector
+
+process UC9_templateselector(parent: QWidget) result: UC9_templateselector
+pre
+  true
+post
+  this.parent = parent
+  setWindowTitle("Select Comment Template") executed
+  resize(600, 400) executed
+
+  scrollArea = new QScrollArea(this)
+  scrollArea.widgetResizable = true
+
+  scrollWidget = new QWidget(scrollArea)
+  mainLayout = new QVBoxLayout(scrollWidget)
+
+  addTemplateBlock("Class Comment", classCommentText) executed
+  addTemplateBlock("Method Comment", methodCommentText) executed
+  addTemplateBlock("Variable Comment", variableCommentText) executed
+  addTemplateBlock("Function Comment", functionCommentText) executed
+
+  scrollWidget.setLayout(mainLayout)
+  scrollArea.setWidget(scrollWidget)
+
+  dialogLayout = new QVBoxLayout(this)
+  dialogLayout.addWidget(scrollArea)
+
+  okButton = new QPushButton("OK", this)
+  connect okButton.clicked to this.accept
+
+  dialogLayout.addWidget(okButton)
+  setLayout(dialogLayout) executed
+Functional Scenario Form
+parent is valid && template selector dialog created with scrollable comment blocks and OK button
+end_process
+
+end_module

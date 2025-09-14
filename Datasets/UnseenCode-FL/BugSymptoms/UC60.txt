@@ -1,0 +1,16 @@
+// Test Case 1: Startup with missing config
+→ Input: null server object
+→ Expected: "server object or config file has not created!" and graceful return
+→ Actual: Server proceeds with initialization logic despite missing server, leading to runtime exceptions.
+
+// Test Case 2: Server shutdown via SIGINT
+→ Trigger: CTRL+C during runtime
+→ Expected: server.dispose() called, process exits cleanly with success status
+→ Actual: Process exits with code 1
+// Indicates abnormal termination, potentially misleading for monitoring tools or supervisors.
+
+// Test Case 3: Windows-specific shutdown command
+→ Input message: 'SHUTDOWN'
+→ Expected: Shutdown action triggered
+→ Actual: Shutdown not triggered unless message uses strict equality format
+// Minor mismatch in equality check prevents shutdown from executing as intended in Windows environments.

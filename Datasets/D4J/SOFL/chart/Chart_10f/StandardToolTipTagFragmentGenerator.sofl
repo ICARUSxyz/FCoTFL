@@ -1,0 +1,22 @@
+module StandardToolTipTagFragmentGenerator
+
+process StandardToolTipTagFragmentGenerator_Init()
+post 
+  this' = new instance()
+Functional Scenario Form 
+defaultInitialization 
+end_process
+
+process generateToolTipFragment(
+    this: StandardToolTipTagFragmentGenerator,
+    toolTipText: String
+) result: String
+post 
+  escapedText = ImageMapUtilities.htmlEscape(toolTipText) ∧ 
+  result = " title=\"" + escapedText + "\" alt=\"\""
+Functional Scenario Form 
+nonEmptyText&&escapedOutput || 
+emptyText&&validAttributes 
+end_process
+
+end_module

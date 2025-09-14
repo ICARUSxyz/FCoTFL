@@ -1,0 +1,48 @@
+#### Test Case 1: Multi-line comment highlighting
+
+**Expected:** Proper highlighting of comment blocks starting with `/*` and ending with `*/`.
+**Observed:** Comment regions are not highlighted or partially rendered.
+
+```plaintext
+[HIGHLIGHT] Start: /* todo: ...  
+[HIGHLIGHT] End marker not recognized  
+[RESULT] Multiline comment not fully highlighted  
+```
+
+---
+
+#### Test Case 2: Bracket information retrieval
+
+**Expected:** Code retrieves relevant mark info objects depending on the input symbol.
+**Observed:** Empty list returned even when the matching symbol exists.
+
+```plaintext
+[DEBUG] Requesting MarkInfo list for target symbol  
+[RESULT] Returned list is empty  
+```
+
+---
+
+#### Test Case 3: Mark insertion ordering
+
+**Expected:** New marks are inserted into the vector while preserving position order.
+**Observed:** Newly added marks appear in unexpected order.
+
+```plaintext
+[INSERT] New MarkInfo with position 12  
+[BEFORE] Existing list: [5, 9, 14]  
+[AFTER] List becomes: [5, 12, 9, 14]  
+```
+
+---
+
+#### Test Case 4: Function name formatting
+
+**Expected:** Function names are highlighted in italic text.
+**Observed:** Highlighted text is not italicized as expected.
+
+```plaintext
+[FORMAT] Applied to "main"  
+[STYLE] Italic = false  
+[RESULT] Function names appear in regular font  
+```

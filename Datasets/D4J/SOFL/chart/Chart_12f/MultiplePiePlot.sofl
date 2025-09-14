@@ -1,0 +1,339 @@
+module MultiplePiePlot
+types:
+  // Omit undefined composed types until concrete structure available
+
+var
+  serialVersionUID: long = -355377800470807389L
+
+process MultiplePiePlot(dataset: CategoryDataset)
+pre true
+post
+  this.dataset' = dataset
+  this.pieChart' = new JFreeChart(new PiePlot(null))
+  this.pieChart'.removeLegend()
+  this.dataExtractOrder' = TableOrder.BY_COLUMN
+  this.pieChart'.setBackgroundPaint(null)
+  // Additional initialization logic per constructor
+Functional Scenario Form
+dataset == null && defaultInitialization || dataset != null && datasetInitialization
+end_process
+
+process getDataset() result: CategoryDataset
+pre true
+post
+  result' = this.dataset
+Functional Scenario Form
+this.dataset != null && resultNotNull || this.dataset == null && resultNull
+end_process
+
+process setDataset(dataset: CategoryDataset)
+pre true
+post
+  if this.dataset != null then this.dataset.removeChangeListener(this)
+  this.dataset' = dataset
+  if dataset != null then
+    setDatasetGroup(dataset.getGroup())
+    dataset.addChangeListener(this)
+  datasetChanged(new DatasetChangeEvent(this, dataset))
+Functional Scenario Form
+currentDatasetExists && listenerRemoved || newDatasetExists && listenerAdded
+end_process
+
+process getPieChart() result: JFreeChart
+pre true
+post
+  result' = this.pieChart
+Functional Scenario Form
+alwaysAvailable && resultNotNull
+end_process
+
+process setPieChart(pieChart: JFreeChart)
+pre
+  pieChart != null && pieChart.getPlot() instanceof PiePlot
+post
+  this.pieChart' = pieChart
+  fireChangeEvent()
+Functional Scenario Form
+validChart && updated || nullChart && preViolated || wrongPlotType && preViolated
+end_process
+
+process getDataExtractOrder() result: TableOrder
+pre true
+post
+  result' = this.dataExtractOrder
+Functional Scenario Form
+alwaysAvailable && resultNotNull
+end_process
+
+process setDataExtractOrder(order: TableOrder)
+pre order != null
+post
+  this.dataExtractOrder' = order
+  fireChangeEvent()
+Functional Scenario Form
+validOrder && updated || nullOrder && preViolated
+end_process
+
+process getLimit() result: double
+pre true
+post
+  result' = this.limit
+Functional Scenario Form
+alwaysAvailable && resultReturned
+end_process
+
+process setLimit(limit: double)
+pre true
+post
+  this.limit' = limit
+  fireChangeEvent()
+Functional Scenario Form
+anyValue && updated
+end_process
+
+process getAggregatedItemsKey() result: Comparable
+pre true
+post
+  result' = this.aggregatedItemsKey
+Functional Scenario Form
+alwaysAvailable && resultNotNull
+end_process
+
+process setAggregatedItemsKey(key: Comparable)
+pre key != null
+post
+  this.aggregatedItemsKey' = key
+  fireChangeEvent()
+Functional Scenario Form
+validKey && updated || nullKey && preViolated
+end_process
+
+process getAggregatedItemsPaint() result: Paint
+pre true
+post
+  result' = this.aggregatedItemsPaint
+Functional Scenario Form
+alwaysAvailable && resultNotNull
+end_process
+
+process setAggregatedItemsPaint(paint: Paint)
+pre paint != null
+post
+  this.aggregatedItemsPaint' = paint
+  fireChangeEvent()
+Functional Scenario Form
+validPaint && updated || nullPaint && preViolated
+end_process
+
+process getPlotType() result: String
+pre true
+post
+  result' = "Multiple Pie Plot"  // Note: Localization handling not implemented
+Functional Scenario Form
+alwaysReturnsConstant
+end_process
+
+process draw(g2: Graphics2D, area: Rectangle2D, anchor: Point2D, parentState: PlotState, info: PlotRenderingInfo)
+pre
+  g2 != null && area != null // Essential parameters must not be null
+post
+  // 1. Adjust drawing area
+  RectangleInsets insets = getInsets()
+  insets.trim(area)
+  
+  // 2. Draw background and outline
+  drawBackground(g2, area)
+  drawOutline(g2, area)
+  
+  // 3. Handle empty dataset case
+  if DatasetUtilities.isEmptyOrNull(this.dataset) then
+    drawNoDataMessage(g2, area)
+    return
+  
+  // 4. Calculate pie count and grid layout
+  int pieCount = (this.dataExtractOrder == TableOrder.BY_ROW) ? 
+                  this.dataset.getRowCount() : 
+                  this.dataset.getColumnCount()
+  
+  int displayCols = ceil(sqrt(pieCount))
+  int displayRows = ceil(pieCount / displayCols)
+  
+  // 5. Adjust layout based on area shape
+  if displayCols > displayRows && area.getWidth() < area.getHeight() then
+    int temp = displayCols
+    displayCols = displayRows
+    displayRows = temp
+  
+  // 6. Prefetch paints and initialize loop
+  prefetchSectionPaints()
+  int x = area.getX(), y = area.getY()
+  int width = area.getWidth() / displayCols
+  int height = area.getHeight() / displayRows
+  int row = 0, column = 0
+  int diff = (displayRows * displayCols) - pieCount
+  int xoffset = 0
+  
+  // 7. Draw each pie chart
+  for pieIndex = 0 to pieCount-1 do
+    // 7a. Set drawing rectangle
+    Rectangle rect = new Rectangle(
+      x + xoffset + (width * column), 
+      y + (height * row),
+      width, height)
+    
+    // 7b. Set title
+    String title = (this.dataExtractOrder == TableOrder.BY_ROW) ?
+                   this.dataset.getRowKey(pieIndex).toString() :
+                   this.dataset.getColumnKey(pieIndex).toString()
+    this.pieChart.setTitle(title)
+    
+    // 7c. Create dataset
+    PieDataset dd = new CategoryToPieDataset(
+      this.dataset, this.dataExtractOrder, pieIndex)
+    PieDataset piedataset = (this.limit > 0.0) ?
+        DatasetUtilities.createConsolidatedPieDataset(dd, this.aggregatedItemsKey, this.limit) :
+        dd
+    
+    // 7d. Configure plot
+    PiePlot piePlot = (PiePlot) this.pieChart.getPlot()
+    piePlot.setDataset(piedataset)
+    piePlot.setPieIndex(pieIndex)
+    
+    // 7e. Apply paints
+    for i = 0 to piedataset.getItemCount()-1 do
+      Comparable key = piedataset.getKey(i)
+      Paint p = key.equals(this.aggregatedItemsKey) ?
+                this.aggregatedItemsPaint :
+                (Paint) this.sectionPaints.get(key)
+      piePlot.setSectionPaint(key, p)
+    
+    // 7f. Draw chart
+    ChartRenderingInfo subinfo = (info != null) ? new ChartRenderingInfo() : null
+    this.pieChart.draw(g2, rect, subinfo)
+    
+    // 7g. Collect rendering info
+    if info != null then
+      info.getOwner().getEntityCollection().addAll(subinfo.getEntityCollection())
+      info.addSubplotInfo(subinfo.getPlotInfo())
+    
+    // 7h. Update grid position
+    column = column + 1
+    if column == displayCols then
+      column = 0
+      row = row + 1
+      if row == displayRows - 1 && diff != 0 then
+        xoffset = (diff * width) / 2
+Functional Scenario Form
+validParams && nonEmptyDataset && drawn || 
+emptyDataset && noDataMessageDisplayed ||
+nullGraphics && preViolated ||
+nullArea && preViolated
+end_process
+
+process prefetchSectionPaints()  
+pre true  
+post  
+  PiePlot piePlot = (PiePlot) getPieChart().getPlot()  
+  if this.dataExtractOrder == TableOrder.BY_ROW then  
+    for c = 0 to this.dataset.getColumnCount()-1 do  
+      Comparable key = this.dataset.getColumnKey(c)  
+      Paint p = piePlot.getSectionPaint(key)  
+      if p == null then  
+        p = (Paint) this.sectionPaints.get(key)  
+        if p == null then  
+          p = getDrawingSupplier().getNextPaint()  
+      this.sectionPaints.put(key, p)  
+  else  
+    for r = 0 to this.dataset.getRowCount()-1 do  
+      Comparable key = this.dataset.getRowKey(r)  
+      Paint p = piePlot.getSectionPaint(key)  
+      if p == null then  
+        p = (Paint) this.sectionPaints.get(key)  
+        if p == null then  
+          p = getDrawingSupplier().getNextPaint()  
+      this.sectionPaints.put(key, p)  
+Functional Scenario Form  
+dataExtractOrderBY_ROW && paintsFetched || dataExtractOrderBY_COLUMN && paintsFetched  
+end_process  
+
+process getLegendItems() result: LegendItemCollection  
+pre true  
+post  
+  result' = new LegendItemCollection()  
+  if this.dataset != null then  
+    List keys = null  
+    prefetchSectionPaints()  
+    if this.dataExtractOrder == TableOrder.BY_ROW then  
+      keys' = this.dataset.getColumnKeys()  
+    else if this.dataExtractOrder == TableOrder.BY_COLUMN then  
+      keys' = this.dataset.getRowKeys()  
+    if keys != null then  
+      Iterator iterator = keys.iterator()  
+      while iterator.hasNext() do  
+        Comparable key = iterator.next()  
+        String label = key.toString()  
+        Paint paint = (Paint) this.sectionPaints.get(key)  
+        LegendItem item = new LegendItem(label, label, null, null,  
+              Plot.DEFAULT_LEGEND_ITEM_CIRCLE, paint,  
+              Plot.DEFAULT_OUTLINE_STROKE, paint)  
+        item.setDataset(getDataset())  
+        result'.add(item)  
+    if this.limit > 0.0 then  
+      result'.add(new LegendItem(  
+          this.aggregatedItemsKey.toString(),  
+          this.aggregatedItemsKey.toString(),  
+          null, null,  
+          Plot.DEFAULT_LEGEND_ITEM_CIRCLE,  
+          this.aggregatedItemsPaint,  
+          Plot.DEFAULT_OUTLINE_STROKE,  
+          this.aggregatedItemsPaint))  
+Functional Scenario Form  
+nonNullDataset && legendCreated || nullDataset && emptyCollection  
+end_process  
+
+process equals(obj: Object) result: boolean  
+pre true  
+post  
+  if obj == this then  
+    result' = true  
+  else if !(obj instanceof MultiplePiePlot) then  
+    result' = false  
+  else  
+    MultiplePiePlot that = (MultiplePiePlot) obj  
+    result' = (this.dataExtractOrder == that.dataExtractOrder) &&  
+              (this.limit == that.limit) &&  
+              this.aggregatedItemsKey.equals(that.aggregatedItemsKey) &&  
+              PaintUtilities.equal(this.aggregatedItemsPaint, that.aggregatedItemsPaint) &&  
+              ObjectUtilities.equal(this.pieChart, that.pieChart) &&  
+              super.equals(obj)  
+Functional Scenario Form  
+sameObject && true || differentType && false ||  
+differentDataExtractOrder && false || differentLimit && false ||  
+differentAggregatedKey && false || differentAggregatedPaint && false ||  
+differentPieChart && false || superNotEqual && false ||  
+allEqual && true  
+end_process
+
+process writeObject(stream: ObjectOutputStream)
+pre
+  stream != null
+post
+  stream.defaultWriteObject()
+  SerialUtilities.writePaint(this.aggregatedItemsPaint, stream)
+Functional Scenario Form
+validStream && serialized || nullStream && preViolated
+end_process
+
+process readObject(stream: ObjectInputStream)
+pre
+  stream != null
+post
+  stream.defaultReadObject()
+  this.aggregatedItemsPaint' = SerialUtilities.readPaint(stream)
+  this.sectionPaints' = new HashMap()
+Functional Scenario Form
+validStream && deserialized || nullStream && preViolated
+end_process
+
+
+end_module

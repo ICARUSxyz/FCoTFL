@@ -1,0 +1,26 @@
+Bug Report TemplateSelector
+
+Test Input
+
+```cpp
+TemplateSelector selector;
+selector.exec();
+```
+
+Observed Behavior
+
+ Scroll area content is cut off and not resizable.
+ Template blocks do not display correctly.
+ OK button appears without text, causing UI confusion.
+
+Expected Behavior
+
+ Scroll area should adjust dynamically to content.
+ All templates should be visible in vertical layout.
+ OK button should display text for user confirmation.
+
+Actual Behavior
+
+ `scrollArea-setWidgetResizable(false)` causes fixed layout.
+ `mainLayout` lacks parent `scrollWidget`, breaking nesting.
+ OK button renders without label due to missing constructor text.

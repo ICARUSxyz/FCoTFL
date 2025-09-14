@@ -1,0 +1,98 @@
+**Bug Report: Registration Screen Behavior Summary**
+
+---
+
+**Test Case 1: Launch Registration Screen**
+
+**Action:**
+Open the registration screen.
+
+**Expected:**
+All components, including user type selection, input fields, and the register button, should be visible and usable.
+
+**Observed:**
+Layout displays as expected with all fields visible. No immediate error reported.
+
+---
+
+**Test Case 2: Select "出版社" and Register Without Company Name**
+
+**Action:**
+Switch to "出版社", enter valid ID and password, click “登録” without inputting a company name in the prompt.
+
+**Expected:**
+Error message about invalid or missing company name should appear. No registration should occur.
+
+**Observed:**
+Dialog appears but even when left empty or canceled, screen proceeds or behaves inconsistently.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Publisher  
+[WARN] Company name input is empty  
+[ERROR] Registration blocked due to invalid input  
+```
+
+---
+
+**Test Case 3: Enter Different Passwords**
+
+**Action:**
+Enter mismatching values in “Password” and “Confirm Password”, then click “登録”.
+
+**Expected:**
+System should detect mismatch and show error message.
+
+**Observed:**
+No mismatch detected. Registration proceeds regardless of differences.
+
+**Output:**
+
+```plaintext
+[INFO] Password entered: pass1234  
+[INFO] Confirm password entered: pass5678  
+[ERROR] Registration allowed despite mismatch  
+```
+
+---
+
+**Test Case 4: Register as "会員" with Matching Passwords**
+
+**Action:**
+Select "会員", enter ID and matching passwords, click “登録”.
+
+**Expected:**
+User registered successfully, message shown, and screen redirects to login.
+
+**Observed:**
+Registration completes and transition occurs as expected.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Member  
+[INFO] Registration successful  
+[INFO] Transitioning to login screen  
+```
+
+---
+
+**Test Case 5: Select "出版社" and Register with Valid Input**
+
+**Action:**
+Switch to "出版社", enter ID, passwords, and input valid company name.
+
+**Expected:**
+Company registration completes successfully.
+
+**Observed:**
+An error occurs, preventing registration due to missing parameter.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Publisher  
+[ERROR] Method registerCompany(String, String) is missing required argument: companyName  
+[FAIL] Registration failed due to method call error  
+```

@@ -1,0 +1,202 @@
+module HypergeometricDistribution  
+var:  
+  serialVersionUID: long = -436928820673516179L  
+
+type:
+  numberOfSuccesses: int  
+  populationSize: int  
+  sampleSize: int  
+
+
+// Primary constructor
+process constructor(popSize: int, numSuccesses: int, sampleSize: int)  
+pre true  
+post  
+  invokes constructor(new Well19937c(), popSize, numSuccesses, sampleSize)  
+Functional Scenario Form  
+popSize=100 numSuccesses=20 sampleSize=10 && creates instance  
+end_process  
+
+// Full constructor
+process constructor_full(rng: RandomGenerator, popSize: int, numSuccesses: int, sampleSize: int)  
+pre true  
+post  
+  popSize ≤ 0  
+    ? throw NotStrictlyPositiveException("Population size")  
+  numSuccesses < 0  
+    ? throw NotPositiveException("Number of successes")  
+  sampleSize < 0  
+    ? throw NotPositiveException("Sample size")  
+  numSuccesses > popSize  
+    ? throw NumberIsTooLargeException("Successes > population")  
+  sampleSize > popSize  
+    ? throw NumberIsTooLargeException("Sample size > population")  
+  numberOfSuccesses' = numSuccesses  
+  populationSize' = popSize  
+  sampleSize' = sampleSize  
+  super(rng)  
+Functional Scenario Form  
+popSize=50 numSuccesses=60 sampleSize=10 && throws exception  
+popSize=0 numSuccesses=0 sampleSize=0 && throws exception  
+popSize=100 numSuccesses=20 sampleSize=10 && valid instance  
+end_process  
+
+// Cumulative probability
+process cumulativeProbability(x: int) result: double  
+pre true  
+post  
+  domain = getDomain(populationSize, numberOfSuccesses, sampleSize)  
+  x < domain[0]  
+    ? ret = 0.0  
+  x ≥ domain[1]  
+    ? ret = 1.0  
+  else  
+    ret = innerCumulativeProbability(domain[0], x, 1)  
+  result' = ret  
+Functional Scenario Form  
+x=-1 domain=[3,7] && returns 0.0  
+x=10 domain=[3,7] && returns 1.0  
+x=5 domain=[3,7] && returns computed probability  
+end_process  
+
+// Domain calculation helper
+process getDomain(n: int, m: int, k: int) result: int[2]  
+pre true  
+post  
+  lower = getLowerDomain(n, m, k)  
+  upper = getUpperDomain(m, k)  
+  result' = [lower, upper]  
+Functional Scenario Form  
+n=100 m=20 k=10 && returns [max(0,20+10-100), min(20,10)] = [max(0,-70),10] = [0,10]  
+end_process  
+
+// Lower domain calculation  
+process getLowerDomain(n: int, m: int, k: int) result: int  
+pre true  
+post  
+  result' = FastMath.max(0, m - (n - k))  
+Functional Scenario Form  
+n=100 m=20 k=10 && result'=0  
+n=100 m=50 k=60 && result'=10  
+end_process  
+
+// Upper domain calculation  
+process getUpperDomain(m: int, k: int) result: int  
+pre true  
+post  
+  result' = FastMath.min(k, m)  
+Functional Scenario Form  
+m=20 k=10 && result'=10  
+m=10 k=20 && result'=10  
+end_process  
+
+// Probability mass function  
+process probability(x: int) result: double  
+pre true  
+post  
+  domain = getDomain(populationSize, numberOfSuccesses, sampleSize)  
+  x < domain[0] ∨ x > domain[1]  
+    ? ret = 0.0  
+    : p = sampleSize / populationSize  
+      q = (populationSize - sampleSize) / populationSize  
+      p1 = SaddlePointExpansion.logBinomialProbability(x, numberOfSuccesses, p, q)  
+      p2 = SaddlePointExpansion.logBinomialProbability(sampleSize - x, populationSize - numberOfSuccesses, p, q)  
+      p3 = SaddlePointExpansion.logBinomialProbability(sampleSize, populationSize, p, q)  
+      ret = FastMath.exp(p1 + p2 - p3)  
+  result' = ret  
+Functional Scenario Form  
+x=5 domain=[3,7] && result'=computed PMF  
+x=2 domain=[3,7] && result'=0.0  
+end_process  
+
+// Upper cumulative probability  
+process upperCumulativeProbability(x: int) result: double  
+pre true  
+post  
+  domain = getDomain(populationSize, numberOfSuccesses, sampleSize)  
+  x ≤ domain[0]  
+    ? ret = 1.0  
+  x > domain[1]  
+    ? ret = 0.0  
+  else  
+    ret = innerCumulativeProbability(domain[1], x, -1)  
+  result' = ret  
+Functional Scenario Form  
+x=2 domain=[3,7] && result'=1.0  
+x=8 domain=[3,7] && result'=0.0  
+x=5 domain=[3,7] && result'=computed probability  
+end_process  
+
+// Inner cumulative probability  
+process innerCumulativeProbability(x0: int, x1: int, dx: int) result: double  
+pre true  
+post  
+  ret = probability(x0)  
+  while x0 ≠ x1  
+    x0 = x0 + dx  
+    ret = ret + probability(x0)  
+  result' = ret  
+Functional Scenario Form  
+x0=7 x1=5 dx=-1 && result'=P(7)+P(6)+P(5)  
+end_process  
+
+// Mean calculation  
+process getNumericalMean() result: double  
+pre true  
+post  
+  result' = sampleSize * (numberOfSuccesses / populationSize)  
+Functional Scenario Form  
+populationSize=100 numberOfSuccesses=20 sampleSize=10 && result'=2.0  
+end_process  
+
+// Variance calculation  
+process getNumericalVariance() result: double  
+pre true  
+post  
+  numericalVarianceIsCalculated = false  
+    ? numericalVariance' = calculateNumericalVariance()  
+      numericalVarianceIsCalculated' = true  
+  result' = numericalVariance  
+Functional Scenario Form  
+first call && result'=computed variance  
+subsequent calls && result'=cached value  
+end_process  
+
+process calculateNumericalVariance() result: double  
+pre true  
+post  
+  N = populationSize  
+  m = numberOfSuccesses  
+  n = sampleSize  
+  result' = (n * m * (N - n) * (N - m)) / (N * N * (N - 1))  
+Functional Scenario Form  
+populationSize=100 numberOfSuccesses=20 sampleSize=10 && result'≈1.616  
+end_process  
+
+// Support bounds  
+process getSupportLowerBound() result: int  
+pre true  
+post  
+  result' = FastMath.max(0, sampleSize + numberOfSuccesses - populationSize)  
+Functional Scenario Form  
+populationSize=100 numberOfSuccesses=20 sampleSize=10 && result'=0  
+end_process  
+
+process getSupportUpperBound() result: int  
+pre true  
+post  
+  result' = FastMath.min(numberOfSuccesses, sampleSize)  
+Functional Scenario Form  
+numberOfSuccesses=20 sampleSize=10 && result'=10  
+end_process  
+
+// Support connectivity  
+process isSupportConnected() result: boolean  
+pre true  
+post  
+  result' = true  
+Functional Scenario Form  
+always && result'=true  
+end_process  
+
+end_module  

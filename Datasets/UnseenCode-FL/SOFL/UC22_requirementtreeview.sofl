@@ -1,0 +1,73 @@
+module UC22_requirementtreeview
+type
+  i: int
+  bugReportFilePath: String
+  id: int
+
+process getClassItems() result: sequence of QTreeWidgetItem
+pre
+  treeWidget ≠ null
+post
+  result ← all top-level items from treeWidget where item.UserRole = classUserRole
+Functional Scenario Form
+treeWidget exists && return all top-level class items
+end_process
+
+process getClassStructure() result: sequence of ClassInfo
+pre
+  treeWidget ≠ null
+post
+  for each top-level item in treeWidget:
+    if item is modifiable (UserRole+1 = false) then
+      if item.UserRole = classUserRole then
+        construct ClassInfo(info) with item.text
+        for each child in item:
+          construct Method(child.text, item.text) and append to info.methods
+        append info to treeStructure
+      else if item.UserRole = globalFunctionUserRole then
+        skip or handle independent function (not implemented)
+  result ← treeStructure
+Functional Scenario Form
+top-level class nodes processed && corresponding methods added to ClassInfo or
+function node found && currently ignored
+end_process
+
+process ~CscrToolDialog() result: Void
+pre
+  ui ≠ null
+post
+  delete ui
+Functional Scenario Form
+dialog object destructed && ui deleted
+end_process
+
+process onOkClicked() result: Void
+pre
+  ui ≠ null
+post
+  if ui.loadButton.checked then
+    emit loadBugReportFile(bugReportFilePath)
+  else if ui.reviewButton.checked then
+    emit reviewMethod(ui.methodComboBox.currentText)
+  dialog.accept()
+Functional Scenario Form
+user selected load button && emit load signal && accept or
+user selected review button && emit review signal && accept
+end_process
+
+process handleOptionChanged(id: int) result: Void
+pre
+  ui ≠ null
+post
+  if id = 1 then
+    ui.stackedWidget.show()
+    ui.stackedWidget.currentIndex ← 0
+  else if id = 2 then
+    ui.stackedWidget.show()
+    ui.stackedWidget.currentIndex ← 1
+Functional Scenario Form
+user selects option 1 && show index 0 or
+user selects option 2 && show index 1
+end_process
+
+end_module

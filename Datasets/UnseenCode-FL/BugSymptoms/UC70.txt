@@ -1,0 +1,23 @@
+// Test Case 1: Null Transform Reference
+→ Setup: mTransform is uninitialized
+→ Action: Call GetTransform()
+→ Expected: mTransform is assigned to gameObject.transform
+→ Actual: System.NullReferenceException or incorrect behavior due to assignment in condition
+
+// Test Case 2: Dynamic building optimization not skipped
+→ Setup: useOptimizeDynamicBuild is true
+→ Action: Call RefreshFrustumPlanes()
+→ Expected: Frustum planes should be updated
+→ Actual: Method returns early; planes remain outdated
+
+// Test Case 3: Camera position computation
+→ Setup: Camera follows a target at position (10, 0, 10)
+→ Action: Update camera position via FixedUpdatePosition()
+→ Expected: Camera moves behind target based on rotation and distance
+→ Actual: Camera moves in wrong direction or to unexpected position
+
+// Log Output Simulation:
+→ [Error] update more than once in one frame!
+→ [Warning] Frustum planes not refreshed due to optimization flag
+→ [Exception] mTransform is null reference
+→ [Debug] Camera moved to (5.3, 65, 15.1)

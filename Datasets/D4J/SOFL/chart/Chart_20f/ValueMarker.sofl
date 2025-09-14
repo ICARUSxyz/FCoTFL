@@ -1,0 +1,88 @@
+module ValueMarker  
+type:  
+  value: double  
+
+process constructor1(valueParam: double)  
+pre true  
+post  
+  super() ∧  
+  value' = valueParam  
+
+Functional Scenario Form  
+valueParam = 5.0  
+    && value = 5.0  
+end_process  
+
+process constructor2(valueParam: double, paint: Paint, stroke: Stroke)  
+pre paint ≠ null ∧ stroke ≠ null  
+post  
+  value' = valueParam ∧  
+  super(paint, stroke, paint, stroke, 1.0f)  // Uses same paint/stroke for outline  
+
+Functional Scenario Form  
+valueParam=10.0 ∧ paint=red ∧ stroke=solid  
+    && value=10.0 ∧ super initialized  
+end_process  
+
+process constructor3(valueParam: double, paint: Paint, stroke: Stroke, 
+                    outlinePaint: Paint?, outlineStroke: Stroke?, alpha: float)  
+pre paint ≠ null ∧ stroke ≠ null  
+post  
+  value' = valueParam ∧  
+  super(paint, stroke, outlinePaint, outlineStroke, alpha)  
+
+Functional Scenario Form  
+valueParam=15.0 ∧ paint=blue ∧ stroke=dashed ∧ outlinePaint=null  
+    && value=15.0 ∧ super initialized  
+end_process  
+
+process getValue() result: double  
+pre true  
+post  
+  result' = value  
+
+Functional Scenario Form  
+value=7.5  
+    && returns 7.5  
+end_process  
+
+process setValue(newValue: double)  
+pre true  
+post  
+  value' = newValue ∧  
+  notifyListeners(new MarkerChangeEvent(this))  
+
+Functional Scenario Form  
+newValue=20.0  
+    && value updated ∧ event fired  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬super.equals(obj) ⇒ result' = false  
+    ¬(obj instanceof ValueMarker) ⇒ result' = false  
+    else  
+      that = (ValueMarker) obj ∧  
+      (  
+        this.value ≠ that.value ⇒ result' = false  
+        else ⇒ result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+obj = this  
+    && returns true  
+super.equals fails  
+    && returns false  
+obj not ValueMarker  
+    && returns false  
+same super and value  
+    && returns true  
+different value  
+    && returns false  
+end_process  
+
+end_module  

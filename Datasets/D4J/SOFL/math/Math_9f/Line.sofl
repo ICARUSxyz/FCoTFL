@@ -1,0 +1,179 @@
+module Line  
+
+// Constructor from two points  
+process constructor(p1: Vector3D, p2: Vector3D)  
+pre true  
+post  
+  reset(p1, p2)  
+Functional Scenario Form  
+valid distinct points && creates line  
+p1=p2 && throws MathIllegalException  
+end_process  
+
+// Copy constructor  
+process constructor_copy(line: Line)  
+pre true  
+post  
+  direction' = line.direction  
+  zero' = line.zero  
+Functional Scenario Form  
+valid line && creates identical line  
+end_process  
+
+// Reset line  
+process reset(p1: Vector3D, p2: Vector3D)  
+pre true  
+post  
+  delta = p2.subtract(p1)  
+  norm2 = delta.getNormSq()  
+  norm2 = 0.0 → throw MathIllegalException  
+  direction' = new Vector3D(1.0/FastMath.sqrt(norm2), delta)  
+  zero' = new Vector3D(1.0, p1, -p1.dotProduct(delta)/norm2, delta)  
+Functional Scenario Form  
+valid points && sets direction and zero  
+collinear points && throws exception  
+end_process  
+
+// Revert direction  
+process revert() result: Line  
+pre true  
+post  
+  result' = new Line(this)  
+  result'.direction' = direction.negate()  
+Functional Scenario Form  
+original direction=(1,0,0) && returns line with direction=(-1,0,0)  
+end_process  
+
+// Direction accessor  
+process getDirection() result: Vector3D  
+pre true  
+post  
+  result' = direction  
+end_process  
+
+// Origin accessor  
+process getOrigin() result: Vector3D  
+pre true  
+post  
+  result' = zero  
+end_process  
+
+// Abscissa calculation  
+process getAbscissa(point: Vector3D) result: double  
+pre true  
+post  
+  result' = point.subtract(zero).dotProduct(direction)  
+Functional Scenario Form  
+point=zero && result'=0.0  
+point along direction && positive value  
+end_process  
+
+// Point from abscissa  
+process pointAt(abscissa: double) result: Vector3D  
+pre true  
+post  
+  result' = new Vector3D(1.0, zero, abscissa, direction)  
+Functional Scenario Form  
+abscissa=0.0 && result'=zero  
+abscissa=1.0 && result'=zero.add(direction)  
+end_process  
+
+// Subspace projection  
+process toSubSpace(point: Vector<Euclidean3D>) result: Vector1D  
+pre true  
+post  
+  result' = new Vector1D(getAbscissa((Vector3D)point))  
+end_process  
+
+// Space projection  
+process toSpace(point: Vector<Euclidean1D>) result: Vector3D  
+pre true  
+post  
+  result' = pointAt(((Vector1D)point).getX())  
+end_process  
+
+// Line similarity  
+process isSimilarTo(line: Line) result: boolean  
+pre true  
+post  
+  angle = Vector3D.angle(direction, line.direction)  
+  result' = ((angle < 1e-10) ∨ (angle > π-1e-10)) ∧ contains(line.zero)  
+Functional Scenario Form  
+parallel lines && result'=true  
+perpendicular lines && result'=false  
+end_process  
+
+// Point containment  
+process contains(p: Vector3D) result: boolean  
+pre true  
+post  
+  result' = distance(p) < 1e-10  
+Functional Scenario Form  
+p on line && true  
+p not on line && false  
+end_process  
+
+// Point distance  
+process distance(p: Vector3D) result: double  
+pre true  
+post  
+  d = p.subtract(zero)  
+  n = new Vector3D(1.0, d, -d.dotProduct(direction), direction)  
+  result' = n.getNorm()  
+Functional Scenario Form  
+p=zero && result'=0.0  
+p perpendicular to zero && distance>0  
+end_process  
+
+// Line distance  
+process distance_line(line: Line) result: double  
+pre true  
+post  
+  normal = Vector3D.crossProduct(direction, line.direction)  
+  n = normal.getNorm()  
+  n < Precision.SAFE_MIN  
+    ? result' = distance(line.zero)  // parallel case  
+    : offset = line.zero.subtract(zero).dotProduct(normal)/n  
+      result' = FastMath.abs(offset)  
+Functional Scenario Form  
+parallel lines && distance=constant  
+skew lines && distance>0  
+end_process  
+
+// Closest point  
+process closestPoint(line: Line) result: Vector3D  
+pre true  
+post  
+  cos = direction.dotProduct(line.direction)  
+  n = 1 - cos*cos  
+  n < Precision.EPSILON  
+    ? result' = zero  // parallel case  
+    : delta0 = line.zero.subtract(zero)  
+      a = delta0.dotProduct(direction)  
+      b = delta0.dotProduct(line.direction)  
+      result' = new Vector3D(1, zero, (a - b*cos)/n, direction)  
+Functional Scenario Form  
+parallel lines && returns origin  
+intersecting lines && returns intersection point  
+end_process  
+
+// Line intersection  
+process intersection(line: Line) result: Vector3D  
+pre true  
+post  
+  closest = closestPoint(line)  
+  line.contains(closest) → result' = closest  
+  else → result' = null  
+Functional Scenario Form  
+intersecting lines && returns point  
+parallel lines && returns null  
+end_process  
+
+// Whole line sub-line  
+process wholeLine() result: SubLine  
+pre true  
+post  
+  result' = new SubLine(this, new IntervalsSet())  
+end_process  
+
+end_module

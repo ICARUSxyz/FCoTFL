@@ -1,0 +1,38 @@
+module UC5_suggestiondialog
+
+process UC5_suggestiondialog(parent: QWidget) result: UC5_suggestiondialog
+pre
+  true
+post
+  this.parent = parent
+  this.tabWidget = new QTabWidget(this)
+  this.templateListCodeGen = new QListWidget(this)
+  this.templateListBugFix = new QListWidget(this)
+  this.templateListAnnotation = new QListWidget(this)
+  this.editAreaCodeGen = new QTextEdit(this)
+  this.editAreaBugFix = new QTextEdit(this)
+  this.editAreaAnnotation = new QTextEdit(this)
+  this.generateButton = new QPushButton("Generate", this)
+  this.generatedResultWidget = new GeneratedResultWidget(this)
+  setupUI() executed
+  setupConnections() executed
+Functional Scenario Form
+valid parent && dialog initialized with all tabs, widgets, and layout bindings
+end_process
+
+process setupUI() result: Void
+pre
+  true
+post
+  mainLayout = new QVBoxLayout(this)
+  codeGenPage with codeGenLayout created, templateListCodeGen and editAreaCodeGen added, added to tabWidget as "Code Generation"
+  bugFixPage with bugFixLayout created, templateListBugFix and editAreaBugFix added, added to tabWidget as "Code Refinement"
+  annotationPage with annotationLayout created, templateListAnnotation and editAreaAnnotation added, added to tabWidget as "Code Annotation"
+  resultLayout contains vertical layout of generateButton and generatedResultWidget
+  mainLayout contains tabWidget and resultLayout, set as layout of dialog
+  addContextMenu() called for all (templateListX, editAreaX) pairs
+Functional Scenario Form
+widgets and tabs successfully created and organized && layout correctly applied to dialog
+end_process
+
+end_module

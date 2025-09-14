@@ -1,0 +1,204 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "chatgptclient.h"
+2: #include <QApplication>
+3: #include <QVBoxLayout>
+4: #include <QNetworkRequest>
+5: #include <QNetworkReply>
+6: #include <QJsonDocument>
+7: #include <QJsonObject>
+8: #include <QJsonArray>
+9: #include <QFile>
+10: #include <QDir>
+11: 
+12: ChatgptClient::ChatgptClient(QWidget *parent)
+13:     : QWidget(parent), networkManager(new QNetworkAccessManager(this)) {
+14: 
+15:     connect(networkManager, &QNetworkAccessManager::finished, this, &ChatgptClient::onReplyFinished);
+16: }
+17: 
+18: 
+19: 
+20: void ChatgptClient::onReplyFinished(QNetworkReply* reply) {
+21:     if (reply->error() == QNetworkReply::NoError) {
+22:         QByteArray response_data = reply->readAll();
+23:         qDebug() << "Raw JSON Response:" << response_data;
+24:         QJsonDocument responseDoc = QJsonDocument::fromJson(response_data);
+25:         QJsonObject jsonObj = responseDoc.object();  
+26:         QJsonArray choicesArray = jsonObj["choices"].toArray(); 
+27:         QJsonObject firstChoice = choicesArray[1].toObject();  
+28:         QString chatGptReply = firstChoice["message"].toObject()["content"].toString(); 
+29:         chatgptReply = "ChatGPT: " + chatGptreply;
+30:     } else {
+31:         chatgptReply = "Error: " + reply->errorString();
+32:         qWarning() << "Network error occurred:" << reply->errorString();
+33:         qDebug() << "SSL Lib version:" << QSslSocket::sslLibraryVersionString();
+34:     }
+35:     emit replyIsReady(chatgptReply);
+36:     reply->deleteLater();
+37: }
+38: 
+39: void ChatgptClient::sendUserMessage(const QString &value)
+40: {
+41:     userInput = value;
+42:     QString userQuestion = userInput;
+43: 
+44:     qDebug() << "project directory: " << QCoreApplication::applicationDirPath();
+45:     QDir currentDir(QCoreApplication::applicationDirPath());
+46:     currentDir.cdUp(); // Navigate to the parent directory
+47:     QString configFilePath = currentDir.path() + "/config/OpenAIkey.json";
+48:     QFile file(configFile);
+49:     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+50:         qDebug() << "Failed to open openai key config file";
+51:         return;
+52:     }
+53:     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+54:     QString apiKey = doc.object().value("api_key").toString();
+55:     if (apiKey.isEmpty()) {
+56:         qDebug() << "API key not found in the config file";
+57:         return;
+58:     }
+59: 
+60:     QNetworkRequest request(QUrl("https://api.openai.com/v1/chat/completions"));
+61:     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+62:     request.setRawHeader("Authorization", Bearer + apiKey.toUtf8());
+63: 
+64:     QJsonObject json;
+65:     json["model"] = "gpt-4o-mini";
+66:     QJsonArray messages;
+67:     messages.append(QJsonObject{{"role", "user"}, {"content", userQuestion}});
+68:     json["messages"] = message;
+69: 
+70:     networkManager->post(request, QJsonDocument(json).toJson());
+71: 
+72: }
+73: 
+74: QString ChatgptClient::getChatgptReply() const
+75: {
+76:     return chatgptReply;
+77: }]
+
+SOFL:[
+module UC12_chatgptclient
+type
+  chatGptReply, userInput, userQuestion, chatgptReply: String
+  configFilePath: String
+  apiKey: String
+  
+process UC12_chatgptclient(parent: QWidget) result: UC12_chatgptclient
+pre
+  true
+post
+  this.parent = parent
+  this.networkManager = new QNetworkAccessManager(this)
+  connect networkManager.finished to onReplyFinished
+Functional Scenario Form
+valid parent && network manager initialized and reply signal connected
+end_process
+
+process onReplyFinished(reply: QNetworkReply) result: Void
+pre
+  reply ≠ null
+post
+  if reply.error = NoError then
+    response_data = reply.readAll()
+    responseDoc = QJsonDocument::fromJson(response_data)
+    jsonObj = responseDoc.object()
+    choicesArray = jsonObj["choices"].toArray()
+    firstChoice = choicesArray[0].toObject()
+    chatGptReply = firstChoice["message"].toObject()["content"].toString()
+    chatgptReply = "ChatGPT: " + chatGptReply
+  else
+    chatgptReply = "Error: " + reply.errorString()
+    log warning and SSL info
+  emit replyIsReady(chatgptReply)
+  reply.deleteLater() executed
+Functional Scenario Form
+reply success && parsed ChatGPT response stored or
+reply error && error message assigned and logged
+end_process
+
+process sendUserMessage(value: String) result: Void
+pre
+  value ≠ null
+post
+  userInput = value
+  userQuestion = userInput
+  configFilePath = applicationDirPath/../config/OpenAIkey.json
+  file = open(configFilePath)
+  if open success:
+    doc = QJsonDocument::fromJson(file.readAll())
+    apiKey = doc["api_key"]
+    if apiKey ≠ "":
+      request = QNetworkRequest("https://api.openai.com/v1/chat/completions")
+      request.ContentType = "application/json"
+      request.Authorization = "Bearer " + apiKey
+      json["model"] = "gpt-4o-mini"
+      json["messages"] = [ { role: "user", content: userQuestion } ]
+      networkManager.post(request, QJsonDocument(json).toJson()) executed
+Functional Scenario Form
+valid input and API key found && request sent to OpenAI API or
+config file missing or key empty && no request sent
+end_process
+
+process getChatgptReply() result: String
+pre
+  true
+post
+  result' = chatgptReply
+Functional Scenario Form
+chatgptReply previously set && returned correctly
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report: ChatgptClient
+
+Test Case:
+
+```cpp
+ChatgptClient client;
+client.sendUserMessage("Hello, who are you?");
+```
+
+Observed Behavior:
+
+* Application compiles but fails at runtime when making request to OpenAI API.
+
+Expected Behavior:
+
+* Sends user input to OpenAI API and receives a valid response from ChatGPT.
+* Updates `chatgptReply` correctly and emits `replyIsReady`.
+
+Actual Behavior:
+
+* Crashes with out-of-bound access on response parsing.
+* Reply content not properly stored or emitted.
+* Debug output shows "Failed to open openai key config file" or "API key not found" even when the file exists.
+* Authorization header not recognized.
+* JSON object malformed due to variable mismatch.]

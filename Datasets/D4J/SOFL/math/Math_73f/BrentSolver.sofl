@@ -1,0 +1,106 @@
+module BrentSolver
+var
+serialVersionUID: long = 7694577816772532779
+
+process ctor_withFunction(self: BrentSolver, f: UnivariateRealFunction) result: BrentSolver
+pre
+f ≠ null
+post
+self.f' = f ∧ self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+Functional Scenario Form
+called && self.f' = f ∧ self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+end_process
+
+process ctor_default(self: BrentSolver) result: BrentSolver
+pre
+true
+post
+self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+Functional Scenario Form
+called && self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+end_process
+
+process solve_deprecated_min_max(self: BrentSolver, min: double, max: double) result: double
+pre
+true
+post
+result = solve(self, self.f, min, max)
+Functional Scenario Form
+called && result = solve(self, self.f, min, max)
+end_process
+
+process solve_deprecated_min_max_initial(self: BrentSolver, min: double, max: double, initial: double) result: double
+pre
+true
+post
+result = solve(self, self.f, min, max, initial)
+Functional Scenario Form
+called && result = solve(self, self.f, min, max, initial)
+end_process
+
+process solve_withInitial(self: BrentSolver,
+f: UnivariateRealFunction,
+min: double, max: double, initial: double) result: double
+pre
+f ≠ null ∧ min < initial ∧ initial < max
+post
+let y0 == f.value(initial), yL == f.value(min), yU == f.value(max) in
+( |y0| ≤ self.functionValueAccuracy ⇒ result = initial ) ∨
+( |yL| ≤ self.functionValueAccuracy ⇒ result = min ) ∨
+( y0 * yL < 0 ⇒ result = solve_core(self, f, min, yL, initial, y0, min, yL) ) ∨
+( |yU| ≤ self.functionValueAccuracy ⇒ result = max ) ∨
+( y0 * yU < 0 ⇒ result = solve_core(self, f, initial, y0, max, yU, initial, y0) ) ∨
+( yL * yU > 0 ⇒ raise(IllegalArgumentException) ) ∨
+( yL * yU ≤ 0 ∧ result = solve_core(self, f, min, yL, max, yU, initial, y0) )
+Functional Scenario Form
+|f(initial)| ≤ functionValueAccuracy && result = initial or
+|f(min)| ≤ functionValueAccuracy && result = min or
+f(initial)*f(min) < 0 && result = solve_core(self,f,min,f(min),initial,f(initial),min,f(min)) or
+|f(max)| ≤ functionValueAccuracy && result = max or
+f(initial)*f(max) < 0 && result = solve_core(self,f,initial,f(initial),max,f(max),initial,f(initial)) or
+f(min)*f(max) > 0 && raise(IllegalArgumentException) or
+f(min)*f(max) ≤ 0 && result = solve_core(self,f,min,f(min),max,f(max),initial,f(initial))
+end_process
+
+process solve(self: BrentSolver,
+f: UnivariateRealFunction,
+min: double, max: double) result: double
+pre
+f ≠ null ∧ min < max
+post
+let yL == f.value(min), yU == f.value(max), s == yL * yU in
+( s > 0 ∧ |yL| ≤ self.functionValueAccuracy ⇒ result = min ) ∨
+( s > 0 ∧ |yU| ≤ self.functionValueAccuracy ⇒ result = max ) ∨
+( s > 0 ∧ |yL| > self.functionValueAccuracy ∧ |yU| > self.functionValueAccuracy ⇒ raise(IllegalArgumentException) ) ∨
+( s < 0 ⇒ result = solve_core(self, f, min, yL, max, yU, min, yL) ) ∨
+( s = 0 ⇒ result = (if yL = 0 then min else max) )
+Functional Scenario Form
+f(min)*f(max) > 0 ∧ |f(min)| ≤ functionValueAccuracy && result = min or
+f(min)*f(max) > 0 ∧ |f(max)| ≤ functionValueAccuracy && result = max or
+f(min)*f(max) > 0 ∧ both far from 0 && raise(IllegalArgumentException) or
+f(min)*f(max) < 0 && result = solve_core(self,f,min,f(min),max,f(max),min,f(min)) or
+f(min) = 0 or f(max) = 0 && result = endpoint_root
+end_process
+
+process solve_core(self: BrentSolver,
+f: UnivariateRealFunction,
+x0: double, y0: double,
+x1: double, y1: double,
+x2: double, y2: double) result: double
+pre
+f ≠ null
+post
+(∃ i: int, x*: double • 0 ≤ i ≤ self.maximalIterationCount ∧
+( |y1| ≤ self.functionValueAccuracy ∨
+|x2 − x1| ≤ max(self.relativeAccuracy * |x1|, self.absoluteAccuracy) ) ∧
+x* = x1 ∧ result = x* )
+∨ raise(MaxIterationsExceededException)
+∨ raise(FunctionEvaluationException)
+Functional Scenario Form
+converged by |f(x1)| ≤ functionValueAccuracy within max iters && result = x1 or
+converged by |x2−x1| ≤ max(relativeAccuracy*|x1|, absoluteAccuracy) within max iters && result = x1 or
+exceeded maximalIterationCount && raise(MaxIterationsExceededException) or
+f.value evaluation error && raise(FunctionEvaluationException)
+end_process
+
+end_module

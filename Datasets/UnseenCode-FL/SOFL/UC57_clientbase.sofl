@@ -1,0 +1,39 @@
+module UC57_ClientBase
+
+process constructor(s: Socket) result: ClientBase
+pre 
+  true
+post 
+  result._socket = s &&
+  result._lastActive = now &&
+  result._lostHeartbeat = false &&
+  result._checkActiveIntervalId = setInterval(heartbeatCheck, 60000)
+Functional Scenario Form 
+true && result._socket = s && result._lostHeartbeat = false
+end_process
+
+process initialize(clientId: int) result: void
+pre 
+  true
+post 
+  _clientId = clientId &&
+  _socket registered on ERROR && 
+  _socket registered on END &&
+  _socket registered on DATA &&
+  if (_buffer exists) then 
+    _buffer updated with new data 
+  else 
+    _buffer initialized with data &&
+  while (_buffer.length >= 8 && len valid) do 
+    parse length and msgtype &&
+    if len > 0 then 
+      msg = subbuffer(8, len) &&
+    call onMessage(inMessage) &&
+    update _buffer after consuming message
+Functional Scenario Form 
+true && _clientId = clientId && _socket registered on events or
+_buffer != null && data received && parsed and onMessage triggered or
+invalid message length && _buffer reset to null && onError called
+end_process
+
+end_module

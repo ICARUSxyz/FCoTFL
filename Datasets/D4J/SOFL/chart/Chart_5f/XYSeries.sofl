@@ -1,0 +1,445 @@
+module XYSeries
+
+types:
+  data: List
+  autoSort: boolean
+  allowDuplicateXValues: boolean
+var
+  serialVersionUID = -5908509288197150436L
+  MAXIMUM_ITEM_COUNT: int = Integer.MAX_VALUE
+  MAX_REMOVAL_ATTEMPTS: int = 1000 // failsafe
+
+process XYSeries_Init1(
+    key: Comparable
+) : XYSeries
+pre 
+  key ≠ null
+post 
+  this.data' = new ArrayList() ∧ 
+  this.autoSort' = true ∧ 
+  this.allowDuplicateXValues' = true ∧ 
+  this.maximumItemCount' = MAXIMUM_ITEM_COUNT
+Functional Scenario Form 
+validKey&&defaultParamsInitialized 
+end_process
+
+process XYSeries_Init2(
+    key: Comparable,
+    autoSort: bool
+) : XYSeries
+pre 
+  key ≠ null
+post 
+  this.data' = new ArrayList() ∧ 
+  this.autoSort' = autoSort ∧ 
+  this.allowDuplicateXValues' = true ∧ 
+  this.maximumItemCount' = MAXIMUM_ITEM_COUNT
+Functional Scenario Form 
+autoSortEnabled&&allowDuplicatesTrue 
+manualSortDisabled&&defaultsMaintained 
+end_process
+
+process XYSeries_Init3(
+    key: Comparable,
+    autoSort: bool,
+    allowDuplicateXValues: bool
+) : XYSeries
+pre 
+  key ≠ null
+post 
+  this.data' = new ArrayList() ∧ 
+  this.autoSort' = autoSort ∧ 
+  this.allowDuplicateXValues' = allowDuplicateXValues ∧ 
+  this.maximumItemCount' = MAXIMUM_ITEM_COUNT
+Functional Scenario Form 
+fullCustomConfigApplied 
+duplicateXValuesForbidden&&initialized 
+end_process
+
+process getAutoSort(
+    this: XYSeries
+) result: bool
+post 
+  result = this.autoSort
+Functional Scenario Form 
+autoSortEnabled&&returnTrue 
+autoSortDisabled&&returnFalse 
+end_process
+
+process getAllowDuplicateXValues(
+    this: XYSeries
+) result: bool
+post 
+  result = this.allowDuplicateXValues
+Functional Scenario Form 
+duplicatesAllowed&&trueReturned 
+duplicatesForbidden&&falseReturned 
+end_process
+
+process getItemCount(
+    this: XYSeries
+) result: int
+post 
+  result = this.data.size()
+Functional Scenario Form 
+emptySeries&&zeroCount 
+nonEmptySeries&&exactItemCount 
+end_process
+
+process getItems(
+    this: XYSeries
+) result: List<XYDataItem>
+post 
+  result = Collections.unmodifiableList(this.data)
+Functional Scenario Form 
+validData&&immutableListReturned 
+emptyData&&emptyImmutableList 
+end_process
+
+process setMaximumItemCount(
+    this: XYSeries,
+    maximum: int
+)
+pre 
+  maximum ≥ 0
+post 
+  this.maximumItemCount' = maximum ∧ 
+  (this.data.size > maximum ⇒ 
+    this.data' = this.data.subList(this.data.size - maximum, this.data.size) ∧ 
+    fireSeriesChanged()
+  ) ∧ 
+  (this.data.size ≤ maximum ⇒ 
+    this.data' = this.data
+  )
+Functional Scenario Form 
+reduceCapacityBelowCurrentSize && truncateData 
+increaseCapacityNoTruncation && dataUnchanged 
+end_process
+
+process add(
+    this: XYSeries,
+    item: XYDataItem,
+    notify: bool
+)
+pre 
+  item ≠ null ∧ 
+  (this.allowDuplicateXValues = false ⇒ 
+    ∄existing ∈ this.data | existing.x = item.x
+  )
+post 
+  // Handle insertion order
+  (this.autoSort ⇒ 
+    ∃index ∈ {i | ∀j∈0..i-1 → this.data[j].x ≤ item.x ∧ ∀j∈i..this.data.size → this.data[j].x ≥ item.x} ∧ 
+    newData = insertAt(this.data, index, item)
+  ) ∨ 
+  (¬this.autoSort ⇒ newData = append(this.data, item)
+  ) ∧ 
+  
+  // Apply maximum item count
+  truncatedData = (newData.size > this.maximumItemCount ⇒ newData.subList(newData.size - this.maximumItemCount, newData.size)) ∨ newData ∧ 
+  
+  // Check if actual change occurred
+  actualChange = (truncatedData ≠ this.data) ∧ 
+  this.data' = truncatedData ∧ 
+  (actualChange ∧ notify ⇒ fireSeriesChanged())
+Functional Scenario Form 
+autoSortWithEmptySeries && insertFirstItem 
+autoSortMiddlePosition && maintainOrder 
+duplicateXForbidden && throwPreCondition 
+postAddExceedsMax && triggerTruncation 
+nonTrivialAddWithNotify && fireEvent 
+noOpAddDueToMaxLimit && silent 
+end_process
+
+process delete(
+    this: XYSeries,
+    start: int,
+    end: int
+)
+pre 
+  start ≥ 0 ∧ 
+  end < this.data.size ∧ 
+  start ≤ end
+post 
+  ∀i ∈ start..end | 
+    this.data' = removeElementAt(this.data, start) ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validRange&&itemsRemoved 
+invalidStart&&preConditionFailed 
+endBeyondSize&&noOp 
+end_process
+
+process remove_byIndex(
+    this: XYSeries,
+    index: int
+) result: XYDataItem
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  result' = this.data.get(index) ∧ 
+  this.data' = removeElementAt(this.data, index) ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validIndex&&itemReturned 
+emptySeries&&preViolated 
+end_process
+
+process remove_byX(
+    this: XYSeries,
+    x: Number
+) result: XYDataItem
+post 
+  idx = indexOf(x) ∧ 
+  (idx ≥ 0 ⇒ 
+    result' = remove_byIndex(this, idx) ∧ 
+    fireSeriesChanged()
+  ) ∨ 
+  (idx = -1 ⇒ result = null)
+Functional Scenario Form 
+existingX&&itemRemoved 
+nonExistentX&&nullReturned 
+end_process
+
+process clear(
+    this: XYSeries
+)
+post 
+  (this.data.size > 0 ⇒ 
+    this.data' = emptyList() ∧ 
+    fireSeriesChanged()
+  ) ∧ 
+  (this.data.size = 0 ⇒ noChange)
+Functional Scenario Form 
+nonEmptyData&&cleared 
+alreadyEmpty&&noAction 
+end_process
+
+process getDataItem(
+    this: XYSeries,
+    index: int
+) result: XYDataItem
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  result = this.data.get(index)
+Functional Scenario Form 
+validIndex&&itemRetrieved 
+outOfBounds&&preFailed 
+end_process
+
+process getX(
+    this: XYSeries,
+    index: int
+) result: Number
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  result = this.data.get(index).x
+Functional Scenario Form 
+validAccess&&xValueReturned 
+invalidIndex&&exceptionThrown 
+end_process
+
+process getY(
+    this: XYSeries,
+    index: int
+) result: Number
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  result = this.data.get(index).y
+Functional Scenario Form 
+validIndex&&yReturned 
+invalidIndex&&preFailed 
+end_process
+
+process updateByIndex(
+    this: XYSeries,
+    index: int,
+    y: Number
+)
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  item = this.data.get(index) ∧ 
+  item.y' = y ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validUpdate&&eventTriggered 
+outOfBounds&&noChange 
+end_process
+
+process update(
+    this: XYSeries,
+    x: Number,
+    y: Number
+)
+pre 
+  x ≠ null ∧ 
+  indexOf(x) ≥ 0
+post 
+  index = indexOf(x) ∧ 
+  item = this.data.get(index) ∧ 
+  item.y' = y ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+xExists&&valueUpdated 
+xNotFound&&preViolated 
+end_process
+
+process addOrUpdate(
+    this: XYSeries,
+    x: Number,
+    y: Number
+) result: XYDataItem?
+pre 
+  x ≠ null
+post 
+  (this.allowDuplicateXValues ⇒ 
+    add(x, y, true) ∧ 
+    result = null
+  ) ∨ 
+  (¬this.allowDuplicateXValues ∧ ∃i | this.data[i].x = x ⇒ 
+    overwritten = this.data.get(i) ∧ 
+    this.data[i].y' = y ∧ 
+    result = overwritten.clone() ∧ 
+    fireSeriesChanged()
+  ) ∨ 
+  (¬this.allowDuplicateXValues ∧ ∄i | this.data[i].x = x ⇒ 
+    insertAt = this.autoSort ? binarySearchPos(x) : this.data.size ∧ 
+    this.data' = insertAt(this.data, insertAt, new XYDataItem(x,y)) ∧ 
+    (this.data.size > maximumItemCount ⇒ this.data' = removeAt(0)) ∧ 
+    result = null ∧ 
+    fireSeriesChanged()
+  )
+Functional Scenario Form 
+duplicatesAllowed&&simpleAdd 
+existingXNoDuplicates&&overwrite 
+newXWithAutoSort&&insertSorted 
+exceedsMaxAfterAdd&&truncateFront 
+end_process
+
+process indexOf(
+    this: XYSeries,
+    x: Number
+) result: int
+pre 
+  x ≠ null
+post 
+  (this.autoSort ⇒ 
+    result = Collections.binarySearch(this.data, XYDataItem(x, null)) 
+  ) ∨ 
+  (¬this.autoSort ∧ (∃i ∈ 0..this.data.size-1 | this.data[i].x = x) ⇒ 
+    result = min{i | this.data[i].x = x}
+  ) ∨ 
+  (¬this.autoSort ∧ ∄i | this.data[i].x = x ⇒ 
+    result = -1
+  )
+Functional Scenario Form 
+autoSortFound&&returnIndex 
+autoSortNotFound&&negativeIndex 
+linearSearchMatch&&firstIndex 
+linearSearchNoMatch&&negativeOne 
+end_process
+
+process toArray(
+    this: XYSeries
+) result: double[][]
+post 
+  result.length = 2 ∧ 
+  result[0].length = this.data.size ∧ 
+  result[1].length = this.data.size ∧ 
+  ∀i ∈ 0..this.data.size-1 | 
+    result[0][i] = this.data[i].x.doubleValue() ∧ 
+    (this.data[i].y ≠ null ⇒ result[1][i] = this.data[i].y.doubleValue()) ∨ 
+    (this.data[i].y = null ⇒ result[1][i] = Double.NaN)
+Functional Scenario Form 
+nonEmptySeries&&arrayPopulated 
+nullYValues&&nanInserted 
+end_process
+
+process clone(
+    this: XYSeries
+) result: XYSeries
+post 
+  result' = super.clone() ∧ 
+  result.data' = ObjectUtilities.deepClone(this.data) ∧ 
+  result.maximumItemCount' = this.maximumItemCount ∧ 
+  result.autoSort' = this.autoSort ∧ 
+  result.allowDuplicateXValues' = this.allowDuplicateXValues
+Functional Scenario Form 
+validClone&&deepCopy 
+end_process
+
+process createCopy(
+    this: XYSeries,
+    start: int,
+    end: int
+) result: XYSeries
+pre 
+  start ≥ 0 ∧ 
+  end < this.data.size ∧ 
+  start ≤ end
+post 
+  result' = super.clone() ∧ 
+  result.data' = new ArrayList() ∧ 
+  ∀i ∈ start..end | 
+    itemClone = this.data.get(i).clone() ∧ 
+    result.data' = add(result.data, itemClone)
+Functional Scenario Form 
+validRange&&subsetCopied 
+startEqualsEnd&&singleItemCopy 
+end_process
+
+process equals(
+    this: XYSeries,
+    obj: Object
+) result: bool
+post 
+  (obj = this ⇒ result = true) ∨ 
+  (obj ∉ XYSeries ⇒ result = false) ∨ 
+  (¬super.equals(obj) ⇒ result = false) ∨ 
+  (that = (XYSeries)obj ∧ (
+    this.maximumItemCount ≠ that.maximumItemCount ∨ 
+    this.autoSort ≠ that.autoSort ∨ 
+    this.allowDuplicateXValues ≠ that.allowDuplicateXValues ∨ 
+    ¬ObjectUtilities.equal(this.data, that.data)
+  ) ⇒ result = false) ∨ 
+  result = true
+Functional Scenario Form 
+identityCheck&&true 
+differentType&&false 
+propertyMismatch&&false 
+dataListInequality&&false 
+allAttributesMatch&&true 
+end_process
+
+process hashCode(
+    this: XYSeries
+) result: int
+post 
+  result = super.hashCode() ∧ 
+  (count = this.data.size) ∧ 
+  (count > 0 ⇒ 
+    item1 = this.data.get(0) ∧ 
+    result' = 29 * result + item1.hashCode()
+  ) ∧ 
+  (count > 1 ⇒ 
+    item2 = this.data.get(count-1) ∧ 
+    result'' = 29 * result' + item2.hashCode()
+  ) ∧ 
+  (count > 2 ⇒ 
+    item3 = this.data.get(count//2) ∧ 
+    result''' = 29 * result'' + item3.hashCode()
+  ) ∧ 
+  finalResult = (((result'''|result''|result') * 29 + this.maximumItemCount) * 29 + this.autoSort.toInt()) * 29 + this.allowDuplicateXValues.toInt()
+Functional Scenario Form 
+emptySeries&&baseHash 
+singleItem&&firstHashContribution 
+twoItems&&firstLastHash 
+threePlusItems&&allSampleHashes 
+mixedFlags&&fullAttributeImpact 
+end_process
+
+end_module

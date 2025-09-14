@@ -1,0 +1,69 @@
+module StrBuilder
+type
+    buffer: sequence of char
+    size: int
+    ch: char
+    str: String
+    matcher: StrMatcher
+    startIndex: int
+    idx: int
+    result: Boolean
+
+process containsChar(ch: char) result: result: Boolean
+pre
+    true
+post
+    (∃i ∈ [0..size-1] • buffer[i] = ch ⇒ result = true) ∧
+    (¬∃i ∈ [0..size-1] • buffer[i] = ch ⇒ result = false)
+Functional Scenario Form
+(∃i ∈ [0..size-1] • buffer[i] = ch) && (result = true) or
+(¬∃i ∈ [0..size-1] • buffer[i] = ch) && (result = false)
+end_process
+
+process containsString(str: String) result: result: Boolean
+pre
+    true
+post
+    (indexOf(str, 0) ≥ 0 ⇒ result = true) ∧ (indexOf(str, 0) < 0 ⇒ result = false)
+Functional Scenario Form
+(indexOf(str, 0) ≥ 0) && (result = true) or
+(indexOf(str, 0) < 0) && (result = false)
+end_process
+
+process containsMatcher(matcher: StrMatcher) result: result: Boolean
+pre
+    true
+post
+    (indexOf(matcher, 0) ≥ 0 ⇒ result = true) ∧ (indexOf(matcher, 0) < 0 ⇒ result = false)
+Functional Scenario Form
+(indexOf(matcher, 0) ≥ 0) && (result = true) or
+(indexOf(matcher, 0) < 0) && (result = false)
+end_process
+
+process indexOfChar(ch: char) result: idx: int
+pre
+    true
+post
+    (∃i ∈ [0..size-1] • buffer[i] = ch ∧ (∀j ∈ [0..i-1] • buffer[j] ≠ ch) ⇒ idx = i) ∧
+    (¬∃i ∈ [0..size-1] • buffer[i] = ch ⇒ idx = -1)
+Functional Scenario Form
+(buffer contains ch) && (idx = first index of ch) or
+(buffer does not contain ch) && (idx = -1)
+end_process
+
+process indexOfCharFrom(ch: char, startIndex: int) result: idx: int
+pre
+    true
+post
+    let s = if startIndex < 0 then 0 else startIndex in
+    if s ≥ size then idx = -1
+    else
+        (∃i ∈ [s..size-1] • buffer[i] = ch ∧ (∀j ∈ [s..i-1] • buffer[j] ≠ ch) ⇒ idx = i) ∧
+        (¬∃i ∈ [s..size-1] • buffer[i] = ch ⇒ idx = -1)
+Functional Scenario Form
+(startIndex ≥ size) && (idx = -1) or
+(buffer[s..] contains ch) && (idx = first i ≥ s where buffer[i] = ch) or
+(buffer[s..] does not contain ch) && (idx = -1)
+end_process
+
+end_module

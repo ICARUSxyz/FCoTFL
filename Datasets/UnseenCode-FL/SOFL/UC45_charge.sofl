@@ -1,0 +1,71 @@
+module UC45_charge
+type
+  balance: int
+  charge: int
+  min: int
+  max: int
+  chargeText: string
+  chargeAndBalance: int
+  viewMessage: string
+  currentPage: string
+
+var
+  MAX_BALANCE: int = 500000
+  MIN_CHARGE: int = 1000
+
+process chargeConstructor(balancePath: string, historyPath: string) result: Boolean
+pre
+  balancePath ≠ "" ∧ file at balancePath exists ∧ file content is numeric
+post
+  balance = readInt(balancePath) ∧
+  min = if balance ≤ 499000 then 1000 else -1 ∧
+  max = if balance ≤ 499000 then MAX_BALANCE - balance else -1 ∧
+  currentPage = "charge" ∧
+  result = true
+Functional Scenario Form
+(balancePath is valid) &&
+(balance = readInt(balancePath) ∧
+ min = (balance ≤ 499000 → 1000, else -1) ∧
+ max = (balance ≤ 499000 → 500000 - balance, else -1) ∧
+ currentPage = "charge" ∧
+ result = true)
+end_process
+
+process chargeAction(input: string) result: Boolean
+pre
+  input ≠ ""
+post
+  (input is valid number ∧ MIN_CHARGE < charge ≤ max ∧ balance + charge ≤ MAX_BALANCE) →
+    (chargeAndBalance = balance + charge ∧
+     writeInt(chargeAndBalance, "balance.csv") ∧
+     appendLine(historyPath, timestamp() + ": " + input + " yen charged.") ∧
+     viewMessage = "Charging completed." ∧
+     result = true)
+  or
+  (input is not number or not in valid range) →
+    (viewMessage = "Error." ∧
+     result = false)
+Functional Scenario Form
+(input is valid and charge in range) &&
+(chargeAndBalance = balance + charge ∧
+ writeInt(chargeAndBalance, "balance.csv") ∧
+ appendLine(historyPath, timestamp() + ": " + input + " yen charged.") ∧
+ viewMessage = "Charging completed." ∧
+ result = true)
+or
+(input invalid or charge out of range) &&
+(viewMessage = "Error." ∧
+ result = false)
+end_process
+
+process switchPage(button: string) result: Boolean
+pre
+  button ∈ {"wallet", "settlement", "coupon"}
+post
+  currentPage = button ∧ result = true
+Functional Scenario Form
+(button ∈ {"wallet", "settlement", "coupon"}) &&
+(currentPage = button ∧ result = true)
+end_process
+
+end_module

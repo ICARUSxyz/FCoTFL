@@ -1,0 +1,26 @@
+Bug Report: SuggestionDialog
+
+Test Input:
+
+```cpp
+SuggestionDialog dialog;
+dialog.show();
+```
+
+Observed Behavior:
+
+* Application crashes during UI setup.
+* No widgets are displayed inside the dialog.
+* Button text appears blank or causes compile error.
+
+Expected Behavior:
+
+* Dialog initializes with three functional tabs: Code Generation, Code Refinement, and Code Annotation.
+* The "Generate" button appears correctly and is clickable.
+* All layouts are applied properly, and widgets are visible.
+
+Actual Behavior:
+
+* Button construction fails due to incorrect usage of `Generate` identifier.
+* Annotation tab layout appears misaligned.
+* Final layout not applied as expected — widgets do not render inside main window.

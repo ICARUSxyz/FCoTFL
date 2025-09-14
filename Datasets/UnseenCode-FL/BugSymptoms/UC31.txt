@@ -1,0 +1,102 @@
+**Bug Report: Payment Panel Behavior Issues**
+
+---
+
+**Test Case 1: Radio Button Selection**
+
+**Action:**
+Launch the panel and inspect the "Use Points" option.
+
+**Expected:**
+Both "Use" and "Do Not Use" radio buttons are selectable and mutually exclusive.
+
+**Observed:**
+Only one button is added to the group; the second option is not rendered or selectable.
+
+**UI Behavior:**
+
+```plaintext
+[INFO] Displayed Radio: ポイントを使用する  
+[WARN] Missing '使用しない' option in UI
+```
+
+---
+
+**Test Case 2: Coupon Combo Box Initialization**
+
+**Action:**
+Launch the panel and inspect the default selection of the coupon dropdown.
+
+**Expected:**
+Default selected value is 0%.
+
+**Observed:**
+Default value is set to 10%.
+
+**UI Behavior:**
+
+```plaintext
+[INFO] Coupon dropdown default: 10%  
+[NOTE] May affect initial discount calculation if not adjusted
+```
+
+---
+
+**Test Case 3: Payment Action Listener**
+
+**Action:**
+Click the "決済" button after entering a valid amount.
+
+**Expected:**
+Event listener processes input and updates the discounted amount label.
+
+**Observed:**
+Compilation error or no action triggered due to missing event parameter.
+
+**Log:**
+
+```plaintext
+[ERROR] Cannot compile: Missing ActionEvent parameter in method  
+[DEBUG] No response on payment button click
+```
+
+---
+
+**Test Case 4: Discount Calculation Logic**
+
+**Action:**
+Enter an amount, select a coupon, and click "決済".
+
+**Expected:**
+Discounted amount is calculated and displayed correctly.
+
+**Observed:**
+Label not updated or shows null due to incorrect balance check logic or missing label.
+
+**Log:**
+
+```plaintext
+[WARN] Discounted amount >= balance  
+[INFO] Dialog: 残高が不足しています  
+[DEBUG] Label update skipped
+```
+
+---
+
+**Test Case 5: Discounted Amount Label Visibility**
+
+**Action:**
+Click "決済" with a valid balance.
+
+**Expected:**
+Label below the button shows the final amount after applying discount.
+
+**Observed:**
+Label remains empty or is not updated.
+
+**Log:**
+
+```plaintext
+[DEBUG] discountedAmountLabel is empty after action  
+[WARN] Label content not refreshed
+```

@@ -1,0 +1,68 @@
+**Bug Report: rankingData Module – Symptom Summary**
+
+---
+
+### **Test Case 1: Data Extraction with Input File**
+
+**Input (`input.txt`):**
+
+```
+001/Alice/23/Female/170/60/35/Extra
+002/Bob/30/Male/180/70/40/Extra
+003/Carol/28/Female/165/55/38/Extra
+```
+
+**Expected Output (`output.txt`):**
+
+```
+23/Extra
+30/Extra
+28/Extra
+```
+
+**Observed Output:**
+
+```
+23/Extra
+30/Extra
+28/Extra
+```
+
+**Output Log:**
+
+```
+データの抽出と書き込みが完了しました。
+```
+
+*(No symptom observed here.)*
+
+---
+
+### **Test Case 2: Running Main and Displaying Results**
+
+**Observed Output:**
+
+```
+Exception in thread "main" java.lang.Error: Unresolved compilation problem:
+Type mismatch: cannot convert from String[] to String
+
+	at Result.<init>(rankingData.java:66)
+	at rankingData.main(rankingData.java:44)
+```
+
+---
+
+### **Test Case 3: Class Instantiation Failure**
+
+**Observed Behavior:**
+Program fails to run due to constructor issues in the `Result` class.
+
+**Console Output:**
+
+```
+[ERROR] Constructor 'Result(String[], String[])' does not compile:
+- Cannot assign String[] to String
+- Cannot assign String[] to String
+```
+
+---

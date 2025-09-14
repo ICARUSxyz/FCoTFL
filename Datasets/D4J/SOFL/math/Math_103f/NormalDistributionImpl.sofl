@@ -1,0 +1,180 @@
+module NormalDistributionImpl
+type
+NormalDistributionImplState: composed type of {
+mean: double,
+standardDeviation: double,
+solverAbsoluteAccuracy: double
+}
+
+var
+DEFAULT_INVERSE_ABSOLUTE_ACCURACY: double = 1e-9
+serialVersionUID: long = 8589540077390120676
+
+process ctor_mean_sd(mean: double, sd: double) result: NormalDistributionImpl
+pre
+sd > 0.0
+post
+result ≠ null
+result.mean' = mean
+result.standardDeviation' = sd
+result.solverAbsoluteAccuracy' = DEFAULT_INVERSE_ABSOLUTE_ACCURACY
+Functional Scenario Form
+sd > 0 && result.mean' = mean ∧ result.standardDeviation' = sd ∧ result.solverAbsoluteAccuracy' = DEFAULT_INVERSE_ABSOLUTE_ACCURACY or
+sd ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+process ctor_mean_sd_acc(mean: double, sd: double, inverseCumAccuracy: double) result: NormalDistributionImpl
+pre
+sd > 0.0
+post
+result ≠ null
+result.mean' = mean
+result.standardDeviation' = sd
+result.solverAbsoluteAccuracy' = inverseCumAccuracy
+Functional Scenario Form
+sd > 0 && result.mean' = mean ∧ result.standardDeviation' = sd ∧ result.solverAbsoluteAccuracy' = inverseCumAccuracy or
+sd ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+process ctor_default() result: NormalDistributionImpl
+pre
+true
+post
+result ≠ null
+result.mean' = 0.0
+result.standardDeviation' = 1.0
+result.solverAbsoluteAccuracy' = DEFAULT_INVERSE_ABSOLUTE_ACCURACY
+Functional Scenario Form
+called && result.mean' = 0 ∧ result.standardDeviation' = 1 ∧ result.solverAbsoluteAccuracy' = DEFAULT_INVERSE_ABSOLUTE_ACCURACY
+end_process
+
+process getMean(self: NormalDistributionImpl) result: double
+pre
+self ≠ null
+post
+result = self.mean
+Functional Scenario Form
+called && result = self.mean
+end_process
+
+process getStandardDeviation(self: NormalDistributionImpl) result: double
+pre
+self ≠ null
+post
+result = self.standardDeviation
+Functional Scenario Form
+called && result = self.standardDeviation
+end_process
+
+process density(self: NormalDistributionImpl, x: double) result: double
+pre
+self ≠ null
+post
+let x0 == x - self.mean,
+x1 == x0 / self.standardDeviation in
+result = exp(-0.5 * x1 * x1) / (self.standardDeviation * SQRT2PI)
+Functional Scenario Form
+called && result = exp(-0.5 * ((x - self.mean)/self.standardDeviation)^2) / (self.standardDeviation * SQRT2PI)
+end_process
+
+process cumulativeProbability(self: NormalDistributionImpl, x: double) result: double
+pre
+self ≠ null
+post
+let dev == x - self.mean in
+if abs(dev) > 40.0 * self.standardDeviation then
+result = (dev < 0.0) ? 0.0 : 1.0
+else
+result = 0.5 * (1.0 + erf(dev / (self.standardDeviation * sqrt(2.0))))
+Functional Scenario Form
+abs(x - self.mean) > 40self.standardDeviation && ((x < self.mean && result = 0.0) or (x ≥ self.mean && result = 1.0)) or
+abs(x - self.mean) ≤ 40self.standardDeviation && result = 0.5*(1 + erf((x - self.mean)/(self.standardDeviation*sqrt(2))))
+end_process
+
+process getSolverAbsoluteAccuracy(self: NormalDistributionImpl) result: double
+pre
+self ≠ null
+post
+result = self.solverAbsoluteAccuracy
+Functional Scenario Form
+called && result = self.solverAbsoluteAccuracy
+end_process
+
+process inverseCumulativeProbability(self: NormalDistributionImpl, p: double) result: double
+pre
+0.0 ≤ p ∧ p ≤ 1.0
+post
+if p = 0.0 then result = -INF
+else if p = 1.0 then result = +INF
+else result = super_inverseCumulativeProbability(self, p)
+Functional Scenario Form
+p = 0 && result = -INF or
+p = 1 && result = +INF or
+0 < p < 1 && result = super_inverseCumulativeProbability(self, p)
+end_process
+
+process sample(self: NormalDistributionImpl) result: double
+pre
+self ≠ null
+post
+// Delegates to parent random generator
+result = random_nextGaussian(self.mean, self.standardDeviation)
+Functional Scenario Form
+called && result = random_nextGaussian(self.mean, self.standardDeviation)
+end_process
+
+process getDomainLowerBound(self: NormalDistributionImpl, p: double) result: double
+pre
+self ≠ null ∧ 0.0 ≤ p ∧ p ≤ 1.0
+post
+if p < 0.5 then result = -MAX_DOUBLE else result = self.mean
+Functional Scenario Form
+p < 0.5 && result = -MAX_DOUBLE or
+p ≥ 0.5 && result = self.mean
+end_process
+
+process getDomainUpperBound(self: NormalDistributionImpl, p: double) result: double
+pre
+self ≠ null ∧ 0.0 ≤ p ∧ p ≤ 1.0
+post
+if p < 0.5 then result = self.mean else result = MAX_DOUBLE
+Functional Scenario Form
+p < 0.5 && result = self.mean or
+p ≥ 0.5 && result = MAX_DOUBLE
+end_process
+
+process getInitialDomain(self: NormalDistributionImpl, p: double) result: double
+pre
+self ≠ null ∧ 0.0 ≤ p ∧ p ≤ 1.0
+post
+if p < 0.5 then result = self.mean - self.standardDeviation
+else if p > 0.5 then result = self.mean + self.standardDeviation
+else result = self.mean
+Functional Scenario Form
+p < 0.5 && result = self.mean - self.standardDeviation or
+p > 0.5 && result = self.mean + self.standardDeviation or
+p = 0.5 && result = self.mean
+end_process
+
+// Helpers representing superclass/parent facilities
+process super_inverseCumulativeProbability(self: NormalDistributionImpl, p: double) result: double
+pre
+0.0 < p ∧ p < 1.0
+post
+// Uses bracketing via getDomain* and cumulativeProbability to solve for x: P(X < x) = p
+result = root_of_CDF_minus_p
+Functional Scenario Form
+0 < p < 1 && result = root_of_CDF_minus_p
+end_process
+
+process random_nextGaussian(mean: double, sd: double) result: double
+pre
+sd > 0.0
+post
+// Gaussian sample generator (parent-provided)
+result = gaussian_sample(mean, sd)
+Functional Scenario Form
+sd > 0 && result = gaussian_sample(mean, sd)
+end_process
+
+end_module

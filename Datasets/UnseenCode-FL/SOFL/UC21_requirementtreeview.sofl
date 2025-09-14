@@ -1,0 +1,79 @@
+module UC21_requirementtreeview
+type
+  className, newName: String
+  ok: Boolean
+  index: int
+  column: int
+
+process demoteToClassFunction() result: Void
+pre
+  treeWidget ≠ null
+post
+  if currentItem = null ∨ isItemFromExistingClassList(currentItem) then return
+  classItems ← getClassItems()
+  show class name selection dialog → className, ok
+  if ok = true then
+    for classItem in classItems:
+      if currentItem.text = className then return
+      if classItem.text = className then
+        remove currentItem from its parent or top-level
+        currentItem.text ← toLowerCamelCase(currentItem.text)
+        currentItem.icon ← memberfunc.svg
+        currentItem.UserRole ← classFunctionUserRole
+        classItem.addChild(currentItem)
+        break
+    treeWidget.currentItem ← currentItem
+Functional Scenario Form
+valid user selection && currentItem not from QStringList &&
+selected class found && currentItem moved under selected class or
+user canceled or invalid item && no action
+end_process
+
+process createNewClass() result: Void
+pre
+  true
+post
+  show dialog → className, ok
+  if ok ∧ className ≠ "" then
+    create newItem
+    newItem.text ← className
+    newItem.icon ← class.svg
+    newItem.UserRole ← classUserRole
+    newItem.UserRole+1 ← false
+    add newItem to treeWidget
+    treeWidget.currentItem ← newItem
+Functional Scenario Form
+user input className && class node created or
+user cancels or input empty && no action
+end_process
+
+process renameItem(item: QTreeWidgetItem, column: int) result: Void
+pre
+  item ≠ null
+post
+  if isItemFromExistingClassList(item) then return
+  show dialog → newName, ok
+  if ok ∧ newName ≠ "" then
+    item.text ← newName
+    treeWidget.currentItem ← item
+Functional Scenario Form
+valid modifiable item && user enters new name && item renamed or
+item is from existing list ∨ cancel/empty && no action
+end_process
+
+process deleteSelectedItem() result: Void
+pre
+  treeWidget ≠ null
+post
+  selectedItem ← treeWidget.currentItem
+  if selectedItem = null then
+    show info "Please select an item to delete."
+  else
+    remove selectedItem from parent or top-level
+    delete selectedItem and its children
+Functional Scenario Form
+no item selected && info shown or
+item selected && item removed from tree and deleted
+end_process
+
+end_module

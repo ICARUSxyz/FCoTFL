@@ -1,0 +1,36 @@
+module UC49_BankTransferSystem
+type
+  senderName: string
+  recipientName: string
+  senderBalance: real
+  recipientBalance: real
+  amount: real
+  result: Boolean
+  logEntry: string
+
+process transfer(senderName: string, recipientName: string, senderBalance: real, recipientBalance: real, amount: real) 
+  result: Boolean
+pre
+  senderBalance ≥ 0 ∧ recipientBalance ≥ 0
+post
+  ((amount > 0 ∧ amount ≤ senderBalance) AND
+     result = true ∧
+     senderBalance' = senderBalance - amount ∧
+     recipientBalance' = recipientBalance + amount ∧
+     logEntry = "Transaction: " + senderName + " -> " + recipientName + " | Amount: " + amount
+  ) OR
+  ((amount ≤ 0 ∨ amount > senderBalance) AND
+     result = false ∧
+     senderBalance' = senderBalance ∧
+     recipientBalance' = recipientBalance ∧
+     logEntry = ""
+  )
+Functional Scenario Form
+ (transferAmount > 0 ∧ transferAmount ≤ senderBalance) && flag = true ∧ senderBalance = senderBalance - transferAmount∧ recipientBalance = recipientBalance + transferAmount ∧ transactionLog = transactionLog ⨁ ("Transfer recorded"), Valid transfer, amount deducted and added to recipient, transaction logged
+        OR
+        (transferAmount > senderBalance) && flag = false, Invalid transfer, insufficient funds, values unchanged
+        OR
+        (transferAmount ≤ 0) && flag = false, Invalid transfer, amount must be positive, values unchanged
+end_process
+
+end_module

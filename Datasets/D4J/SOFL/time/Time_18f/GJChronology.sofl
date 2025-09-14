@@ -1,0 +1,1122 @@
+module GJChronology  
+type:  
+  iCutoverMillis: long
+  iGapDuration: long
+
+var:  
+  serialVersionUID: long = -2545574827706931671L  
+  MIN_DAYS_DEFAULT: int = 4  
+
+// Chronology conversion
+process convertByYear(instant: long, from: Chronology, to: Chronology) result: long  
+pre true  
+post  
+  year = from.year().get(instant) ∧  
+  month = from.monthOfYear().get(instant) ∧  
+  day = from.dayOfMonth().get(instant) ∧  
+  millisOfDay = from.millisOfDay().get(instant) ∧  
+  result' = to.getDateTimeMillis(year, month, day, millisOfDay)  
+
+Functional Scenario Form  
+from=JulianChronology to=GregorianChronology instant=0 && returns Gregorian equivalent  
+end_process  
+
+process convertByWeekyear(instant: long, from: Chronology, to: Chronology) result: long  
+pre true  
+post  
+  weekyear = from.weekyear().get(instant) ∧  
+  weekOfWeekyear = from.weekOfWeekyear().get(instant) ∧  
+  dayOfWeek = from.dayOfWeek().get(instant) ∧  
+  millisOfDay = from.millisOfDay().get(instant) ∧  
+  newInstant = to.weekyear().set(0, weekyear) ∧  
+  newInstant' = to.weekOfWeekyear().set(newInstant, weekOfWeekyear) ∧  
+  newInstant'' = to.dayOfWeek().set(newInstant', dayOfWeek) ∧  
+  result' = to.millisOfDay().set(newInstant'', millisOfDay)  
+
+Functional Scenario Form  
+from=ISOChronology to=GregorianChronology instant=0 && returns Gregorian weekyear equivalent  
+end_process  
+
+// Factory methods
+process getInstanceUTC() result: GJChronology  
+pre true  
+post  
+  result' = getInstance(DateTimeZone.UTC, DEFAULT_CUTOVER, MIN_DAYS_DEFAULT)  
+
+Functional Scenario Form  
+always && returns UTC chronology  
+end_process  
+
+process getInstance() result: GJChronology  
+pre true  
+post  
+  zone = DateTimeZone.getDefault() ∧  
+  result' = getInstance(zone, DEFAULT_CUTOVER, MIN_DAYS_DEFAULT)  
+
+Functional Scenario Form  
+zone=SystemDefault && returns default chronology  
+end_process  
+
+process getInstance(zone: DateTimeZone) result: GJChronology  
+pre true  
+post  
+  result' = getInstance(zone, DEFAULT_CUTOVER, MIN_DAYS_DEFAULT)  
+
+Functional Scenario Form  
+zone=Paris && returns Paris chronology  
+end_process  
+
+process getInstance(zone: DateTimeZone, gregorianCutover: ReadableInstant) result: GJChronology  
+pre true  
+post  
+  result' = getInstance(zone, gregorianCutover, MIN_DAYS_DEFAULT)  
+
+Functional Scenario Form  
+gregorianCutover=Instant(0) zone=UTC && returns custom cutover chronology  
+end_process  
+
+// Core instantiation method
+process getInstance(zone: DateTimeZone, gregorianCutover: ReadableInstant?, minDaysInFirstWeek: int) result: GJChronology  
+pre true  
+post  
+  zone' = DateTimeUtils.getZone(zone) ∧  
+  (gregorianCutover = null  
+    ⇒ cutoverInstant' = DEFAULT_CUTOVER  
+    else  
+      cutoverInstant' = gregorianCutover.toInstant() ∧  
+      cutoverDate = new LocalDate(cutoverInstant'.getMillis(), GregorianChronology.getInstance(zone')) ∧  
+      (cutoverDate.getYear() ≤ 0  
+        ⇒ errorMsg = "Cutover too early" ∧ result = IllegalArgumentException  
+      )  
+  ) ∧  
+  synchronized(cCache) {  
+    chronos = cCache.get(zone') ∧  
+    (chronos = null  
+      ⇒ chronos' = new ArrayList() ∧ cCache.put(zone', chronos')  
+      else  
+        ∃chrono: GJChronology ∈ chronos • (  
+          minDaysInFirstWeek = chrono.getMinimumDaysInFirstWeek() ∧  
+          cutoverInstant' = chrono.getGregorianCutover()  
+        )  
+          ⇒ result' = chrono  
+    ) ∧  
+    (result not defined  
+      ⇒ (zone' = DateTimeZone.UTC  
+          ⇒ result' = new GJChronology(JulianChronology.getInstance(zone', minDaysInFirstWeek), GregorianChronology.getInstance(zone', minDaysInFirstWeek), cutoverInstant')  
+          else  
+            utcChrono = getInstance(DateTimeZone.UTC, cutoverInstant', minDaysInFirstWeek) ∧  
+            result' = new GJChronology(ZonedChronology.getInstance(utcChrono, zone'), utcChrono.iJulianChronology, utcChrono.iGregorianChronology, utcChrono.iCutoverInstant)  
+        ) ∧  
+        chronos'.add(result')  
+    )  
+  }  
+
+Functional Scenario Form  
+zone=UTC gregorianCutover=null minDaysInFirstWeek=4 && returns cached instance  
+zone=NewYork gregorianCutover=Instant(0) minDaysInFirstWeek=5 && creates new instance  
+gregorianCutover=Instant(-62135596800000) (0001-01-01) && valid creation  
+gregorianCutover=Instant(-62135683200000) (year 0) && throws IllegalArgumentException  
+end_process  
+
+process getInstance(zone: DateTimeZone, gregorianCutover: long, minDaysInFirstWeek: int) result: GJChronology  
+pre true  
+post  
+  (gregorianCutover = DEFAULT_CUTOVER.getMillis()  
+    ⇒ cutoverInstant = null  
+    else  
+      cutoverInstant = new Instant(gregorianCutover)  
+  ) ∧  
+  result' = getInstance(zone, cutoverInstant, minDaysInFirstWeek)  
+
+Functional Scenario Form  
+gregorianCutover=-12219292800000L && returns default cutover instance  
+gregorianCutover=0L && returns custom cutover instance  
+end_process  
+
+// Fields
+var:  
+  iJulianChronology: JulianChronology  
+  iGregorianChronology: GregorianChronology  
+  iCutoverInstant: Instant  
+  iCutoverMillis: long  
+  iGapDuration: long  
+
+// Constructors
+process constructor(julian: JulianChronology, gregorian: GregorianChronology, cutoverInstant: Instant)  
+pre true  
+post  
+  super(null, [julian, gregorian, cutoverInstant]) ∧  
+  iJulianChronology' = julian ∧  
+  iGregorianChronology' = gregorian ∧  
+  iCutoverInstant' = cutoverInstant ∧  
+  iCutoverMillis' = cutoverInstant.getMillis()  
+
+Functional Scenario Form  
+julian=JulianChronology.getInstanceUTC() gregorian=GregorianChronology.getInstanceUTC() cutoverInstant=DEFAULT_CUTOVER && initializes fields  
+end_process  
+
+process constructor(base: Chronology, julian: JulianChronology, gregorian: GregorianChronology, cutoverInstant: Instant)  
+pre true  
+post  
+  super(base, [julian, gregorian, cutoverInstant]) ∧  
+  iJulianChronology' = julian ∧  
+  iGregorianChronology' = gregorian ∧  
+  iCutoverInstant' = cutoverInstant ∧  
+  iCutoverMillis' = cutoverInstant.getMillis()  
+
+Functional Scenario Form  
+base=ZonedChronology.getInstance(...) julian=... gregorian=... cutoverInstant=... && initializes fields  
+end_process  
+
+// Serialization
+process readResolve() result: Object  
+pre true  
+post  
+  result' = getInstance(getZone(), iCutoverInstant, getMinimumDaysInFirstWeek())  
+
+Functional Scenario Form  
+always && returns equivalent instance  
+end_process  
+
+// Zone handling
+process getZone() result: DateTimeZone  
+pre true  
+post  
+  base = getBase() ∧  
+  (base ≠ null  
+    ⇒ result' = base.getZone()  
+    else  
+      result' = DateTimeZone.UTC  
+  )  
+
+Functional Scenario Form  
+base=null && returns UTC  
+base=ZonedChronology(Paris) && returns Paris  
+end_process  
+
+process withUTC() result: Chronology  
+pre true  
+post  
+  result' = withZone(DateTimeZone.UTC)  
+
+Functional Scenario Form  
+zone=NewYork && returns UTC chronology  
+end_process  
+
+process withZone(zone: DateTimeZone?) result: Chronology  
+pre true  
+post  
+  zone' = (zone = null ? DateTimeZone.getDefault() : zone) ∧  
+  zone' = getZone()  
+    ⇒ result' = this  
+    else  
+      result' = getInstance(zone', iCutoverInstant, getMinimumDaysInFirstWeek())  
+
+Functional Scenario Form  
+zone=null && returns default zone  
+zone=UTC when current=UTC && returns this  
+zone=Paris when current=UTC && returns new instance  
+end_process  
+
+// DateTime calculation
+process getDateTimeMillis(year: int, monthOfYear: int, dayOfMonth: int, millisOfDay: int) result: long  
+pre true  
+post  
+  base = getBase() ∧  
+  (base ≠ null  
+    ⇒ result' = base.getDateTimeMillis(year, monthOfYear, dayOfMonth, millisOfDay)  
+    else  
+      instantGregorian = iGregorianChronology.getDateTimeMillis(year, monthOfYear, dayOfMonth, millisOfDay) ∧  
+      (instantGregorian < iCutoverMillis  
+        ⇒ instantJulian = iJulianChronology.getDateTimeMillis(year, monthOfYear, dayOfMonth, millisOfDay) ∧  
+          (instantJulian ≥ iCutoverMillis  
+            ⇒ errorMsg = "Specified date does not exist" ∧ result = IllegalArgumentException  
+            else  
+              result' = instantJulian  
+          )  
+        else  
+          result' = instantGregorian  
+      )  
+  )  
+
+Functional Scenario Form  
+year=1582 monthOfYear=10 dayOfMonth=15 millisOfDay=0 && returns Gregorian instant  
+year=1582 monthOfYear=10 dayOfMonth=5 millisOfDay=0 && returns Julian instant  
+year=1582 monthOfYear=10 dayOfMonth=10 millisOfDay=0 && throws IllegalArgumentException (gap period)  
+end_process  
+
+process getDateTimeMillis(year: int, monthOfYear: int, dayOfMonth: int, hourOfDay: int, minuteOfHour: int, secondOfMinute: int, millisOfSecond: int) result: long  
+pre true  
+post  
+  base = getBase() ∧  
+  (base ≠ null  
+    ⇒ result' = base.getDateTimeMillis(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond)  
+    else  
+      try:  
+        instant = iGregorianChronology.getDateTimeMillis(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond)  
+      catch IllegalFieldValueException:  
+        (monthOfYear = 2 ∧ dayOfMonth = 29)  
+          ⇒ instant = iGregorianChronology.getDateTimeMillis(year, 2, 28, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond) ∧  
+            (instant ≥ iCutoverMillis  
+              ⇒ rethrow IllegalFieldValueException  
+            )  
+        else  
+          rethrow exception  
+      ∧  
+      (instant < iCutoverMillis  
+        ⇒ instantJulian = iJulianChronology.getDateTimeMillis(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond) ∧  
+          (instantJulian ≥ iCutoverMillis  
+            ⇒ errorMsg = "Specified date does not exist" ∧ result = IllegalArgumentException  
+            else  
+              result' = instantJulian  
+          )  
+        else  
+          result' = instant  
+      )  
+  )  
+
+Functional Scenario Form  
+year=2000 monthOfYear=2 dayOfMonth=29 hourOfDay=12 minuteOfHour=0 secondOfMinute=0 millisOfSecond=0 && returns Gregorian leap day  
+year=1500 monthOfYear=2 dayOfMonth=29 hourOfDay=12 minuteOfHour=0 secondOfMinute=0 millisOfSecond=0 && returns Julian leap day  
+year=1582 monthOfYear=10 dayOfMonth=10 hourOfDay=12 minuteOfHour=0 secondOfMinute=0 millisOfSecond=0 && throws IllegalArgumentException  
+end_process  
+
+// Accessors
+process getGregorianCutover() result: Instant  
+pre true  
+post  
+  result' = iCutoverInstant  
+
+Functional Scenario Form  
+always && returns stored cutover instant  
+end_process  
+
+process getMinimumDaysInFirstWeek() result: int  
+pre true  
+post  
+  result' = iGregorianChronology.getMinimumDaysInFirstWeek()  
+
+Functional Scenario Form  
+iGregorianChronology.minDays=4 && returns 4  
+end_process  
+
+// Equality and hash
+process equals(obj: Object) result: boolean  
+pre true  
+post  
+  this = obj  
+    ⇒ result' = true  
+  obj instanceof GJChronology  
+    ⇒ chrono = (GJChronology)obj ∧  
+      result' = (iCutoverMillis = chrono.iCutoverMillis ∧  
+                 getMinimumDaysInFirstWeek() = chrono.getMinimumDaysInFirstWeek() ∧  
+                 getZone().equals(chrono.getZone()))  
+  else  
+    result' = false  
+
+Functional Scenario Form  
+obj=same instance && true  
+obj=other GJChronology with same zone/cutover/mindays && true  
+obj=GregorianChronology instance && false  
+end_process  
+
+process hashCode() result: int  
+pre true  
+post  
+  result' = "GJ".hashCode() * 11 + getZone().hashCode() + getMinimumDaysInFirstWeek() + iCutoverInstant.hashCode()  
+
+Functional Scenario Form  
+zone=UTC cutover=DEFAULT_CUTOVER minDays=4 && returns calculated hash  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  sb = new StringBuffer(60) ∧  
+  sb.append("GJChronology[") ∧  
+  sb.append(getZone().getID()) ∧  
+  (iCutoverMillis ≠ DEFAULT_CUTOVER.getMillis()  
+    ⇒ sb.append(",cutover=") ∧  
+      (withUTC().dayOfYear().remainder(iCutoverMillis) = 0  
+        ⇒ printer = ISODateTimeFormat.date()  
+        else  
+          printer = ISODateTimeFormat.dateTime()  
+      ) ∧  
+      printer.withChronology(withUTC()).printTo(sb, iCutoverMillis)  
+  ) ∧  
+  (getMinimumDaysInFirstWeek() ≠ 4  
+    ⇒ sb.append(",mdfw=") ∧ sb.append(getMinimumDaysInFirstWeek())  
+  ) ∧  
+  sb.append(']') ∧  
+  result' = sb.toString()  
+
+Functional Scenario Form  
+zone=UTC cutover=DEFAULT_CUTOVER minDays=4 && returns "GJChronology[UTC]"  
+zone=Paris cutover=Instant(0) minDays=5 && returns "GJChronology[Paris,cutover=1970-01-01,mdfw=5]"  
+end_process  
+
+process assemble(fields: Fields)  
+pre true  
+post  
+  params = (Object[])getParam() ∧  
+  julian = (JulianChronology)params[0] ∧  
+  gregorian = (GregorianChronology)params[1] ∧  
+  cutoverInstant = (Instant)params[2] ∧  
+  iCutoverMillis' = cutoverInstant.getMillis() ∧  
+  iJulianChronology' = julian ∧  
+  iGregorianChronology' = gregorian ∧  
+  iCutoverInstant' = cutoverInstant ∧  
+  (getBase() ≠ null  
+    ⇒ return  
+    else  
+      (julian.getMinimumDaysInFirstWeek() ≠ gregorian.getMinimumDaysInFirstWeek()  
+        ⇒ result = IllegalArgumentException  
+        else  
+          iGapDuration' = iCutoverMillis - convertByYear(iCutoverMillis, julian, gregorian) ∧  
+          fields.copyFieldsFrom(gregorian) ∧  
+          (gregorian.millisOfDay().get(iCutoverMillis) = 0  
+            ⇒ fields.millisOfSecond = new CutoverField(julian.millisOfSecond(), fields.millisOfSecond, iCutoverMillis) ∧  
+              ... [all time fields set similarly]  
+          ) ∧  
+          fields.era = new CutoverField(julian.era(), fields.era, iCutoverMillis) ∧  
+          cutoverDayOfYear = gregorian.year().roundCeiling(iCutoverMillis) ∧  
+          fields.dayOfYear = new CutoverField(julian.dayOfYear(), fields.dayOfYear, cutoverDayOfYear) ∧  
+          cutoverWeek = gregorian.weekyear().roundCeiling(iCutoverMillis) ∧  
+          fields.weekOfWeekyear = new CutoverField(julian.weekOfWeekyear(), fields.weekOfWeekyear, cutoverWeek, true) ∧  
+          fields.year = new ImpreciseCutoverField(julian.year(), fields.year, iCutoverMillis) ∧  
+          fields.years = fields.year.getDurationField() ∧  
+          ... [all date fields set similarly] ∧  
+          dayOfMonthField = new CutoverField(julian.dayOfMonth(), fields.dayOfMonth, iCutoverMillis) ∧  
+          dayOfMonthField.iRangeDurationField = fields.months ∧  
+          fields.dayOfMonth = dayOfMonthField  
+      )  
+  )  
+
+Functional Scenario Form  
+getBase()≠null && no field initialization  
+julian.minDays=gregorian.minDays=4 && initializes all cutover fields  
+julian.minDays=4 gregorian.minDays=5 && throws IllegalArgumentException  
+end_process  
+
+process julianToGregorianByYear(instant: long) result: long  
+pre true  
+post  
+  result' = convertByYear(instant, iJulianChronology, iGregorianChronology)  
+
+Functional Scenario Form  
+instant=0L && returns Gregorian equivalent  
+end_process  
+
+process gregorianToJulianByYear(instant: long) result: long  
+pre true  
+post  
+  result' = convertByYear(instant, iGregorianChronology, iJulianChronology)  
+
+Functional Scenario Form  
+instant=0L && returns Julian equivalent  
+end_process  
+
+process julianToGregorianByWeekyear(instant: long) result: long  
+pre true  
+post  
+  result' = convertByWeekyear(instant, iJulianChronology, iGregorianChronology)  
+
+Functional Scenario Form  
+instant=0L && returns Gregorian weekyear equivalent  
+end_process  
+
+process gregorianToJulianByWeekyear(instant: long) result: long  
+pre true  
+post  
+  result' = convertByWeekyear(instant, iGregorianChronology, iJulianChronology)  
+
+Functional Scenario Form  
+instant=0L && returns Julian weekyear equivalent  
+end_process  
+
+// CutoverField class
+process CutoverField constructor(julianField: DateTimeField, gregorianField: DateTimeField, cutoverMillis: long)  
+pre true  
+post  
+  this(julianField, gregorianField, cutoverMillis, false)  
+
+Functional Scenario Form  
+julianField=JulianChronology.millisOfSecond() gregorianField=GregorianChronology.millisOfSecond() cutoverMillis=0L && creates instance  
+end_process  
+
+process CutoverField constructor(julianField: DateTimeField, gregorianField: DateTimeField, cutoverMillis: long, convertByWeekyear: boolean)  
+pre true  
+post  
+  super(gregorianField.getType()) ∧  
+  iJulianField' = julianField ∧  
+  iGregorianField' = gregorianField ∧  
+  iCutover' = cutoverMillis ∧  
+  iConvertByWeekyear' = convertByWeekyear ∧  
+  iDurationField' = gregorianField.getDurationField() ∧  
+  rangeField = gregorianField.getRangeDurationField() ∧  
+  (rangeField = null  
+    ⇒ iRangeDurationField' = julianField.getRangeDurationField()  
+    else  
+      iRangeDurationField' = rangeField  
+  )  
+
+Functional Scenario Form  
+julianField=JulianChronology.weekOfWeekyear() gregorianField=GregorianChronology.weekOfWeekyear() cutoverMillis=0L convertByWeekyear=true && creates specialized instance  
+end_process  
+
+// CutoverField methods
+process CutoverField_isLenient() result: boolean  
+pre true  
+post  
+  result' = false  
+
+Functional Scenario Form  
+always && false  
+end_process  
+
+process CutoverField_get(instant: long) result: int  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.get(instant)  
+    else  
+      result' = iJulianField.get(instant)  
+
+Functional Scenario Form  
+instant=1000000 iCutover=0 && returns Gregorian value  
+instant=-1000000 iCutover=0 && returns Julian value  
+end_process  
+
+process CutoverField_getAsText(instant: long, locale: Locale) result: String  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getAsText(instant, locale)  
+    else  
+      result' = iJulianField.getAsText(instant, locale)  
+
+Functional Scenario Form  
+locale=Locale.US instant=0 iCutover=0 && returns Gregorian text  
+locale=Locale.FRANCE instant=-62135596800000 iCutover=0 && returns Julian text  
+end_process  
+
+process CutoverField_getAsText(fieldValue: int, locale: Locale) result: String  
+pre true  
+post  
+  result' = iGregorianField.getAsText(fieldValue, locale)  
+
+Functional Scenario Form  
+fieldValue=5 locale=Locale.GERMAN && returns Gregorian text  
+end_process  
+
+process CutoverField_getAsShortText(instant: long, locale: Locale) result: String  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getAsShortText(instant, locale)  
+    else  
+      result' = iJulianField.getAsShortText(instant, locale)  
+
+Functional Scenario Form  
+locale=Locale.JAPAN instant=0 iCutover=0 && returns Gregorian short text  
+locale=Locale.CHINA instant=-62135596800000 iCutover=0 && returns Julian short text  
+end_process  
+
+process CutoverField_getAsShortText(fieldValue: int, locale: Locale) result: String  
+pre true  
+post  
+  result' = iGregorianField.getAsShortText(fieldValue, locale)  
+
+Functional Scenario Form  
+fieldValue=10 locale=Locale.KOREA && returns Gregorian short text  
+end_process  
+
+process CutoverField_add(instant: long, value: int) result: long  
+pre true  
+post  
+  result' = iGregorianField.add(instant, value)  
+
+Functional Scenario Form  
+instant=0 value=5 && returns Gregorian calculation  
+end_process  
+
+process CutoverField_add(instant: long, value: long) result: long  
+pre true  
+post  
+  result' = iGregorianField.add(instant, value)  
+
+Functional Scenario Form  
+instant=1000 value=5000 && returns Gregorian calculation  
+end_process  
+
+process CutoverField_add(partial: ReadablePartial, fieldIndex: int, values: int[], valueToAdd: int) result: int[]  
+pre true  
+post  
+  valueToAdd = 0  
+    ⇒ result' = values  
+  DateTimeUtils.isContiguous(partial)  
+    ⇒ instant = 0L ∧  
+      ∀i: 0..partial.size()-1 • (  
+        instant' = partial.getFieldType(i).getField(GJChronology.this).set(instant, values[i])  
+      ) ∧  
+      instant' = add(instant, valueToAdd) ∧  
+      result' = GJChronology.this.get(partial, instant')  
+  else  
+    result' = super.add(partial, fieldIndex, values, valueToAdd)  
+
+Functional Scenario Form  
+valueToAdd=0 && returns original values  
+partial=LocalDate(2004,2,29) valueToAdd=48 && returns [2008,2,29]  
+partial=YearMonth(1582,10) valueToAdd=12 && superclass handling  
+end_process  
+
+// Difference calculations
+process CutoverField_getDifference(minuendInstant: long, subtrahendInstant: long) result: int  
+pre true  
+post  
+  result' = iGregorianField.getDifference(minuendInstant, subtrahendInstant)  
+
+Functional Scenario Form  
+minuendInstant=1000000 subtrahendInstant=500000 && returns Gregorian difference  
+end_process  
+
+process CutoverField_getDifferenceAsLong(minuendInstant: long, subtrahendInstant: long) result: long  
+pre true  
+post  
+  result' = iGregorianField.getDifferenceAsLong(minuendInstant, subtrahendInstant)  
+
+Functional Scenario Form  
+minuendInstant=2000000 subtrahendInstant=1000000 && returns long difference  
+end_process  
+
+// Set operations
+process CutoverField_set(instant: long, value: int) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ instant' = iGregorianField.set(instant, value) ∧  
+      instant' < iCutover  
+        ⇒ (instant' + iGapDuration < iCutover  
+            ⇒ result' = gregorianToJulian(instant')  
+            else  
+              get(instant') ≠ value  
+                ⇒ result = IllegalFieldValueException  
+                else  
+                  result' = instant'  
+          )  
+        else  
+          result' = instant'  
+  else  
+    instant' = iJulianField.set(instant, value) ∧  
+    instant' ≥ iCutover  
+      ⇒ (instant' - iGapDuration ≥ iCutover  
+          ⇒ result' = julianToGregorian(instant')  
+          else  
+            get(instant') ≠ value  
+              ⇒ result = IllegalFieldValueException  
+              else  
+                result' = instant'  
+        )  
+      else  
+        result' = instant'  
+
+Functional Scenario Form  
+instant=iCutover+1000 value=10 && sets Gregorian value  
+instant=iCutover-1000 value=15 && sets Julian value  
+instant=iCutover value=20 && gap handling with conversion  
+end_process  
+
+process CutoverField_set(instant: long, text: String, locale: Locale) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ instant' = iGregorianField.set(instant, text, locale) ∧  
+      instant' < iCutover  
+        ⇒ (instant' + iGapDuration < iCutover  
+            ⇒ result' = gregorianToJulian(instant')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+  else  
+    instant' = iJulianField.set(instant, text, locale) ∧  
+    instant' ≥ iCutover  
+      ⇒ (instant' - iGapDuration ≥ iCutover  
+          ⇒ result' = julianToGregorian(instant')  
+          else  
+            result' = instant'  
+        )  
+      else  
+        result' = instant'  
+
+Functional Scenario Form  
+text="2023-07-30" locale=Locale.US instant=iCutover+1000 && sets Gregorian date  
+text="1582-10-04" locale=Locale.UK instant=iCutover-1000 && sets Julian date  
+end_process  
+
+// Leap year handling
+process CutoverField_isLeap(instant: long) result: boolean  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.isLeap(instant)  
+    else  
+      result' = iJulianField.isLeap(instant)  
+
+Functional Scenario Form  
+instant=1600 && Gregorian leap year → true  
+instant=1500 && Julian leap year → true  
+instant=1700 && Gregorian non-leap → false  
+end_process  
+
+process CutoverField_getLeapAmount(instant: long) result: int  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getLeapAmount(instant)  
+    else  
+      result' = iJulianField.getLeapAmount(instant)  
+
+Functional Scenario Form  
+instant=2000 && returns 1 (leap day)  
+instant=1900 && returns 0  
+end_process  
+
+process CutoverField_getLeapDurationField() result: DurationField  
+pre true  
+post  
+  result' = iGregorianField.getLeapDurationField()  
+
+Functional Scenario Form  
+always && returns Gregorian leap duration  
+end_process  
+
+process CutoverField_getMinimumValue(partial: ReadablePartial) result: int  
+pre true  
+post  
+  result' = iJulianField.getMinimumValue(partial)  
+
+Functional Scenario Form  
+partial=YearMonth(1582,10) && returns Julian min value  
+end_process  
+
+process CutoverField_getMinimumValue(partial: ReadablePartial, values: int[]) result: int  
+pre true  
+post  
+  result' = iJulianField.getMinimumValue(partial, values)  
+
+Functional Scenario Form  
+partial=DateMidnight values=[1500,6,15] && returns Julian min  
+end_process  
+
+process CutoverField_getMinimumValue(instant: long) result: int  
+pre true  
+post  
+  instant < iCutover  
+    ⇒ result' = iJulianField.getMinimumValue(instant)  
+    else  
+      min = iGregorianField.getMinimumValue(instant) ∧  
+      testInstant = iGregorianField.set(instant, min) ∧  
+      (testInstant < iCutover  
+        ⇒ min' = iGregorianField.get(iCutover)  
+      ) ∧  
+      result' = min  
+
+Functional Scenario Form  
+instant=iCutover+1000 && returns Gregorian min  
+instant=iCutover-1000 && returns Julian min  
+instant=iCutover && returns Gregorian min at cutover  
+end_process  
+
+// Maximum value methods
+process CutoverField_getMaximumValue() result: int  
+pre true  
+post  
+  result' = iGregorianField.getMaximumValue()  
+
+Functional Scenario Form  
+always && returns Gregorian max  
+end_process  
+
+process CutoverField_getMaximumValue(instant: long) result: int  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getMaximumValue(instant)  
+    else  
+      max = iJulianField.getMaximumValue(instant) ∧  
+      testInstant = iJulianField.set(instant, max) ∧  
+      (testInstant ≥ iCutover  
+        ⇒ max' = iJulianField.get(iJulianField.add(iCutover, -1))  
+      ) ∧  
+      result' = max  
+
+Functional Scenario Form  
+instant=iCutover+1000 && returns Gregorian max  
+instant=iCutover-1000 && returns Julian max  
+instant=iCutover && returns Julian max before cutover  
+end_process  
+
+process CutoverField_getMaximumValue(partial: ReadablePartial) result: int  
+pre true  
+post  
+  instant = GJChronology.getInstanceUTC().set(partial, 0L) ∧  
+  result' = getMaximumValue(instant)  
+
+Functional Scenario Form  
+partial=YearMonth(1582,10) && returns max for that month  
+end_process  
+
+process CutoverField_getMaximumValue(partial: ReadablePartial, values: int[]) result: int  
+pre true  
+post  
+  chrono = GJChronology.getInstanceUTC() ∧  
+  instant = 0L ∧  
+  ∀i: 0..partial.size()-1 • (  
+    field = partial.getFieldType(i).getField(chrono) ∧  
+    (values[i] ≤ field.getMaximumValue(instant)  
+      ⇒ instant' = field.set(instant, values[i])  
+    )  
+  ) ∧  
+  result' = getMaximumValue(instant)  
+
+Functional Scenario Form  
+partial=DateMidnight values=[1500,2,28] && returns max day for Julian Feb  
+end_process  
+
+// Rounding operations
+process CutoverField_roundFloor(instant: long) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ instant' = iGregorianField.roundFloor(instant) ∧  
+      instant' < iCutover  
+        ⇒ (instant' + iGapDuration < iCutover  
+            ⇒ result' = gregorianToJulian(instant')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+    else  
+      result' = iJulianField.roundFloor(instant)  
+
+Functional Scenario Form  
+instant=iCutover+5000 && returns Gregorian floor  
+instant=iCutover-5000 && returns Julian floor  
+instant=iCutover+1000 && returns Gregorian floor at cutover  
+end_process  
+
+process CutoverField_roundCeiling(instant: long) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.roundCeiling(instant)  
+    else  
+      instant' = iJulianField.roundCeiling(instant) ∧  
+      instant' ≥ iCutover  
+        ⇒ (instant' - iGapDuration ≥ iCutover  
+            ⇒ result' = julianToGregorian(instant')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+
+Functional Scenario Form  
+instant=iCutover-1000 && returns Julian ceiling  
+instant=iCutover+1000 && returns Gregorian ceiling  
+instant=iCutover-5000 && returns Julian ceiling converted  
+end_process  
+
+// Text length methods
+process CutoverField_getMaximumTextLength(locale: Locale) result: int  
+pre true  
+post  
+  result' = max(iJulianField.getMaximumTextLength(locale), iGregorianField.getMaximumTextLength(locale))  
+
+Functional Scenario Form  
+locale=Locale.JAPAN && returns max of both chronologies  
+end_process  
+
+process CutoverField_getMaximumShortTextLength(locale: Locale) result: int  
+pre true  
+post  
+  result' = max(iJulianField.getMaximumShortTextLength(locale), iGregorianField.getMaximumShortTextLength(locale))  
+
+Functional Scenario Form  
+locale=Locale.GERMAN && returns max short text length  
+end_process  
+
+// Julian to Gregorian conversion
+process CutoverField_julianToGregorian(instant: long) result: long  
+pre true  
+post  
+  iConvertByWeekyear  
+    ⇒ result' = julianToGregorianByWeekyear(instant)  
+    else  
+      result' = julianToGregorianByYear(instant)  
+
+Functional Scenario Form  
+iConvertByWeekyear=true && converts by weekyear  
+iConvertByWeekyear=false && converts by year  
+end_process  
+
+process CutoverField_gregorianToJulian(instant: long) result: long  
+pre true  
+post  
+  iConvertByWeekyear  
+    ⇒ result' = gregorianToJulianByWeekyear(instant)  
+    else  
+      result' = gregorianToJulianByYear(instant)  
+
+Functional Scenario Form  
+iConvertByWeekyear=true && converts weekyear  
+iConvertByWeekyear=false && converts by year  
+end_process  
+
+// ImpreciseCutoverField class
+process ImpreciseCutoverField constructor(julianField: DateTimeField, gregorianField: DateTimeField, cutoverMillis: long)  
+pre true  
+post  
+  this(julianField, gregorianField, null, cutoverMillis, false)  
+
+Functional Scenario Form  
+julianField=JulianChronology.year() gregorianField=GregorianChronology.year() cutoverMillis=0L && creates instance  
+end_process  
+
+process ImpreciseCutoverField constructor(julianField: DateTimeField, gregorianField: DateTimeField, durationField: DurationField, cutoverMillis: long)  
+pre true  
+post  
+  this(julianField, gregorianField, durationField, cutoverMillis, false)  
+
+Functional Scenario Form  
+durationField=StandardDurationField.years() && creates shared duration instance  
+end_process  
+
+process ImpreciseCutoverField constructor(julianField: DateTimeField, gregorianField: DateTimeField, durationField: DurationField, cutoverMillis: long, convertByWeekyear: boolean)  
+pre true  
+post  
+  super(julianField, gregorianField, cutoverMillis, convertByWeekyear) ∧  
+  durationField = null  
+    ⇒ iDurationField' = new LinkedDurationField(iDurationField, this)  
+    else  
+      iDurationField' = durationField  
+
+Functional Scenario Form  
+convertByWeekyear=true && creates specialized weekyear instance  
+end_process  
+
+// Specialized add operation
+process ImpreciseCutoverField_add(instant: long, value: int) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ instant' = iGregorianField.add(instant, value) ∧  
+      instant' < iCutover  
+        ⇒ (instant' + iGapDuration < iCutover  
+            ⇒ (iConvertByWeekyear  
+                ⇒ wyear = iGregorianChronology.weekyear().get(instant') ∧  
+                  (wyear ≤ 0  
+                    ⇒ instant'' = iGregorianChronology.weekyear().add(instant', -1)  
+                    else  
+                      instant'' = instant'  
+                  )  
+                else  
+                  year = iGregorianChronology.year().get(instant') ∧  
+                  (year ≤ 0  
+                    ⇒ instant'' = iGregorianChronology.year().add(instant', -1)  
+                    else  
+                      instant'' = instant'  
+                  )  
+              ) ∧  
+              result' = gregorianToJulian(instant'')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+    else  
+      instant' = iJulianField.add(instant, value) ∧  
+      instant' ≥ iCutover  
+        ⇒ (instant' - iGapDuration ≥ iCutover  
+            ⇒ result' = julianToGregorian(instant')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+
+Functional Scenario Form  
+instant=iCutover+1000 value=5 && Gregorian add  
+instant=iCutover-1000 value=10 && Julian add  
+instant=iCutover value=20 && gap handling with year adjustment  
+value=-10 && negative value handling  
+end_process  
+
+process ImpreciseCutoverField_add(instant: long, value: long) result: long  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ instant' = iGregorianField.add(instant, value) ∧  
+      instant' < iCutover  
+        ⇒ (instant' + iGapDuration < iCutover  
+            ⇒ (iConvertByWeekyear  
+                ⇒ wyear = iGregorianChronology.weekyear().get(instant') ∧  
+                  (wyear ≤ 0  
+                    ⇒ instant'' = iGregorianChronology.weekyear().add(instant', -1)  
+                  )  
+                else  
+                  year = iGregorianChronology.year().get(instant') ∧  
+                  (year ≤ 0  
+                    ⇒ instant'' = iGregorianChronology.year().add(instant', -1)  
+                  )  
+              ) ∧  
+              result' = gregorianToJulian(instant'')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+    else  
+      instant' = iJulianField.add(instant, value) ∧  
+      instant' ≥ iCutover  
+        ⇒ (instant' - iGapDuration ≥ iCutover  
+            ⇒ result' = julianToGregorian(instant')  
+            else  
+              result' = instant'  
+          )  
+        else  
+          result' = instant'  
+
+Functional Scenario Form  
+value=365L && adds one year  
+value=10000L && large value addition  
+value=-365L && subtracts one year  
+end_process  
+
+// Difference calculations
+process ImpreciseCutoverField_getDifference(minuendInstant: long, subtrahendInstant: long) result: int  
+pre true  
+post  
+  minuendInstant ≥ iCutover  
+    ⇒ (subtrahendInstant ≥ iCutover  
+        ⇒ result' = iGregorianField.getDifference(minuendInstant, subtrahendInstant)  
+        else  
+          minuendInstant' = gregorianToJulian(minuendInstant) ∧  
+          result' = iJulianField.getDifference(minuendInstant', subtrahendInstant)  
+      )  
+  else  
+    (subtrahendInstant < iCutover  
+        ⇒ result' = iJulianField.getDifference(minuendInstant, subtrahendInstant)  
+        else  
+          minuendInstant' = julianToGregorian(minuendInstant) ∧  
+          result' = iGregorianField.getDifference(minuendInstant', subtrahendInstant)  
+      )  
+
+Functional Scenario Form  
+minuendInstant=1583-01-01 subtrahendInstant=1582-01-01 Gregorian && returns 365  
+minuendInstant=1583-01-01 subtrahendInstant=1582-01-01 Julian && converts minuend to Julian  
+end_process  
+
+process ImpreciseCutoverField_getDifferenceAsLong(minuendInstant: long, subtrahendInstant: long) result: long  
+pre true  
+post  
+  minuendInstant ≥ iCutover  
+    ⇒ (subtrahendInstant ≥ iCutover  
+        ⇒ result' = iGregorianField.getDifferenceAsLong(minuendInstant, subtrahendInstant)  
+        else  
+          minuendInstant' = gregorianToJulian(minuendInstant) ∧  
+          result' = iJulianField.getDifferenceAsLong(minuendInstant', subtrahendInstant)  
+      )  
+  else  
+    (subtrahendInstant < iCutover  
+        ⇒ result' = iJulianField.getDifferenceAsLong(minuendInstant, subtrahendInstant)  
+        else  
+          minuendInstant' = julianToGregorian(minuendInstant) ∧  
+          result' = iGregorianField.getDifferenceAsLong(minuendInstant', subtrahendInstant)  
+      )  
+
+Functional Scenario Form  
+minuendInstant=2000-01-01 subtrahendInstant=1900-01-01 Gregorian && returns 36525  
+minuendInstant=1500-01-01 subtrahendInstant=1400-01-01 Julian && returns 36525  
+end_process  
+
+// Simplified min/max methods
+process ImpreciseCutoverField_getMinimumValue(instant: long) result: int  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getMinimumValue(instant)  
+    else  
+      result' = iJulianField.getMinimumValue(instant)  
+
+Functional Scenario Form  
+instant=1582-10-15 Gregorian && returns 1  
+instant=1582-10-04 Julian && returns 1  
+end_process  
+
+process ImpreciseCutoverField_getMaximumValue(instant: long) result: int  
+pre true  
+post  
+  instant ≥ iCutover  
+    ⇒ result' = iGregorianField.getMaximumValue(instant)  
+    else  
+      result' = iJulianField.getMaximumValue(instant)  
+
+Functional Scenario Form  
+instant=1582-10-15 Gregorian && returns 31  
+instant=1582-10-04 Julian && returns 4 (October 1582)  
+end_process  
+
+// LinkedDurationField class
+process LinkedDurationField constructor(durationField: DurationField, dateTimeField: ImpreciseCutoverField)  
+pre true  
+post  
+  super(durationField, durationField.getType()) ∧  
+  iField' = dateTimeField  
+
+Functional Scenario Form  
+durationField=StandardDurationField.years() && creates instance  
+end_process  
+
+// Delegated operations
+process LinkedDurationField_add(instant: long, value: int) result: long  
+pre true  
+post  
+  result' = iField.add(instant, value)  
+
+Functional Scenario Form  
+value=5 && delegates to ImpreciseCutoverField  
+end_process  
+
+process LinkedDurationField_add(instant: long, value: long) result: long  
+pre true  
+post  
+  result' = iField.add(instant, value)  
+
+Functional Scenario Form  
+value=365L && delegates long addition  
+end_process  
+
+process LinkedDurationField_getDifference(minuendInstant: long, subtrahendInstant: long) result: int  
+pre true  
+post  
+  result' = iField.getDifference(minuendInstant, subtrahendInstant)  
+
+Functional Scenario Form  
+minuendInstant=2000 subtrahendInstant=1990 && delegates difference  
+end_process  
+
+process LinkedDurationField_getDifferenceAsLong(minuendInstant: long, subtrahendInstant: long) result: long  
+pre true  
+post  
+  result' = iField.getDifferenceAsLong(minuendInstant, subtrahendInstant)  
+
+Functional Scenario Form  
+minuendInstant=1000000 subtrahendInstant=500000 && delegates long difference  
+end_process  
+
+end_module  

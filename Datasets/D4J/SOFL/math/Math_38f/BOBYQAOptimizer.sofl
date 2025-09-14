@@ -1,0 +1,1123 @@
+module BOBYQAOptimizer
+type
+double_array: sequence of double
+int_array: sequence of int
+numberOfInterpolationPoints: int
+initialTrustRegionRadius: double
+stoppingTrustRegionRadius: double
+isMinimize: Boolean
+
+var
+// class constants
+MINIMUM_PROBLEM_DIMENSION: int = 2
+DEFAULT_INITIAL_RADIUS: double = 10.0
+DEFAULT_STOPPING_RADIUS: double = 1E-8
+ZERO: double = 0.0
+ONE: double = 1.0
+TWO: double = 2.0
+TEN: double = 10.0
+SIXTEEN: double = 16.0
+TWO_HUNDRED_FIFTY: double = 250.0
+MINUS_ONE: double = -1.0
+HALF: double = 0.5
+ONE_OVER_FOUR: double = 0.25
+ONE_OVER_EIGHT: double = 0.125
+ONE_OVER_TEN: double = 0.1
+ONE_OVER_A_THOUSAND: double = 0.001
+
+process init(numberOfInterpolationPoints_in: int) result: BOBYQAOptimizer
+pre
+numberOfInterpolationPoints_in ≥ MINIMUM_PROBLEM_DIMENSION + 2
+post
+numberOfInterpolationPoints' = numberOfInterpolationPoints_in and
+initialTrustRegionRadius' = DEFAULT_INITIAL_RADIUS and
+stoppingTrustRegionRadius' = DEFAULT_STOPPING_RADIUS and
+result' = this
+Functional Scenario Form
+numberOfInterpolationPoints_in ≥ MINIMUM_PROBLEM_DIMENSION + 2 && numberOfInterpolationPoints' = numberOfInterpolationPoints_in and initialTrustRegionRadius' = DEFAULT_INITIAL_RADIUS and stoppingTrustRegionRadius' = DEFAULT_STOPPING_RADIUS and result' = this
+end_process
+
+process init_full(numberOfInterpolationPoints_in: int, initialTrustRegionRadius_in: double, stoppingTrustRegionRadius_in: double) result: BOBYQAOptimizer
+pre
+numberOfInterpolationPoints_in ≥ MINIMUM_PROBLEM_DIMENSION + 2 and
+initialTrustRegionRadius_in > 0.0 and
+stoppingTrustRegionRadius_in > 0.0
+post
+numberOfInterpolationPoints' = numberOfInterpolationPoints_in and
+initialTrustRegionRadius' = initialTrustRegionRadius_in and
+stoppingTrustRegionRadius' = stoppingTrustRegionRadius_in and
+result' = this
+Functional Scenario Form
+numberOfInterpolationPoints_in ≥ MINIMUM_PROBLEM_DIMENSION + 2 and initialTrustRegionRadius_in > 0.0 and stoppingTrustRegionRadius_in > 0.0 && numberOfInterpolationPoints' = numberOfInterpolationPoints_in and initialTrustRegionRadius' = initialTrustRegionRadius_in and stoppingTrustRegionRadius' = stoppingTrustRegionRadius_in and result' = this
+end_process
+
+process doOptimize() result: RealPointValuePair
+pre
+// let n be problem dimension
+let n = |getStartPoint()| in
+n ≥ MINIMUM_PROBLEM_DIMENSION and
+|getLowerBound()| = n and
+|getUpperBound()| = n and
+(∀ i ∈ 0..n-1 • getLowerBound()[i] < getUpperBound()[i]) and
+numberOfInterpolationPoints ≥ n + 2 and
+numberOfInterpolationPoints ≤ (n + 1) * (n + 2) / 2
+post
+let lower = getLowerBound(), upper = getUpperBound() in
+setup(lower, upper) and
+isMinimize' = (getGoalType() = MINIMIZE) and
+currentBest' = new ArrayRealVector(getStartPoint()) and
+let v = bobyqa(lower, upper) in
+// if maximizing, negate model value
+result' = RealPointValuePair(currentBest'.getDataRef(), if isMinimize' then v else -v)
+Functional Scenario Form
+getGoalType() = MINIMIZE && result' = RealPointValuePair(new ArrayRealVector(getStartPoint()).getDataRef(), bobyqa(getLowerBound(), getUpperBound())) or
+getGoalType() = MAXIMIZE && result' = RealPointValuePair(new ArrayRealVector(getStartPoint()).getDataRef(), -bobyqa(getLowerBound(), getUpperBound()))
+end_process
+
+process bobyqa(lowerBound_in: double_array, upperBound_in: double_array) result: double
+pre
+let n = |currentBest| in
+|lowerBound_in| = n and
+|upperBound_in| = n and
+initialTrustRegionRadius > 0.0 and
+(∀ j ∈ 0..n-1 • lowerBound_in[j] < upperBound_in[j]) and
+lowerDifference ≠ null and
+upperDifference ≠ null and
+boundDifference ≠ null and
+|boundDifference| = n
+post
+// for each coordinate j, lowerDifference'/upperDifference'/currentBest' updated by the cases below
+let n = |currentBest| in
+(∀ j ∈ 0..n-1 •
+lowerDifference'.getEntry(j) =
+(if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ -initialTrustRegionRadius then
+(if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ ZERO then ZERO
+else -initialTrustRegionRadius)
+else
+(if (upperBound_in[j] - currentBest.getEntry(j)) ≤ initialTrustRegionRadius then
+(if (upperBound_in[j] - currentBest.getEntry(j)) ≤ ZERO then -boundDifference[j]
+else min(lowerBound_in[j] - (upperBound_in[j] - initialTrustRegionRadius), -initialTrustRegionRadius))
+else lowerDifference.getEntry(j))) and
+ upperDifference'.getEntry(j) =
+   (if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ -initialTrustRegionRadius then
+      (if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ ZERO then boundDifference[j]
+       else max(upperBound_in[j] - (lowerBound_in[j] + initialTrustRegionRadius), initialTrustRegionRadius))
+    else
+      (if (upperBound_in[j] - currentBest.getEntry(j)) ≤ initialTrustRegionRadius then
+         (if (upperBound_in[j] - currentBest.getEntry(j)) ≤ ZERO then ZERO
+          else initialTrustRegionRadius)
+       else upperDifference.getEntry(j))) and
+ currentBest'.getEntry(j) =
+   (if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ -initialTrustRegionRadius then
+      (if (lowerBound_in[j] - currentBest.getEntry(j)) ≥ ZERO then lowerBound_in[j]
+       else lowerBound_in[j] + initialTrustRegionRadius)
+    else
+      (if (upperBound_in[j] - currentBest.getEntry(j)) ≤ initialTrustRegionRadius then
+         (if (upperBound_in[j] - currentBest.getEntry(j)) ≤ ZERO then upperBound_in[j]
+          else upperBound_in[j] - initialTrustRegionRadius)
+       else currentBest.getEntry(j)))) and
+// after adjusting bounds and currentBest, delegate to bobyqb for the function value
+result' = bobyqb(lowerBound_in, upperBound_in)
+Functional Scenario Form
+// coordinate falls strictly inside the trust band at both sides
+∃ j • (lowerBound_in[j] - currentBest.getEntry(j)) < -initialTrustRegionRadius and (upperBound_in[j] - currentBest.getEntry(j)) > initialTrustRegionRadius && currentBest' = currentBest and lowerDifference' = lowerDifference and upperDifference' = upperDifference and result' = bobyqb(lowerBound_in, upperBound_in) or
+// near lower bound but not past it
+∀ j • (lowerBound_in[j] - currentBest.getEntry(j)) ∈ [-initialTrustRegionRadius, ZERO) && currentBest'.getEntry(j) = lowerBound_in[j] + initialTrustRegionRadius and lowerDifference'.getEntry(j) = -initialTrustRegionRadius and upperDifference'.getEntry(j) = max(upperBound_in[j] - currentBest'.getEntry(j), initialTrustRegionRadius) and result' = bobyqb(lowerBound_in, upperBound_in) or
+// clamped to lower bound
+∀ j • (lowerBound_in[j] - currentBest.getEntry(j)) ≥ ZERO && currentBest'.getEntry(j) = lowerBound_in[j] and lowerDifference'.getEntry(j) = ZERO and upperDifference'.getEntry(j) = boundDifference[j] and result' = bobyqb(lowerBound_in, upperBound_in) or
+// near upper bound but not past it
+∀ j • (upperBound_in[j] - currentBest.getEntry(j)) ∈ (ZERO, initialTrustRegionRadius] && currentBest'.getEntry(j) = upperBound_in[j] - initialTrustRegionRadius and lowerDifference'.getEntry(j) = min(lowerBound_in[j] - currentBest'.getEntry(j), -initialTrustRegionRadius) and upperDifference'.getEntry(j) = initialTrustRegionRadius and result' = bobyqb(lowerBound_in, upperBound_in) or
+// clamped to upper bound
+∀ j • (upperBound_in[j] - currentBest.getEntry(j)) ≤ ZERO && currentBest'.getEntry(j) = upperBound_in[j] and lowerDifference'.getEntry(j) = -boundDifference[j] and upperDifference'.getEntry(j) = ZERO and result' = bobyqb(lowerBound_in, upperBound_in)
+end_process
+
+process bobyqb(lowerBound_in: sequence of double, upperBound_in: sequence of double) result: double
+pre
+// dimensions and basic bounds sanity
+currentBest ≠ null and
+let n = currentBest.getDimension() in
+|lowerBound_in| = n and
+|upperBound_in| = n and
+(∀ j ∈ 0..n-1 • lowerBound_in[j] < upperBound_in[j]) and
+numberOfInterpolationPoints ≥ n + 2 and
+numberOfInterpolationPoints ≤ (n + 1) * (n + 2) / 2 and
+initialTrustRegionRadius > 0.0 and
+lowerDifference ≠ null and upperDifference ≠ null and
+bMatrix ≠ null and zMatrix ≠ null and interpolationPoints ≠ null and
+modelSecondDerivativesParameters ≠ null and modelSecondDerivativesValues ≠ null and
+lagrangeValuesAtNewPoint ≠ null and newPoint ≠ null and trialStepPoint ≠ null
+post
+// initial state before PRELIM
+trustRegionCenterInterpolationPointIndex' = 0 and
+
+// PRELIM initializes model structures and sets center-related arrays
+prelim(lowerBound_in, upperBound_in) and
+
+// compute xoptsq and set trustRegionCenterOffset from interpolationPoints(row = center)
+let n = currentBest.getDimension(),
+kbase = 0,
+row = trustRegionCenterInterpolationPointIndex' in
+(∀ i ∈ 0..n-1 • trustRegionCenterOffset'.getEntry(i) = interpolationPoints.getEntry(row, i)) and
+let xoptsq = Σ i∈0..n-1 • trustRegionCenterOffset'.getEntry(i) * trustRegionCenterOffset'.getEntry(i) in
+
+// counters and trust region radii initialized
+∃ ntrits', itest', knew', nfsav', rho', delta' •
+ntrits' = 0 and itest' = 0 and knew' = 0 and
+nfsav' = getEvaluations() and
+rho' = initialTrustRegionRadius and delta' = rho' and
+
+// state 20: possibly update gradient at center if index changed; may throw when evaluations > npt
+(
+(trustRegionCenterInterpolationPointIndex' = kbase) or
+(
+trustRegionCenterInterpolationPointIndex' ≠ kbase and
+(
+(getEvaluations() ≤ numberOfInterpolationPoints and
+// gradientAtTrustRegionCenter' updated by symmetric H and PQ terms
+gradientAtTrustRegionCenter' = updatedBy(modelSecondDerivativesValues, modelSecondDerivativesParameters, interpolationPoints, trustRegionCenterOffset')) or
+(getEvaluations() > numberOfInterpolationPoints and raises PathIsExploredException)
+)
+)
+) and
+
+// state 60: compute trust-region step via trsbox
+(
+let dsq_crv = trsbox(delta', new ArrayRealVector(n), new ArrayRealVector(n), new ArrayRealVector(n), new ArrayRealVector(n), new ArrayRealVector(n)),
+dsq = dsq_crv[0], crvmin = dsq_crv[1],
+dnorm = min(delta', sqrt(max(dsq, 0.0))) in
+(
+// small step: branch to 650 or 680, set ntrits = -1
+(dnorm < HALF * rho' and
+∃ errbig, frhosq, bdtol •
+errbig = max(max(diffa', diffb'), diffc') and
+frhosq = rho' * ONE_OVER_EIGHT * rho' and
+(
+(crvmin > ZERO and errbig > frhosq * crvmin and next_state' = 650) or
+(¬(crvmin > ZERO and errbig > frhosq * crvmin) and
+// boundary curvature test on each coordinate; if any fails -> 650 else 680
+((∃ j • boundaryCurvatureFail(j)) and next_state' = 650 or
+(¬∃ j • boundaryCurvatureFail(j) and next_state' = 680))
+) and ntrits' = -1
+)
+or
+// adequate step length: increment ntrits and continue (state 90)
+(dnorm ≥ HALF * rho' and ntrits' = 1 and next_state' = 90)
+)
+) and
+
+// state 90: possible severe-cancellation shift of origin/base
+(
+next_state' = 90 →
+(
+(dsq ≤ xoptsq * ONE_OVER_A_THOUSAND and
+// update BMAT with rank-2 like terms using work vectors; update by ZMAT-dependent terms
+bMatrix' = shiftedBy(interpolationPoints, trustRegionCenterOffset', zMatrix) and
+modelSecondDerivativesValues' = updatedByShift(modelSecondDerivativesValues, modelSecondDerivativesParameters, interpolationPoints, trustRegionCenterOffset') and
+// shift origin and bounds; zero the center offset
+originShift' = originShift + trustRegionCenterOffset' and
+newPoint' = newPoint - trustRegionCenterOffset' and
+lowerDifference' = lowerDifference - trustRegionCenterOffset' and
+upperDifference' = upperDifference - trustRegionCenterOffset' and
+(∀ i ∈ 0..n-1 • trustRegionCenterOffset''(i) = 0.0)
+)
+or
+(dsq > xoptsq * ONE_OVER_A_THOUSAND)
+)
+) and
+
+// state 210: choose alternative move and set trial step
+(
+(next_state' = 210 or next_state'' = 210) →
+(
+∃ alpha', cauchy' • {alpha', cauchy'} = altmov(knew', adelt') and
+trialStepPoint' = newPoint' - trustRegionCenterOffset'
+)
+) and
+
+// This excerpted fragment does not yet compute the final objective value; we only assert existence of some double result.
+∃ val: double • result' = val
+Functional Scenario Form
+// Normal progress without exception; small step triggers early-iteration branch
+getEvaluations() ≤ numberOfInterpolationPoints and min(initialTrustRegionRadius, sqrt(max(trsbox(initialTrustRegionRadius, …)[0], 0.0))) < HALF * initialTrustRegionRadius &&
+trustRegionCenterInterpolationPointIndex' = 0 and ntrits' = -1 and (next_state' = 650 or next_state' = 680) and ∃ val • result' = val or
+
+// Normal progress; adequate step length leads to state 90 (possible shift), then state 210 setup
+getEvaluations() ≤ numberOfInterpolationPoints and min(initialTrustRegionRadius, sqrt(max(trsbox(initialTrustRegionRadius, …)[0], 0.0))) ≥ HALF * initialTrustRegionRadius &&
+next_state' = 90 and ( (trsbox(initialTrustRegionRadius, …)[0] ≤ xoptsq * ONE_OVER_A_THOUSAND and originShift' = originShift + trustRegionCenterOffset') or true ) and
+trialStepPoint' = newPoint' - trustRegionCenterOffset' and ∃ val • result' = val or
+
+// PathIsExploredException is raised on gradient update path
+trustRegionCenterInterpolationPointIndex' ≠ 0 and getEvaluations() > numberOfInterpolationPoints &&
+raises PathIsExploredException
+end_process
+
+process bobyqb_case230_360(lowerBound_in: sequence of double, upperBound_in: sequence of double) result: double
+pre
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints,
+      np = n + 1,
+      nptm = npt - np in
+    |lowerBound_in| = n and
+    |upperBound_in| = n and
+    interpolationPoints ≠ null and
+    trialStepPoint ≠ null and
+    trustRegionCenterOffset ≠ null and
+    bMatrix ≠ null and
+    zMatrix ≠ null and
+    lagrangeValuesAtNewPoint ≠ null and
+    newPoint ≠ null and
+    lowerDifference ≠ null and
+    upperDifference ≠ null and
+    gradientAtTrustRegionCenter ≠ null and
+    work2 ≠ null and
+    modelSecondDerivativesParameters ≠ null and
+    modelSecondDerivativesValues ≠ null
+post
+  // ===== case 230: compute sums for work3, lagrangeValuesAtNewPoint, work2 =====
+  (∀ k ∈ 0..npt-1 •
+     let suma = Σ j∈0..n-1 • interpolationPoints.getEntry(k,j) * trialStepPoint.getEntry(j),
+         sumb = Σ j∈0..n-1 • interpolationPoints.getEntry(k,j) * trustRegionCenterOffset.getEntry(j),
+         sumB = Σ j∈0..n-1 • bMatrix.getEntry(k,j) * trialStepPoint.getEntry(j) in
+       work3'.getEntry(k) = suma * (HALF * suma + sumb) and
+       lagrangeValuesAtNewPoint'.getEntry(k) = sumB and
+       work2'.getEntry(k) = suma) and
+
+  // update beta using zMatrix and work3
+  beta' = ZERO - Σ m∈0..nptm-1 • (Σ k∈0..npt-1 • zMatrix.getEntry(k,m) * work3'.getEntry(k))^2 and
+  lagrangeValuesAtNewPoint' = lagrangeValuesAtNewPoint' + Σ m∈0..nptm-1 • (Σ k∈0..npt-1 • zMatrix.getEntry(k,m) * work3'.getEntry(k)) * zMatrix.col(m) and
+
+  // compute dsq, bsum, dx
+  let dsq_new = Σ j∈0..n-1 • trialStepPoint.getEntry(j)^2,
+      bsum_new = computedFrom(work3', bMatrix, trialStepPoint),
+      dx_new = Σ j∈0..n-1 • trialStepPoint.getEntry(j) * trustRegionCenterOffset.getEntry(j) in
+    dsq' = dsq_new and
+    beta'' = dx_new * dx_new + dsq_new * (xoptsq + 2*dx_new + HALF * dsq_new) + beta' - bsum_new and
+    lagrangeValuesAtNewPoint''(trustRegionCenterInterpolationPointIndex) = lagrangeValuesAtNewPoint''(trustRegionCenterInterpolationPointIndex) + ONE and
+
+  // NTRITS=0 path: possibly replace step by alternative newPoint if denom < cauchy
+  (
+    (ntrits = 0 and
+      let denom_new = lagrangeValuesAtNewPoint''.getEntry(knew)^2 + alpha * beta'' in
+        (denom_new < cauchy and cauchy > ZERO →
+           newPoint' = alternativeNewPoint and
+           trialStepPoint' = alternativeNewPoint - trustRegionCenterOffset and
+           cauchy' = ZERO
+        ) or
+        (¬(denom_new < cauchy and cauchy > ZERO) → knew' = knew)
+    )
+    or
+    // NTRITS>0 path: select knew maximizing scaden
+    (ntrits > 0 →
+       knew' = argmax_k≠trustRegionCenterInterpolationPointIndex { temp(k) * den(k) }
+    )
+  ) and
+
+  // ===== case 360: project newPoint + originShift into [lowerBound, upperBound] =====
+  (∀ i∈0..n-1 •
+    let xi = originShift.getEntry(i) + newPoint.getEntry(i) in
+      currentBest'.getEntry(i) =
+        if newPoint.getEntry(i) = lowerDifference.getEntry(i) then lowerBound_in[i]
+        else if newPoint.getEntry(i) = upperDifference.getEntry(i) then upperBound_in[i]
+        else min(max(lowerBound_in[i], xi), upperBound_in[i])
+  ) and
+
+  // compute f from currentBest', adjust if maximizing
+  f' = if isMinimize then computeObjectiveValue(currentBest'.toArray()) else -computeObjectiveValue(currentBest'.toArray()) and
+
+  // update fsave if ntrits=-1
+  (ntrits = -1 → fsave' = f' and next_state' = 720) and
+
+  // compute vquad from trialStepPoint, gradient, Hessian terms and PQ terms
+  vquad' = Σ j∈0..n-1 • trialStepPoint.getEntry(j) * gradientAtTrustRegionCenter.getEntry(j)
+           + Σ (i,j) with 0≤i≤j<n • modelSecondDerivativesValues.getEntry(index(i,j)) * (trialStepPoint.getEntry(i) * trialStepPoint.getEntry(j) * (if i=j then HALF else 1.0))
+           + HALF * Σ k∈0..npt-1 • modelSecondDerivativesParameters.getEntry(k) * (work2'.getEntry(k)^2) and
+
+  diff' = f' - fAtInterpolationPoints.getEntry(trustRegionCenterInterpolationPointIndex) - vquad' and
+  diffa' = abs(diff') and
+  diffb' = diffa and diffc' = diffb and
+
+  // update nfsav if dnorm > rho
+  (dnorm > rho → nfsav' = getEvaluations()) and
+
+  // if ntrits>0, update delta according to ratio
+  (
+    ntrits > 0 →
+      let ratio_new = (f' - fAtInterpolationPoints.getEntry(trustRegionCenterInterpolationPointIndex)) / vquad',
+          hDelta = HALF * delta in
+        delta' =
+          if ratio_new ≤ ONE_OVER_TEN then min(hDelta, dnorm)
+          else if ratio_new ≤ 0.7 then max(hDelta, dnorm)
+          else max(hDelta, 2 * dnorm) and
+        (delta' ≤ rho * 1.5 → delta'' = rho else delta'' = delta')
+  ) and
+
+  result' = f'
+Functional Scenario Form
+  // NTRITS=0 with denom >= cauchy, proceed with knew unchanged
+  ntrits = 0 and denom ≥ cauchy && currentBest' = projected(originShift + newPoint, lowerBound_in, upperBound_in) and f' = computeObjectiveValue_or_neg() and result' = f' or
+  // NTRITS=0 with denom < cauchy, replace with alternative newPoint
+  ntrits = 0 and denom < cauchy and cauchy > 0.0 && newPoint' = alternativeNewPoint and trialStepPoint' = alternativeNewPoint - trustRegionCenterOffset and result' = computeObjectiveValue_or_neg() or
+  // NTRITS>0 normal trust region adjustment and delta update
+  ntrits > 0 && delta' updated_by_ratio and currentBest' = projected(originShift + newPoint, lowerBound_in, upperBound_in) and result' = computeObjectiveValue_or_neg()
+end_process
+
+process bobyqb_case_update_650_680_720(lowerBound_in: sequence of double, upperBound_in: sequence of double) result: double
+pre
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints,
+      np = n + 1,
+      nptm = npt - np,
+      nh = n * np / 2 in
+    |lowerBound_in| = n and
+    |upperBound_in| = n and
+    interpolationPoints ≠ null and
+    bMatrix ≠ null and
+    zMatrix ≠ null and
+    fAtInterpolationPoints ≠ null and
+    modelSecondDerivativesParameters ≠ null and
+    modelSecondDerivativesValues ≠ null and
+    gradientAtTrustRegionCenter ≠ null and
+    trustRegionCenterOffset ≠ null and
+    trialStepPoint ≠ null and
+    newPoint ≠ null and
+    lowerDifference ≠ null and
+    upperDifference ≠ null and
+    work1 ≠ null and work2 ≠ null and work3 ≠ null
+post
+  // --- Update(beta, denom, knew) side-effects are applied to internal state (BMAT/ZMAT/etc.)
+  update(beta, denom, knew) and
+
+  // --- Rank-1/2 like updates to HQ (modelSecondDerivativesValues) and PQ (modelSecondDerivativesParameters)
+  let pqold = modelSecondDerivativesParameters.getEntry(knew) in
+    modelSecondDerivativesParameters'.getEntry(knew) = ZERO and
+    (∀ i,j with 0 ≤ j ≤ i < n •
+       let ih = i*(i+1)/2 + j in
+         modelSecondDerivativesValues'.getEntry(ih) =
+           modelSecondDerivativesValues.getEntry(ih) +
+           pqold * interpolationPoints.getEntry(knew,i) * interpolationPoints.getEntry(knew,j)
+    ) and
+    (∀ m ∈ 0..nptm-1 •
+       let temp = diff * zMatrix.getEntry(knew,m) in
+         (∀ k ∈ 0..npt-1 •
+            modelSecondDerivativesParameters''(k) =
+              modelSecondDerivativesParameters'.getEntry(k) + temp * zMatrix.getEntry(k,m)
+         )
+    ) and
+
+  // --- Inject new interpolation point, accumulate work1, and update gradient at trust-region center by diff * work1
+  fAtInterpolationPoints'.getEntry(knew) = f and
+  (∀ i ∈ 0..n-1 •
+     interpolationPoints'.setEntry(knew,i,newPoint.getEntry(i)) and
+     work1'.setEntry(i, bMatrix.getEntry(knew,i))
+  ) and
+  (∀ k ∈ 0..n-1 •
+     let suma = Σ m∈0..nptm-1 • zMatrix.getEntry(knew,m) * zMatrix.getEntry(k,m),
+         sumb = Σ j∈0..n-1 • interpolationPoints.getEntry(k,j) * trustRegionCenterOffset.getEntry(j),
+         temp = suma * sumb in
+       (∀ i ∈ 0..n-1 • work1''.setEntry(i, work1'.getEntry(i) + temp * interpolationPoints.getEntry(k,i)))
+  ) and
+  (∀ i ∈ 0..n-1 • gradientAtTrustRegionCenter'.setEntry(i, gradientAtTrustRegionCenter.getEntry(i) + diff * work1''.getEntry(i))) and
+
+  // --- If f improves best value: move center to knew and update gopt by HQ/PQ contributions with trial step
+  (
+    (f < fopt →
+       trustRegionCenterInterpolationPointIndex' = knew and
+       let xoptsq' = Σ j∈0..n-1 • newPoint.getEntry(j)^2 in
+         (∀ j ∈ 0..n-1 • trustRegionCenterOffset'.setEntry(j, newPoint.getEntry(j))) and
+         // accumulate HQ part
+         (∀ j ∈ 0..n-1 •
+            (∀ i ∈ 0..j •
+               let ih = j*(j+1)/2 + i in
+                 gradientAtTrustRegionCenter''.setEntry(i,
+                   gradientAtTrustRegionCenter'.getEntry(i) + modelSecondDerivativesValues'.getEntry(ih) * trialStepPoint.getEntry(j)) and
+                 (i < j →
+                   gradientAtTrustRegionCenter''.setEntry(j,
+                     gradientAtTrustRegionCenter'.getEntry(j) + modelSecondDerivativesValues'.getEntry(ih) * trialStepPoint.getEntry(i))
+                 )
+            )
+         ) and
+         // accumulate PQ part
+         (∀ k ∈ 0..npt-1 •
+            let tmp = modelSecondDerivativesParameters''(k) * (Σ j∈0..n-1 • interpolationPoints'.getEntry(k,j) * trialStepPoint.getEntry(j)) in
+              (∀ i ∈ 0..n-1 •
+                 gradientAtTrustRegionCenter'''.setEntry(i,
+                   gradientAtTrustRegionCenter''.getEntry(i) + tmp * interpolationPoints'.getEntry(k,i))
+              )
+         )
+    )
+    or
+    (f ≥ fopt → true)
+  ) and
+
+  // --- If ntrits > 0: build least-Frobenius-norm interpolant test and possibly replace model
+  (
+    ntrits > 0 →
+      // prepare vlag(work in lagrangeValuesAtNewPoint), work2, work3
+      (∀ k ∈ 0..npt-1 •
+         lagrangeValuesAtNewPoint'.setEntry(k, fAtInterpolationPoints'.getEntry(k) - fAtInterpolationPoints'.getEntry(trustRegionCenterInterpolationPointIndex')) and
+         work3'.setEntry(k, ZERO)
+      ) and
+      // project onto Z subspace
+      (∀ j ∈ 0..nptm-1 •
+         let sumZ = Σ k∈0..npt-1 • zMatrix.getEntry(k,j) * lagrangeValuesAtNewPoint'.getEntry(k) in
+           (∀ k ∈ 0..npt-1 • work3''.setEntry(k, work3'.getEntry(k) + sumZ * zMatrix.getEntry(k,j)))
+      ) and
+      // accumulate with XPT*xopt dot
+      (∀ k ∈ 0..npt-1 •
+         let sumXO = Σ j∈0..n-1 • interpolationPoints'.getEntry(k,j) * trustRegionCenterOffset'.getEntry(j) in
+           work2'.setEntry(k, work3''.getEntry(k)) and
+           work3'''.setEntry(k, sumXO * work3''.getEntry(k))
+      ) and
+      // compute gqsq, gisq and fill vlag(npt+i)
+      (∃ gqsq', gisq' •
+         gqsq' = Σ i∈0..n-1 • sq(bound_project(gradientAtTrustRegionCenter'''.getEntry(i), trustRegionCenterOffset'.getEntry(i), lowerDifference.getEntry(i), upperDifference.getEntry(i))) and
+         gisq' = Σ i∈0..n-1 • sq(bound_project(Σ k∈0..npt-1 • bMatrix.getEntry(k,i) * lagrangeValuesAtNewPoint'.getEntry(k) + interpolationPoints'.getEntry(k,i) * work3'''.getEntry(k),
+                                               trustRegionCenterOffset'.getEntry(i), lowerDifference.getEntry(i), upperDifference.getEntry(i))) and
+         (∀ i ∈ 0..n-1 •
+            lagrangeValuesAtNewPoint''.setEntry(npt + i,
+              Σ k∈0..npt-1 • bMatrix.getEntry(k,i) * lagrangeValuesAtNewPoint'.getEntry(k) + interpolationPoints'.getEntry(k,i) * work3'''.getEntry(k))
+         ) and
+         // itest update and possible model replacement
+         itest' = if gqsq' < TEN * gisq' then 0 else itest + 1 and
+         (
+           itest' ≥ 3 →
+             (
+               (∀ i ∈ 0..max(npt,nh)-1 •
+                  (i < n → gradientAtTrustRegionCenter''''.setEntry(i, lagrangeValuesAtNewPoint''.getEntry(npt+i))) and
+                  (i < npt → modelSecondDerivativesParameters'''(i) = work2'.getEntry(i)) and
+                  (i < nh → modelSecondDerivativesValues''(i) = ZERO)
+               ) and itest'' = 0
+             )
+           or true
+         )
+      )
+    or true
+  ) and
+
+  // --- Trust region flow control summary (case 60/650/680/720)
+  (
+    // if ntrits == 0 then next is a trust-region iteration
+    (ntrits = 0 → next_state' = 60)
+    or
+    // sufficient decrease: continue trust-region iteration
+    (ntrits > 0 and f ≤ fopt + ONE_OVER_TEN * vquad → next_state' = 60)
+    or
+    // else compute distsq and either pick farthest knew (650) or shrink rho (680) or finalize (720)
+    (ntrits > 0 and f > fopt + ONE_OVER_TEN * vquad →
+       distsq' = max( (TWO*delta)^2, (TEN*rho)^2 ) and next_state' ∈ {650,680}
+    )
+  ) and
+
+  // --- Case 650: farthest point selection (abstracted)
+  (next_state' = 650 →
+     knew' = argmax_k (Σ j∈0..n-1 • (interpolationPoints'.getEntry(k,j) - trustRegionCenterOffset'.getEntry(j))^2) and
+     (ntrits = -1 → delta' = max(rho, min(ONE_OVER_TEN*delta, HALF*sqrt(distsq')))) and
+     adelt' = max(min(ONE_OVER_TEN*sqrt(distsq'), delta), rho) and
+     dsq' = adelt'^2 and continue_state' = 90
+  ) and
+
+  // --- Case 680: reduce rho if above stopping radius
+  (next_state' = 680 →
+     (
+       (rho > stoppingTrustRegionRadius →
+          let ratio = rho / stoppingTrustRegionRadius in
+            delta' = max(HALF*rho, (if ratio ≤ SIXTEEN then stoppingTrustRegionRadius else if ratio ≤ TWO_HUNDRED_FIFTY then sqrt(ratio)*stoppingTrustRegionRadius else rho*ONE_OVER_TEN)) and
+            rho' = max(stoppingTrustRegionRadius, min(rho, delta')) and
+            ntrits' = 0 and nfsav' = getEvaluations() and continue_state'' = 60
+       )
+       or
+       (rho ≤ stoppingTrustRegionRadius and ntrits = -1 → continue_state'' = 360)
+     )
+  ) and
+
+  // --- Case 720: finalize and return f
+  (
+    next_state' = 720 →
+      (
+        (fAtInterpolationPoints'.getEntry(trustRegionCenterInterpolationPointIndex') ≤ fsave →
+           (∀ i ∈ 0..n-1 •
+              let xi = originShift.getEntry(i) + trustRegionCenterOffset'.getEntry(i) in
+                currentBest'.setEntry(i, min(max(lowerBound_in[i], xi), upperBound_in[i])) and
+                (trustRegionCenterOffset'.getEntry(i) = lowerDifference.getEntry(i) → currentBest'.setEntry(i, lowerBound_in[i])) and
+                (trustRegionCenterOffset'.getEntry(i) = upperDifference.getEntry(i) → currentBest'.setEntry(i, upperBound_in[i]))
+           ) and
+           f' = fAtInterpolationPoints'.getEntry(trustRegionCenterInterpolationPointIndex')
+        )
+        or
+        (fAtInterpolationPoints'.getEntry(trustRegionCenterInterpolationPointIndex') > fsave → f' = f)
+      ) and
+      result' = f'
+  )
+Functional Scenario Form
+  // Improved model point; center moves to knew; continue trust-region iteration
+  f < fopt && trustRegionCenterInterpolationPointIndex' = knew and next_state' = 60 && ∃ val • result' = val or
+
+  // No sufficient decrease; pick farthest interpolation point (650) and loop via 90
+  ntrits > 0 and f > fopt + ONE_OVER_TEN * vquad && next_state' = 650 && ∃ val • result' = val or
+
+  // Radius reduction (680) because rho > stoppingTrustRegionRadius; then continue at 60
+  rho > stoppingTrustRegionRadius && next_state' = 680 && ∃ val • result' = val or
+
+  // Termination path (720): return final f
+  next_state' = 720 && result' = f'
+end_process
+
+process altmov(knew_in: int, adelt_in: double) result: sequence of double
+pre
+  // dimensions and availability
+  currentBest ≠ null and
+  interpolationPoints ≠ null and
+  trustRegionCenterOffset ≠ null and
+  bMatrix ≠ null and
+  zMatrix ≠ null and
+  newPoint ≠ null and
+  alternativeNewPoint ≠ null and
+  lowerDifference ≠ null and
+  upperDifference ≠ null and
+  numberOfInterpolationPoints ≥ 1 and
+  adelt_in > 0.0 and
+  0 ≤ knew_in < numberOfInterpolationPoints
+post
+  // Let n, npt, nptm
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints,
+      nptm = npt - (n + 1) in
+
+  // Build hcol (Z*Z^T column at index "knew_in") and alpha = hcol[knew]
+  let hcol' = computeHcol(zMatrix, knew_in, npt, nptm) in
+  let alpha = hcol'[knew_in],
+      ha = HALF * alpha in
+
+  // Compute glag = bMatrix[knew,*] + sum_k (hcol[k] * XPT[k,*]·xopt) * XPT[k,*]
+  let glag' = computeGlag(bMatrix, interpolationPoints, trustRegionCenterOffset, hcol', knew_in, n, npt) in
+
+  // Line search over directions from xopt to each interpolation point; pick ksav, stpsav, ibdsav that maximize predsq
+  let (ksav, stpsav, ibdsav, presav) =
+      lineSearchSelect(interpolationPoints, trustRegionCenterOffset, glag', hcol', knew_in, adelt_in, lowerDifference, upperDifference, n, npt) in
+
+  // Construct newPoint by stepping from xopt toward XPT[ksav,*] with clipping to [SL,SU]
+  newPoint' = clipToBounds(trustRegionCenterOffset, interpolationPoints.row(ksav), stpsav, lowerDifference, upperDifference) and
+
+  // Honor boundary index fixes
+  (
+    (ibdsav < 0 → newPoint'[(-ibdsav - 1)] = lowerDifference.getEntry(-ibdsav - 1)) and
+    (ibdsav > 0 → newPoint'[( ibdsav - 1)] = upperDifference.getEntry( ibdsav - 1))
+    or ibdsav = 0
+  ) and
+
+  // Iterative constrained Cauchy step to form alternativeNewPoint and cauchy value
+  let bigstp = adelt_in + adelt_in in
+  let (alternativeNewPoint', cauchy) =
+      constrainedCauchy(interpolationPoints, trustRegionCenterOffset, glag', hcol', lowerDifference, upperDifference, adelt_in, bigstp, n, npt) in
+
+  // Return [alpha, cauchy]
+  result' = ⟨ alpha, cauchy ⟩
+Functional Scenario Form
+  // Feasible Cauchy direction exists: produce both a clipped line-step newPoint and a Cauchy-based alternative
+  adelt_in > 0.0 and 0 ≤ knew_in < numberOfInterpolationPoints &&
+    newPoint' = clipToBounds(trustRegionCenterOffset, interpolationPoints.row(argmax_predsq), chosen_step, lowerDifference, upperDifference) and
+    alternativeNewPoint' = constrainedCauchyPoint and
+    result' = ⟨ hcol'[knew_in], cauchy ⟩ or
+
+  // Degenerate Cauchy case (no free components): cauchy = 0, still return alpha
+  adelt_in > 0.0 and noFreeComponent(glag', trustRegionCenterOffset, lowerDifference, upperDifference) &&
+    alternativeNewPoint' = trustRegionCenterOffset and
+    result' = ⟨ hcol'[knew_in], 0.0 ⟩
+end_process
+
+process prelim(lowerBound_in: sequence of double, upperBound_in: sequence of double) result: Void
+pre
+  currentBest ≠ null and originShift ≠ null and
+  interpolationPoints ≠ null and bMatrix ≠ null and
+  modelSecondDerivativesValues ≠ null and modelSecondDerivativesParameters ≠ null and
+  zMatrix ≠ null and fAtInterpolationPoints ≠ null and
+  gradientAtTrustRegionCenter ≠ null and
+  lowerDifference ≠ null and upperDifference ≠ null and
+  initialTrustRegionRadius > 0.0 and
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints,
+      ndim = bMatrix.getRowDimension(),
+      np = n + 1 in
+    |lowerBound_in| = n and |upperBound_in| = n and
+    npt ≥ n + 2 and
+    numberOfInterpolationPoints = npt and
+    interpolationPoints.getRowDimension() = npt and interpolationPoints.getColumnDimension() = n and
+    bMatrix.getColumnDimension() = n and
+    modelSecondDerivativesValues.getDimension() = n * np / 2 and
+    modelSecondDerivativesParameters.getDimension() = npt and
+    zMatrix.getRowDimension() = npt and zMatrix.getColumnDimension() = npt - np and
+    fAtInterpolationPoints.getDimension() = npt and
+    (∀ i ∈ 0..n-1 • lowerBound_in[i] < upperBound_in[i])
+post
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints,
+      np = n + 1,
+      rhosq = initialTrustRegionRadius * initialTrustRegionRadius,
+      recip = 1.0 / rhosq in
+
+  // 1) Initialize originShift, XPT, BMAT, HQ, PQ, ZMAT to zero/initial states
+  (∀ j ∈ 0..n-1 •
+     originShift'.setEntry(j, currentBest.getEntry(j)) and
+     (∀ k ∈ 0..n-1 • bMatrix'.setEntry(k, j, ZERO)) and
+     (∀ k ∈ 0..npt-1 • interpolationPoints'.setEntry(k, j, ZERO))
+  ) and
+  (∀ i ∈ 0..(n * np / 2)-1 • modelSecondDerivativesValues'.setEntry(i, ZERO)) and
+  (∀ k ∈ 0..npt-1 • modelSecondDerivativesParameters'.setEntry(k, ZERO)) and
+  (∀ k ∈ 0..npt-1 • (∀ j ∈ 0..(npt - np)-1 • zMatrix'.setEntry(k, j, ZERO))) and
+
+  // 2) Iteratively generate interpolation points, evaluate f, bound-project currentBest, maintain best index
+  //    The loop proceeds until getEvaluations() = npt
+  do_until getEvaluations() = npt:
+    let nfm = getEvaluations(),
+        nfx = nfm - n, nfmm = nfm - 1, nfxm = nfx - 1 in
+      (
+        // choose stepa/stepb and update one row of XPT depending on nfm
+        (
+          nfm ≤ 2 * n →
+            (
+              (1 ≤ nfm ≤ n →
+                  let stepa = initialTrustRegionRadius in
+                    (upperDifference.getEntry(nfmm) ≠ ZERO → interpolationPoints''.setEntry(nfm, nfmm, stepa))
+                    or (upperDifference.getEntry(nfmm) = ZERO and raises PathIsExploredException)
+              )
+              or
+              (nfm > n →
+                  let stepa = interpolationPoints'.getEntry(nfx, nfxm),
+                      stepb0 = -initialTrustRegionRadius in
+                    (
+                      lowerDifference.getEntry(nfxm) ≠ ZERO and upperDifference.getEntry(nfxm) ≠ ZERO →
+                        interpolationPoints''.setEntry(nfm, nfxm, stepb0)
+                    )
+                    or (lowerDifference.getEntry(nfxm) = ZERO and raises PathIsExploredException)
+                    or (upperDifference.getEntry(nfxm) = ZERO and raises PathIsExploredException)
+              )
+            )
+        )
+        or
+        (
+          nfm > 2 * n →
+            let tmp1 = (nfm - np) div n,
+                jpt = nfm - tmp1 * n - n,
+                ipt = if (jpt + tmp1) ≤ n then (jpt + tmp1) else (jpt + tmp1 - n),
+                jpt' = if (jpt + tmp1) ≤ n then jpt else (jpt + tmp1 - n) in
+              interpolationPoints''.setEntry(nfm, ipt-1, interpolationPoints'.getEntry(ipt, ipt-1)) and
+              interpolationPoints''.setEntry(nfm, jpt'-1, interpolationPoints'.getEntry(jpt', jpt'-1))
+        )
+      ) and
+
+      // project XBASE+XPT[nfm,*] to [lowerBound, upperBound] into currentBest
+      (∀ j ∈ 0..n-1 •
+         currentBest'.setEntry(j,
+           let xj = originShift'.getEntry(j) + interpolationPoints''.getEntry(nfm, j) in
+             min(max(lowerBound_in[j], xj), upperBound_in[j])
+         ) and
+         (interpolationPoints''.getEntry(nfm, j) = lowerDifference.getEntry(j) → currentBest'.setEntry(j, lowerBound_in[j])) and
+         (interpolationPoints''.getEntry(nfm, j) = upperDifference.getEntry(j) → currentBest'.setEntry(j, upperBound_in[j]))
+      ) and
+
+      // evaluate objective (respecting minimize/maximize flag)
+      let obj = computeObjectiveValue(currentBest'.toArray()),
+          fval = if isMinimize then obj else -obj,
+          numEval = getEvaluations() in
+        fAtInterpolationPoints''.setEntry(nfm, fval) and
+        (
+          numEval = 1 → (fbeg' = fval and trustRegionCenterInterpolationPointIndex' = 0)
+          or
+          (numEval > 1 and fval < fAtInterpolationPoints''.getEntry(trustRegionCenterInterpolationPointIndex') →
+             trustRegionCenterInterpolationPointIndex' = nfm)
+          or true
+        ) and
+
+      // 3) Initialize BMAT/HQ/PQ/ZMAT for early iterations; otherwise fill off-diagonal Lagrange parts
+      (
+        numEval ≤ 2 * n + 1 →
+          (
+            (2 ≤ numEval ≤ n + 1 →
+               // gradient component from forward difference
+               gradientAtTrustRegionCenter'.setEntry(nfmm, (fval - fbeg') / (interpolationPoints''.getEntry(nfm, nfmm))) and
+               (
+                 npt < numEval + n →
+                   bMatrix'.setEntry(0, nfmm, -ONE / interpolationPoints''.getEntry(nfm, nfmm)) and
+                   bMatrix'.setEntry(nfm, nfmm,  ONE / interpolationPoints''.getEntry(nfm, nfmm)) and
+                   bMatrix'.setEntry(npt + nfmm, nfmm, -HALF * rhosq) and
+                   raises PathIsExploredException
+                 or true
+               )
+            )
+            or
+            (numEval ≥ n + 2 →
+               let ih = nfx * (nfx + 1) / 2 - 1,
+                   tmp = (fval - fbeg') / (stepb), // abstract: stepb is the chosen step for coordinate nfxm
+                   diff = stepb - stepa in
+                 modelSecondDerivativesValues''.setEntry(ih, TWO * (tmp - gradientAtTrustRegionCenter'.getEntry(nfxm)) / diff) and
+                 gradientAtTrustRegionCenter''.setEntry(nfxm, (gradientAtTrustRegionCenter'.getEntry(nfxm) * stepb - tmp * stepa) / diff) and
+                 (
+                   stepa * stepb < ZERO and fval < fAtInterpolationPoints''.getEntry(nfm - n) →
+                     swap_rows(fAtInterpolationPoints'', nfm, nfm - n) and
+                     (trustRegionCenterInterpolationPointIndex' = if trustRegionCenterInterpolationPointIndex' = nfm then (nfm - n) else trustRegionCenterInterpolationPointIndex') and
+                     interpolationPoints''.setEntry(nfm - n, nfxm, stepb) and
+                     interpolationPoints''.setEntry(nfm, nfxm, stepa)
+                   or true
+                 ) and
+                 bMatrix''.setEntry(0, nfxm, -(stepa + stepb) / (stepa * stepb)) and
+                 bMatrix''.setEntry(nfm, nfxm, -HALF / interpolationPoints''.getEntry(nfm - n, nfxm)) and
+                 bMatrix''.setEntry(nfm - n, nfxm, -bMatrix''.getEntry(0, nfxm) - bMatrix''.getEntry(nfm, nfxm)) and
+                 zMatrix''.setEntry(0, nfxm, sqrt(TWO) / (stepa * stepb)) and
+                 zMatrix''.setEntry(nfm, nfxm, sqrt(HALF) / rhosq) and
+                 zMatrix''.setEntry(nfm - n, nfxm, -zMatrix''.getEntry(0, nfxm) - zMatrix''.getEntry(nfm, nfxm))
+            )
+          )
+        )
+        or
+        (numEval > 2 * n + 1 →
+           let nfxm = (nfm - 1) - n in
+             zMatrix''.setEntry(0, nfxm, recip) and
+             zMatrix''.setEntry(nfm, nfxm, recip) and
+             zMatrix''.setEntry(ipt, nfxm, -recip) and
+             zMatrix''.setEntry(jpt, nfxm, -recip) and
+             let ih2 = ipt * (ipt - 1) / 2 + jpt - 1,
+                 tmp2 = interpolationPoints''.getEntry(nfm, ipt - 1) * interpolationPoints''.getEntry(nfm, jpt - 1) in
+               modelSecondDerivativesValues''.setEntry(ih2,
+                 (fbeg' - fAtInterpolationPoints''.getEntry(ipt) - fAtInterpolationPoints''.getEntry(jpt) + fval) / tmp2)
+        )
+      )
+  od and
+
+  result' = null
+Functional Scenario Form
+  // Early phase (numEval ≤ 2n+1): coordinate probing builds initial gradient and model; best index updates
+  initialTrustRegionRadius > 0.0 and getEvaluations() increases to npt && 
+    originShift' = currentBest and
+    interpolationPoints', bMatrix', zMatrix' partly filled per probing rules and
+    trustRegionCenterInterpolationPointIndex' = argmin_k fAtInterpolationPoints'(k) and
+    result' = null or
+
+  // Later phase (numEval > 2n+1): fill off-diagonal Lagrange structure using recip, update HQ from two-point product
+  getEvaluations() surpasses 2*n+1 && 
+    zMatrix' rows {0,nfm,ipt,jpt} updated by ±recip and
+    modelSecondDerivativesValues' updated at ih2 and
+    result' = null or
+
+  // Path pruning branch: certain bound-degenerate steps raise PathIsExploredException
+  (upperDifference.getEntry(nfmm) = 0 or lowerDifference.getEntry(nfxm) = 0 or upperDifference.getEntry(nfxm) = 0) && raises PathIsExploredException
+end_process
+
+process trsbox(delta_in: double,
+               gnew_inout: ArrayRealVector,
+               xbdi_inout: ArrayRealVector,
+               s_inout: ArrayRealVector,
+               hs_inout: ArrayRealVector,
+               hred_inout: ArrayRealVector) result: sequence of double
+pre
+  // Dimensions and required state
+  currentBest ≠ null and gradientAtTrustRegionCenter ≠ null and
+  trustRegionCenterOffset ≠ null and
+  lowerDifference ≠ null and upperDifference ≠ null and
+  delta_in > 0.0 and
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints in
+    gnew_inout.getDimension() = n and
+    xbdi_inout.getDimension() = n and
+    s_inout.getDimension() = n and
+    hs_inout.getDimension() = n and
+    hred_inout.getDimension() = n and
+    trialStepPoint ≠ null and trialStepPoint.getDimension() = n
+post
+  // Initialization: set active bounds (xbdi), trial step zero, copy gradient
+  let n = currentBest.getDimension() in
+    (∀ i ∈ 0..n-1 •
+       xbdi_inout'.setEntry(i,
+         if trustRegionCenterOffset.getEntry(i) ≤ lowerDifference.getEntry(i) ∧ gradientAtTrustRegionCenter.getEntry(i) ≥ 0.0 then -1.0
+         else if trustRegionCenterOffset.getEntry(i) ≥ upperDifference.getEntry(i) ∧ gradientAtTrustRegionCenter.getEntry(i) ≤ 0.0 then 1.0
+         else 0.0) and
+       trialStepPoint'.setEntry(i, 0.0) and
+       gnew_inout'.setEntry(i, gradientAtTrustRegionCenter.getEntry(i))
+    ) and
+    let delsq = delta_in * delta_in in
+      qred' = 0.0 and crvmin' = -1.0 and iterc' = 0 and
+      nact' = |{ i | 0 ≤ i < n ∧ xbdi_inout'.getEntry(i) ≠ 0.0 }| and
+
+  // Conjugate-gradient direction setup (state 30)
+  let stepsq = Σ i∈0..n-1 • (if xbdi_inout'.getEntry(i) ≠ 0.0 then 0.0 else
+                               (if beta' = 0.0 then -gnew_inout'.getEntry(i) else beta' * s_inout.getEntry(i) - gnew_inout'.getEntry(i)) )^2 in
+    (
+      stepsq = 0.0 → terminate_flag' = true
+      or
+      stepsq > 0.0 →
+        (
+          gredsq' = if beta' = 0.0 then stepsq else gredsq and
+          itermax' = iterc' + n - nact' and
+          (gredsq' * delsq ≤ qred' * 1e-4 * qred' → terminate_flag' = true
+           or
+           // Compute trust-region boundary and curvature-limited step (state 50)
+           (
+             resid' = delsq - Σ i • (if xbdi_inout'.getEntry(i)=0.0 then trialStepPoint'.getEntry(i)^2 else 0.0) and
+             ds' = Σ i • (if xbdi_inout'.getEntry(i)=0.0 then s_inout'.getEntry(i)*trialStepPoint'.getEntry(i) else 0.0) and
+             shs' = Σ i • (if xbdi_inout'.getEntry(i)=0.0 then s_inout'.getEntry(i)*hs_inout.getEntry(i) else 0.0) and
+             (resid' ≤ 0.0 → goto90' = true
+              or
+              let temp_b = sqrt(stepsq * resid' + ds'^2),
+                  blen' = if ds' < 0.0 then (temp_b - ds') / stepsq else resid' / (temp_b + ds'),
+                  stplen0 = if shs' > 0.0 then min(blen', gredsq' / shs') else blen' in
+                // Bound clipping to get final stplen and the active index iact'
+                ∃ stplen', iact' •
+                  stplen' ≤ blen' and
+                  (∀ i • if s_inout'.getEntry(i) ≠ 0.0 then
+                           stplen' ≤ ( (if s_inout'.getEntry(i) > 0.0 then upperDifference.getEntry(i) else lowerDifference.getEntry(i))
+                                       - (trustRegionCenterOffset.getEntry(i) + trialStepPoint'.getEntry(i)) ) / s_inout'.getEntry(i)
+                         else true) and
+
+                  // Update crvmin, gnew, trialStepPoint, qred (state 50 continuation)
+                  (
+                    stplen' > 0.0 →
+                      iterc'' = iterc' + 1 and
+                      let temp_curv = shs' / stepsq in
+                        (iact' = -1 ∧ temp_curv > 0.0 →
+                           crvmin'' = if crvmin' = -1.0 then temp_curv else min(crvmin', temp_curv)
+                         or crvmin'' = crvmin'
+                        ) and
+                        ggsav' = gredsq' and
+                        gredsq'' = Σ i • (if xbdi_inout'.getEntry(i)=0.0 then (gnew_inout'.getEntry(i) + stplen' * hs_inout.getEntry(i))^2 else 0.0) and
+                        (∀ i • gnew_inout''.setEntry(i, gnew_inout'.getEntry(i) + stplen' * hs_inout.getEntry(i))) and
+                        (∀ i • trialStepPoint''.setEntry(i, trialStepPoint'.getEntry(i) + stplen' * s_inout'.getEntry(i))) and
+                        sdec' = max(stplen' * (ggsav' - 0.5 * stplen' * shs'), 0.0) and
+                        qred'' = qred' + sdec'
+                  ) and
+
+                  // Restart if we hit a new bound (iact'≥0), otherwise check CG continuation
+                  (
+                    iact' ≥ 0 →
+                      nact'' = nact' + 1 and
+                      xbdi_inout''.setEntry(iact', if s_inout'.getEntry(iact') < 0.0 then -1.0 else 1.0) and
+                      delsq' = delsq - trialStepPoint''.getEntry(iact')^2 and
+                      (delsq' ≤ 0.0 → terminate_flag'' = true
+                       or restart_flag' = true)
+                    or
+                    iact' = -1 →
+                      (
+                        stplen' < blen' →
+                          (
+                            (iterc'' = itermax' → terminate_flag'' = true)
+                            or (sdec' ≤ qred'' * 0.01 → terminate_flag'' = true)
+                            or (beta'' = gredsq'' / ggsav' and continue_cg' = true)
+                          )
+                        or
+                        stplen' ≥ blen' → goto90' = true
+                      )
+                  )
+              )
+           )
+          )
+        )
+    ) and
+
+  // State 90: set crvmin to zero for alternative iteration branch
+  (goto90' = true → crvmin''' = 0.0) and
+
+  // State 100: prepare reduced directions D and G over free variables
+  (prepare_alt_iter' = true →
+     dredsq' = Σ i • (if xbdi_inout''.getEntry(i)=0.0 then trialStepPoint''.getEntry(i)^2 else 0.0) and
+     dredg'  = Σ i • (if xbdi_inout''.getEntry(i)=0.0 then trialStepPoint''.getEntry(i)*gnew_inout''.getEntry(i) else 0.0) and
+     gredsq''' = Σ i • (if xbdi_inout''.getEntry(i)=0.0 then gnew_inout''.getEntry(i)^2 else 0.0) and
+     s_inout''.copy_from(trialStepPoint'')
+  ) and
+
+  // State 120: build orthogonal combination of D and G for alternative step
+  (
+    alt_build' = true →
+      let temp_ortho = gredsq''' * dredsq' - dredg' * dredg' in
+        (
+          temp_ortho ≤ qred'' * 1e-4 * qred'' → terminate_flag_final' = true
+          or
+          (
+            let temp_sqrt = sqrt(temp_ortho) in
+              (∀ i • s_inout'''.setEntry(i,
+                      if xbdi_inout''.getEntry(i)=0.0
+                      then (dredg' * trialStepPoint''.getEntry(i) - dredsq' * gnew_inout''.getEntry(i)) / temp_sqrt
+                      else 0.0)) and
+              sredg' = -temp_sqrt and
+              // Bound analysis for angle cap (angbd) and potential immediate bound fixation (return to 100)
+              ∃ angbd', iact_alt', xsav' •
+                angbd' ≥ 0.0 and
+                (bound_scan_done' = true)
+          )
+        )
+  ) and
+
+  // Result pair (partial stage): expose current dsq (step length squared) and crvmin
+  ∃ dsq_out, crvmin_out •
+    dsq_out = Σ i • trialStepPoint'''.getEntry(i)^2  and
+    crvmin_out = (if defined(crvmin''') then crvmin''' else if defined(crvmin'') then crvmin'' else crvmin') and
+    result' = ⟨ dsq_out, crvmin_out ⟩
+Functional Scenario Form
+  // Immediate termination due to zero direction or tiny predicted progress
+  stepsq = 0.0 or gredsq * (delta_in^2) ≤ qred * 1e-4 * qred && result' = ⟨ Σ i trialStepPoint(i)^2, crvmin ⟩ or
+
+  // Restart after hitting a bound (iact ≥ 0) and remaining trust-region budget
+  iact ≥ 0 and (delta_in^2 - trialStepPoint(iact)^2) > 0.0 && xbdi_inout' updated with ±1 and result' = ⟨ Σ i trialStepPoint(i)^2, crvmin ⟩ or
+
+  // Continue CG with stplen < blen and sufficient decrease; update beta = gredsq/ggsav
+  stplen < blen and sdec > 0.01 * qred && result' = ⟨ Σ i trialStepPoint(i)^2, crvmin ⟩ or
+
+  // Switch to alternative iteration path (state 90/100/120), set crvmin = 0
+  stplen ≥ blen or resid ≤ 0.0 && crvmin = 0.0 and result' = ⟨ Σ i trialStepPoint(i)^2, 0.0 ⟩
+end_process
+
+process trsbox_case150_190_210() result: sequence of double
+pre
+  let n = currentBest.getDimension(),
+      npt = numberOfInterpolationPoints in
+    trialStepPoint ≠ null and s ≠ null and hs ≠ null and hred ≠ null and
+    xbdi ≠ null and gnew ≠ null and
+    lowerDifference ≠ null and upperDifference ≠ null and
+    trustRegionCenterOffset ≠ null and
+    modelSecondDerivativesValues ≠ null and
+    modelSecondDerivativesParameters ≠ null and
+    interpolationPoints ≠ null and
+    newPoint ≠ null and
+    crvmin is defined
+post
+  // case 150: compute shs, dhs, dhd and scan equally spaced angles up to angbd
+  ∃ shs', dhs', dhd', angbd', dredg', sredg', redmax', isav', rdprev', rdnext', redsav' •
+    shs' = Σ i • (xbdi.getEntry(i)=0.0 ? s.getEntry(i)*hs.getEntry(i) : 0.0) and
+    dhs' = Σ i • (xbdi.getEntry(i)=0.0 ? trialStepPoint.getEntry(i)*hs.getEntry(i) : 0.0) and
+    dhd' = Σ i • (xbdi.getEntry(i)=0.0 ? trialStepPoint.getEntry(i)*hred.getEntry(i) : 0.0) and
+    // discrete search to maximize reduction sdec
+    (redmax' ≥ 0.0 and isav' ≥ -1) and
+
+  // choose refined angle, compute cth, sth, temp, sdec; if no improvement → 190
+  (
+    (isav' < 0 →
+       // case 190 branch
+       dsq' = Σ i • (let xi = max(min(trustRegionCenterOffset.getEntry(i)+trialStepPoint.getEntry(i), upperDifference.getEntry(i)), lowerDifference.getEntry(i)) in
+                        let ti = (xbdi.getEntry(i)=-1.0 ? lowerDifference.getEntry(i) :
+                                  xbdi.getEntry(i)= 1.0 ? upperDifference.getEntry(i) : xi) - trustRegionCenterOffset.getEntry(i) in ti^2)) and
+       result' = ⟨ dsq', crvmin ⟩
+    )
+    or
+    // apply rotation update (when sdec>0)
+    (
+      ∃ cth', sth', sdec' •
+        sdec' > 0.0 and
+        // update gnew, trialStepPoint, hred; accumulate qred
+        (∀ i •
+           gnew.setEntry(i, gnew.getEntry(i) + (cth'-1.0)*hred.getEntry(i) + sth'*hs.getEntry(i)) and
+           (xbdi.getEntry(i)=0.0 → trialStepPoint.setEntry(i, cth'*trialStepPoint.getEntry(i) + sth'*s.getEntry(i))) and
+           hred.setEntry(i, cth'*hred.getEntry(i) + sth'*hs.getEntry(i))
+        ) and
+        qred = qred + sdec' and
+        (
+          // if bound-limited angle at iact and isav==iu → fix variable then go 100
+          (iact ≥ 0 and isav' = floor(angbd'*17.0 + 3.1) →
+             nact = nact + 1 and xbdi.setEntry(iact, xsav) and continue_from_100' = true
+          )
+          or
+          // otherwise: if sdec small → 190 ; else → 120
+          ((sdec' ≤ 0.01 * qred and
+             dsq'' = Σ i • (let ti = newPointCandidate(i) - trustRegionCenterOffset.getEntry(i) in ti^2) and
+             result' = ⟨ dsq'', crvmin ⟩)
+           or
+           (sdec' > 0.01 * qred and continue_from_120' = true))
+        )
+    )
+  ) and
+
+  // case 190: finalize newPoint by projecting xopt + d to [sl,su], compute dsq
+  (
+    continue_190' = true →
+      (∀ i •
+         newPoint.setEntry(i,
+           max(lowerDifference.getEntry(i),
+               min(upperDifference.getEntry(i),
+                   trustRegionCenterOffset.getEntry(i)+trialStepPoint.getEntry(i))))
+         and
+         (xbdi.getEntry(i)=-1.0 → newPoint.setEntry(i, lowerDifference.getEntry(i))) and
+         (xbdi.getEntry(i)= 1.0 → newPoint.setEntry(i, upperDifference.getEntry(i)))
+      ) and
+      (∀ i • trialStepPoint.setEntry(i, newPoint.getEntry(i) - trustRegionCenterOffset.getEntry(i))) and
+      dsq_final' = Σ i • trialStepPoint.getEntry(i)^2 and
+      result' = ⟨ dsq_final', crvmin ⟩
+  ) and
+
+  // case 210: HS = H * S for current s; then branch depending on crvmin/iterc
+  (
+    continue_210' = true →
+      (∀ i • hs.setEntry(i, 0.0)) and
+      // HQ part
+      ∀ j,i with 0 ≤ i ≤ j < n •
+        let ih = j*(j+1)/2 + i in
+          hs.setEntry(j, hs.getEntry(j) + (i<j ? modelSecondDerivativesValues.getEntry(ih)*s.getEntry(i) : 0.0)) and
+          hs.setEntry(i, hs.getEntry(i) + modelSecondDerivativesValues.getEntry(ih)*s.getEntry(j)) and
+      // PQ part
+      let tmp = interpolationPoints.operate(s).ebeMultiply(modelSecondDerivativesParameters) in
+        (∀ k,i • hs.setEntry(i, hs.getEntry(i) + tmp.getEntry(k) * interpolationPoints.getEntry(k,i))) and
+      (
+        (crvmin ≠ 0.0 → next_state' = 50) or
+        (iterc > itcsav → next_state' = 150) or
+        ((∀ i • hred.setEntry(i, hs.getEntry(i))) and next_state' = 120)
+      )
+  )
+Functional Scenario Form
+  // Angle search finds improvement; rotate and continue alternative iteration
+  redmax > 0.0 && sdec > 0.01*qred && result' = ⟨ Σi trialStepPoint(i)^2, crvmin ⟩ or
+  // No angle yields decrease → finalize (190)
+  redmax = 0.0 && result' = ⟨ Σi trialStepPoint(i)^2, crvmin ⟩ or
+  // Matrix-vector multiply branch (210) decides next state
+  crvmin ≠ 0.0 && next_state' = 50 or iterc > itcsav && next_state' = 150 or next_state' = 120
+end_process
+
+process fillNewArray(n: int, value: double) result: sequence of double
+pre
+  n ≥ 0
+post
+  |result'| = n and
+  (∀ i ∈ 0..n-1 • result'[i] = value)
+Functional Scenario Form
+  n = 0 && |result'| = 0 or
+  n > 0 && (∀ i • result'[i] = value)
+end_process
+
+process caller(n: int) result: String
+pre
+  n ≥ 0
+post
+  // returns "<methodName> (at line <lineNumber>)" for the n-th stack frame
+  result' = stackFrame(n).methodName + " (at line " + stackFrame(n).lineNumber + ")"
+Functional Scenario Form
+  n = 0 && result' = stackFrame(0).methodName + " (at line " + stackFrame(0).lineNumber + ")" or
+  n > 0 && result' = stackFrame(n).methodName + " (at line " + stackFrame(n).lineNumber + ")"
+end_process
+
+process printState(s: int) result: Void
+pre
+  true
+post
+  // no-op (logging disabled)
+  true
+Functional Scenario Form
+  true && true
+end_process
+
+process printMethod() result: Void
+pre
+  true
+post
+  // no-op (logging disabled)
+  true
+Functional Scenario Form
+  true && true
+end_process
+
+process new_PathIsExploredException() result: PathIsExploredException
+pre
+  true
+post
+  // message equals "If this exception is thrown, just remove it from the code <caller(3)>"
+  let msg = "If this exception is thrown, just remove it from the code " + (caller(3)) in
+    result' = PathIsExploredException(msg)
+Functional Scenario Form
+  true && result' = PathIsExploredException("If this exception is thrown, just remove it from the code " + caller(3))
+end_process
+
+
+end_module

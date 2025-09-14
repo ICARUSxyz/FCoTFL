@@ -1,0 +1,76 @@
+**Bug Report: rankingData Module Behavior Summary**
+
+---
+
+### **Test Case 1: Data Extraction from Input File**
+
+**Input File Content (`input.txt`):**
+
+```
+001/Alice/23/Female/170/60/35
+002/Bob/30/Male/180/70/40
+003/Carol/28/Female/165/55/38
+```
+
+**Expected Output (`output.txt`):**
+
+```
+23/35
+30/40
+28/38
+```
+
+**Observed Output:**
+
+```
+Female/35
+Male/40
+Female/38
+```
+
+**Output Log:**
+
+```plaintext
+[INFO] データの抽出と書き込みが完了しました。
+```
+
+---
+
+### **Test Case 2: Sorting and Displaying Top 3 Grip Strengths**
+
+**Input File Content (`output.txt`):**
+
+```
+Female/35
+Male/40
+Female/38
+```
+
+**Expected Console Output:**
+
+```
+Name: Female, Grip: 38
+Name: Female, Grip: 35
+Name: Male, Grip: 40
+```
+
+**Observed Console Output:**
+
+```
+[ERROR] java.lang.NumberFormatException: For input string: "Female"
+```
+
+---
+
+### **Test Case 3: Index Out of Bounds in Top Ranking Extraction**
+
+**Observed Behavior:**
+Program crashes with an `ArrayIndexOutOfBoundsException` during ranking display.
+
+**Output Log:**
+
+```plaintext
+[ERROR] java.lang.ArrayIndexOutOfBoundsException: Index 3 out of bounds for length 3
+```
+
+---

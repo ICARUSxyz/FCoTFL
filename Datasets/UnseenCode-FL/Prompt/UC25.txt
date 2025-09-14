@@ -1,0 +1,184 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "allruledescriptdialog.h"
+2: #include "ui_allruledescriptdialog.h"
+3: #include "ruledescriptdialog.h"
+4: #include "screenfactor.h"
+5: 
+6: AllRuleDescriptDialog::AllRuleDescriptDialog(QWidget *parent) :
+7:     QDialog(parent),
+8:     ui(new Ui::AllRuleDescriptDialog)
+9: {
+10:     ui->setupUi();
+11: 
+12:     connect(ui->tableWidget, SIGNAL(itemDoubleClicked(QTableWidgetItem*)), this, SLOT(showRuleDescript(QTableWidgetItem*)));
+13: 
+14:     connect(ui->treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), this, SLOT(showRuleDescript(QTreeWidgetItem*,int)));
+15: }
+16: 
+17: AllRuleDescriptDialog::~AllRuleDescriptDialog()
+18: {
+19:     delete;
+20: }
+21: 
+22: 
+23: void AllRuleDescriptDialog::showRuleDescript(QTreeWidgetItem*, int)  
+24: {
+25:     RuleDescriptDialog *ruleDescript = new RuleDescriptDialog(this);
+26:     ScreenFactor factor;
+27:     ruleDescript->resize(factor.getScreenFactor() * ruleDescript->width(), factor.getScreenFactor() * ruleDescript->height());
+28:     ruleDescript->show();
+29: }
+30: 
+31: void AllRuleDescriptDialog::showRuleDescript(QTableWidgetItem*, int)
+32: {
+33:     RuleDescriptDialog *ruleDescript = new RuleDescriptDialog(this);
+34:     ScreenFactor factor;
+35:     ruleDescript->resize(factor.getScreenFactor() * ruleDescript->width(), factor.getScreenFactor() * ruleDescript->height());
+36:     ruleDescript->show();
+37: }
+38:]
+
+SOFL:[
+module UC25_allruledescriptdialog
+type
+  width: int
+  height: int
+
+process AllRuleDescriptDialog(parent: QWidget) result: AllRuleDescriptDialog
+pre
+  true
+post
+  result.ui ≠ null ∧
+  result.ui.tableWidget is connected to slot showRuleDescript(QTableWidgetItem*) ∧
+  result.ui.treeWidget is connected to slot showRuleDescript(QTreeWidgetItem*, int)
+Functional Scenario Form
+(true) && (initialize dialog and connect table/tree signals to corresponding slots)
+end_process
+
+process ~AllRuleDescriptDialog() result: void
+pre
+  true
+post
+  ui is deleted
+Functional Scenario Form
+(true) && (ui memory released)
+end_process
+
+process showRuleDescript(item: QTreeWidgetItem*, column: int) result: void
+pre
+  true
+post
+  ruleDescript is created ∧
+  factor is initialized ∧
+  ruleDescript.size = factor.getScreenFactor() * original size ∧
+  ruleDescript is shown
+Functional Scenario Form
+(true) && (create dialog, resize it with screen factor, and show)
+end_process
+
+process showRuleDescript(item: QTableWidgetItem*) result: void
+pre
+  true
+post
+  ruleDescript is created ∧
+  factor is initialized ∧
+  ruleDescript.size = factor.getScreenFactor() * original size ∧
+  ruleDescript is shown
+Functional Scenario Form
+(true) && (create dialog, resize it with screen factor, and show)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: AllRuleDescriptDialog Runtime Behavior**
+
+---
+
+**Test Case 1: Dialog Initialization**
+
+**Action:**
+Dialog is launched and attempts to initialize its UI components.
+
+**Expected:**
+All UI elements are correctly linked and displayed in the dialog.
+
+**Observed:**
+Application crashes on launch or UI elements do not render properly.
+
+**Log:**
+
+```plaintext
+[INIT] Creating AllRuleDescriptDialog...
+[ERROR] setupUi: expected argument not provided
+[CRASH] QWidget pointer required for UI setup
+```
+
+---
+
+**Test Case 2: Dialog Destruction**
+
+**Action:**
+Dialog is closed and destructor is invoked.
+
+**Expected:**
+All allocated resources, including UI components, are released without issue.
+
+**Observed:**
+Crash or memory management warning appears during dialog destruction.
+
+**Log:**
+
+```plaintext
+[DESTROY] Releasing dialog resources...
+[ERROR] delete: expression is incomplete or null
+[CRASH] Segmentation fault on dialog deletion
+```
+
+---
+
+**Test Case 3: Table Item Double-Click**
+
+**Action:**
+User double-clicks a table item to view rule description.
+
+**Expected:**
+A new RuleDescriptDialog appears.
+
+**Observed:**
+Nothing happens or application reports signal/slot mismatch.
+
+**Log:**
+
+```plaintext
+[USER] Double-click on table row
+[WARNING] showRuleDescript(QTableWidgetItem*) not found
+[INFO] Signal-slot connection failed: parameter mismatch
+```
+
+---]

@@ -1,0 +1,58 @@
+module UC33_page4
+type
+  initialBalance: int
+  initialPoint: int
+  newBalance: int
+  balanceLabelText: string
+  pointLabelText: string
+  paymentHistory: sequence of string
+  line: string
+  data: sequence of string
+
+process initializeUserData(initialBalance: int, initialPoint: int) result: UserData
+pre
+  initialBalance ≥ 0 ∧ initialPoint ≥ 0
+post
+  result.balance = initialBalance ∧
+  result.point = initialPoint
+Functional Scenario Form
+(initialBalance ≥ 0 ∧ initialPoint ≥ 0) &&
+(result.balance = initialBalance ∧ result.point = initialPoint)
+end_process
+
+process readPaymentLog() result: sequence of string
+pre
+  payment_log.csv is readable
+post
+  ∀i ∈ [0..|result|-1] •
+    (let line = result[i] in
+      let data = split(line, ",") in
+        |data| ≥ 3 ⇒ result[i] = data[0] + ", 金額: " + data[1] + "円, 使用ポイント: " + data[2] + "pt")
+Functional Scenario Form
+(file exists and readable) &&
+(for each line with ≥3 fields, format as readable history entry)
+end_process
+
+process chargeBalance(user: UserData, newBalance: int) result: int
+pre
+  newBalance ≥ 0
+post
+  user.balance = newBalance ∧
+  result = newBalance
+Functional Scenario Form
+(newBalance ≥ 0) &&
+(user.balance = newBalance ∧ result = newBalance)
+end_process
+
+process updateDisplay(user: UserData) result: (string × string)
+pre
+  user.balance ≥ 0 ∧ user.point ≥ 0
+post
+  result.1 = "残高: " + intToString(user.balance) + "円" ∧
+  result.2 = "ポイント: " + intToString(user.point) + "ポイント"
+Functional Scenario Form
+(user.balance ≥ 0 ∧ user.point ≥ 0) &&
+(result = ("残高: " + user.balance + "円", "ポイント: " + user.point + "ポイント"))
+end_process
+
+end_module

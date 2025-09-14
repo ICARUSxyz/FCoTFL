@@ -1,0 +1,344 @@
+module ShapeUtilities
+
+type:
+
+process ShapeUtilities_Init()
+post 
+  no instantiation allowed
+Functional Scenario Form 
+utilityClassInitialized 
+end_process
+
+process clone(
+    shape: Shape
+) result: Shape?
+post 
+  (shape ∈ Cloneable ⇒ 
+    try result' = ObjectUtilities.clone(shape) catch CloneNotSupportedException ⇒ noop
+  ) || 
+  result = null
+Functional Scenario Form 
+cloneableShape&&cloned || nonCloneableShape&&nullReturn 
+end_process
+
+process equal(
+    s1: Shape,
+    s2: Shape
+) result: bool
+post 
+  (s1 = null ∧ s2 = null ⇒ result = true) || 
+  (s1 ∈ Line2D ∧ s2 ∈ Line2D ⇒ result = equal((Line2D)s1, (Line2D)s2)) || 
+  (s1 ∈ Ellipse2D ∧ s2 ∈ Ellipse2D ⇒ result = equal((Ellipse2D)s1, (Ellipse2D)s2)) || 
+  (s1 ∈ Arc2D ∧ s2 ∈ Arc2D ⇒ result = equal((Arc2D)s1, (Arc2D)s2)) || 
+  (s1 ∈ Polygon ∧ s2 ∈ Polygon ⇒ result = equal((Polygon)s1, (Polygon)s2)) || 
+  (s1 ∈ GeneralPath ∧ s2 ∈ GeneralPath ⇒ result = equal((GeneralPath)s1, (GeneralPath)s2)) || 
+  result = ObjectUtilities.equal(s1, s2)
+Functional Scenario Form 
+bothNullShapes||lineEqualityCheck||ellipseComparison || arcMatching||polygonMatch||pathCompare||defaultObjectEquality 
+end_process
+
+process equal_Line2D(
+    l1: Line2D,
+    l2: Line2D
+) result: bool
+post 
+  (l1 = null ⇒ result = (l2 = null)) || 
+  (l2 = null ⇒ result = false) || 
+  (¬l1.p1.equals(l2.p1) ⇒ result = false) || 
+  (¬l1.p2.equals(l2.p2) ⇒ result = false) || 
+  result = true
+Functional Scenario Form 
+nullBothLines||oneNullLine||p1Mismatch||p2Mismatch||fullEquality 
+end_process
+
+process equal_Ellipse2D(
+    e1: Ellipse2D,
+    e2: Ellipse2D
+) result: bool
+post 
+  (e1 = null && e2 = null) ⇒ result = true || 
+  (e1 = null && e2 ≠ null) ⇒ result = false || 
+  (e1 ≠ null && e2 = null) ⇒ result = false || 
+  ¬e1.frame.equals(e2.frame) ⇒ result = false || 
+  result = true
+Functional Scenario Form 
+bothNullEllipses&&true || 
+singleNullEllipse&&false || 
+frameMismatch&&false || 
+ellipsesEqual&&true 
+end_process
+
+process equal_Arc2D(
+    a1: Arc2D,
+    a2: Arc2D
+) result: bool
+post 
+  (a1 = null && a2 = null) ⇒ result = true || 
+  (a1 = null && a2 ≠ null) ⇒ result = false || 
+  (a1 ≠ null && a2 = null) ⇒ result = false || 
+  ¬a1.frame.equals(a2.frame) ⇒ result = false || 
+  a1.angleStart ≠ a2.angleStart ⇒ result = false || 
+  a1.angleExtent ≠ a2.angleExtent ⇒ result = false || 
+  a1.arcType ≠ a2.arcType ⇒ result = false || 
+  result = true
+Functional Scenario Form 
+nullArcsComparison&&true || 
+singleNullArc&&false || 
+frameCheckFail&&false || 
+startAngleMismatch&&false || 
+extentDifference&&false || 
+typeMismatch&&false || 
+arcsMatch&&true 
+end_process
+
+process equal_GeneralPath(
+    p1: GeneralPath,
+    p2: GeneralPath
+) result: bool
+post 
+  (p1 = null && p2 = null) ⇒ result = true || 
+  (p1 = null && p2 ≠ null) ⇒ result = false || 
+  (p1 ≠ null && p2 = null) ⇒ result = false || 
+  p1.windingRule ≠ p2.windingRule ⇒ result = false || 
+  pathIteratorsDiffer(p1, p2) ⇒ result = false || 
+  result = true
+Functional Scenario Form 
+nullPathsComparison&&true || 
+singleNullPath&&false || 
+windingRuleDiff&&false || 
+segmentTypeMismatch&&false || 
+coordinateDataMismatch&&false || 
+identicalPathStructure&&true 
+end_process
+
+process createTranslatedShape(
+    shape: Shape,
+    transX: double,
+    transY: double
+) result: Shape
+pre 
+  shape ≠ null
+post 
+  transform = AffineTransform.getTranslateInstance(transX, transY) ∧ 
+  result' = transform.createTransformedShape(shape)
+Functional Scenario Form 
+validShape&&transformedCreated || 
+negativeTranslationValues&&validResult 
+end_process
+
+process createTranslatedShapeAnchor(
+    shape: Shape,
+    anchor: RectangleAnchor,
+    locationX: double,
+    locationY: double
+) result: Shape
+pre 
+  shape ≠ null ∧ 
+  anchor ≠ null
+post 
+  bounds = shape.getBounds2D() ∧ 
+  anchorPoint = RectangleAnchor.coordinates(bounds, anchor) ∧ 
+  transform = AffineTransform.getTranslateInstance(
+    locationX - anchorPoint.x, 
+    locationY - anchorPoint.y
+  ) ∧ 
+  result' = transform.createTransformedShape(shape)
+Functional Scenario Form 
+validAnchorPoint&&correctTranslation || 
+zeroLocationOffset&&identityTransform 
+end_process
+
+process rotateShape(
+    base: Shape?,
+    angle: double,
+    x: float,
+    y: float
+) result: Shape?
+post 
+  (base = null ⇒ result = null) ∨ 
+  (rotate = AffineTransform.getRotateInstance(angle, x, y) ∧ 
+   result' = rotate.createTransformedShape(base))
+Functional Scenario Form 
+nullInputShape&&nullResult || 
+zeroAngleRotation&&sameShape || 
+fullRotationApplied 
+end_process
+
+process drawRotatedShape(
+    g2: Graphics2D,
+    shape: Shape,
+    angle: double,
+    x: float,
+    y: float
+)
+pre 
+  g2 ≠ null ∧ 
+  shape ≠ null
+post 
+  savedTransform = g2.getTransform() ∧ 
+  rotate = AffineTransform.getRotateInstance(angle, x, y) ∧ 
+  g2.transform(rotate) ∧ 
+  g2.draw(shape) ∧ 
+  g2.setTransform(savedTransform)
+Functional Scenario Form 
+validGraphicsContext&&rotationApplied || 
+multipleTransformationsStacked 
+end_process
+
+process createDiagonalCross(
+    l: float,
+    t: float
+) result: GeneralPath
+post 
+  path = new GeneralPath() ∧ 
+  path.moveTo(-l-t, -l+t) ∧ 
+  [12 lineTo operations with coordinates] ∧ 
+  path.closePath() ∧ 
+  result' = path
+Functional Scenario Form 
+standardCrossCreation || 
+zeroThicknessEdgeCase || 
+negativeLengthHandling 
+end_process
+
+process createRegularCross(
+    l: float,
+    t: float
+) result: GeneralPath
+post 
+  path = new GeneralPath() ∧ 
+  path.moveTo(-l, t) ∧ 
+  path.lineTo(-t, t) ∧ path.lineTo(-t, l) ∧ 
+  path.lineTo(t, l) ∧ path.lineTo(t, t) ∧ 
+  path.lineTo(l, t) ∧ path.lineTo(l, -t) ∧ 
+  path.lineTo(t, -t) ∧ path.lineTo(t, -l) ∧ 
+  path.lineTo(-t, -l) ∧ path.lineTo(-t, -t) ∧ 
+  path.lineTo(-l, -t) ∧ path.closePath() ∧ 
+  result' = path
+Functional Scenario Form 
+standardCrossParameters&&validPath || 
+zeroThickness&&degenerateShape || 
+negativeLengthValue&&invertedCoordinates 
+end_process
+
+process createDiamond(
+    s: float
+) result: GeneralPath
+post 
+  path = new GeneralPath() ∧ 
+  path.moveTo(0.0f, -s) ∧ 
+  path.lineTo(s, 0.0f) ∧ path.lineTo(0.0f, s) ∧ 
+  path.lineTo(-s, 0.0f) ∧ path.closePath() ∧ 
+  result' = path
+Functional Scenario Form 
+positiveSize&&diamondCreated || 
+zeroSize&&collapsedToPoint || 
+negativeSize&&mirrorDiamond 
+end_process
+
+process createUpTriangle(
+    s: float
+) result: GeneralPath
+post 
+  path = new GeneralPath() ∧ 
+  path.moveTo(0.0f, -s) ∧ 
+  path.lineTo(s, s) ∧ path.lineTo(-s, s) ∧ 
+  path.closePath() ∧ 
+  result' = path
+Functional Scenario Form 
+validUpTriangle&&apexAtTop || 
+zeroHeight&&horizontalLine || 
+negativeScale&&flippedOrientation 
+end_process
+
+process createDownTriangle(
+    s: float
+) result: GeneralPath
+post 
+  path = new GeneralPath() ∧ 
+  path.moveTo(0.0f, s) ∧ 
+  path.lineTo(s, -s) ∧ path.lineTo(-s, -s) ∧ 
+  path.closePath() ∧ 
+  result' = path
+Functional Scenario Form 
+standardDownTriangle&&apexAtBottom || 
+zeroParameterValue&&singlePoint || 
+negativeScaleFactor&&invertedShape 
+end_process
+
+process createLineRegion(
+    line: Line2D,
+    width: float
+) result: GeneralPath
+pre 
+  line ≠ null
+post 
+  x1 = (float)line.x1 ∧ x2 = (float)line.x2 ∧ 
+  y1 = (float)line.y1 ∧ y2 = (float)line.y2 ∧ 
+  (x2 ≠ x1 ⇒ 
+    theta = atan((y2-y1)/(x2-x1)) ∧ 
+    dx = sin(theta)*width ∧ 
+    dy = cos(theta)*width ∧ 
+    buildNonVerticalPath(result, x1, y1, x2, y2, dx, dy)
+  ) ∨ 
+  (x2 = x1 ⇒ 
+    buildVerticalPath(result, x1, y1, x2, y2, width)
+  )
+Functional Scenario Form 
+nonVerticalLine&&perpendicularOffset || 
+verticalLine&&symmetricRectangle || 
+zeroWidth&&zeroAreaRegion 
+end_process
+
+process getPointInRectangle(
+    x: double,
+    y: double,
+    area: Rectangle2D
+) result: Point2D
+post 
+  clampedX = max(area.minX, min(x, area.maxX)) ∧ 
+  clampedY = max(area.minY, min(y, area.maxY)) ∧ 
+  result' = new Point2D.Double(clampedX, clampedY)
+Functional Scenario Form 
+pointInsideArea&&unchangedCoordinates || 
+pointOutsideArea&&clampedToEdge || 
+zeroAreaRectangle&&snappedToCorner 
+end_process
+
+process contains(
+    rect1: Rectangle2D,
+    rect2: Rectangle2D
+) result: bool
+post 
+  x0 = rect1.x ∧ y0 = rect1.y ∧ 
+  r2x = rect2.x ∧ r2y = rect2.y ∧ 
+  r2w = rect2.width ∧ r2h = rect2.height ∧ 
+  result = (r2x ≥ x0 ∧ r2y ≥ y0 ∧ 
+           (r2x + r2w) ≤ (x0 + rect1.width) ∧ 
+           (r2y + r2h) ≤ (y0 + rect1.height))
+Functional Scenario Form 
+completeContainment&&trueResult || 
+partialOverlap&&falseResult || 
+zeroSizeRect2&&edgeCaseContainment || 
+disjointRectangles&&falseOutcome 
+end_process
+
+process intersects(
+    rect1: Rectangle2D,
+    rect2: Rectangle2D
+) result: bool
+post 
+  x1 = rect1.x ∧ y1 = rect1.y ∧ 
+  w1 = rect1.width ∧ h1 = rect1.height ∧ 
+  x2 = rect2.x ∧ w2 = rect2.width ∧ 
+  y2 = rect2.y ∧ h2 = rect2.height ∧ 
+  result = (x2 + w2 ≥ x1 ∧ y2 + h2 ≥ y1 ∧ 
+           x2 ≤ x1 + w1 ∧ y2 ≤ y1 + h1)
+Functional Scenario Form 
+overlappingAreas&&true || 
+touchingEdges&&true || 
+separatedRectangles&&false || 
+zeroAreaIntersection&&borderTouch 
+end_process
+
+end_module

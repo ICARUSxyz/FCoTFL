@@ -1,0 +1,52 @@
+module UnivariateRealSolverUtils
+
+process solve(f: UnivariateRealFunction, x0: real, x1: real) result: real
+pre
+f ≠ null ∧ x0 < x1
+post
+inClosed(result, (x0, x1)) ∧ approxZero(f, result, ε) -- ε: solver's default accuracy
+Functional Scenario Form
+f ≠ null ∧ x0 < x1 && inClosed(result,(x0,x1)) ∧ approxZero(f,result,ε)
+end_process
+
+process solve_withAccuracy(f: UnivariateRealFunction, x0: real, x1: real, absoluteAccuracy: real) result: real
+pre
+f ≠ null ∧ x0 < x1 ∧ absoluteAccuracy > 0
+post
+inClosed(result, (x0, x1)) ∧ approxZero(f, result, absoluteAccuracy)
+Functional Scenario Form
+f ≠ null ∧ x0 < x1 ∧ absoluteAccuracy > 0 && inClosed(result,(x0,x1)) ∧ approxZero(f,result,absoluteAccuracy)
+end_process
+
+process bracket(function: UnivariateRealFunction, initial: real, lowerBound: real, upperBound: real) result: Pair
+pre
+function ≠ null ∧ lowerBound < initial ∧ initial < upperBound
+post
+∃a,b • lowerBound ≤ a ∧ a < initial ∧ initial < b ∧ b ≤ upperBound ∧ signChange(function,a,b) ∧ resultPair(result,a,b)
+Functional Scenario Form
+function ≠ null ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,a)=0 && resultPair(result,a,b)
+or function ≠ null ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,b)=0 && resultPair(result,a,b)
+or function ≠ null ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,a)*fval(function,b) < 0 && resultPair(result,a,b)
+end_process
+
+process bracket_withMaxIt(function: UnivariateRealFunction, initial: real, lowerBound: real, upperBound: real, maximumIterations: integer) result: Pair
+pre
+function ≠ null ∧ maximumIterations > 0 ∧ lowerBound < initial ∧ initial < upperBound
+post
+∃a,b • lowerBound ≤ a ∧ a < initial ∧ initial < b ∧ b ≤ upperBound ∧ signChange(function,a,b) ∧ resultPair(result,a,b)
+Functional Scenario Form
+function ≠ null ∧ maximumIterations > 0 ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,a)=0 && resultPair(result,a,b)
+or function ≠ null ∧ maximumIterations > 0 ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,b)=0 && resultPair(result,a,b)
+or function ≠ null ∧ maximumIterations > 0 ∧ lowerBound < initial < upperBound ∧ ∃a,b • lowerBound ≤ a < initial < b ≤ upperBound ∧ fval(function,a)*fval(function,b) < 0 && resultPair(result,a,b)
+end_process
+
+process midpoint(a: real, b: real) result: real
+pre
+true
+post
+result = (a + b) / 2
+Functional Scenario Form
+true && result = (a + b) / 2
+end_process
+
+end_module

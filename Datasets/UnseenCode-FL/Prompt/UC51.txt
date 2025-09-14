@@ -1,0 +1,184 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: package a;
+2: import java.util.ArrayList;
+3: import java.util.List;
+4: 
+5: class TrafficSignal {
+6:     private String intersection;
+7:     private int greenTime; 
+8:     private List<String> signalLog;
+9: 
+10:     public TrafficSignal(String intersection, int defaultGreenTime) {
+11:         this.intersection = intersection;
+12:         this.greenTime = defaultGreenTime;
+13:         this.signalLog = new ArrayList<>();
+14:     }
+15: 
+16:     public void updateGreenTime(int trafficDensity) {
+17:         if (trafficDensity > 80 && trafficDensity <= 100) {
+18:             greenTime = 45; 
+19:         } else if (trafficDensity > 50 && trafficDensity <= 80) {
+20:             greenTime = 30; 
+21:         } else if (trafficDensity > 0 && trafficDensity <= 50){
+22:             greenTime = 15; 
+23:         } else {
+24:         	greenTime = 0;
+25:         }
+26:         if(greenTime =  0) {
+27:         	System.out.printf("invalide input%n	");
+28:         }else {
+29:         signalLog.add(String.format("Intersection %s: Green time updated to %d seconds (Traffic: %d%)",
+30:                 intersection, greenTime, trafficDensity));
+31:         System.out.printf("Green light at %s set to %d seconds due to traffic density: %d%%%n",
+32:                 intersection, greenTime, trafficDensity);
+33:         }
+34:     }
+35: 
+36:     public void printSignalLog() {
+37:         System.out.println("Traffic Signal Log for " + intersection + ":");
+38:         for (String log : signalLog) {
+39:             System.out.println(log);
+40:         }
+41:     }
+42: }
+43: 
+44: public class c09_IntelligentTrafficSystem {
+45:     public static void main(String[] args) {
+46:         TrafficSignal signal = new TrafficSignal("Main St & 1st Ave", 20);
+47: 
+48:         // testcase-VT:
+49:         signal.updateGreenTime(-21); // trafficDensity < 0
+50:         signal.updateGreenTime(3);  // trafficDensity > 0 && trafficDensity <= 50
+51:         signal.updateGreenTime(62); // trafficDensity > 50 && trafficDensity <= 80
+52:         signal.updateGreenTime(87); // trafficDensity > 80 && trafficDensity <= 100
+53:         signal.updateGreenTime(134); // trafficDensity > 100
+54:         signal.printSignalLog();
+55:         
+56:         //testcase-FT:
+57: //        signal.updateGreenTime(61); // trafficDensity < 0
+58: //        signal.updateGreenTime(27965);  // trafficDensity > 0 && trafficDensity <= 50
+59: //        signal.updateGreenTime(9006397); // trafficDensity > 50 && trafficDensity <= 80
+60: //        signal.updateGreenTime(35181); // trafficDensity > 80 && trafficDensity <= 100
+61: //        signal.updateGreenTime(96); // trafficDensity > 100
+62: //        signal.printSignalLog();
+63:         
+64:     }
+65: }
+66:]
+
+SOFL:[
+module UC51_IntelligentTrafficSystem
+type
+  intersection: string
+  defaultGreenTime: int
+  trafficDensity: int
+  greenTime: int
+  greenTime': int
+  logEntry: sequence of string
+
+process updateGreenTime(intersection: string, greenTime: int, trafficDensity: int)
+  greenTime': int
+pre
+  greenTime ≥ 0
+post
+  (
+    (trafficDensity > 80 ∧ trafficDensity ≤ 100) →
+      greenTime' = 45 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 45 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity > 50 ∧ trafficDensity ≤ 80) →
+      greenTime' = 30 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 30 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity > 0 ∧ trafficDensity ≤ 50) →
+      greenTime' = 15 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 15 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity ≤ 0 ∨ trafficDensity > 100) →
+      greenTime' = 0 ∧
+      logEntry = <>
+  )
+Functional Scenario Form
+        trafficDensity > 80 ∧ trafficDensity ≤ 100 && greenTime = 45, High traffic! Green time updated to 45 seconds.
+        OR
+        (trafficDensity > 50∧trafficDensity ≤ 100  && greenTime = 30, Moderate traffic! Green time updated to 30 seconds.
+        OR
+        trafficDensity ≤ 50 ∧ trafficDensity ≥ 0 && greenTime = 15 Low traffic! Green time updated to 15 seconds.
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: trafficDensity < 0
+updateGreenTime(-21)
+→ Output:
+invalide input	
+Traffic Signal Log for Main St & 1st Ave:
+(empty)
+
+// Test Case 2: trafficDensity = 3
+updateGreenTime(3)
+→ Output:
+Green light at Main St & 1st Ave set to 15 seconds due to traffic density: 3%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 15 seconds (Traffic: 3)
+
+// Test Case 3: trafficDensity = 62
+updateGreenTime(62)
+→ Output:
+Green light at Main St & 1st Ave set to 30 seconds due to traffic density: 62%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 30 seconds (Traffic: 62)
+
+// Test Case 4: trafficDensity = 87
+updateGreenTime(87)
+→ Output:
+Green light at Main St & 1st Ave set to 45 seconds due to traffic density: 87%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 45 seconds (Traffic: 87)
+
+// Test Case 5: trafficDensity = 134
+updateGreenTime(134)
+→ Output:
+invalide input	
+(no new log recorded)
+
+// Observation 1: Incorrect condition evaluation
+→ Output always prints "invalide input" regardless of actual greenTime update
+
+// Observation 2: Missing % symbol in log message
+→ Log entry: (Traffic: 62) instead of (Traffic: 62%)
+
+// Observation 3: Initial greenTime inconsistent with expectation
+→ Instantiated with 20, while scenario assumes default is 15]

@@ -1,0 +1,354 @@
+module Week
+
+types:
+  Date: <type>
+  Year: real
+  TimeZone: <type>
+  week: byte
+  firstMillisecond: real
+  lastMillisecond: real
+  WEEK_SEPARATORS: list of {'-', ',', ' ', '.'}
+
+var
+  FIRST_WEEK_IN_YEAR: int = 1
+  LAST_WEEK_IN_YEAR: int = 53
+  serialVersionUID: 1856387786939865061L
+  MIN_YEAR: int = 1900
+  MAX_YEAR: int = 9999
+
+process Week_DefaultConstructor() : Week
+post 
+  now = currentDate() ∧ 
+  this' = Week(now, systemTimeZone(), systemLocale())
+Functional Scenario Form 
+validInstantiationWithCurrentTime 
+end_process
+
+process Week_IntConstructor(
+    week: int,
+    year: int
+) : Week
+pre 
+  week ≥ FIRST_WEEK_IN_YEAR ∧ 
+  week ≤ LAST_WEEK_IN_YEAR ∧ 
+  year ≥ 1900 ∧ 
+  year ≤ 9999
+post 
+  this.year' = (short)year ∧ 
+  this.week' = (byte)week ∧ 
+  peg(Calendar.getInstance())
+Functional Scenario Form 
+validParams&&fieldsSet || 
+invalidWeek&&preViolated || 
+yearOutOfRange&&preFailed 
+end_process
+
+process Week_YearObjectConstructor(
+    week: int,
+    year: Year
+) : Week
+pre 
+  week ≥ FIRST_WEEK_IN_YEAR ∧ 
+  week ≤ LAST_WEEK_IN_YEAR
+post 
+  this.year' = (short)year.getYear() ∧ 
+  this.week' = (byte)week ∧ 
+  peg(Calendar.getInstance())
+Functional Scenario Form 
+validYearObject&&initialized || 
+invalidWeekValue&&preError 
+end_process
+
+process Week_DateConstructor(
+    time: Date
+) : Week
+pre 
+  time ≠ null
+post 
+  timeZone = RegularTimePeriod.DEFAULT_TIME_ZONE ∧ 
+  locale = Locale.getDefault() ∧ 
+  this' = Week(time, timeZone, locale)
+Functional Scenario Form 
+nonNullDate&&defaultSettingsApplied 
+end_process
+
+process Week_DateTimeZoneConstructor(
+    time: Date,
+    zone: TimeZone
+) : Week
+pre 
+  time ≠ null ∧ 
+  zone ≠ null
+post 
+  this' = Week(time, zone, Locale.getDefault())
+Functional Scenario Form 
+explicitTimeZoneUsed || 
+localeFallbackToDefault 
+end_process
+
+process FullConstructor(
+    time: Date,
+    zone: TimeZone,
+    locale: Locale
+) : Week
+pre 
+  time ≠ null ∧ 
+  zone ≠ null ∧ 
+  locale ≠ null
+post 
+  cal = Calendar.getInstance(zone, locale) ∧ 
+  cal.setTime(time) ∧ 
+  
+  tempWeek = cal.get(WEEK_OF_YEAR) ∧ 
+  (tempWeek = 1 ∧ cal.get(MONTH) = DECEMBER ⇒ 
+    this.week' = 1 ∧ 
+    this.year' = (short)(cal.get(YEAR) + 1)
+  ) ∨ 
+  (this.week' = min(tempWeek, LAST_WEEK) ∧ 
+    yyyy = cal.get(YEAR) ∧ 
+    (cal.get(MONTH) = JANUARY ∧ this.week ≥ 52 ⇒ 
+      yyyy' = yyyy - 1
+    ) ∧ 
+    this.year' = (short)yyyy'
+  ) ∧ 
+  peg(cal)
+Functional Scenario Form 
+decemberWeek1&&nextYearAssigned || 
+januaryHighWeek&&yearDecremented || 
+normalWeekCalculation 
+end_process
+
+process getYear(
+    this: Week
+) result: Year
+post 
+  result = new Year(this.year)
+Functional Scenario Form 
+validYearObjectCreated 
+end_process
+
+process getYearValue(
+    this: Week
+) result: int
+post 
+  result = this.year
+Functional Scenario Form 
+yearValueRetrieved 
+end_process
+
+process getWeek(
+    this: Week
+) result: int
+post 
+  result = this.week
+Functional Scenario Form 
+weekNumberReturned 
+end_process
+
+process peg(
+    this: Week,
+    calendar: Calendar
+)
+pre 
+  calendar ≠ null
+post 
+  this.firstMillisecond' = calculateFirstMilli(calendar) ∧ 
+  this.lastMillisecond' = calculateLastMilli(calendar)
+Functional Scenario Form 
+validCalendar&&millisecondsUpdated 
+end_process
+
+process previous(
+    this: Week
+) result: Week?
+post 
+  (this.week ≠ FIRST_WEEK_IN_YEAR ⇒ 
+    result' = Week(this.week-1, this.year)
+  ) ∨ 
+  (this.week = FIRST_WEEK_IN_YEAR ∧ this.year > MIN_YEAR ⇒ 
+    prevYear = this.year - 1 ∧ 
+    cal = Calendar.getInstance() ∧ 
+    cal.set(prevYear, DECEMBER, 31) ∧ 
+    maxWeek = cal.getActualMaximum(WEEK_OF_YEAR) ∧ 
+    result' = Week(maxWeek, prevYear)
+  ) ∨ 
+  result = null
+Functional Scenario Form 
+nonFirstWeek&&decrementWeek || 
+firstWeekPreviousYear&&validMaxWeek || 
+year1900FirstWeek&&nullResult 
+end_process
+
+process next(
+    this: Week
+) result: Week?
+post 
+  (this.week < 52 ⇒ result' = Week(this.week+1, this.year)) ∨ 
+  (this.week ≥ 52 ∧ 
+    cal = Calendar.getInstance() ∧ 
+    cal.set(this.year, DECEMBER, 31) ∧ 
+    maxWeek = cal.getActualMaximum(WEEK_OF_YEAR) ∧ 
+    (this.week < maxWeek ⇒ result' = Week(this.week+1, this.year)) ∨ 
+    (this.week ≥ maxWeek ∧ this.year < MAX_YEAR ⇒ 
+      result' = Week(FIRST_WEEK_IN_YEAR, this.year+1)
+    ) ∨ 
+    result = null
+  )
+Functional Scenario Form 
+normalWeekIncrement || 
+yearEndWithAvailableWeeks || 
+yearRolloverNewYear || 
+maxYearReached&&null 
+end_process
+
+process getSerialIndex(
+    this: Week
+) result: long
+post 
+  result = this.year * 53 + this.week
+Functional Scenario Form 
+validYearWeekCombination || 
+edgeCaseMaxYearWeek 
+end_process
+
+process getFirstMillisecond(
+    this: Week,
+    calendar: Calendar
+) result: long
+pre 
+  calendar ≠ null
+post 
+  c = calendar.clone() ∧ 
+  c.clear() ∧ 
+  c.set(YEAR, this.year) ∧ 
+  c.set(WEEK_OF_YEAR, this.week) ∧ 
+  c.set(DAY_OF_WEEK, c.getFirstDayOfWeek()) ∧ 
+  resetTimeFields(c) ∧ 
+  result = c.getTime().getTime()
+Functional Scenario Form 
+validCalendarClone && timeReset || 
+timeZoneSensitiveCalculation 
+end_process
+
+process getLastMillisecond(
+    this: Week,
+    calendar: Calendar
+) result: long
+pre 
+  calendar ≠ null
+post 
+  c = calendar.clone() ∧ 
+  c.clear() ∧ 
+  c.set(YEAR, this.year) ∧ 
+  c.set(WEEK_OF_YEAR, this.week + 1) ∧ 
+  c.set(DAY_OF_WEEK, c.getFirstDayOfWeek()) ∧ 
+  resetTimeFields(c) ∧ 
+  result = c.getTime().getTime() - 1
+Functional Scenario Form 
+endOfWeekCalculation || 
+weekBoundaryPrecision 
+end_process
+
+process equals(
+    this: Week,
+    obj: Object
+) result: bool
+post 
+  (obj = this ⇒ result = true) || 
+  (obj ∉ Week ⇒ result = false) || 
+  (that = (Week)obj ∧ (this.week ≠ that.week ∨ this.year ≠ that.year) ⇒ result = false) || 
+  result = true
+Functional Scenario Form 
+identityCheck&&returnTrue || 
+nonWeekType&&falseResult || 
+weekMismatch&&false || 
+fullEquality&&true 
+end_process
+
+process hashCode(
+    this: Week
+) result: int
+post 
+  result1 = HASH_SEED1 * HASH_MULTIPLIER + this.week ∧ 
+  result' = result1 * HASH_MULTIPLIER + this.year
+Functional Scenario Form 
+validHashGeneration || 
+boundaryValueHandling 
+end_process
+
+process compareTo(
+    this: Week,
+    o1: Object
+) result: int
+post 
+  (o1 ∈ Week ⇒ 
+    w = (Week)o1 ∧ 
+    (yearDiff = this.year - w.year ∧ yearDiff ≠ 0 ⇒ result = yearDiff) || 
+    (yearDiff = 0 ∧ weekDiff = this.week - w.week ⇒ result = weekDiff)
+  ) || 
+  (o1 ∈ RegularTimePeriod ⇒ result = 0) || 
+  result = 1
+Functional Scenario Form 
+weekComparisonYearDiff || 
+weekComparisonWeekDiff || 
+timePeriodComparisonNeutral || 
+nonTimePeriodComparisonPositive 
+end_process
+
+process parseWeek(
+    s: String
+) result: Week?
+post 
+  (s = null ⇒ result = null) || 
+  (trimmed = s.trim() ∧ 
+   separatorIdx = findSeparator(trimmed) ∧ 
+   (separatorIdx = -1 ⇒ throw TimePeriodFormatException) || 
+   (s1 = substring[0,separatorIdx) ∧ s2 = substring(separatorIdx+1) ∧ 
+    (y1 = evaluateAsYear(s1) ∧ w2 = stringToWeek(s2) ∧ validWeek(w2) ⇒ result = Week(w2, y1)) || 
+    (y2 = evaluateAsYear(s2) ∧ w1 = stringToWeek(s1) ∧ validWeek(w1) ⇒ result = Week(w1, y2)) || 
+    invalidYearOrWeek⇒throwException
+  ))
+Functional Scenario Form 
+nullInput&&nullReturn || 
+missingSeparator&&exception || 
+validYearWeekPair&&objectCreated || 
+invalidComponents&&formatException 
+end_process
+
+process findSeparator(
+    s: String
+) result: int
+post 
+  result = indexOfAny(s, WEEK_SEPARATORS)
+Functional Scenario Form 
+hyphenPresent||commaFound||spaceSeparated||dotDelimiter || noSeparatorFound 
+end_process
+
+process evaluateAsYear(
+    s: String
+) result: Year?
+post 
+  (Year.isValid(s) ⇒ result = Year.parseYear(s)) || 
+  result = null
+Functional Scenario Form 
+validYearFormat&&parsed || invalidYear&&nullReturn 
+end_process
+
+process stringToWeek(
+    s: String
+) result: int
+post 
+  cleaned = replace(s, 'W', '') ∧ 
+  trimmed = cleaned.trim() ∧ 
+  (isInteger(trimmed) ⇒ 
+    num = parseInt(trimmed) ∧ 
+    (num ≥ FIRST_WEEK_IN_YEAR ∧ num ≤ LAST_WEEK_IN_YEAR ⇒ result = num) || 
+    result = -1
+  ) || 
+  result = -1
+Functional Scenario Form 
+validNumericWeek||wPrefixStripped || outOfRangeWeek||negativeReturn || nonNumericInput&&invalidResult 
+end_process
+
+
+end_module

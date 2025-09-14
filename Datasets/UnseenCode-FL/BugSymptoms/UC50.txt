@@ -1,0 +1,52 @@
+// Test Case 1: Order exceeds current stock
+Product("Laptop", 10).processOrder(13)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 2: Large order exceeding stock
+Product("Laptop", 10).processOrder(19)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 3: Valid order, no restock triggered
+Product("Laptop", 10).processOrder(2)
+→ Output:
+Order successful! 2 Laptop shipped. Remaining stock: 8
+Transaction History for Laptop:
+Order processed: -2 Laptop, Remaining stock: 8
+
+// Test Case 4: Valid order, restock triggered
+Product("Laptop", 10).processOrder(7)
+→ Output:
+Order successful! 7 Laptop shipped. Remaining stock: 3
+Auto-restocking triggered! Added 30 Laptop. New stock: 33
+Transaction History for Laptop:
+Order processed: -7 Laptop, Remaining stock: 3  
+Auto-restocked: +30 Laptop, New stock: 33
+
+// Test Case 5: Negative quantity
+Product("Laptop", 10).processOrder(-4)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 6: Syntax in transaction history header
+→ Output:
+Transaction History for Laptop:
+...
+(missing colon if `+ ":"` omitted)
+
+// Test Case 7: Stock decrease after restock
+→ Observation:
+Final stock = 3 - 30 = -27
+(invalid; negative stock)
+
+// Test Case 8: Missing product name in output
+→ Output:
+Order successful! 7 shipped. Remaining stock: 3
+(missing product name in success message)

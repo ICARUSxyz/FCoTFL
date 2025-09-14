@@ -1,0 +1,71 @@
+module SubLine  
+
+// Primary constructor  
+process constructor(line: Line, remainingRegion: IntervalsSet)  
+pre true  
+post  
+  this.line' = line  
+  this.remainingRegion' = remainingRegion  
+Functional Scenario Form  
+valid line and region && creates instance  
+end_process  
+
+// Constructor from endpoints  
+process constructor_vectors(start: Vector3D, end: Vector3D)  
+pre true  
+post  
+  start = end → throw MathIllegalArgumentException  
+  line' = new Line(start, end)  
+  remainingRegion' = buildIntervalSet(start, end)  
+Functional Scenario Form  
+start=(1,0,0) end=(0,1,0) && creates instance  
+start=(0,0,0) end=(0,0,0) && throws exception  
+end_process  
+
+// Constructor from segment  
+process constructor_segment(segment: Segment)  
+pre true  
+post  
+  line' = segment.getLine()  
+  remainingRegion' = buildIntervalSet(segment.getStart(), segment.getEnd())  
+Functional Scenario Form  
+valid segment && creates instance  
+end_process  
+
+// Get segments  
+process getSegments() result: List<Segment>  
+pre true  
+post  
+  list = remainingRegion.asList()  
+  segments = new ArrayList<Segment>()  
+  for each interval in list  
+    startPoint = line.toSpace(new Vector1D(interval.getInf()))  
+    endPoint = line.toSpace(new Vector1D(interval.getSup()))  
+    segments.add(new Segment(startPoint, endPoint, line))  
+  result' = segments  
+Functional Scenario Form  
+single interval region && returns one segment  
+multiple intervals && returns multiple segments  
+empty region && returns empty list  
+end_process  
+
+// Intersection with another sub-line  
+process intersection(subLine: SubLine, includeEndPoints: boolean) result: Vector3D  
+pre true  
+post  
+  v1D = line.intersection(subLine.line)  
+  v1D = null → result' = null  
+  v1D ≠ null  
+    ? loc1 = remainingRegion.checkPoint(line.toSubSpace(v1D))  
+      loc2 = subLine.remainingRegion.checkPoint(subLine.line.toSubSpace(v1D))  
+      includeEndPoints  
+        ? (loc1 ≠ OUTSIDE ∧ loc2 ≠ OUTSIDE) → result' = v1D  
+        : (loc1 = INSIDE ∧ loc2 = INSIDE) → result' = v1D  
+      otherwise → result' = null  
+Functional Scenario Form  
+parallel lines && result'=null  
+intersecting lines both regions contain point && result'=v1D  
+includeEndPoints=true and on boundary && result'=v1D  
+end_process  
+
+end_module

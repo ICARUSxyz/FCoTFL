@@ -1,0 +1,82 @@
+**Bug Report Summary: Charge GUI – Symptom Overview**
+
+---
+
+### **Test Case 1: Displaying Balance with HTML Formatting**
+
+**Setup:**
+A valid balance value (e.g., `"2000"`) is read from `balance.csv`.
+
+**Input:**
+
+```java
+new charge();
+```
+
+**Expected Behavior:**
+The balance is displayed in red using HTML formatting, e.g.:
+
+```
+balance : 2000 yen  ← (displayed in red)
+```
+
+**Observed Output:**
+
+```
+GUI rendering issue or HTML tag appears in plain text
+balance : 2000 yen</font>
+```
+
+**Console Log (Simulated):**
+
+```
+Warning: HTML content may not render properly due to malformed markup.
+```
+
+---
+
+### **Test Case 2: Charge Limit Range Miscalculation**
+
+**Setup:**
+User's balance is `"495000"`.
+
+**Expected Range Output:**
+
+```
+min: -   max: -
+(The maximum charge amount has been reached. You can't charge.)
+```
+
+**Observed Output (Before Fix):**
+
+```
+min: 1000   max: 5000
+(No limit warning shown)
+```
+
+**Console Log (Simulated):**
+
+```
+Parsed balance: 495000
+Charge range incorrectly calculated due to threshold misalignment
+```
+
+---
+
+### **Test Case 3: Maximum Balance Check Threshold**
+
+**Setup:**
+Different values of balance are tested:
+
+* **Case A: balance = 480000**
+
+  * Output: min = 1000, max = 20000
+  * No warning shown
+
+* **Case B: balance = 500000**
+
+  * Output: min = -, max = -
+  * Warning shown: "The maximum charge amount has been reached..."
+
+**Observed Problem:**
+The cutoff value used for comparison does not consistently trigger the expected warning when balance is near the upper limit, leading to inconsistent or incorrect GUI behavior.

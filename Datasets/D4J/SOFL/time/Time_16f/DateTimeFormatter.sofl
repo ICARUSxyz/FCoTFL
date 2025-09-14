@@ -1,0 +1,642 @@
+module DateTimeFormatter  
+type:  
+  iDefaultYear: int 
+
+var:  
+  DEFAULT_YEAR: int = 2000
+
+// Main constructor
+process constructor(printer: DateTimePrinter?, parser: DateTimeParser?)  
+pre true  
+post  
+  iPrinter' = printer ∧  
+  iParser' = parser ∧  
+  iLocale' = null ∧  
+  iOffsetParsed' = false ∧  
+  iChrono' = null ∧  
+  iZone' = null ∧  
+  iPivotYear' = null ∧  
+  iDefaultYear' = DEFAULT_YEAR  
+
+Functional Scenario Form  
+printer=ISOPrinter parser=ISOParser && creates formatter with default settings  
+printer=null parser=null && creates minimal formatter  
+end_process  
+
+// Full constructor (private)
+process constructor(printer: DateTimePrinter?, parser: DateTimeParser?, locale: Locale?, offsetParsed: boolean, chrono: Chronology?, zone: DateTimeZone?, pivotYear: Integer?, defaultYear: int)  
+pre true  
+post  
+  iPrinter' = printer ∧  
+  iParser' = parser ∧  
+  iLocale' = locale ∧  
+  iOffsetParsed' = offsetParsed ∧  
+  iChrono' = chrono ∧  
+  iZone' = zone ∧  
+  iPivotYear' = pivotYear ∧  
+  iDefaultYear' = defaultYear  
+
+Functional Scenario Form  
+locale=Locale.US offsetParsed=true chrono=ISOChronology zone=DateTimeZone.UTC pivotYear=2050 defaultYear=1970 && creates fully customized formatter  
+end_process  
+
+// Printer capability
+process isPrinter() result: boolean  
+pre true  
+post  
+  result' = (iPrinter ≠ null)  
+
+Functional Scenario Form  
+iPrinter=ISOPrinter && true  
+iPrinter=null && false  
+end_process  
+
+process getPrinter() result: DateTimePrinter?  
+pre true  
+post  
+  result' = iPrinter  
+
+Functional Scenario Form  
+iPrinter=BasicPrinter && returns printer  
+end_process  
+
+// Parser capability
+process isParser() result: boolean  
+pre true  
+post  
+  result' = (iParser ≠ null)  
+
+Functional Scenario Form  
+iParser=BasicParser && true  
+iParser=null && false  
+end_process  
+
+process getParser() result: DateTimeParser?  
+pre true  
+post  
+  result' = iParser  
+
+Functional Scenario Form  
+iParser=ISODateParser && returns parser  
+end_process  
+
+// Locale handling
+process withLocale(locale: Locale) result: DateTimeFormatter  
+pre true  
+post  
+  locale = getLocale() ∨ (locale ≠ null ∧ locale = getLocale())  
+    ⇒ result' = this  
+    else  
+      result' = new DateTimeFormatter(iPrinter, iParser, locale, iOffsetParsed, iChrono, iZone, iPivotYear, iDefaultYear)  
+
+Functional Scenario Form  
+locale=null && returns this if current locale null  
+locale=Locale.FRENCH when current=Locale.ENGLISH && returns new formatter  
+locale=Locale.JAPAN when current=Locale.JAPAN && returns this  
+end_process  
+
+process getLocale() result: Locale
+pre true  
+post  
+  result' = iLocale  
+
+Functional Scenario Form  
+iLocale=Locale.CHINA && returns China locale  
+iLocale=null && returns null  
+end_process  
+
+// Offset parsing control
+process withOffsetParsed() result: DateTimeFormatter  
+pre true  
+post  
+  iOffsetParsed = true  
+    ⇒ result' = this  
+    else  
+      result' = new DateTimeFormatter(iPrinter, iParser, iLocale, true, iChrono, null, iPivotYear, iDefaultYear)  
+
+Functional Scenario Form  
+iOffsetParsed=true && returns this  
+iOffsetParsed=false && returns new formatter with offsetParsed=true  
+end_process  
+
+process isOffsetParsed() result: boolean  
+pre true  
+post  
+  result' = iOffsetParsed  
+
+Functional Scenario Form  
+iOffsetParsed=true && true  
+iOffsetParsed=false && false  
+end_process  
+
+// Chronology handling
+process withChronology(chrono: Chronology?) result: DateTimeFormatter  
+pre true  
+post  
+  iChrono = chrono  
+    ⇒ result' = this  
+    else  
+      result' = new DateTimeFormatter(iPrinter, iParser, iLocale, iOffsetParsed, chrono, iZone, iPivotYear, iDefaultYear)  
+
+Functional Scenario Form  
+chrono=null && returns this if current null  
+chrono=ISOChronology when current=null && returns new formatter  
+chrono=GregorianChronology when current=GregorianChronology && returns this  
+end_process  
+
+process getChronology() result: Chronology?  
+pre true  
+post  
+  result' = iChrono  
+
+Functional Scenario Form  
+iChrono=ISOChronology && returns ISO chronology  
+iChrono=null && returns null  
+end_process  
+
+// Zone handling
+process withZoneUTC() result: DateTimeFormatter  
+pre true  
+post  
+  result' = withZone(DateTimeZone.UTC)  
+
+Functional Scenario Form  
+always && returns UTC zone formatter  
+end_process  
+
+process withZone(zone: DateTimeZone?) result: DateTimeFormatter  
+pre true  
+post  
+  iZone = zone  
+    ⇒ result' = this  
+    else  
+      result' = new DateTimeFormatter(iPrinter, iParser, iLocale, false, iChrono, zone, iPivotYear, iDefaultYear)  
+
+Functional Scenario Form  
+zone=null && returns this if current null  
+zone=Paris when current=null && returns new formatter  
+zone=UTC when current=UTC && returns this  
+end_process  
+
+process getZone() result: DateTimeZone?  
+pre true  
+post  
+  result' = iZone  
+
+Functional Scenario Form  
+iZone=UTC && returns UTC  
+iZone=null && returns null  
+end_process  
+
+// Pivot year handling
+process withPivotYear(pivotYear: Integer?) result: DateTimeFormatter  
+pre true  
+post  
+  iPivotYear = pivotYear ∨ (iPivotYear ≠ null ∧ iPivotYear = pivotYear)  
+    ⇒ result' = this  
+    else  
+      result' = new DateTimeFormatter(iPrinter, iParser, iLocale, iOffsetParsed, iChrono, iZone, pivotYear, iDefaultYear)  
+
+Functional Scenario Form  
+pivotYear=null && returns this if current null  
+pivotYear=2050 when current=2000 && returns new formatter  
+end_process  
+
+process withPivotYear(pivotYear: int) result: DateTimeFormatter  
+pre true  
+post  
+  result' = withPivotYear(Integer.valueOf(pivotYear))  
+
+Functional Scenario Form  
+pivotYear=2100 && converts to Integer  
+end_process  
+
+process getPivotYear() result: Integer?  
+pre true  
+post  
+  result' = iPivotYear  
+
+Functional Scenario Form  
+iPivotYear=2050 && returns 2050  
+iPivotYear=null && returns null  
+end_process  
+
+// Default year handling
+process withDefaultYear(defaultYear: int) result: DateTimeFormatter  
+pre true  
+post  
+  result' = new DateTimeFormatter(iPrinter, iParser, iLocale, iOffsetParsed, iChrono, iZone, iPivotYear, defaultYear)  
+
+Functional Scenario Form  
+defaultYear=1970 && returns new formatter  
+end_process  
+
+process getDefaultYear() result: int  
+pre true  
+post  
+  result' = iDefaultYear  
+
+Functional Scenario Form  
+iDefaultYear=2000 && returns 2000  
+end_process  
+
+// Printing to buffers
+process printTo(buf: StringBuffer, instant: ReadableInstant)  
+pre requirePrinter()  
+post  
+  millis = DateTimeUtils.getInstantMillis(instant) ∧  
+  chrono = DateTimeUtils.getInstantChronology(instant) ∧  
+  printTo(buf, millis, chrono)  
+
+Functional Scenario Form  
+instant=Instant(0) buf=StringBuffer() && prints "1970-01-01T00:00:00Z"  
+end_process  
+
+process printTo(buf: StringBuffer, instant: long)  
+pre requirePrinter()  
+post  
+  printTo(buf, instant, null)  
+
+Functional Scenario Form  
+instant=0L buf=StringBuffer() && prints using default chronology  
+end_process  
+
+process printTo(buf: StringBuffer, partial: ReadablePartial)  
+pre requirePrinter()  
+post  
+  partial ≠ null  
+    ⇒ iPrinter.printTo(buf, partial, iLocale)  
+    else  
+      error = IllegalArgumentException  
+
+Functional Scenario Form  
+partial=LocalDate(2023,7,30) buf=StringBuffer() && prints "2023-07-30"  
+partial=null && throws exception  
+end_process  
+
+// Printing to writers
+process printTo(out: Writer, instant: ReadableInstant) throws IOException  
+pre requirePrinter()  
+post  
+  millis = DateTimeUtils.getInstantMillis(instant) ∧  
+  chrono = DateTimeUtils.getInstantChronology(instant) ∧  
+  printTo(out, millis, chrono)  
+
+Functional Scenario Form  
+out=StringWriter() instant=Instant(0) && writes ISO string  
+end_process  
+
+process printTo(out: Writer, instant: long) throws IOException  
+pre requirePrinter()  
+post  
+  printTo(out, instant, null)  
+
+Functional Scenario Form  
+out=FileWriter() instant=946684800000L && writes "2000-01-01T00:00:00Z"  
+end_process  
+
+process printTo(out: Writer, partial: ReadablePartial) throws IOException  
+pre requirePrinter()  
+post  
+  partial ≠ null  
+    ⇒ iPrinter.printTo(out, partial, iLocale)  
+    else  
+      error = IllegalArgumentException  
+
+Functional Scenario Form  
+out=PrintWriter() partial=YearMonth(2023,7) && writes "2023-07"  
+end_process  
+
+// Printing to Appendable
+process printTo(appendable: Appendable, instant: ReadableInstant) throws IOException  
+pre true  
+post  
+  appendable.append(print(instant))  
+
+Functional Scenario Form  
+appendable=StringBuilder() instant=Instant(0) && appends string  
+end_process  
+
+process printTo(appendable: Appendable, instant: long) throws IOException  
+pre true  
+post  
+  appendable.append(print(instant))  
+
+Functional Scenario Form  
+appendable=CharBuffer.allocate(100) instant=0L && appends formatted string  
+end_process  
+
+process printTo(appendable: Appendable, partial: ReadablePartial) throws IOException  
+pre true  
+post  
+  appendable.append(print(partial))  
+
+Functional Scenario Form  
+appendable=StringBuffer() partial=TimeOfDay(12,30) && appends "12:30:00.000"  
+end_process  
+
+// String generation
+process print(instant: ReadableInstant) result: String  
+pre requirePrinter()  
+post  
+  buf = new StringBuffer(iPrinter.estimatePrintedLength()) ∧  
+  printTo(buf, instant) ∧  
+  result' = buf.toString()  
+
+Functional Scenario Form  
+instant=Instant(0) && returns "1970-01-01T00:00:00Z"  
+end_process  
+
+process print(instant: long) result: String  
+pre requirePrinter()  
+post  
+  buf = new StringBuffer(iPrinter.estimatePrintedLength()) ∧  
+  printTo(buf, instant) ∧  
+  result' = buf.toString()  
+
+Functional Scenario Form  
+instant=946684800000L && returns "2000-01-01T00:00:00Z"  
+end_process  
+
+// Helper method
+process requirePrinter()  
+pre true  
+post  
+  iPrinter = null  
+    ⇒ errorMsg = "Printer must not be null" ∧  
+      result = IllegalStateException  
+
+Functional Scenario Form  
+iPrinter=null && throws exception when called  
+end_process  
+
+// Partial date printing
+process print(partial: ReadablePartial) result: String  
+pre requirePrinter()  
+post  
+  buf = new StringBuffer(iPrinter.estimatePrintedLength()) ∧  
+  printTo(buf, partial) ∧  
+  result' = buf.toString()  
+
+Functional Scenario Form  
+partial=LocalTime(12,30) && returns "12:30:00.000"  
+end_process  
+
+// Core printing logic
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology?)  
+pre requirePrinter()  
+post  
+  chrono' = selectChronology(chrono) ∧  
+  zone = chrono'.getZone() ∧  
+  offset = zone.getOffset(instant) ∧  
+  adjustedInstant = instant + offset ∧  
+  ( (instant XOR adjustedInstant) < 0 ∧ (instant XOR offset) ≥ 0  
+    ⇒ zone' = DateTimeZone.UTC ∧ offset' = 0 ∧ adjustedInstant' = instant  
+    else  
+      zone' = zone  
+  ) ∧  
+  iPrinter.printTo(buf, adjustedInstant', chrono'.withUTC(), offset', zone', iLocale)  
+
+Functional Scenario Form  
+instant=0 chrono=ISOChronology buf=StringBuffer() && prints "1970-01-01T00:00:00Z"  
+instant=Long.MAX_VALUE chrono=UTC && handles overflow  
+end_process  
+
+process printTo(out: Writer, instant: long, chrono: Chronology?) throws IOException  
+pre requirePrinter()  
+post  
+  chrono' = selectChronology(chrono) ∧  
+  zone = chrono'.getZone() ∧  
+  offset = zone.getOffset(instant) ∧  
+  adjustedInstant = instant + offset ∧  
+  ( (instant XOR adjustedInstant) < 0 ∧ (instant XOR offset) ≥ 0  
+    ⇒ zone' = DateTimeZone.UTC ∧ offset' = 0 ∧ adjustedInstant' = instant  
+    else  
+      zone' = zone  
+  ) ∧  
+  iPrinter.printTo(out, adjustedInstant', chrono'.withUTC(), offset', zone', iLocale)  
+
+Functional Scenario Form  
+out=StringWriter() instant=946684800000L chrono=null && writes "2000-01-01T00:00:00Z"  
+end_process  
+
+// Printer validation
+process requirePrinter() result: DateTimePrinter  
+pre true  
+post  
+  iPrinter ≠ null  
+    ⇒ result' = iPrinter  
+    else  
+      errorMsg = "Printing not supported" ∧  
+      result = UnsupportedOperationException  
+
+Functional Scenario Form  
+iPrinter=ISOPrinter && returns printer  
+iPrinter=null && throws exception  
+end_process  
+
+// Parsing operations
+process parseInto(instant: ReadWritableInstant, text: String, position: int) result: int  
+pre requireParser()  
+post  
+  instant ≠ null  
+    ? parser = requireParser() ∧  
+      instantMillis = instant.getMillis() ∧  
+      chrono = instant.getChronology() ∧  
+      defaultYear = DateTimeUtils.getChronology(chrono).year().get(instantMillis) ∧  
+      instantLocal = instantMillis + chrono.getZone().getOffset(instantMillis) ∧  
+      selectedChrono = selectChronology(chrono) ∧  
+      bucket = new DateTimeParserBucket(instantLocal, selectedChrono, iLocale, iPivotYear, defaultYear) ∧  
+      newPos = parser.parseInto(bucket, text, position) ∧  
+      (newPos ≥ 0  
+        ? instant.setMillis(bucket.computeMillis(false, text)) ∧  
+          (iOffsetParsed ∧ bucket.getOffsetInteger() ≠ null  
+            ? parsedOffset = bucket.getOffsetInteger() ∧  
+              parsedZone = DateTimeZone.forOffsetMillis(parsedOffset) ∧  
+              chrono' = chrono.withZone(parsedZone)  
+            : bucket.getZone() ≠ null  
+              ? chrono' = chrono.withZone(bucket.getZone())  
+              : chrono' = chrono  
+          ) ∧  
+          instant.setChronology(chrono') ∧  
+          (iZone ≠ null ? instant.setZone(iZone) : skip) ∧  
+          result' = newPos  
+        : error = IllegalArgumentException  
+      )  
+    : error = IllegalArgumentException  
+
+Functional Scenario Form  
+text="2023-07-30" position=0 instant=MutableDateTime() && parses and updates instant  
+text="1582-10-04" position=0 instant=JulianChronology instant && handles Julian date  
+end_process  
+
+process parseMillis(text: String) result: long  
+pre requireParser()  
+post  
+  parser = requireParser() ∧  
+  chrono = selectChronology(iChrono) ∧  
+  bucket = new DateTimeParserBucket(0, chrono, iLocale, iPivotYear, iDefaultYear) ∧  
+  newPos = parser.parseInto(bucket, text, 0) ∧  
+  (newPos ≥ 0  
+    ? (newPos ≥ text.length()  
+        ? result' = bucket.computeMillis(true, text)  
+        : error = IllegalArgumentException  
+      )  
+    : error = IllegalArgumentException  
+  )  
+
+Functional Scenario Form  
+text="1970-01-01" && returns 0L  
+text="invalid-date" && throws exception  
+end_process  
+
+// Partial date parsing
+process parseLocalDate(text: String) result: LocalDate  
+pre requireParser()  
+post  
+  dateTime = parseLocalDateTime(text) ∧  
+  result' = dateTime.toLocalDate()  
+
+Functional Scenario Form  
+text="2023-07-30" && returns LocalDate(2023,7,30)  
+end_process  
+
+process parseLocalTime(text: String) result: LocalTime  
+pre requireParser()  
+post  
+  dateTime = parseLocalDateTime(text) ∧  
+  result' = dateTime.toLocalTime()  
+
+Functional Scenario Form  
+text="12:30:45" && returns LocalTime(12,30,45)  
+end_process  
+
+// LocalDateTime parsing
+process parseLocalDateTime(text: String) result: LocalDateTime  
+pre requireParser()  
+post  
+  parser = requireParser() ∧  
+  chrono = selectChronology(null).withUTC() ∧  
+  bucket = new DateTimeParserBucket(0, chrono, iLocale, iPivotYear, iDefaultYear) ∧  
+  newPos = parser.parseInto(bucket, text, 0) ∧  
+  (newPos ≥ 0 ∧ newPos ≥ text.length()  
+    ? millis = bucket.computeMillis(true, text) ∧  
+      (bucket.getOffsetInteger() ≠ null  
+        ? parsedOffset = bucket.getOffsetInteger() ∧  
+          parsedZone = DateTimeZone.forOffsetMillis(parsedOffset) ∧  
+          chrono' = chrono.withZone(parsedZone)  
+        : bucket.getZone() ≠ null  
+          ? chrono' = chrono.withZone(bucket.getZone())  
+          : chrono' = chrono  
+      ) ∧  
+      result' = new LocalDateTime(millis, chrono')  
+    : newPos' = ~newPos ∧  
+      error = IllegalArgumentException(FormatUtils.createErrorMessage(text, newPos'))  
+  )  
+
+Functional Scenario Form  
+text="2023-07-30T12:00" && returns LocalDateTime object  
+text="2023-07-30T12:00+02:00" && handles offset  
+text="invalid" && throws exception  
+end_process  
+
+// DateTime parsing
+process parseDateTime(text: String) result: DateTime  
+pre requireParser()  
+post  
+  parser = requireParser() ∧  
+  chrono = selectChronology(null) ∧  
+  bucket = new DateTimeParserBucket(0, chrono, iLocale, iPivotYear, iDefaultYear) ∧  
+  newPos = parser.parseInto(bucket, text, 0) ∧  
+  (newPos ≥ 0 ∧ newPos ≥ text.length()  
+    ? millis = bucket.computeMillis(true, text) ∧  
+      (iOffsetParsed ∧ bucket.getOffsetInteger() ≠ null  
+        ? parsedOffset = bucket.getOffsetInteger() ∧  
+          parsedZone = DateTimeZone.forOffsetMillis(parsedOffset) ∧  
+          chrono' = chrono.withZone(parsedZone)  
+        : bucket.getZone() ≠ null  
+          ? chrono' = chrono.withZone(bucket.getZone())  
+          : chrono' = chrono  
+      ) ∧  
+      dt = new DateTime(millis, chrono') ∧  
+      (iZone ≠ null  
+        ? result' = dt.withZone(iZone)  
+        : result' = dt  
+      )  
+    : newPos' = ~newPos ∧  
+      error = IllegalArgumentException(FormatUtils.createErrorMessage(text, newPos'))  
+  )  
+
+Functional Scenario Form  
+text="2023-07-30T12:00:00Z" iZone=UTC && returns UTC DateTime  
+text="2023-07-30T14:00+02:00" iOffsetParsed=true && retains +02:00 offset  
+end_process  
+
+// MutableDateTime parsing
+process parseMutableDateTime(text: String) result: MutableDateTime  
+pre requireParser()  
+post  
+  parser = requireParser() ∧  
+  chrono = selectChronology(null) ∧  
+  bucket = new DateTimeParserBucket(0, chrono, iLocale, iPivotYear, iDefaultYear) ∧  
+  newPos = parser.parseInto(bucket, text, 0) ∧  
+  (newPos ≥ 0 ∧ newPos ≥ text.length()  
+    ? millis = bucket.computeMillis(true, text) ∧  
+      (iOffsetParsed ∧ bucket.getOffsetInteger() ≠ null  
+        ? parsedOffset = bucket.getOffsetInteger() ∧  
+          parsedZone = DateTimeZone.forOffsetMillis(parsedOffset) ∧  
+          chrono' = chrono.withZone(parsedZone)  
+        : bucket.getZone() ≠ null  
+          ? chrono' = chrono.withZone(bucket.getZone())  
+          : chrono' = chrono  
+      ) ∧  
+      dt = new MutableDateTime(millis, chrono') ∧  
+      (iZone ≠ null  
+        ? dt.setZone(iZone)  
+        : skip  
+      ) ∧  
+      result' = dt  
+    : newPos' = ~newPos ∧  
+      error = IllegalArgumentException(FormatUtils.createErrorMessage(text, newPos'))  
+  )  
+
+Functional Scenario Form  
+text="2023-07-30" && returns mutable datetime  
+text="1582-10-04" chrono=JulianChronology && handles historical dates  
+end_process  
+
+// Parser validation
+process requireParser() result: DateTimeParser  
+pre true  
+post  
+  iParser ≠ null  
+    ⇒ result' = iParser  
+    else  
+      errorMsg = "Parsing not supported" ∧  
+      result = UnsupportedOperationException  
+
+Functional Scenario Form  
+iParser=ISOParser && returns parser  
+iParser=null && throws exception  
+end_process  
+
+// Chronology selection
+process selectChronology(proposed: Chronology?) result: Chronology  
+pre true  
+post  
+  baseChrono = DateTimeUtils.getChronology(proposed) ∧  
+  (iChrono ≠ null  
+    ⇒ result' = iChrono  
+    : result' = baseChrono  
+  ) ∧  
+  (iZone ≠ null  
+    ⇒ result'' = result'.withZone(iZone)  
+    : result'' = result'  
+  )  
+
+Functional Scenario Form  
+proposed=null iChrono=ISOChronology iZone=UTC && returns ISO/UTC  
+proposed=GregorianChronology iChrono=null iZone=null && returns Gregorian  
+end_process  
+
+end_module  

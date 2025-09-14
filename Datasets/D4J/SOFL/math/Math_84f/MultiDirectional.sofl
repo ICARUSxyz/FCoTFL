@@ -1,0 +1,76 @@
+module MultiDirectional
+type
+khi: real
+gamma: real
+
+
+process MultiDirectional_default() result: void
+pre
+true
+post
+khi' = 2.0 ∧ gamma' = 0.5 ∧ simplex' = simplex
+Functional Scenario Form
+true && khi' = 2.0 ∧ gamma' = 0.5 ∧ simplex' = simplex
+end_process
+
+process MultiDirectional_withCoefficients(k: real, g: real) result: void
+pre
+true
+post
+khi' = k ∧ gamma' = g ∧ simplex' = simplex
+Functional Scenario Form
+true && khi' = k ∧ gamma' = g ∧ simplex' = simplex
+end_process
+
+process iterateSimplex(self: MultiDirectional, comparator: ComparatorRPVP) result: void
+pre
+length(simplex) ≥ 2
+post
+let O = simplex in
+let R = TransformAndEvaluate(O, 1.0, comparator) in
+(
+(compare(R[0], O[0], comparator) < 0 ∧
+let E = TransformAndEvaluate(O, khi, comparator) in
+(
+(compare(R[0], E[0], comparator) ≤ 0 ∧ simplex' = R) ∨
+(compare(R[0], E[0], comparator) > 0 ∧ simplex' = E)
+)
+)
+∨
+(compare(R[0], O[0], comparator) ≥ 0 ∧
+let C = TransformAndEvaluate(O, gamma, comparator) in
+(
+(compare(C[0], O[0], comparator) < 0 ∧ simplex' = C) ∨
+(compare(C[0], O[0], comparator) ≥ 0 ∧
+(∀i • 0 ≤ i < length(O) ⇒ converged(getIterations(), O[i], C[i])) ∧ simplex' = C)
+)
+)
+)
+Functional Scenario Form
+compare(TransformAndEvaluate(simplex,1.0,comparator)[0], simplex[0], comparator) < 0 && compare(TransformAndEvaluate(simplex,1.0,comparator)[0], TransformAndEvaluate(simplex,khi,comparator)[0], comparator) ≤ 0 ∧ simplex' = TransformAndEvaluate(simplex,1.0,comparator)
+or compare(TransformAndEvaluate(simplex,1.0,comparator)[0], simplex[0], comparator) < 0 && compare(TransformAndEvaluate(simplex,1.0,comparator)[0], TransformAndEvaluate(simplex,khi,comparator)[0], comparator) > 0 ∧ simplex' = TransformAndEvaluate(simplex,khi,comparator)
+or compare(TransformAndEvaluate(simplex,1.0,comparator)[0], simplex[0], comparator) ≥ 0 && compare(TransformAndEvaluate(simplex,gamma,comparator)[0], simplex[0], comparator) < 0 ∧ simplex' = TransformAndEvaluate(simplex,gamma,comparator)
+or compare(TransformAndEvaluate(simplex,1.0,comparator)[0], simplex[0], comparator) ≥ 0 && compare(TransformAndEvaluate(simplex,gamma,comparator)[0], simplex[0], comparator) ≥ 0 ∧ ∀i • converged(getIterations(), simplex[i], TransformAndEvaluate(simplex,gamma,comparator)[i]) ∧ simplex' = TransformAndEvaluate(simplex,gamma,comparator)
+end_process
+
+process evaluateNewSimplex(self: MultiDirectional, original: Simplex, coeff: real, comparator: ComparatorRPVP) result: RealPointValuePair
+pre
+length(original) ≥ 2 ∧ length(original[0].point) = length(original[1].point)
+post
+let x* = original[0].point in
+let n = length(x*) in
+simplex'[0] = original[0] ∧
+(∀i • 1 ≤ i ≤ n ⇒
+let xᵢ = original[i].point in
+simplex'[i].point = [ x*[j] + coeff * (x*[j] - xᵢ[j]) | j ∈ 0..n-1 ] ∧
+isEvaluated(simplex'[i])
+) ∧
+sortedBy(simplex', comparator) ∧
+result = simplex'[0]
+Functional Scenario Form
+coeff = 1.0 && simplex' built by x'[i] = x*[j] + 1.0*(x*[j] - xᵢ[j]) for i=1..n then evaluated and sorted ∧ result = simplex'[0]
+or coeff = khi && simplex' built by x'[i] = x*[j] + khi*(x*[j] - xᵢ[j]) for i=1..n then evaluated and sorted ∧ result = simplex'[0]
+or coeff = gamma && simplex' built by x'[i] = x*[j] + gamma*(x*[j] - xᵢ[j]) for i=1..n then evaluated and sorted ∧ result = simplex'[0]
+end_process
+
+end_module

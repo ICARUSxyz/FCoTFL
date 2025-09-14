@@ -1,0 +1,44 @@
+module UC63_Spwaner
+type 
+  spwanTime: float
+  countTime: float
+  index: int
+  spikeNum: int
+
+process Update() result: Boolean
+pre  
+  true
+post 
+  SpwanPlatform() is executed ∧ result = true
+Functional Scenario Form 
+(true) && (SpwanPlatform() is executed ∧ result = true)
+end_process
+
+process SpwanPlatform() result: Boolean
+pre  
+  spwanTime ≥ 0 ∧ platforms ≠ null
+post 
+  countTime = countTime@pre + Time.deltaTime ∧
+  spwanPosition = transform.position with spwanPosition.x ∈ [-3.5, 3.5] ∧
+  (countTime ≥ spwanTime → (CreatePlatform() is executed ∧ countTime = 0)) ∧
+  result = true
+Functional Scenario Form 
+(countTime < spwanTime) && (countTime updated ∧ spwanPosition updated ∧ result = true) or 
+(countTime ≥ spwanTime) && (CreatePlatform() is executed ∧ countTime reset ∧ result = true)
+end_process
+
+process CreatePlatform() result: Boolean
+pre  
+  platforms ≠ null ∧ platforms.length > 0
+post 
+  index = Random(0, platforms.length - 1) ∧
+  (index = 4 → spikeNum = spikeNum@pre + 1) ∧
+  (spikeNum > 1 → spikeNum = 0 ∧ countTime = spwanTime ∧ return) ∧
+  (spikeNum ≤ 1 → newPlatform = Instantiate(platforms[index], spwanPosition, identity) ∧ newPlatform.parent = this.gameObject.transform) ∧
+  result = true
+Functional Scenario Form 
+(index ≠ 4 ∨ spikeNum ≤ 1) && (platform instantiated ∧ result = true) or 
+(index = 4 ∧ spikeNum > 1) && (platform not instantiated ∧ spikeNum reset ∧ countTime reset ∧ result = true)
+end_process
+
+end_module

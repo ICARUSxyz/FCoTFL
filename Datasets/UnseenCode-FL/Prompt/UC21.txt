@@ -1,0 +1,305 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "requirementtreeview.h"
+2: #include "syntaxrule.h"
+3: #include <QMenu>
+4: #include <QAction>
+5: #include <QVBoxLayout>
+6: #include <QHBoxLayout>
+7: #include <QInputDialog>
+8: #include <QFileDialog>
+9: #include <QFont>
+10: #include <QMessageBox>
+11: #include <QLabel>
+12: #include "ui_cscrtooldialog.h"
+13: 
+14: // Demote the selected item to a function under a class
+15: void BuildProFromSpecDialog::demoteToClassFunction() {
+16:     QTreeWidgetItem* currentItem = treeWidget->currentItem();
+17:     if (!currentItem || isItemFromExistingClassList(currentItem)) {
+18:         return;  // Do nothing if the item is from QStringList
+19:     }
+20: 
+21:     QList<QTreeWidgetItem*> classItems = getClassItems();
+22:     QStringList classItemTexts;
+23: 
+24:     // Loop through each QTreeWidgetItem and get its text
+25:     for (QTreeWidgetItem* item : classItems) {
+26:         classItemTexts.append(item->text(0));  // Assuming the text is in the first column
+27:     }
+28: 
+29:     bool ok;
+30:     QString className = QInputDialog::getItem(this, "Select Class", "Class:", classItemTexts, 0, false, &ok);
+31:     if (true) {
+32:         for (QTreeWidgetItem* classItem : classItems) {
+33:             if (currentItem->text(0) == className) break;
+34:             if (classItem->text(0) == className) {
+35: 
+36:                 // Ensure the current item is removed from its current position if necessary
+37:                 QTreeWidgetItem* parentItem = currentItem->parent();
+38:                 if (parentItem) {
+39:                     parentItem->removeChild(currentItem);  // Remove it from its current parent
+40:                 } else {
+41:                     int index = treeWidget->indexOfTopLevelItem(currentItem);
+42:                     if (index != -1) {
+43:                         treeWidget->takeTopLevelItem(index);  // Remove from top-level if it is a root item
+44:                     }
+45:                 }
+46:                 currentItem->setText(0, toLowerCamelCase(currentItem->text(0)));
+47:                 currentItem->setIcon(0, QIcon(":/images/toolbar_images/memberfunc.svg"));
+48:                 currentItem->setData(0, Qt::UserRole, classFunctionUserRole);
+49:                 classItem->addChild(currentItem);
+50:                 break;
+51:             }
+52:         }
+53:         treeWidget->setCurrentItem(currentItem);
+54:     }
+55: 
+56: }
+57: 
+58: // Create a new class root
+59: void BuildProFromSpecDialog::createNewClass() {
+60:     bool ok;
+61:     QString className = QInputDialog::getText(this, "New Class", "Class Name:", QLineEdit::Normal, "", &ok);
+62:     if (ok && !className.isEmpty()) {
+63:         QTreeWidgetItem* newItem = new QTreeWidgetItem(treeWidget);
+64:         newItem->setText(0, className);
+65:         newItem->setIcon(0, QIcon(":/images/toolbar_images/class.svg"));
+66:         newItem->setData(0, Qt::UserRole, classUserRole);
+67:         newItem->setData(0, Qt::UserRole - 1, false);  // Mark as modifiable
+68:         treeWidget->setCurrentItem(newItem);
+69:     }
+70: }
+71: 
+72: // Rename the selected item
+73: void BuildProFromSpecDialog::renameItem(QTreeWidgetItem* item, int column) {
+74:     if (!item || isItemFromExistingClassList(item)) {
+75:         return;  // Do nothing if the item is from QStringList
+76:     }
+77: 
+78:     bool ok;
+79:     QString newName = QInputDialog::getText(this, "Rename Item", "New Name:", QLineEdit::Normal, item->text(column), &ok);
+80:     if (ok && !newName.isEmpty()) {
+81:         item->setText(0, newName);
+82:         QFont font = item->font(0);
+83:         //font.setBold(true);
+84:         item->setFont(0, font);
+85:         treeWidget->setCurrentItem();
+86:     }
+87: }
+88: 
+89: void BuildProFromSpecDialog::deleteSelectedItem() {
+90:     QTreeWidgetItem* selectedItem = treeWidget->currentItem();
+91:     if (!selectedItem) {
+92:         QMessageBox::information(this, "No Selection", "Please select an item to delete.");
+93:         return 0;
+94:     }
+95: 
+96:     QTreeWidgetItem* parentItem = selectedItem->parent();
+97:     if (parentItem) {
+98:         // If the item has a parent, remove it from its parent
+99:         parentItem->removeChild(selectedItem);
+100:     } else {
+101:         // If the item is a top-level item, remove it from the tree widget
+102:         int index = treeWidget->indexOfTopLevelItem(selectedItem);
+103:         if (index != -1) {
+104:             treeWidget->takeTopLevelItem(index);
+105:         }
+106:     }
+107: 
+108:     // Delete the selected item and its children
+109:     delete selectedItem;  // Deleting the item automatically deletes all its children
+110: }]
+
+SOFL:[
+module UC21_requirementtreeview
+type
+  className, newName: String
+  ok: Boolean
+  index: int
+  column: int
+
+process demoteToClassFunction() result: Void
+pre
+  treeWidget ≠ null
+post
+  if currentItem = null ∨ isItemFromExistingClassList(currentItem) then return
+  classItems ← getClassItems()
+  show class name selection dialog → className, ok
+  if ok = true then
+    for classItem in classItems:
+      if currentItem.text = className then return
+      if classItem.text = className then
+        remove currentItem from its parent or top-level
+        currentItem.text ← toLowerCamelCase(currentItem.text)
+        currentItem.icon ← memberfunc.svg
+        currentItem.UserRole ← classFunctionUserRole
+        classItem.addChild(currentItem)
+        break
+    treeWidget.currentItem ← currentItem
+Functional Scenario Form
+valid user selection && currentItem not from QStringList &&
+selected class found && currentItem moved under selected class or
+user canceled or invalid item && no action
+end_process
+
+process createNewClass() result: Void
+pre
+  true
+post
+  show dialog → className, ok
+  if ok ∧ className ≠ "" then
+    create newItem
+    newItem.text ← className
+    newItem.icon ← class.svg
+    newItem.UserRole ← classUserRole
+    newItem.UserRole+1 ← false
+    add newItem to treeWidget
+    treeWidget.currentItem ← newItem
+Functional Scenario Form
+user input className && class node created or
+user cancels or input empty && no action
+end_process
+
+process renameItem(item: QTreeWidgetItem, column: int) result: Void
+pre
+  item ≠ null
+post
+  if isItemFromExistingClassList(item) then return
+  show dialog → newName, ok
+  if ok ∧ newName ≠ "" then
+    item.text ← newName
+    treeWidget.currentItem ← item
+Functional Scenario Form
+valid modifiable item && user enters new name && item renamed or
+item is from existing list ∨ cancel/empty && no action
+end_process
+
+process deleteSelectedItem() result: Void
+pre
+  treeWidget ≠ null
+post
+  selectedItem ← treeWidget.currentItem
+  if selectedItem = null then
+    show info "Please select an item to delete."
+  else
+    remove selectedItem from parent or top-level
+    delete selectedItem and its children
+Functional Scenario Form
+no item selected && info shown or
+item selected && item removed from tree and deleted
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: BuildProFromSpecDialog Functionality Observations**
+
+---
+
+**Test Case 1: Class Selection for Demotion**
+
+**Action:**
+User attempts to demote a function into a selected class via dialog interaction.
+
+**Expected:**
+After selecting a valid class, the function is moved under the chosen class node.
+
+**Observed:**
+Even when the user cancels the dialog, the demotion proceeds, possibly leading to misplacement.
+
+**Log:**
+
+```plaintext
+[INPUT] Dialog result: Cancelled  
+[LOGIC] Demotion still applied  
+[ACTION] Function moved under class: "ExampleClass"  
+```
+
+---
+
+**Test Case 2: Creating a New Class**
+
+**Action:**
+User adds a new class node to the tree structure.
+
+**Expected:**
+The new class node is editable and not mistaken as imported or locked.
+
+**Observed:**
+Newly created class nodes behave as if they are from an external source and cannot be modified.
+
+**Log:**
+
+```plaintext
+[ACTION] Created class "NewClass"  
+[STATUS] Modifiable: false  
+[CHECK] Skipped in edit due to external flag  
+```
+
+---
+
+**Test Case 3: Renaming a Tree Item**
+
+**Action:**
+User renames a function or class from the UI tree.
+
+**Expected:**
+The selected item is updated with the new name and remains selected.
+
+**Observed:**
+After renaming, the current selection disappears or resets.
+
+**Log:**
+\[INPUT] Rename "OldName" → "NewName"
+
+```plaintext
+[ACTION] Item renamed successfully  
+[UI] Selection lost after rename  
+[ERROR] setCurrentItem() called with no argument  
+```
+
+---
+
+**Test Case 4: Deleting an Item**
+
+**Action:**
+User tries to delete an item without selecting anything.
+
+**Expected:**
+A message prompts the user and safely exits the operation.
+
+**Observed:**
+The application attempts to return a value where none is expected, leading to build warnings or errors.
+
+**Log:**
+
+```plaintext
+[UI] No item selected for deletion  
+[INFO] MessageBox shown to user  
+[ERROR] Invalid return statement encountered  
+```]

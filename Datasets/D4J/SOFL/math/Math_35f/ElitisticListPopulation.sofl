@@ -1,0 +1,75 @@
+module ElitisticListPopulation
+type
+  populationLimit: int
+  elitismRate: double
+
+process init_withList(chromosomes_in: sequence_of_Chromosome, populationLimit_in: int, elitismRate_in: double) result: ElitisticListPopulation
+pre
+  chromosomes_in ≠ null and
+  populationLimit_in ≥ 1 and
+  0.0 ≤ elitismRate_in ≤ 1.0 and
+  |chromosomes_in| ≤ populationLimit_in
+post
+  // delegate to super to set chromosomes and populationLimit
+  chromosomes' = chromosomes_in and
+  populationLimit' = populationLimit_in and
+  elitismRate' = elitismRate_in and
+  result' = this
+Functional Scenario Form
+  chromosomes_in ≠ null and populationLimit_in ≥ 1 and 0.0 ≤ elitismRate_in ≤ 1.0 and |chromosomes_in| ≤ populationLimit_in && chromosomes' = chromosomes_in and populationLimit' = populationLimit_in and elitismRate' = elitismRate_in and result' = this
+end_process
+
+process init_withLimit(populationLimit_in: int, elitismRate_in: double) result: ElitisticListPopulation
+pre
+  populationLimit_in ≥ 1 and
+  0.0 ≤ elitismRate_in ≤ 1.0
+post
+  // super initializes an empty chromosome list
+  chromosomes' = ⟨ ⟩ and
+  populationLimit' = populationLimit_in and
+  elitismRate' = elitismRate_in and
+  result' = this
+Functional Scenario Form
+  populationLimit_in ≥ 1 and 0.0 ≤ elitismRate_in ≤ 1.0 && chromosomes' = ⟨ ⟩ and populationLimit' = populationLimit_in and elitismRate' = elitismRate_in and result' = this
+end_process
+
+process nextGeneration() result: Population
+pre
+  // current population is well-formed
+  chromosomes ≠ null and populationLimit ≥ 1 and 0.0 ≤ elitismRate ≤ 1.0
+post
+  // sort ascending by chromosome fitness (best are at the end after sort)
+  let sorted = sortAscending(chromosomes) in
+  let n = |sorted| in
+  let boundIndex = ceil((1.0 - elitismRate) * n) in
+  // copy the top ceil(elitismShare * n) chromosomes into the new population
+  let selected = subseq(sorted, boundIndex, n - 1) in
+  let next = new ElitisticListPopulation(populationLimit, elitismRate) in
+  next.chromosomes = selected and
+  result' = next
+Functional Scenario Form
+  n = |chromosomes| and n = 0 && result'.chromosomes = ⟨ ⟩ and result'.populationLimit = populationLimit and result'.elitismRate = elitismRate or
+  0 < elitismRate < 1 and n > 0 && |result'.chromosomes| = n - ceil((1.0 - elitismRate) * n) and result'.chromosomes = subseq(sortAscending(chromosomes), ceil((1.0 - elitismRate) * n), n - 1) and result'.populationLimit = populationLimit and result'.elitismRate = elitismRate or
+  elitismRate = 0.0 and n > 0 && result'.chromosomes = ⟨ ⟩ and result'.populationLimit = populationLimit and result'.elitismRate = elitismRate or
+  elitismRate = 1.0 and n > 0 && result'.chromosomes = sortAscending(chromosomes) and result'.populationLimit = populationLimit and result'.elitismRate = elitismRate
+end_process
+
+process setElitismRate(elitismRate_in: double) result: Void
+pre
+  0.0 ≤ elitismRate_in ≤ 1.0
+post
+  elitismRate' = elitismRate_in
+Functional Scenario Form
+  0.0 ≤ elitismRate_in ≤ 1.0 && elitismRate' = elitismRate_in
+end_process
+
+process getElitismRate() result: double
+pre
+  true
+post
+  result' = elitismRate
+Functional Scenario Form
+  true && result' = elitismRate
+end_process
+
+end_module

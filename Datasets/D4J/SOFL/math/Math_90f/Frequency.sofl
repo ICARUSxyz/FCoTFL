@@ -1,0 +1,352 @@
+module Frequency
+var
+serialVersionUID: long = -3845586908418844111
+
+process ctor_default() result: Frequency
+pre
+true
+post
+freqTable' = new TreeMap() ∧ result = self
+Functional Scenario Form
+called && freqTable' = new TreeMap()
+end_process
+
+process ctor_withComparator(comparator: Comparator) result: Frequency
+pre
+comparator ≠ null
+post
+freqTable' = new TreeMap(comparator) ∧ result = self
+Functional Scenario Form
+comparator provided && freqTable' ordered by comparator
+end_process
+
+process toString(self: Frequency) result: String
+pre
+true
+post
+result contains "Value \t Freq. \t Pct. \t Cum Pct." ∧
+(∀ v ∈ keys(freqTable) • result contains line for v with
+count = getCount(self, v) ∧
+pct = getPct(self, v) ∧
+cum = getCumPct(self, v))
+Functional Scenario Form
+nonempty table && result lists each key with count/pct/cum in order or
+empty table && result only contains header line
+end_process
+
+process addValue_object(self: Frequency, v: Object) result: void
+pre
+true
+post
+(v is Comparable ⇒ addValue(self, (Comparable)v)) ∨
+raise(IllegalArgumentException)
+Functional Scenario Form
+v is Comparable && delegated to addValue(Comparable) or
+v not Comparable && raise(IllegalArgumentException)
+end_process
+
+process addValue(self: Frequency, v: Comparable) result: void
+pre
+v ≠ null
+post
+let key == (if v is Integer then Long.valueOf((Integer)v) else v) in
+if key ∈ keys(freqTable@pre)
+then freqTable'(key) = freqTable@pre(key) + 1
+else freqTable' = put(freqTable@pre, key, 1)
+Functional Scenario Form
+key not present && inserted with count 1 or
+key present && its count increased by 1
+end_process
+
+process addValue_int(self: Frequency, v: int) result: void
+pre
+true
+post
+addValue(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegates to addValue(Long.valueOf(v))
+end_process
+
+process addValue_Integer(self: Frequency, v: Integer) result: void
+pre
+v ≠ null
+post
+addValue(self, Long.valueOf(v.longValue()))
+Functional Scenario Form
+called && delegates to addValue(Long.valueOf(v.longValue()))
+end_process
+
+process addValue_long(self: Frequency, v: long) result: void
+pre
+true
+post
+addValue(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegates to addValue(Long.valueOf(v))
+end_process
+
+process addValue_char(self: Frequency, v: char) result: void
+pre
+true
+post
+addValue(self, Character.valueOf(v))
+Functional Scenario Form
+called && delegates to addValue(Character.valueOf(v))
+end_process
+
+process clear(self: Frequency) result: void
+pre
+true
+post
+freqTable' = emptyMap()
+Functional Scenario Form
+called && table cleared
+end_process
+
+process valuesIterator(self: Frequency) result: Iterator
+pre
+true
+post
+result iterates over keys(freqTable) in ascending map order
+Functional Scenario Form
+called && iterator over current key set returned
+end_process
+
+process getSumFreq(self: Frequency) result: long
+pre
+true
+post
+result = Σ { freqTable(k) | k ∈ keys(freqTable) }
+Functional Scenario Form
+nonempty table && result equals sum of counts or
+empty table && result = 0
+end_process
+
+process getCount_object(self: Frequency, v: Object) result: long
+pre
+v ≠ null
+post
+result = getCount(self, (Comparable)v)
+Functional Scenario Form
+called && delegated to getCount(Comparable)
+end_process
+
+process getCount(self: Frequency, v: Comparable) result: long
+pre
+v ≠ null
+post
+let key == (if v is Integer then Long.valueOf((Integer)v) else v) in
+result = (if key ∈ keys(freqTable) then freqTable(key) else 0)
+Functional Scenario Form
+key present && result = stored count or
+key absent or incomparable && result = 0
+end_process
+
+process getCount_int(self: Frequency, v: int) result: long
+pre
+true
+post
+result = getCount(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCount(Long.valueOf(v))
+end_process
+
+process getCount_long(self: Frequency, v: long) result: long
+pre
+true
+post
+result = getCount(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCount(Long.valueOf(v))
+end_process
+
+process getCount_char(self: Frequency, v: char) result: long
+pre
+true
+post
+result = getCount(self, Character.valueOf(v))
+Functional Scenario Form
+called && delegated to getCount(Character.valueOf(v))
+end_process
+
+process getPct_object(self: Frequency, v: Object) result: double
+pre
+v ≠ null
+post
+result = getPct(self, (Comparable)v)
+Functional Scenario Form
+called && delegated to getPct(Comparable)
+end_process
+
+process getPct(self: Frequency, v: Comparable) result: double
+pre
+v ≠ null
+post
+let sum == getSumFreq(self) in
+result = (if sum = 0 then NaN else getCount(self, v) / sum)
+Functional Scenario Form
+sum = 0 && result = NaN or
+sum > 0 && result = getCount(v)/sum
+end_process
+
+process getPct_int(self: Frequency, v: int) result: double
+pre
+true
+post
+result = getPct(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getPct(Long.valueOf(v))
+end_process
+
+process getPct_long(self: Frequency, v: long) result: double
+pre
+true
+post
+result = getPct(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getPct(Long.valueOf(v))
+end_process
+
+process getPct_char(self: Frequency, v: char) result: double
+pre
+true
+post
+result = getPct(self, Character.valueOf(v))
+Functional Scenario Form
+called && delegated to getPct(Character.valueOf(v))
+end_process
+
+process getCumFreq_object(self: Frequency, v: Object) result: long
+pre
+v ≠ null
+post
+result = getCumFreq(self, (Comparable)v)
+Functional Scenario Form
+called && delegated to getCumFreq(Comparable)
+end_process
+
+process getCumFreq(self: Frequency, v: Comparable) result: long
+pre
+v ≠ null
+post
+(getSumFreq(self) = 0 ⇒ result = 0) ∧
+(v is Integer ⇒ result = getCumFreq(self, ((Integer)v).longValue())) ∧
+(¬(v is Integer) ⇒
+(let S == getSumFreq(self) in
+let firstKeyPresent == (|keys(freqTable)| > 0) in
+let leSet == { x | x ∈ keys(freqTable) ∧ compare(v, x) ≥ 0 } in
+result =
+if ¬firstKeyPresent then 0
+else if compare(v, minKey(freqTable)) < 0 then 0
+else if compare(v, maxKey(freqTable)) ≥ 0 then S
+else Σ{ getCount(self, x) | x ∈ leSet }))
+Functional Scenario Form
+no data && result = 0 or
+v is Integer && delegated to getCumFreq(long) or
+v < first key && result = 0 or
+v ≥ last key && result = total count or
+otherwise && result = sum of counts for keys ≤ v
+end_process
+
+process getCumFreq_int(self: Frequency, v: int) result: long
+pre
+true
+post
+result = getCumFreq(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumFreq(Comparable)
+end_process
+
+process getCumFreq_long(self: Frequency, v: long) result: long
+pre
+true
+post
+result = getCumFreq(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumFreq(Comparable)
+end_process
+
+process getCumFreq_char(self: Frequency, v: char) result: long
+pre
+true
+post
+result = getCumFreq(self, Character.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumFreq(Comparable)
+end_process
+
+process getCumPct_object(self: Frequency, v: Object) result: double
+pre
+v ≠ null
+post
+result = getCumPct(self, (Comparable)v)
+Functional Scenario Form
+called && delegated to getCumPct(Comparable)
+end_process
+
+process getCumPct(self: Frequency, v: Comparable) result: double
+pre
+v ≠ null
+post
+let S == getSumFreq(self) in
+result = (if S = 0 then NaN else getCumFreq(self, v) / S)
+Functional Scenario Form
+no data && result = NaN or
+data present && result = cumFreq(v)/total
+end_process
+
+process getCumPct_int(self: Frequency, v: int) result: double
+pre
+true
+post
+result = getCumPct(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumPct(Comparable)
+end_process
+
+process getCumPct_long(self: Frequency, v: long) result: double
+pre
+true
+post
+result = getCumPct(self, Long.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumPct(Comparable)
+end_process
+
+process getCumPct_char(self: Frequency, v: char) result: double
+pre
+true
+post
+result = getCumPct(self, Character.valueOf(v))
+Functional Scenario Form
+called && delegated to getCumPct(Comparable)
+end_process
+
+process hashCode(self: Frequency) result: int
+pre
+true
+post
+result = 31 * 1 + (if freqTable = null then 0 else hash(freqTable))
+Functional Scenario Form
+freqTable = null && result = 31 or
+freqTable ≠ null && result = 31 + hash(freqTable)
+end_process
+
+process equals(self: Frequency, obj: Object) result: boolean
+pre
+true
+post
+result =
+(obj = self) ∨
+(obj ≠ null ∧ instanceOf(obj, Frequency) ∧
+((freqTable = null ∧ obj.freqTable = null) ∨
+(freqTable ≠ null ∧ freqTable = obj.freqTable)))
+Functional Scenario Form
+same reference && true or
+null obj || different type && false or
+both freqTable null && true or
+both non-null and equal maps && true or
+maps differ && false
+end_process
+
+end_module

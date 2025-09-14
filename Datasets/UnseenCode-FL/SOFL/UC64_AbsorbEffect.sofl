@@ -1,0 +1,56 @@
+module UC64_AbsorbEffect
+type 
+  distance: float
+  speed: float
+  timeCounter: float
+  totalTime: float
+
+var 
+  totalTime = 3.0
+
+process createAbsorbEffect(owner: IPlayer, start: GameObject, end: GameObject) result: AbsorbEffect
+pre  
+  owner ≠ null ∧ ResourcesManager.Instance ≠ null
+post 
+  objUnit = ResourcesManager.Instance.loadImmediate("effect/other/soul_absorb", PREFAB) ∧
+  obj = objUnit.Asset as GameObject ∧
+  (obj = null → result = null) ∧
+  (obj ≠ null → 
+     rootNode = Instantiate(obj) ∧
+     effect = rootNode.GetComponent(AbsorbEffect) ∧
+     (effect ≠ null → 
+        effect.objStart = start ∧
+        effect.objEnd = end ∧
+        (start ≠ null → effect.position = start.position) ∧
+        effect.timeCounter = totalTime ∧
+        effect.effectOwner = owner ∧
+        owner.AbsorbProgressEffect = rootNode ∧
+        result = effect
+     )
+  )
+Functional Scenario Form 
+(obj = null) && (result = null) or 
+(obj ≠ null ∧ effect ≠ null) && (effect initialized with start, end, owner ∧ result = effect)
+end_process
+
+process Update() result: Boolean
+pre  
+  true
+post 
+  (objStart = null ∨ objEnd = null → gameObject destroyed ∧ result = true) ∨
+  (
+    distance = Vector3.Distance(position, objEnd.position) ∧
+    speed = distance / timeCounter ∧
+    timeCounter = timeCounter@pre - Time.deltaTime ∧
+    dir = normalized(objEnd.position - position) ∧
+    position = position@pre + dir * speed * Time.deltaTime ∧
+    (timeCounter ≤ 0 → gameObject destroyed) ∧
+    result = true
+  )
+Functional Scenario Form 
+(objStart = null ∨ objEnd = null) && (destroy gameObject ∧ result = true) or
+(objStart ≠ null ∧ objEnd ≠ null ∧ timeCounter > 0) && (move object toward end ∧ update timer ∧ result = true) or
+(timeCounter ≤ 0) && (destroy gameObject ∧ result = true)
+end_process
+
+end_module

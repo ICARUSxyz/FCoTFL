@@ -1,0 +1,216 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: import java.io.BufferedReader;
+2: import java.io.BufferedWriter;
+3: import java.io.FileReader;
+4: import java.io.FileWriter;
+5: import java.io.IOException;
+6: import java.util.ArrayList;
+7: import java.util.Collections;
+8: import java.util.Comparator;
+9: import java.util.List;
+10: 
+11: public class rankingData {
+12:     public void ExtractData(String inputFilePath, String outputFilePath, int num) {
+13:         try (BufferedReader br = new BufferedReader(new FileReader(inputFilePath));
+14:              BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath))) {
+15: 
+16:             String line;
+17:             while ((line = br.readLine()) != null) {
+18:                 // 各行を"/"で分割
+19:                 String[] data = line.split("/");
+20: 
+21:                 // 3つ目と7つ目のデータを抽出
+22:                 if (data.length >= num) {
+23:                     String thirdData = data[2];
+24:                     String seventhData = data[num - 1];
+25: 
+26:                     // 抽出したデータを"/"で結合
+27:                     String result = thirdData + "/" + seventhData;
+28: 
+29:                     // 結果を新しいファイルに書き込む
+30:                     bw.write(result);
+31:                     bw.newLine();
+32:                 }
+33:             }
+34:             System.out.println("データの抽出と書き込みが完了しました。");
+35: 
+36:         } catch (IOException e) {
+37:             e.printStackTrace();
+38:         }
+39:     }
+40: 
+41:     public static void main(String[] args) {
+42:         rankingData rankingData = new rankingData();
+43:         rankingData.ExtractData("input.txt", "output.txt", 8);
+44:         Result result = rankingData.sort("output.txt");
+45:         for (int i = 0; i < result.names.length; i++) {
+46:             System.out.println("Name: " + result.names[i] + ", Grip: " + result.grips[i]);
+47:         }
+48:     }
+49: }
+50: 
+51: class Person {
+52:     public String name;
+53:     public String grip;
+54: 
+55:     public Person(String name, String grip) {
+56:         this.name = name;
+57:         this.grip = grip;
+58:     }
+59: }
+60: 
+61: class Result {
+62:     public String[] names;
+63:     public String[] grips;
+64: 
+65:     public Result(String[] names, String[] grips) {
+66:         this.names = name;
+67:         this.grips = grip;
+68:     }
+69: }]
+
+SOFL:[
+module UC39_rankingData
+type
+  inputFilePath: string
+  outputFilePath: string
+  num: int
+  line: string
+  resultLine: string
+  name: string
+  grip: string
+  Person: composed type of {
+    name: string, 
+    grip: string
+  }
+  persons: sequence of Person
+  Result: composed type of {
+    names: sequence of string, 
+    grips: sequence of string
+  }
+
+process ExtractData(inputFilePath: string, outputFilePath: string, num: int)
+pre
+  inputFilePath refers to a readable file
+  ∧ outputFilePath refers to a writable file
+  ∧ ∀ line ∈ lines(inputFilePath) • |split(line, "/")| ≥ num
+post
+  ∀ line ∈ lines(inputFilePath) •
+    let data = split(line, "/") in
+      writeLine(outputFilePath, data[2] + "/" + data[num - 1])
+Functional Scenario Form
+(∀ line ∈ lines(inputFilePath) ∧ |split(line, "/")| ≥ num) && 
+  (∀ line ∈ lines(inputFilePath) • writeLine(outputFilePath, split(line, "/")[2] + "/" + split(line, "/")[num - 1]))
+end_process
+
+process sort(inputFilePath: string) result: Result
+pre
+  inputFilePath refers to a readable file
+  ∧ ∀ line ∈ lines(inputFilePath) • |split(line, "/")| = 2 ∧ isInteger(split(line, "/")[1])
+post
+  persons = [ Person(split(line, "/")[0], split(line, "/")[1]) | line ∈ lines(inputFilePath) ]
+  ∧ sortedPersons = sortDescendingByGrip(persons)
+  ∧ result.names = takeFirstN([p.name | p ∈ sortedPersons], 3, "-")
+  ∧ result.grips = takeFirstN([p.grip | p ∈ sortedPersons], 3, "-")
+Functional Scenario Form
+(∀ line ∈ lines(inputFilePath) ∧ line is valid) &&
+  (result.names = top3 names sorted by grip descending, padded with "-")
+  ∧ (result.grips = top3 grips sorted descending, padded with "-")
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: rankingData Module – Symptom Summary**
+
+---
+
+### **Test Case 1: Data Extraction with Input File**
+
+**Input (`input.txt`):**
+
+```
+001/Alice/23/Female/170/60/35/Extra
+002/Bob/30/Male/180/70/40/Extra
+003/Carol/28/Female/165/55/38/Extra
+```
+
+**Expected Output (`output.txt`):**
+
+```
+23/Extra
+30/Extra
+28/Extra
+```
+
+**Observed Output:**
+
+```
+23/Extra
+30/Extra
+28/Extra
+```
+
+**Output Log:**
+
+```
+データの抽出と書き込みが完了しました。
+```
+
+*(No symptom observed here.)*
+
+---
+
+### **Test Case 2: Running Main and Displaying Results**
+
+**Observed Output:**
+
+```
+Exception in thread "main" java.lang.Error: Unresolved compilation problem:
+Type mismatch: cannot convert from String[] to String
+
+	at Result.<init>(rankingData.java:66)
+	at rankingData.main(rankingData.java:44)
+```
+
+---
+
+### **Test Case 3: Class Instantiation Failure**
+
+**Observed Behavior:**
+Program fails to run due to constructor issues in the `Result` class.
+
+**Console Output:**
+
+```
+[ERROR] Constructor 'Result(String[], String[])' does not compile:
+- Cannot assign String[] to String
+- Cannot assign String[] to String
+```
+
+---]

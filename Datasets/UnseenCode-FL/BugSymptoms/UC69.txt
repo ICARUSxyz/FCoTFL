@@ -1,0 +1,20 @@
+// Test Case 1: XML file with correct root node
+→ Input: XML content begins with <SkillCfg_area>
+→ Expected: Configuration entries parsed and loaded into dictionary
+→ Actual: No entries processed due to incorrect node match or missing data
+
+// Test Case 2: XML entry missing "un32ID" attribute
+→ Input: <Skill id="..."> without un32ID attribute
+→ Expected: Skipped entry
+→ Actual: Program throws exception or fails silently due to invalid condition check
+
+// Test Case 3: Adding skill configuration to dictionary
+→ Input: skillinfo object populated with correct data
+→ Expected: Dictionary entry added with key = skillinfo.id, value = skillinfo
+→ Actual: Dictionary value mistakenly stored as an integer (id) instead of full config object
+
+// Simulated Log Output:
+→ [Error] Failed to parse XML node: missing 'un32ID' attribute
+→ [Warning] Root node <SkillCfg_area > not found
+→ [Info] Added skill config: ID=1001, Name="Explosion"
+→ [Error] Cannot add skill config to dictionary: key=1001, value type mismatch

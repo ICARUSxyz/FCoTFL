@@ -1,0 +1,30 @@
+module UC46_TriangleValidation
+type
+  a: real
+  b: real
+  c: real
+  flag: Boolean
+
+process isValidTriangle(a: real, b: real, c: real) result: Boolean
+pre
+  true
+post
+  ((a > 0) ∧ (b > 0) ∧ (c > 0) ∧ (a + b > c) ∧ (a + c > b) ∧ (b + c > a) → result = true) ∧
+  (¬((a > 0) ∧ (b > 0) ∧ (c > 0) ∧ (a + b > c) ∧ (a + c > b) ∧ (b + c > a)) → result = false)
+Functional Scenario Form
+(a > 0)  ∧ (b > 0) ∧ (c > 0) ∧ (a + b > c) ∧ (a + c > b) ∧ (b + c > a) && flag = true, A validated triangle，the sum of any two sides is greater than the third side
+		OR
+		(a <= 0) && flag = false, Not a validated triangle 
+		OR
+		(b <= 0) && flag = false, Not a validated triangle
+		OR
+		(c <= 0) && flag = false, Not a validated triangle
+OR
+		(a + b <= c) && flag = false, Not a validated triangle
+		OR
+		(a + c <= b) && flag = false, Not a validated triangle
+		OR
+		(b + c <= a) && flag = false, Not a validated triangle	
+end_process
+
+end_module

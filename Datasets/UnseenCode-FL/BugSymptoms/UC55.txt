@@ -1,0 +1,27 @@
+
+// Test Case 1: updateAQI(90.0)
+→ Output:
+Current AQI: 90.00, Fan Speed: 0  
+Air quality is good. Operating at normal speed.  
+// Expected normal speed (e.g., fanSpeed: 1), but shows fan is off.
+
+// Test Case 2: updateAQI(150.0)
+→ Output:
+Current AQI: 150.00, Fan Speed: 2  
+WARNING: Poor air quality. Increasing fan speed.  
+// Behavior aligns with expectations in moderately polluted conditions.
+
+// Test Case 3: updateAQI(220.0)
+→ Output:
+Current AQI: 220.00, Fan Speed: 0  
+ALERT: Hazardous air quality detected! Take protective measures.  
+// Message indicates danger, but fan remains off, which appears contradictory.
+
+// Observation 1:
+Default fan state at initialization may not reflect expected normal operation.
+
+// Observation 2:
+Under extreme pollution, alert is shown but fanSpeed remains at 0, potentially causing confusion.
+
+// Observation 3:
+Threshold comparison omits equality condition, which might affect triggering logic at boundary AQI values.

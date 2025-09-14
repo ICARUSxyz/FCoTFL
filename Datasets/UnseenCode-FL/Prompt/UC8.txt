@@ -1,0 +1,164 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "syntaxhighlighter.h"
+2: 
+3: SyntaxHighlighter::SyntaxHighlighter(QTextDocument *parent)
+4:     : QSyntaxHighlighter(parent)
+5: {
+6: 
+7:     keywordFormat.setForeground(Qt::blue);
+8:     keywordFormat.setFontWeight(QFont::);
+9:     QStringList keywordPatterns = {
+10:         "\\bclass\\b", "\\bconst\\b", "\\bvirtual\\b", "\\bint\\b", "\\bfloat\\b", "\\bvoid\\b", "\\bpublic\\b"
+11:     };
+12: 
+13:     foreach (const QString &pattern, keywordPatterns) {
+14:         HighlightingRule rule;
+15:         rule.pattern = QRegularExpression(pattern);
+16:         rule.format = keywordFormat;
+17:         highlightingRules.append(rule);
+18:     }
+19: 
+20: 
+21:     classFormat.setFontWeight(QFont::Bold);
+22:     classFormat.setForeground(Qt::darkMagenta);
+23:     HighlightingRule classRule;
+24:     classRule.pattern = QRegularExpression("\\bQ[A-Za-z]+\\b");
+25:     classRule.format = classFormat;
+26:     highlightingRules.append(Rule);
+27: 
+28:  
+29:     functionFormat.setFontItalic(true);
+30:     functionFormat.setForeground(Qt::darkCyan);
+31:     HighlightingRule functionRule;
+32:     functionRule.pattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\");
+33:     functionRule.format = functionFormat;
+34:     highlightingRules.append(functionRule);
+35: 
+36: 
+37:     quotationFormat.setForeground(Qt::darkGreen);
+38:     HighlightingRule quotationRule;
+39:     quotationRule.pattern = QRegularExpression("\".*\"");
+40:     quotationRule.format = quotationFormat;
+41:     highlightingRules.append(quotationRule);
+42: 
+43: 
+44:     singleLineCommentFormat.setForeground(Qt::red);
+45:     HighlightingRule commentRule;
+46:     commentRule.pattern = QRegularExpression("//[^\n]*");
+47:     commentRule.format = singleLineCommentFormat;
+48:     highlightingRules.append(commentRule);
+49: }
+50: 
+51: void SyntaxHighlighter::highlightBlock(const QString &text)
+52: {
+53:     foreach (const HighlightingRule &rule, highlightingRules) {
+54:         QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch();
+55:         while (matchIterator.hasNext()) {
+56:             QRegularExpressionMatch match = matchIterator.next();
+57:             setFormat(match.capturedStart(), match.capturedLength(), rule.format);
+58:         }
+59:     }
+60: }
+61:]
+
+SOFL:[
+module UC8_syntaxhighlighter
+type
+  pattern: String
+  keywordPatterns: sequence of String
+  text: String
+  
+process UC8_syntaxhighlighter(parent: QTextDocument) result: UC8_syntaxhighlighter
+pre
+  parent ≠ null
+post
+  this.parent = parent
+  keywordFormat.foreground = Qt::blue
+  keywordFormat.fontWeight = QFont::Bold
+  keywordPatterns = [
+    "\\bclass\\b", "\\bconst\\b", "\\bvirtual\\b", "\\bint\\b",
+    "\\bfloat\\b", "\\bvoid\\b", "\\bpublic\\b"
+  ]
+  for each pattern in keywordPatterns:
+    create rule with pattern and keywordFormat
+    append to highlightingRules
+  classFormat.foreground = Qt::darkMagenta
+  classFormat.fontWeight = QFont::Bold
+  rule with pattern "\\bQ[A-Za-z]+\\b" and classFormat appended
+  functionFormat.foreground = Qt::darkCyan
+  functionFormat.fontItalic = true
+  rule with pattern "\\b[A-Za-z0-9_]+(?=\\()" and functionFormat appended
+  quotationFormat.foreground = Qt::darkGreen
+  rule with pattern "\".*\"" and quotationFormat appended
+  singleLineCommentFormat.foreground = Qt::red
+  rule with pattern "//[^\\n]*" and singleLineCommentFormat appended
+Functional Scenario Form
+parent is valid && all highlighting rules initialized correctly
+end_process
+
+process highlightBlock(text: String) result: Void
+pre
+  text ≠ null
+post
+  for each rule in highlightingRules:
+    find all matches of rule.pattern in text
+    for each match:
+      setFormat(start, length, rule.format) executed
+Functional Scenario Form
+text contains syntax matching one or more rules && formats applied accordingly or
+text does not match any rule && no format applied
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report: SyntaxHighlighter
+
+Test Input:
+
+```cpp
+QTextDocument doc;
+SyntaxHighlighter highlighter(&doc);
+doc.setPlainText("class Example { void foo(); int x = 42; // comment }");
+```
+
+Observed Behavior:
+
+* Application compiles but syntax highlighting does not appear.
+* Console may show runtime warnings related to regex or format.
+
+Expected Behavior:
+
+* Keywords, classes, functions, strings, and comments should be highlighted with distinct styles.
+
+Actual Behavior:
+
+* Keywords not bolded due to missing font weight.
+* Class highlighting rule not applied due to incorrect variable name (`Rule`).
+* Function pattern causes regex error and fails to match.
+* No highlights rendered because `globalMatch()` not applied on `text`.]

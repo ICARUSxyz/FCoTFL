@@ -1,0 +1,423 @@
+module Fraction  
+var:  
+  serialVersionUID: long = 3698073679419233275L  
+  DEFAULT_EPSILON: double = 1e-5  
+
+type:  
+  numerator: int  
+  denominator: int  
+
+// Basic constructor (implied)
+process constructor(num: int, den: int)  
+pre den ≠ 0  
+post  
+  numerator' = num  
+  denominator' = den  
+  // Note: Actual implementation includes simplification  
+Functional Scenario Form  
+num=2 den=4 && creates unsimplified fraction  
+end_process  
+
+// Double value constructor (1 arg)
+process constructor(value: double)  
+pre true  
+post  
+  invokes constructor(value, DEFAULT_EPSILON, 100)  
+Functional Scenario Form  
+value=0.5 && creates ≈1/2  
+end_process  
+
+// Double value constructor (3 args)
+process constructor(value: double, epsilon: double, maxIterations: int)  
+pre epsilon > 0 ∧ maxIterations > 0  
+post  
+  invokes constructor(value, epsilon, Integer.MAX_VALUE, maxIterations)  
+Functional Scenario Form  
+value=0.333 epsilon=0.01 maxIterations=50 && creates ≈1/3  
+end_process  
+
+// Max denominator constructor (2 args)
+process constructor(value: double, maxDenominator: int)  
+pre maxDenominator > 0  
+post  
+  invokes constructor(value, 0, maxDenominator, 100)  
+Functional Scenario Form  
+value=0.75 maxDenominator=4 && creates 3/4  
+end_process  
+
+// Double value constructor (private)
+process constructor_private(value: double, epsilon: double, maxDen: int, maxIter: int) result: Fraction  
+pre epsilon ≥ 0 ∧ maxDen > 0 ∧ maxIter > 0  
+post  
+  overflow = Integer.MAX_VALUE  
+  a0 = floor(value)  
+  |a0| > overflow  
+    ? throw FractionConversionException  
+  |a0 - value| < epsilon  
+    ? numerator' = (int)a0  
+      denominator' = 1  
+      return  
+  p0=1, q0=0, p1=a0, q1=1  
+  n=0, stop=false  
+  do  
+    n++  
+    r1 = 1/(r0 - a0)  
+    a1 = floor(r1)  
+    p2 = a1*p1 + p0  
+    q2 = a1*q1 + q0  
+    |p2|>overflow ∨ |q2|>overflow  
+      ? epsilon=0 ∧ |q1|<maxDen  
+          ? break  
+        : throw FractionConversionException  
+    convergent = (double)p2/(double)q2  
+    n<maxIter ∧ |convergent-value|>epsilon ∧ q2<maxDen  
+      ? p0=p1, p1=p2, q0=q1, q1=q2, a0=a1, r0=r1  
+      : stop=true  
+  while ¬stop  
+  n≥maxIter  
+    ? throw FractionConversionException  
+  q2<maxDen  
+    ? numerator'=(int)p2, denominator'=(int)q2  
+    : numerator'=(int)p1, denominator'=(int)q1  
+Functional Scenario Form  
+value=0.333 epsilon=0.01 maxDen=100 maxIter=10 && creates 1/3  
+value=1e9 maxDen=1000 && throws overflow exception  
+q2=1001 maxDen=1000 && uses q1 instead  
+end_process  
+
+// Integer constructor
+process constructor_int(num: int)  
+pre true  
+post  
+  invokes constructor(num, 1)  
+Functional Scenario Form  
+num=5 && creates 5/1  
+end_process  
+
+// Fraction constructor (int num, int den)
+process constructor_fraction(num: int, den: int)  
+pre true  
+post  
+  den = 0  
+    ? throw MathArithmeticException("Zero denominator")  
+  den < 0  
+    ? (num = Integer.MIN_VALUE ∨ den = Integer.MIN_VALUE)  
+        ? throw MathArithmeticException("Overflow")  
+    : num = -num, den = -den  
+  gcd = ArithmeticUtils.gcd(|num|, |den|)  
+  gcd > 1  
+    ? num' = num / gcd  
+      den' = den / gcd  
+  den' < 0  
+    ? num' = -num', den' = -den'  
+  numerator' = num'  
+  denominator' = den'  
+Functional Scenario Form  
+num=4 den=0 && throws exception  
+num=-2 den=-4 && simplifies to 1/2  
+num=6 den=9 && simplifies to 2/3  
+num=Integer.MIN_VALUE den=-1 && throws overflow  
+end_process  
+
+// Absolute value
+process abs() result: Fraction  
+pre true  
+post  
+  numerator ≥ 0  
+    ? result' = this  
+    : result' = negate()  
+Functional Scenario Form  
+fraction= -1/2 && returns 1/2  
+fraction= 3/4 && returns itself  
+end_process  
+
+// Comparison
+process compareTo(other: Fraction) result: int  
+pre true  
+post  
+  nOd = (long)numerator * other.denominator  
+  dOn = (long)denominator * other.numerator  
+  nOd < dOn  
+    ? result' = -1  
+  nOd > dOn  
+    ? result' = 1  
+    : result' = 0  
+Functional Scenario Form  
+this=1/2 other=1/3 && returns 1  
+this=2/3 other=2/3 && returns 0  
+this=1/4 other=1/2 && returns -1  
+end_process  
+
+// Double conversion
+process doubleValue() result: double  
+pre true  
+post  
+  result' = (double)numerator / denominator  
+Functional Scenario Form  
+fraction=1/2 && returns 0.5  
+end_process  
+
+// Equality check
+process equals(other: Object) result: boolean  
+pre true  
+post  
+  other = this  
+    ? result' = true  
+  other instanceof Fraction  
+    ? frac = (Fraction)other  
+      numerator = frac.numerator ∧ denominator = frac.denominator  
+        ? result' = true  
+        : result' = false  
+    : result' = false  
+Functional Scenario Form  
+other=same fraction && returns true  
+other=1/2 vs 2/4 && returns false (simplified fractions are unique)  
+other=String && returns false  
+end_process  
+
+// Float conversion
+process floatValue() result: float  
+pre true  
+post  
+  result' = (float) doubleValue()  
+Functional Scenario Form  
+fraction=1/3 && returns ≈0.33333334  
+end_process  
+
+// Denominator accessor
+process getDenominator() result: int  
+pre true  
+post  
+  result' = denominator  
+Functional Scenario Form  
+fraction=3/4 && returns 4  
+end_process  
+
+// Numerator accessor
+process getNumerator() result: int  
+pre true  
+post  
+  result' = numerator  
+Functional Scenario Form  
+fraction=2/5 && returns 2  
+end_process  
+
+// Hash code calculation
+process hashCode() result: int  
+pre true  
+post  
+  result' = 37 * (37 * 17 + numerator) + denominator  
+Functional Scenario Form  
+fraction=1/2 && returns 37*(37*17+1)+2 = 37*630+2 = 23312  
+end_process  
+
+// Integer conversion
+process intValue() result: int  
+pre true  
+post  
+  result' = (int) doubleValue()  
+Functional Scenario Form  
+fraction=5/2 && returns 2  
+end_process  
+
+// Long conversion
+process longValue() result: long  
+pre true  
+post  
+  result' = (long) doubleValue()  
+Functional Scenario Form  
+fraction=10000000000/1 && returns 10000000000  
+end_process  
+
+// Negation
+process negate() result: Fraction  
+pre true  
+post  
+  numerator = Integer.MIN_VALUE  
+    ? throw MathArithmeticException  
+    : result' = new Fraction(-numerator, denominator)  
+Functional Scenario Form  
+fraction=3/4 && returns -3/4  
+numerator=Integer.MIN_VALUE && throws exception  
+end_process  
+
+// Reciprocal
+process reciprocal() result: Fraction  
+pre true  
+post  
+  result' = new Fraction(denominator, numerator)  
+Functional Scenario Form  
+fraction=2/3 && returns 3/2  
+end_process  
+
+// Fraction addition
+process add(fraction: Fraction) result: Fraction  
+pre true  
+post  
+  result' = addSub(fraction, true)  
+Functional Scenario Form  
+this=1/2 other=1/3 && returns 5/6  
+end_process  
+
+// Integer addition
+process add_int(i: int) result: Fraction  
+pre true  
+post  
+  result' = new Fraction(numerator + i * denominator, denominator)  
+Functional Scenario Form  
+this=1/2 i=3 && returns 7/2  
+end_process  
+
+// Fraction subtraction
+process subtract(fraction: Fraction) result: Fraction  
+pre true  
+post  
+  result' = addSub(fraction, false)  
+Functional Scenario Form  
+this=3/4 other=1/4 && returns 1/2  
+end_process  
+
+// Integer subtraction
+process subtract_int(i: int) result: Fraction  
+pre true  
+post  
+  result' = new Fraction(numerator - i * denominator, denominator)  
+Functional Scenario Form  
+this=5/3 i=1 && returns 2/3  
+end_process  
+
+// Addition/subtraction core
+process addSub(fraction: Fraction, isAdd: boolean) result: Fraction  
+pre fraction ≠ null  
+post  
+  numerator = 0  
+    ? result' = isAdd ? fraction : fraction.negate()  
+  fraction.numerator = 0  
+    ? result' = this  
+  d1 = ArithmeticUtils.gcd(denominator, fraction.denominator)  
+  d1 = 1  
+    ? uvp = ArithmeticUtils.mulAndCheck(numerator, fraction.denominator)  
+      upv = ArithmeticUtils.mulAndCheck(fraction.numerator, denominator)  
+      numResult = isAdd ? ArithmeticUtils.addAndCheck(uvp, upv) :  
+                          ArithmeticUtils.subAndCheck(uvp, upv)  
+      denResult = ArithmeticUtils.mulAndCheck(denominator, fraction.denominator)  
+      result' = new Fraction(numResult, denResult)  
+  else  
+    uvp = BigInteger(numerator) * BigInteger(fraction.denominator / d1)  
+    upv = BigInteger(fraction.numerator) * BigInteger(denominator / d1)  
+    t = isAdd ? uvp + upv : uvp - upv  
+    tmodd1 = t mod BigInteger(d1)  
+    d2 = tmodd1 = 0 ? d1 : ArithmeticUtils.gcd(tmodd1.intValue(), d1)  
+    w = t / BigInteger(d2)  
+    w.bitLength() > 31  
+      ? throw MathArithmeticException  
+    newNum = w.intValue()  
+    newDen = ArithmeticUtils.mulAndCheck(denominator/d1, fraction.denominator/d2)  
+    result' = new Fraction(newNum, newDen)  
+Functional Scenario Form  
+fraction=1/2 isAdd=true d1=1 && returns 3/2 for 1/1 + 1/2  
+fraction=1/6 isAdd=false d1=3 && returns 1/2 for 2/3 - 1/6  
+tmodd1=0 d1=5 && uses d2=d1  
+w.bitLength=32 && throws exception  
+end_process  
+
+// Fraction multiplication
+process multiply(fraction: Fraction) result: Fraction  
+pre fraction ≠ null  
+post  
+  numerator = 0 ∨ fraction.numerator = 0  
+    ? result' = ZERO  
+  d1 = ArithmeticUtils.gcd(numerator, fraction.denominator)  
+  d2 = ArithmeticUtils.gcd(fraction.numerator, denominator)  
+  num = ArithmeticUtils.mulAndCheck(numerator/d1, fraction.numerator/d2)  
+  den = ArithmeticUtils.mulAndCheck(denominator/d2, fraction.denominator/d1)  
+  result' = new Fraction(num, den)  
+Functional Scenario Form  
+this=2/3 fraction=3/4 && returns 1/2  
+this=0/1 fraction=5/6 && returns ZERO  
+end_process  
+
+// Integer multiplication
+process multiply_int(i: int) result: Fraction  
+pre true  
+post  
+  result' = new Fraction(numerator * i, denominator)  
+Functional Scenario Form  
+this=3/4 i=2 && returns 6/4 → 3/2  
+end_process  
+
+// Fraction division
+process divide(fraction: Fraction) result: Fraction  
+pre fraction ≠ null  
+post  
+  fraction.numerator = 0  
+    ? throw MathArithmeticException("Division by zero")  
+  result' = multiply(fraction.reciprocal())  
+Functional Scenario Form  
+this=3/4 fraction=1/2 && returns 3/2  
+fraction=0/1 && throws exception  
+end_process  
+
+// Integer division
+process divide_int(i: int) result: Fraction  
+pre true  
+post  
+  result' = new Fraction(numerator, denominator * i)  
+Functional Scenario Form  
+this=3/4 i=2 && returns 3/8  
+end_process  
+
+// Percentage calculation
+process percentageValue() result: double  
+pre true  
+post  
+  result' = 100 * doubleValue()  
+Functional Scenario Form  
+fraction=1/2 && returns 50.0  
+end_process  
+
+// Reduced fraction factory
+process getReducedFraction(numerator: int, denominator: int) result: Fraction  
+pre true  
+post  
+  denominator = 0  
+    ? throw MathArithmeticException  
+  numerator = 0  
+    ? result' = ZERO  
+  denominator = Integer.MIN_VALUE ∧ (numerator & 1) = 0  
+    ? numerator' = numerator / 2  
+      denominator' = denominator / 2  
+  denominator < 0  
+    ? numerator = Integer.MIN_VALUE ∨ denominator = Integer.MIN_VALUE  
+        ? throw MathArithmeticException  
+    : numerator' = -numerator  
+      denominator' = -denominator  
+  gcd = ArithmeticUtils.gcd(|numerator'|, |denominator'|)  
+  numerator'' = numerator' / gcd  
+  denominator'' = denominator' / gcd  
+  result' = new Fraction(numerator'', denominator'')  
+Functional Scenario Form  
+num=4 den=0 && throws exception  
+num=0 den=5 && returns ZERO  
+num=6 den=9 && returns 2/3  
+num=2 den=Integer.MIN_VALUE && returns 1/-1073741824  
+num=Integer.MIN_VALUE den=-1 && throws overflow  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  denominator = 1  
+    ? result' = Integer.toString(numerator)  
+  numerator = 0  
+    ? result' = "0"  
+  else  
+    result' = numerator + " / " + denominator  
+Functional Scenario Form  
+fraction=5/1 && returns "5"  
+fraction=0/1 && returns "0"  
+fraction=3/4 && returns "3 / 4"  
+end_process  
+
+end_module  

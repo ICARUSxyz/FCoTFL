@@ -1,0 +1,61 @@
+#### Test Case 1: Project path validation
+
+**Expected:** User cannot proceed to next step without entering a project path.
+**Observed:** Wizard allows progress even if the project path is empty.
+
+```plaintext
+[INPUT] Project Name: "SampleProject"  
+[INPUT] Project Path: (empty)  
+[ACTION] Clicked "Next"  
+[LOG] Warning dialog shown  
+[STATE] Navigation allowed to next page  
+```
+
+---
+
+#### Test Case 2: Specification path field registration
+
+**Expected:** Specification path field is required during wizard completion.
+**Observed:** Wizard proceeds even if specification path is left empty.
+
+```plaintext
+[STATE] Field "specification path" not marked as required  
+[RESULT] Wizard finished without specification path  
+```
+
+---
+
+#### Test Case 3: Button icon and size rendering
+
+**Expected:** Directory buttons display correctly with proper size and icon
+**Observed:** One button appears misaligned or incorrectly sized
+
+```plaintext
+[UI] openSpecButton: size mismatch  
+[UI] Icon appears cut off or absent  
+```
+
+---
+
+#### Test Case 4: Layout overlap
+
+**Expected:** Two buttons appear in distinct columns
+**Observed:** Two buttons overlap in the same grid cell
+
+```plaintext
+[LAYOUT] openSpecButton placed at (2, 1)  
+[LAYOUT] projectSpecPathEdit also at (2, 1)  
+[RESULT] UI overlap observed  
+```
+
+---
+
+#### Test Case 5: Read-only field setting
+
+**Expected:** Project path field is editable
+**Observed:** Project path field is not editable by default
+
+```plaintext
+[UI] projectPathLineEdit: cannot be edited  
+[NOTE] Expected to allow manual input  
+```

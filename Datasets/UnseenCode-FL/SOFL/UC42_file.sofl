@@ -1,0 +1,31 @@
+module UC42_file
+type
+  filePath: string
+  firstLine: string
+  result: Boolean
+
+process emptyFile(filePath: string) result: Boolean
+pre
+  filePath ≠ ""
+post
+  file at filePath is overwritten with a single space character
+  ∧ result = true
+Functional Scenario Form
+(filePath ≠ "") &&
+(file at filePath is emptied with " " ∧ result = true)
+end_process
+
+process viewFile(filePath: string) result: Boolean
+pre
+  filePath ≠ ""
+post
+  if the first line of file at filePath is null or empty after trimming
+    then result = false
+  else result = true
+Functional Scenario Form
+(filePath ≠ "") &&
+((firstLine is null ∨ trim(firstLine) = "") ∧ result = false) or
+((trim(firstLine) ≠ "") ∧ result = true)
+end_process
+
+end_module

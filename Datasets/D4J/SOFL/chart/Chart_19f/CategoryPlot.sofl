@@ -1,0 +1,2263 @@
+module CategoryPlot
+
+var
+  serialVersionUID: long = -3537691700434728188L
+  DEFAULT_DOMAIN_GRIDLINES_VISIBLE: boolean = false
+  DEFAULT_RANGE_GRIDLINES_VISIBLE: boolean = true
+  DEFAULT_GRIDLINE_PAINT: String = "Color.WHITE"
+  DEFAULT_VALUE_LABEL_FONT: String = "new Font(\"SansSerif\", Font.PLAIN, 10)"
+  DEFAULT_CROSSHAIR_VISIBLE: boolean = false
+  DEFAULT_CROSSHAIR_PAINT: String = "Color.blue"
+
+process CategoryPlot()
+pre true
+post
+  // Call parameterized constructor with all nulls
+  this(null, null, null, null)
+Functional Scenario Form defaultInitialization
+end_process
+
+process CategoryPlot(dataset: CategoryDataset, domainAxis: CategoryAxis, rangeAxis: ValueAxis, renderer: CategoryItemRenderer)
+pre true
+post
+  // 1. Initialize collections
+  this.domainAxes' = new ObjectList()
+  this.domainAxisLocations' = new ObjectList()
+  this.rangeAxes' = new ObjectList()
+  this.rangeAxisLocations' = new ObjectList()
+  this.datasetToDomainAxisMap' = new ObjectList()
+  this.datasetToRangeAxisMap' = new ObjectList()
+  this.renderers' = new ObjectList()
+  
+  // 2. Configure dataset
+  this.datasets' = new ObjectList()
+  this.datasets.set(0, dataset)
+  if dataset != null then
+    dataset.addChangeListener(this)
+  
+  // 3. Set axis locations
+  this.axisOffset' = new RectangleInsets(4.0, 4.0, 4.0, 4.0)
+  setDomainAxisLocation(AxisLocation.BOTTOM_OR_LEFT, false)
+  setRangeAxisLocation(AxisLocation.TOP_OR_LEFT, false)
+  
+  // 4. Configure renderer
+  this.renderers.set(0, renderer)
+  if renderer != null then
+    renderer.setPlot(this)
+    renderer.addChangeListener(this)
+  
+  // 5. Configure domain axis
+  this.domainAxes.set(0, domainAxis)
+  this.mapDatasetToDomainAxis(0, 0)
+  if domainAxis != null then
+    domainAxis.setPlot(this)
+    domainAxis.addChangeListener(this)
+  this.drawSharedDomainAxis' = false
+  
+  // 6. Configure range axis
+  this.rangeAxes.set(0, rangeAxis)
+  this.mapDatasetToRangeAxis(0, 0)
+  if rangeAxis != null then
+    rangeAxis.setPlot(this)
+    rangeAxis.addChangeListener(this)
+  
+  // 7. Configure axes and gridlines
+  configureDomainAxes()
+  configureRangeAxes()
+  this.domainGridlinesVisible' = DEFAULT_DOMAIN_GRIDLINES_VISIBLE
+  this.domainGridlinePosition' = CategoryAnchor.MIDDLE
+  this.domainGridlineStroke' = DEFAULT_GRIDLINE_STROKE
+  this.domainGridlinePaint' = DEFAULT_GRIDLINE_PAINT
+  this.rangeGridlinesVisible' = DEFAULT_RANGE_GRIDLINES_VISIBLE
+  this.rangeGridlineStroke' = DEFAULT_GRIDLINE_STROKE
+  this.rangeGridlinePaint' = DEFAULT_GRIDLINE_PAINT
+  
+  // 8. Initialize markers
+  this.foregroundDomainMarkers' = new HashMap()
+  this.backgroundDomainMarkers' = new HashMap()
+  this.foregroundRangeMarkers' = new HashMap()
+  this.backgroundRangeMarkers' = new HashMap()
+  
+  // 9. Add baseline marker
+  Marker baseline = new ValueMarker(0.0, new Color(0.8f, 0.8f, 0.8f, 0.5f), new BasicStroke(1.0f), new Color(0.85f, 0.85f, 0.95f, 0.5f), new BasicStroke(1.0f), 0.6f)
+  addRangeMarker(baseline, Layer.BACKGROUND)
+  
+  // 10. Configure crosshair
+  this.anchorValue' = 0.0
+  this.rangeCrosshairVisible' = DEFAULT_CROSSHAIR_VISIBLE
+  this.rangeCrosshairValue' = 0.0
+  this.rangeCrosshairStroke' = DEFAULT_CROSSHAIR_STROKE
+  this.rangeCrosshairPaint' = DEFAULT_CROSSHAIR_PAINT
+  
+  // 11. Initialize annotations
+  this.annotations' = new java.util.ArrayList()
+Functional Scenario Form 
+allNulls && initialized || 
+partialParams && initialized || 
+allParams && initialized
+end_process
+
+process getPlotType() result: String
+pre true
+post
+  // Localized string retrieval
+  result' = localizationResources.getString("Category_Plot")
+Functional Scenario Form 
+resourcesAvailable && returned || 
+missingResources && defaultReturn
+end_process
+
+process getOrientation() result: PlotOrientation
+pre true
+post
+  result' = this.orientation
+Functional Scenario Form alwaysReturned
+end_process
+
+process setOrientation(orientation: PlotOrientation)
+pre orientation != null
+post
+  this.orientation' = orientation
+  fireChangeEvent()
+Functional Scenario Form validOrientation && updated || nullOrientation && preViolated
+end_process
+
+process getAxisOffset() result: RectangleInsets
+pre true
+post
+  result' = this.axisOffset
+Functional Scenario Form alwaysReturned
+end_process
+
+process setAxisOffset(offset: RectangleInsets)
+pre offset != null
+post
+  this.axisOffset' = offset
+  fireChangeEvent()
+Functional Scenario Form validOffset && updated || nullOffset && preViolated
+end_process
+
+process getDomainAxis() result: CategoryAxis
+pre true
+post
+  // Delegate to indexed version
+  result' = getDomainAxis(0)
+Functional Scenario Form axisExists && returned || axisNull && handled
+end_process
+
+process getDomainAxis(index: int) result: CategoryAxis
+pre true
+post
+  CategoryAxis result = null
+  if index < this.domainAxes.size() then
+    result = (CategoryAxis) this.domainAxes.get(index)
+  
+  // Check parent plot if needed
+  if result == null then
+    Plot parent = getParent()
+    if parent instanceof CategoryPlot then
+      result = ((CategoryPlot) parent).getDomainAxis(index)
+  
+  result' = result
+Functional Scenario Form 
+indexInRange && localAxisExists || 
+indexInRange && localAxisNull && parentAxisExists || 
+indexOutOfRange && handled
+end_process
+
+process setDomainAxis(axis: CategoryAxis)
+pre true
+post
+  // Delegate to indexed version
+  setDomainAxis(0, axis)
+Functional Scenario Form axisSet
+end_process
+
+process setDomainAxis(index: int, axis: CategoryAxis)
+pre true
+post
+  // Delegate to full version with notify=true
+  setDomainAxis(index, axis, true)
+Functional Scenario Form axisSet
+end_process
+
+process setDomainAxis(index: int, axis: CategoryAxis, notify: boolean)
+pre true
+post
+  // 1. Remove listener from existing axis
+  CategoryAxis existing = (CategoryAxis) this.domainAxes.get(index)
+  if existing != null then
+    existing.removeChangeListener(this)
+  
+  // 2. Set new axis and configure
+  if axis != null then
+    axis.setPlot(this)
+  
+  this.domainAxes.set(index, axis)
+  
+  // 3. Add listener to new axis
+  if axis != null then
+    axis.configure()
+    axis.addChangeListener(this)
+  
+  // 4. Fire change event if needed
+  if notify then
+    fireChangeEvent()
+Functional Scenario Form 
+newAxisNonNull && configured || 
+newAxisNull && cleared || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process setDomainAxes(axes: CategoryAxis[])
+pre true
+post
+  // Set each axis without notification
+  for i = 0 to axes.length-1 do
+    setDomainAxis(i, axes[i], false)
+  
+  // Fire single change event
+  fireChangeEvent()
+Functional Scenario Form 
+axesNotNull && axesSet || 
+axesNull && handled
+end_process
+
+process getDomainAxisIndex(axis: CategoryAxis) result: int
+pre axis != null
+post
+  result' = this.domainAxes.indexOf(axis)
+Functional Scenario Form 
+axisExists && indexReturned || 
+axisMissing && negativeIndex
+end_process
+
+process getDomainAxisLocation() result: AxisLocation
+pre true
+post
+  // Delegate to indexed version
+  result' = getDomainAxisLocation(0)
+Functional Scenario Form alwaysReturned
+end_process
+
+process getDomainAxisLocation(index: int) result: AxisLocation
+pre true
+post
+  AxisLocation result = null
+  if index < this.domainAxisLocations.size() then
+    result = (AxisLocation) this.domainAxisLocations.get(index)
+  
+  // Fallback to opposite of primary axis
+  if result == null then
+    result = AxisLocation.getOpposite(getDomainAxisLocation(0))
+  
+  result' = result
+Functional Scenario Form 
+indexInRange && locationExists || 
+indexInRange && locationNull && fallbackUsed || 
+indexOutOfRange && fallbackUsed
+end_process
+
+process setDomainAxisLocation(location: AxisLocation)
+pre true
+post
+  // Delegate to indexed version with notify=true
+  setDomainAxisLocation(0, location, true)
+Functional Scenario Form locationSet
+end_process
+
+process setDomainAxisLocation(location: AxisLocation, notify: boolean)
+pre true
+post
+  // Delegate to indexed version
+  setDomainAxisLocation(0, location, notify)
+Functional Scenario Form locationSet
+end_process
+
+process setDomainAxisLocation(index: int, location: AxisLocation)
+pre true
+post
+  // Delegate to full version with notify=true
+  setDomainAxisLocation(index, location, true)
+Functional Scenario Form locationSet
+end_process
+
+process setDomainAxisLocation(index: int, location: AxisLocation, notify: boolean)
+pre 
+  // Special constraint for index 0
+  if index == 0 then location != null
+post
+  // Set location
+  this.domainAxisLocations.set(index, location)
+  
+  // Conditionally fire event
+  if notify then
+    fireChangeEvent()
+Functional Scenario Form 
+validIndex && locationSet || 
+index0NullLocation && preViolated || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process getDomainAxisEdge() result: RectangleEdge
+pre true
+post
+  // Delegate to indexed version
+  result' = getDomainAxisEdge(0)
+Functional Scenario Form alwaysReturned
+end_process
+
+process getDomainAxisEdge(index: int) result: RectangleEdge
+pre true
+post
+  RectangleEdge result = null
+  AxisLocation location = getDomainAxisLocation(index)
+  if location != null then
+    result' = Plot.resolveDomainAxisLocation(location, this.orientation)
+  else
+    result' = RectangleEdge.opposite(getDomainAxisEdge(0))
+Functional Scenario Form 
+locationExists && edgeResolved || 
+locationNull && oppositeEdgeUsed
+end_process
+
+process getDomainAxisCount() result: int
+pre true
+post
+  result' = this.domainAxes.size()
+Functional Scenario Form alwaysReturned
+end_process
+
+process clearDomainAxes()
+pre true
+post
+  // Remove listeners from all axes
+  for i = 0 to this.domainAxes.size()-1 do
+    CategoryAxis axis = (CategoryAxis) this.domainAxes.get(i)
+    if axis != null then
+      axis.removeChangeListener(this)
+  
+  // Clear the list
+  this.domainAxes.clear()
+  
+  // Fire change event
+  fireChangeEvent()
+Functional Scenario Form axesCleared
+end_process
+
+process configureDomainAxes()
+pre true
+post
+  // Configure each axis
+  for i = 0 to this.domainAxes.size()-1 do
+    CategoryAxis axis = (CategoryAxis) this.domainAxes.get(i)
+    if axis != null then
+      axis.configure()
+Functional Scenario Form axesConfigured
+end_process
+
+process getRangeAxis() result: ValueAxis
+pre true
+post
+  // Delegate to indexed version
+  result' = getRangeAxis(0)
+Functional Scenario Form axisReturned
+end_process
+
+process getRangeAxis(index: int) result: ValueAxis
+pre true
+post
+  ValueAxis result = null
+  if index < this.rangeAxes.size() then
+    result = (ValueAxis) this.rangeAxes.get(index)
+  
+  // Check parent plot if needed
+  if result == null then
+    Plot parent = getParent()
+    if parent instanceof CategoryPlot then
+      result = ((CategoryPlot) parent).getRangeAxis(index)
+  
+  result' = result
+Functional Scenario Form 
+indexInRange && localAxisExists || 
+indexInRange && localAxisNull && parentAxisExists || 
+indexOutOfRange && handled
+end_process
+
+process setRangeAxis(axis: ValueAxis)
+pre true
+post
+  // Delegate to indexed version
+  setRangeAxis(0, axis)
+Functional Scenario Form axisSet
+end_process
+
+process setRangeAxis(index: int, axis: ValueAxis)
+pre true
+post
+  // Delegate to full version with notify=true
+  setRangeAxis(index, axis, true)
+Functional Scenario Form axisSet
+end_process
+
+process setRangeAxisLocation(index: int, location: AxisLocation, notify: boolean)
+pre 
+  // Index 0 requires non-null location
+  if index == 0 then location != null
+post
+  this.rangeAxisLocations.set(index, location)
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+validLocation && set || 
+index0NullLocation && preViolated || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+
+process setRangeAxisLocation(index: int, location: AxisLocation, notify: boolean)
+pre 
+  index == 0 && location != null  // Primary index requires non-null
+post
+  this.rangeAxisLocations.set(index, location)
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+validIndexLocation && set || 
+index0NullLocation && preViolated || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process getRangeAxisEdge() result: RectangleEdge
+pre true
+post
+  result' = getRangeAxisEdge(0)
+Functional Scenario Form alwaysReturned
+end_process
+
+process getRangeAxisEdge(index: int) result: RectangleEdge
+pre true
+post
+  AxisLocation location = getRangeAxisLocation(index)
+  RectangleEdge result = Plot.resolveRangeAxisLocation(location, this.orientation)
+  if result == null then
+    result = RectangleEdge.opposite(getRangeAxisEdge(0))
+  result' = result
+Functional Scenario Form 
+validLocation && resolved || 
+locationResolvedNull && oppositeUsed
+end_process
+
+process getRangeAxisCount() result: int
+pre true
+post
+  result' = this.rangeAxes.size()
+Functional Scenario Form alwaysReturned
+end_process
+
+process clearRangeAxes()
+pre true
+post
+  // Remove listeners and clear axes
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis axis = (ValueAxis) this.rangeAxes.get(i)
+    if axis != null then axis.removeChangeListener(this)
+  this.rangeAxes.clear()
+  fireChangeEvent()
+Functional Scenario Form axesCleared
+end_process
+
+process configureRangeAxes()
+pre true
+post
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis axis = (ValueAxis) this.rangeAxes.get(i)
+    if axis != null then axis.configure()
+Functional Scenario Form axesConfigured
+end_process
+
+process getDataset() result: CategoryDataset
+pre true
+post
+  result' = getDataset(0)
+Functional Scenario Form datasetReturned
+end_process
+
+process getDataset(index: int) result: CategoryDataset
+pre true
+post
+  CategoryDataset result = null
+  if index < this.datasets.size() then
+    result = (CategoryDataset) this.datasets.get(index)
+  result' = result
+Functional Scenario Form 
+indexInRange && datasetExists || 
+indexInRange && datasetNull || 
+indexOutOfRange && handled
+end_process
+
+process setDataset(index: int, dataset: CategoryDataset)
+pre true
+post
+  // 1. Remove listener from existing dataset
+  CategoryDataset existing = (CategoryDataset) this.datasets.get(index)
+  if existing != null then existing.removeChangeListener(this)
+  
+  // 2. Set new dataset and add listener
+  this.datasets.set(index, dataset)
+  if dataset != null then dataset.addChangeListener(this)
+  
+  // 3. Trigger dataset change event
+  DatasetChangeEvent event = new DatasetChangeEvent(this, dataset)
+  datasetChanged(event)
+Functional Scenario Form 
+newDatasetNonNull && updated || 
+newDatasetNull && cleared || 
+existingDataset && listenerRemoved
+end_process
+
+process getDatasetCount() result: int
+pre true
+post
+  result' = this.datasets.size()
+Functional Scenario Form alwaysReturned
+end_process
+
+process mapDatasetToDomainAxis(index: int, axisIndex: int)
+pre true
+post
+  this.datasetToDomainAxisMap.set(index, new Integer(axisIndex))
+  // Simulate dataset change event
+  datasetChanged(new DatasetChangeEvent(this, getDataset(index)))
+Functional Scenario Form 
+validIndex && mapped || 
+invalidIndex && handled
+end_process
+
+process getDomainAxisForDataset(index: int) result: CategoryAxis
+pre true
+post
+  CategoryAxis result = getDomainAxis()
+  Integer axisIndex = (Integer) this.datasetToDomainAxisMap.get(index)
+  if axisIndex != null then
+    result = getDomainAxis(axisIndex.intValue())
+  result' = result
+Functional Scenario Form 
+mappedAxisExists && returned || 
+noMapping && defaultAxis
+end_process
+
+process mapDatasetToRangeAxis(index: int, axisIndex: int)
+pre true
+post
+  this.datasetToRangeAxisMap.set(index, new Integer(axisIndex))
+  // Simulate dataset change event
+  datasetChanged(new DatasetChangeEvent(this, getDataset(index)))
+Functional Scenario Form 
+validIndex && mapped || 
+invalidIndex && handled
+end_process
+
+process getRangeAxisForDataset(index: int) result: ValueAxis
+pre true
+post
+  ValueAxis result = getRangeAxis()
+  Integer axisIndex = (Integer) this.datasetToRangeAxisMap.get(index)
+  if axisIndex != null then
+    result = getRangeAxis(axisIndex.intValue())
+  result' = result
+Functional Scenario Form 
+mappedAxisExists && returned || 
+noMapping && defaultAxis
+end_process
+
+process getRenderer(index: int) result: CategoryItemRenderer
+pre true
+post
+  CategoryItemRenderer result = null
+  if index < this.renderers.size() then
+    result = (CategoryItemRenderer) this.renderers.get(index)
+  result' = result
+Functional Scenario Form 
+indexInRange && rendererExists || 
+indexInRange && rendererNull || 
+indexOutOfRange && handled
+end_process
+
+process setRenderer(renderer: CategoryItemRenderer)
+pre true
+post
+  setRenderer(0, renderer, true)
+Functional Scenario Form rendererSet
+end_process
+
+process setRenderer(renderer: CategoryItemRenderer, notify: boolean)
+pre true
+post
+  setRenderer(0, renderer, notify)
+Functional Scenario Form rendererSet
+end_process
+
+process setRenderer(index: int, renderer: CategoryItemRenderer)
+pre true
+post
+  setRenderer(index, renderer, true)
+Functional Scenario Form rendererSet
+end_process
+
+process setRenderer(index: int, renderer: CategoryItemRenderer, notify: boolean)
+pre true
+post
+  // 1. Remove listener from existing renderer
+  CategoryItemRenderer existing = (CategoryItemRenderer) this.renderers.get(index)
+  if existing != null then
+    existing.removeChangeListener(this)
+  
+  // 2. Set new renderer and configure
+  this.renderers.set(index, renderer)
+  if renderer != null then
+    renderer.setPlot(this)
+    renderer.addChangeListener(this)
+  
+  // 3. Configure axes
+  configureDomainAxes()
+  configureRangeAxes()
+  
+  // 4. Conditionally fire event
+  if notify then
+    fireChangeEvent()
+Functional Scenario Form 
+newRendererNonNull && configured || 
+newRendererNull && cleared || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process setRenderers(renderers: CategoryItemRenderer[])
+pre true
+post
+  // Set each renderer without notification
+  for i = 0 to renderers.length-1 do
+    setRenderer(i, renderers[i], false)
+  
+  // Fire single change event
+  fireChangeEvent()
+Functional Scenario Form 
+renderersNotNull && set || 
+renderersNull && handled
+end_process
+
+process getRendererForDataset(dataset: CategoryDataset) result: CategoryItemRenderer
+pre true
+post
+  CategoryItemRenderer result = null
+  for i = 0 to this.datasets.size()-1 do
+    if this.datasets.get(i) == dataset then
+      result = (CategoryItemRenderer) this.renderers.get(i)
+      break
+  result' = result
+Functional Scenario Form 
+datasetFound && rendererReturned || 
+datasetNotFound && nullReturned
+end_process
+
+process getIndexOf(renderer: CategoryItemRenderer) result: int
+pre true
+post
+  result' = this.renderers.indexOf(renderer)
+Functional Scenario Form 
+rendererExists && indexReturned || 
+rendererMissing && negativeIndex
+end_process
+
+process getDatasetRenderingOrder() result: DatasetRenderingOrder
+pre true
+post
+  result' = this.renderingOrder
+Functional Scenario Form alwaysReturned
+end_process
+
+process setDatasetRenderingOrder(order: DatasetRenderingOrder)
+pre order != null
+post
+  this.renderingOrder' = order
+  fireChangeEvent()
+Functional Scenario Form 
+validOrder && updated || 
+nullOrder && preViolated
+end_process
+
+process getColumnRenderingOrder() result: SortOrder
+pre true
+post
+  result' = this.columnRenderingOrder
+Functional Scenario Form alwaysReturned
+end_process
+
+process setColumnRenderingOrder(order: SortOrder)
+pre order != null
+post
+  this.columnRenderingOrder' = order
+  fireChangeEvent()
+Functional Scenario Form 
+validOrder && updated || 
+nullOrder && preViolated
+end_process
+
+process getRowRenderingOrder() result: SortOrder
+pre true
+post
+  result' = this.rowRenderingOrder
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRowRenderingOrder(order: SortOrder)
+pre order != null
+post
+  this.rowRenderingOrder' = order
+  fireChangeEvent()
+Functional Scenario Form 
+validOrder && updated || 
+nullOrder && preViolated
+end_process
+
+process isDomainGridlinesVisible() result: boolean
+pre true
+post
+  result' = this.domainGridlinesVisible
+Functional Scenario Form alwaysReturned
+end_process
+
+process setDomainGridlinesVisible(visible: boolean)
+pre true
+post
+  if this.domainGridlinesVisible != visible then
+    this.domainGridlinesVisible' = visible
+    fireChangeEvent()
+Functional Scenario Form 
+visibilityChanged && updated || 
+sameVisibility && noChange
+end_process
+
+process setDomainGridlinePosition(position: CategoryAnchor)
+pre position != null
+post
+  this.domainGridlinePosition' = position
+  fireChangeEvent()
+Functional Scenario Form 
+validPosition && updated || 
+nullPosition && preViolated
+end_process
+
+process getDomainGridlineStroke() result: Stroke
+pre true
+post
+  result' = this.domainGridlineStroke
+Functional Scenario Form alwaysReturned
+end_process
+
+process setDomainGridlineStroke(stroke: Stroke)
+pre stroke != null
+post
+  this.domainGridlineStroke' = stroke
+  fireChangeEvent()
+Functional Scenario Form 
+validStroke && updated || 
+nullStroke && preViolated
+end_process
+
+process getDomainGridlinePaint() result: Paint
+pre true
+post
+  result' = this.domainGridlinePaint
+Functional Scenario Form alwaysReturned
+end_process
+
+process setDomainGridlinePaint(paint: Paint)
+pre paint != null
+post
+  this.domainGridlinePaint' = paint
+  fireChangeEvent()
+Functional Scenario Form 
+validPaint && updated || 
+nullPaint && preViolated
+end_process
+
+process isRangeGridlinesVisible() result: boolean
+pre true
+post
+  result' = this.rangeGridlinesVisible
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeGridlinesVisible(visible: boolean)
+pre true
+post
+  if this.rangeGridlinesVisible != visible then
+    this.rangeGridlinesVisible' = visible
+    fireChangeEvent()
+Functional Scenario Form 
+visibilityChanged && updated || 
+sameVisibility && noChange
+end_process
+
+process getRangeGridlineStroke() result: Stroke
+pre true
+post
+  result' = this.rangeGridlineStroke
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeGridlineStroke(stroke: Stroke)
+pre stroke != null
+post
+  this.rangeGridlineStroke' = stroke
+  fireChangeEvent()
+Functional Scenario Form 
+validStroke && updated || 
+nullStroke && preViolated
+end_process
+
+process setRangeGridlinePaint(paint: Paint)
+pre paint != null
+post
+  this.rangeGridlinePaint' = paint
+  fireChangeEvent()
+Functional Scenario Form 
+validPaint && updated || 
+nullPaint && preViolated
+end_process
+
+process getFixedLegendItems() result: LegendItemCollection
+pre true
+post
+  result' = this.fixedLegendItems
+Functional Scenario Form alwaysReturned
+end_process
+
+process setFixedLegendItems(items: LegendItemCollection)
+pre true
+post
+  this.fixedLegendItems' = items
+  fireChangeEvent()
+Functional Scenario Form 
+itemsNotNull && updated || 
+itemsNull && cleared
+end_process
+
+process getLegendItems() result: LegendItemCollection
+pre true
+post
+  LegendItemCollection result = this.fixedLegendItems
+  if result == null then
+    result = new LegendItemCollection()
+    int count = this.datasets.size()
+    for datasetIndex = 0 to count-1 do
+      CategoryDataset dataset = getDataset(datasetIndex)
+      if dataset != null then
+        CategoryItemRenderer renderer = getRenderer(datasetIndex)
+        if renderer != null then
+          int seriesCount = dataset.getRowCount()
+          for i = 0 to seriesCount-1 do
+            LegendItem item = renderer.getLegendItem(datasetIndex, i)
+            if item != null then result.add(item)
+  result' = result
+Functional Scenario Form 
+fixedItemsExist && returned || 
+noFixedItems && dynamicGenerated
+end_process
+
+process handleClick(x: int, y: int, info: PlotRenderingInfo)
+pre info != null
+post
+  Rectangle2D dataArea = info.getDataArea()
+  if dataArea.contains(x, y) then
+    double java2D = 0.0
+    if this.orientation == PlotOrientation.HORIZONTAL then
+      java2D = x
+    else if this.orientation == PlotOrientation.VERTICAL then
+      java2D = y
+    
+    RectangleEdge edge = Plot.resolveRangeAxisLocation(
+      getRangeAxisLocation(), this.orientation)
+    double value = getRangeAxis().java2DToValue(java2D, dataArea, edge)
+    setAnchorValue(value)
+    setRangeCrosshairValue(value)
+Functional Scenario Form 
+clickInsideDataArea && valuesSet || 
+clickOutsideDataArea && noAction
+end_process
+
+process zoom(percent: double)
+pre true
+post
+  if percent > 0.0 then
+    double range = getRangeAxis().getRange().getLength()
+    double scaledRange = range * percent
+    getRangeAxis().setRange(
+      this.anchorValue - scaledRange / 2.0,
+      this.anchorValue + scaledRange / 2.0)
+  else
+    getRangeAxis().setAutoRange(true)
+Functional Scenario Form 
+positivePercent && zoomed || 
+zeroPercent && autoRangeRestored
+end_process
+
+
+process datasetChanged(event: DatasetChangeEvent)
+pre event != null
+post
+  // Configure range axes
+  int count = this.rangeAxes.size()
+  for axisIndex = 0 to count-1 do
+    ValueAxis yAxis = getRangeAxis(axisIndex)
+    if yAxis != null then yAxis.configure()
+  
+  // Propagate event
+  Plot parent = getParent()
+  if parent != null then
+    parent.datasetChanged(event)
+  else
+    PlotChangeEvent e = new PlotChangeEvent(this)
+    e.setType(ChartChangeEventType.DATASET_UPDATED)
+    notifyListeners(e)
+Functional Scenario Form 
+parentExists && propagated || 
+noParent && eventNotified
+end_process
+
+process rendererChanged(event: RendererChangeEvent)
+pre event != null
+post
+  Plot parent = getParent()
+  if parent != null then
+    if parent instanceof RendererChangeListener then
+      ((RendererChangeListener) parent).rendererChanged(event)
+    else
+      throw new RuntimeException("Unexpected parent type")
+  else
+    configureRangeAxes()
+    PlotChangeEvent e = new PlotChangeEvent(this)
+    notifyListeners(e)
+Functional Scenario Form 
+parentIsListener && propagated || 
+parentNotListener && exceptionThrown || 
+noParent && axesConfigured
+end_process
+
+process addDomainMarker(marker: CategoryMarker)
+pre true
+post
+  addDomainMarker(marker, Layer.FOREGROUND)
+Functional Scenario Form markerAdded
+end_process
+
+process addDomainMarker(marker: CategoryMarker, layer: Layer)
+pre true
+post
+  addDomainMarker(0, marker, layer)
+Functional Scenario Form markerAdded
+end_process
+
+process addDomainMarker(index: int, marker: CategoryMarker, layer: Layer)
+pre true
+post
+  addDomainMarker(index, marker, layer, true)
+Functional Scenario Form markerAdded
+end_process
+
+process addDomainMarker(index: int, marker: CategoryMarker, layer: Layer, notify: boolean)
+pre 
+  marker != null && layer != null
+post
+  Collection markers = null
+  if layer == Layer.FOREGROUND then
+    markers = this.foregroundDomainMarkers.get(new Integer(index))
+    if markers == null then
+      markers = new java.util.ArrayList()
+      this.foregroundDomainMarkers.put(new Integer(index), markers)
+    markers.add(marker)
+  else if layer == Layer.BACKGROUND then
+    markers = this.backgroundDomainMarkers.get(new Integer(index))
+    if markers == null then
+      markers = new java.util.ArrayList()
+      this.backgroundDomainMarkers.put(new Integer(index), markers)
+    markers.add(marker)
+  
+  marker.addChangeListener(this)
+  
+  if notify then
+    fireChangeEvent()
+Functional Scenario Form 
+foregroundLayer && markerAdded || 
+backgroundLayer && markerAdded || 
+invalidLayer && handled || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process clearDomainMarkers()
+pre true
+post
+  // Clear background markers
+  if this.backgroundDomainMarkers != null then
+    for each key in this.backgroundDomainMarkers.keySet() do
+      clearDomainMarkers(key.intValue())
+    this.backgroundDomainMarkers.clear()
+  
+  // Clear foreground markers
+  if this.foregroundDomainMarkers != null then
+    for each key in this.foregroundDomainMarkers.keySet() do
+      clearDomainMarkers(key.intValue())
+    this.foregroundDomainMarkers.clear()
+  
+  fireChangeEvent()
+Functional Scenario Form markersCleared
+end_process
+
+process getDomainMarkers(layer: Layer) result: Collection
+pre true
+post
+  result' = getDomainMarkers(0, layer)
+Functional Scenario Form markersReturned
+end_process
+
+process getDomainMarkers(index: int, layer: Layer) result: Collection
+pre true
+post
+  Collection result = null
+  Integer key = new Integer(index)
+  if layer == Layer.FOREGROUND then
+    result = this.foregroundDomainMarkers.get(key)
+  else if layer == Layer.BACKGROUND then
+    result = this.backgroundDomainMarkers.get(key)
+  
+  if result != null then
+    result = Collections.unmodifiableCollection(result)
+  result' = result
+Functional Scenario Form 
+foregroundLayer && markersExist || 
+backgroundLayer && markersExist || 
+noMarkers && nullReturned
+end_process
+
+process clearDomainMarkers(index: int)
+pre true
+post
+  Integer key = new Integer(index)
+  
+  // Clear background markers
+  if this.backgroundDomainMarkers != null then
+    Collection bgMarkers = this.backgroundDomainMarkers.get(key)
+    if bgMarkers != null then
+      for each m in bgMarkers do
+        m.removeChangeListener(this)
+      bgMarkers.clear()
+  
+  // Clear foreground markers
+  if this.foregroundDomainMarkers != null then
+    Collection fgMarkers = this.foregroundDomainMarkers.get(key)
+    if fgMarkers != null then
+      for each m in fgMarkers do
+        m.removeChangeListener(this)
+      fgMarkers.clear()
+  
+  fireChangeEvent()
+Functional ScenarioForm 
+markersExist && cleared || 
+noMarkers && handled
+end_process
+
+process removeDomainMarker(index: int, marker: Marker, layer: Layer) result: boolean
+pre marker != null && layer != null
+post
+  Integer key = new Integer(index)
+  Collection markers = null
+  if layer == Layer.FOREGROUND then
+    markers = this.foregroundDomainMarkers.get(key)
+  else if layer == Layer.BACKGROUND then
+    markers = this.backgroundDomainMarkers.get(key)
+  
+  boolean removed = false
+  if markers != null then
+    removed = markers.remove(marker)
+    if removed then
+      marker.removeChangeListener(this)
+      fireChangeEvent()
+  result' = removed
+Functional Scenario Form 
+markerExists && removed || 
+markerMissing && notRemoved || 
+invalidLayer && handled
+end_process
+
+process removeDomainMarker(index: int, marker: Marker, layer: Layer, notify: boolean) result: boolean
+pre marker != null
+post
+  ArrayList markers = null
+  if layer == Layer.FOREGROUND then
+    markers = this.foregroundDomainMarkers.get(new Integer(index))
+  else
+    markers = this.backgroundDomainMarkers.get(new Integer(index))
+  
+  boolean removed = false
+  if markers != null then
+    removed = markers.remove(marker)
+    if removed && notify then
+      fireChangeEvent()
+  result' = removed
+Functional Scenario Form 
+markerExists && removed || 
+markerMissing && notRemoved || 
+markersNull && handled
+end_process
+
+process addRangeMarker(marker: Marker)
+pre true
+post
+  addRangeMarker(marker, Layer.FOREGROUND)
+Functional Scenario Form markerAdded
+end_process
+
+process addRangeMarker(marker: Marker, layer: Layer)
+pre true
+post
+  addRangeMarker(0, marker, layer)
+Functional Scenario Form markerAdded
+end_process
+
+process addRangeMarker(index: int, marker: Marker, layer: Layer)
+pre true
+post
+  addRangeMarker(index, marker, layer, true)
+Functional Scenario Form markerAdded
+end_process
+
+process addRangeMarker(index: int, marker: Marker, layer: Layer, notify: boolean)
+pre marker != null && layer != null
+post
+  Collection markers = null
+  if layer == Layer.FOREGROUND then
+    markers = this.foregroundRangeMarkers.get(new Integer(index))
+    if markers == null then
+      markers = new java.util.ArrayList()
+      this.foregroundRangeMarkers.put(new Integer(index), markers)
+    markers.add(marker)
+  else if layer == Layer.BACKGROUND then
+    markers = this.backgroundRangeMarkers.get(new Integer(index))
+    if markers == null then
+      markers = new java.util.ArrayList()
+      this.backgroundRangeMarkers.put(new Integer(index), markers)
+    markers.add(marker)
+  
+  marker.addChangeListener(this)
+  if notify then
+    fireChangeEvent()
+Functional Scenario Form 
+foregroundLayer && markerAdded || 
+backgroundLayer && markerAdded || 
+invalidLayer && handled || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+
+// Clear background markers
+  if this.backgroundRangeMarkers != null then
+    for each key in this.backgroundRangeMarkers.keySet() do
+      clearRangeMarkers(key.intValue())
+    this.backgroundRangeMarkers.clear()
+  
+  // Clear foreground markers
+  if this.foregroundRangeMarkers != null then
+    for each key in this.foregroundRangeMarkers.keySet() do
+      clearRangeMarkers(key.intValue())
+    this.foregroundRangeMarkers.clear()
+  
+  fireChangeEvent()
+Functional Scenario Form markersCleared
+end_process
+
+process getRangeMarkers(layer: Layer) result: Collection
+pre true
+post
+  result' = getRangeMarkers(0, layer)
+Functional Scenario Form markersReturned
+end_process
+
+process getRangeMarkers(index: int, layer: Layer) result: Collection
+pre true
+post
+  Collection result = null
+  Integer key = new Integer(index)
+  if layer == Layer.FOREGROUND then
+    result = this.foregroundRangeMarkers.get(key)
+  else if layer == Layer.BACKGROUND then
+    result = this.backgroundRangeMarkers.get(key)
+  
+  if result != null then
+    result = Collections.unmodifiableCollection(result)
+  result' = result
+Functional Scenario Form 
+foregroundLayer && markersExist || 
+backgroundLayer && markersExist || 
+noMarkers && nullReturned
+end_process
+
+process clearRangeMarkers(index: int)
+pre true
+post
+  Integer key = new Integer(index)
+  
+  // Clear background markers
+  if this.backgroundRangeMarkers != null then
+    Collection bgMarkers = this.backgroundRangeMarkers.get(key)
+    if bgMarkers != null then
+      for each m in bgMarkers do
+        m.removeChangeListener(this)
+      bgMarkers.clear()
+  
+  // Clear foreground markers
+  if this.foregroundRangeMarkers != null then
+    Collection fgMarkers = this.foregroundRangeMarkers.get(key)
+    if fgMarkers != null then
+      for each m in fgMarkers do
+        m.removeChangeListener(this)
+      fgMarkers.clear()
+  
+  fireChangeEvent()
+Functional ScenarioForm 
+markersExist && cleared || 
+noMarkers && handled
+end_process
+
+process removeRangeMarker(index: int, marker: Marker, layer: Layer, notify: boolean) result: boolean
+pre marker != null
+post
+  ArrayList markers = null
+  if layer == Layer.FOREGROUND then
+    markers = this.foregroundRangeMarkers.get(new Integer(index))
+  else
+    markers = this.backgroundRangeMarkers.get(new Integer(index))
+  
+  boolean removed = false
+  if markers != null then
+    removed = markers.remove(marker)
+    if removed && notify then
+      fireChangeEvent()
+  result' = removed
+Functional Scenario Form 
+markerExists && removed || 
+markerMissing && notRemoved || 
+markersNull && handled
+end_process
+
+process isRangeCrosshairVisible() result: boolean
+pre true
+post
+  result' = this.rangeCrosshairVisible
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeCrosshairVisible(flag: boolean)
+pre true
+post
+  if this.rangeCrosshairVisible != flag then
+    this.rangeCrosshairVisible' = flag
+    fireChangeEvent()
+Functional Scenario Form 
+visibilityChanged && updated || 
+sameVisibility && noChange
+end_process
+
+process isRangeCrosshairLockedOnData() result: boolean
+pre true
+post
+  result' = this.rangeCrosshairLockedOnData
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeCrosshairLockedOnData(flag: boolean)
+pre true
+post
+  if this.rangeCrosshairLockedOnData != flag then
+    this.rangeCrosshairLockedOnData' = flag
+    fireChangeEvent()
+Functional Scenario Form 
+lockStateChanged && updated || 
+sameState && noChange
+end_process
+
+process getRangeCrosshairValue() result: double
+pre true
+post
+  result' = this.rangeCrosshairValue
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeCrosshairValue(value: double)
+pre true
+post
+  setRangeCrosshairValue(value, true)
+Functional Scenario Form valueSet
+end_process
+
+process setRangeCrosshairValue(value: double, notify: boolean)
+pre true
+post
+  this.rangeCrosshairValue' = value
+  if isRangeCrosshairVisible() && notify then
+    fireChangeEvent()
+Functional Scenario Form 
+crosshairVisible && notifyTrue && eventFired || 
+crosshairInvisible && noEvent || 
+notifyFalse && silent
+end_process
+
+process setRangeCrosshairStroke(stroke: Stroke)
+pre stroke != null
+post
+  this.rangeCrosshairStroke' = stroke
+  fireChangeEvent()
+Functional Scenario Form 
+validStroke && updated || 
+nullStroke && preViolated
+end_process
+
+process getRangeCrosshairPaint() result: Paint
+pre true
+post
+  result' = this.rangeCrosshairPaint
+Functional Scenario Form alwaysReturned
+end_process
+
+process setRangeCrosshairPaint(paint: Paint)
+pre paint != null
+post
+  this.rangeCrosshairPaint' = paint
+  fireChangeEvent()
+Functional Scenario Form 
+validPaint && updated || 
+nullPaint && preViolated
+end_process
+
+process getAnnotations() result: List
+pre true
+post
+  result' = this.annotations
+Functional Scenario Form alwaysReturned
+end_process
+
+process addAnnotation(annotation: CategoryAnnotation)
+pre true
+post
+  addAnnotation(annotation, true)
+Functional Scenario Form annotationAdded
+end_process
+
+process addAnnotation(annotation: CategoryAnnotation, notify: boolean)
+pre annotation != null
+post
+  this.annotations.add(annotation)
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+annotationAdded || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process removeAnnotation(annotation: CategoryAnnotation) result: boolean
+pre true
+post
+  result' = removeAnnotation(annotation, true)
+Functional Scenario Form annotationRemoved
+end_process
+
+process removeAnnotation(annotation: CategoryAnnotation, notify: boolean) result: boolean
+pre annotation != null
+post
+  boolean removed = this.annotations.remove(annotation)
+  if removed && notify then fireChangeEvent()
+  result' = removed
+Functional Scenario Form 
+annotationExists && removed || 
+annotationMissing && notRemoved || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process clearAnnotations()
+pre true
+post
+  this.annotations.clear()
+  fireChangeEvent()
+Functional Scenario Form annotationsCleared
+end_process
+
+process calculateDomainAxisSpace(g2: Graphics2D, plotArea: Rectangle2D, space: AxisSpace) result: AxisSpace
+pre true
+post
+  AxisSpace result = space
+  if result == null then
+    result = new AxisSpace()
+  
+  if this.fixedDomainAxisSpace != null then
+    if this.orientation == PlotOrientation.HORIZONTAL then
+      result.ensureAtLeast(this.fixedDomainAxisSpace.getLeft(), RectangleEdge.LEFT)
+      result.ensureAtLeast(this.fixedDomainAxisSpace.getRight(), RectangleEdge.RIGHT)
+    else if this.orientation == PlotOrientation.VERTICAL then
+      result.ensureAtLeast(this.fixedDomainAxisSpace.getTop(), RectangleEdge.TOP)
+      result.ensureAtLeast(this.fixedDomainAxisSpace.getBottom(), RectangleEdge.BOTTOM)
+  else
+    RectangleEdge domainEdge = Plot.resolveDomainAxisLocation(getDomainAxisLocation(), this.orientation)
+    if this.drawSharedDomainAxis then
+      result = getDomainAxis().reserveSpace(g2, this, plotArea, domainEdge, result)
+    
+    for i = 0 to this.domainAxes.size()-1 do
+      Axis xAxis = (Axis) this.domainAxes.get(i)
+      if xAxis != null then
+        RectangleEdge edge = getDomainAxisEdge(i)
+        result = xAxis.reserveSpace(g2, this, plotArea, edge, result)
+  
+  result' = result
+Functional Scenario Form 
+fixedSpacePresent && spaceReserved || 
+noFixedSpace && sharedAxisReserved || 
+noFixedSpace && domainAxesReserved || 
+orientationHorizontal && fixedApplied || 
+orientationVertical && fixedApplied
+end_process
+
+process calculateRangeAxisSpace(g2: Graphics2D, plotArea: Rectangle2D, space: AxisSpace) result: AxisSpace
+pre true
+post
+  AxisSpace result = space
+  if result == null then
+    result = new AxisSpace()
+  
+  if this.fixedRangeAxisSpace != null then
+    if this.orientation == PlotOrientation.HORIZONTAL then
+      result.ensureAtLeast(this.fixedRangeAxisSpace.getTop(), RectangleEdge.TOP)
+      result.ensureAtLeast(this.fixedRangeAxisSpace.getBottom(), RectangleEdge.BOTTOM)
+    else if this.orientation == PlotOrientation.VERTICAL then
+      result.ensureAtLeast(this.fixedRangeAxisSpace.getLeft(), RectangleEdge.LEFT)
+      result.ensureAtLeast(this.fixedRangeAxisSpace.getRight(), RectangleEdge.RIGHT)
+  else
+    for i = 0 to this.rangeAxes.size()-1 do
+      Axis yAxis = (Axis) this.rangeAxes.get(i)
+      if yAxis != null then
+        RectangleEdge edge = getRangeAxisEdge(i)
+        result = yAxis.reserveSpace(g2, this, plotArea, edge, result)
+  
+  result' = result
+Functional Scenario Form 
+fixedSpacePresent && spaceReserved || 
+noFixedSpace && rangeAxesReserved || 
+orientationHorizontal && fixedApplied || 
+orientationVertical && fixedApplied
+end_process
+
+process calculateAxisSpace(g2: Graphics2D, plotArea: Rectangle2D) result: AxisSpace
+pre true
+post
+  AxisSpace space = new AxisSpace()
+  space = calculateRangeAxisSpace(g2, plotArea, space)
+  space = calculateDomainAxisSpace(g2, plotArea, space)
+  result' = space
+Functional Scenario Form spaceCalculated
+end_process
+
+process draw(g2: Graphics2D, area: Rectangle2D, anchor: Point2D, parentState: PlotState, state: PlotRenderingInfo)
+pre g2 != null && area != null
+post
+  // 1. Check minimum drawing size
+  if area.getWidth() <= MINIMUM_WIDTH_TO_DRAW || area.getHeight() <= MINIMUM_HEIGHT_TO_DRAW then
+    return
+  
+  // 2. Initialize rendering info
+  PlotRenderingInfo info = state
+  if info == null then
+    info = new PlotRenderingInfo(null)
+  info.setPlotArea(area)
+  
+  // 3. Apply insets
+  RectangleInsets insets = getInsets()
+  insets.trim(area)
+  
+  // 4. Calculate data area
+  AxisSpace space = calculateAxisSpace(g2, area)
+  Rectangle2D dataArea = space.shrink(area, null)
+  this.axisOffset.trim(dataArea)
+  info.setDataArea(dataArea)
+  
+  // 5. Draw background
+  if getRenderer() != null then
+    getRenderer().drawBackground(g2, this, dataArea)
+  else
+    drawBackground(g2, dataArea)
+  
+  // 6. Draw axes and get state
+  Map axisStateMap = drawAxes(g2, area, dataArea, info)
+  
+  // 7. Set clipping to data area
+  Shape savedClip = g2.getClip()
+  g2.clip(dataArea)
+  
+  // 8. Draw gridlines
+  drawDomainGridlines(g2, dataArea)
+  AxisState rangeAxisState = (AxisState) axisStateMap.get(getRangeAxis())
+  if rangeAxisState == null && parentState != null then
+    rangeAxisState = (AxisState) parentState.getSharedAxisStates().get(getRangeAxis())
+  if rangeAxisState != null then
+    drawRangeGridlines(g2, dataArea, rangeAxisState.getTicks())
+  
+  // 9. Draw background markers
+  for i = 0 to this.renderers.size()-1 do
+    drawDomainMarkers(g2, dataArea, i, Layer.BACKGROUND)
+    drawRangeMarkers(g2, dataArea, i, Layer.BACKGROUND)
+  
+  // 10. Set alpha transparency
+  Composite originalComposite = g2.getComposite()
+  g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, getForegroundAlpha()))
+  
+  // 11. Render data based on order
+  boolean foundData = false
+  DatasetRenderingOrder order = getDatasetRenderingOrder()
+  if order == DatasetRenderingOrder.FORWARD then
+    // Draw background annotations (forward)
+    for i = 0 to this.datasets.size()-1 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.BACKGROUND, info)
+    
+    // Render data (forward)
+    for i = 0 to this.datasets.size()-1 do
+      foundData = render(g2, dataArea, i, info) || foundData
+    
+    // Draw foreground annotations (forward)
+    for i = 0 to this.datasets.size()-1 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.FOREGROUND, info)
+  else
+    // Draw background annotations (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.BACKGROUND, info)
+    
+    // Render data (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      foundData = render(g2, dataArea, i, info) || foundData
+    
+    // Draw foreground annotations (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.FOREGROUND, info)
+   else // DatasetRenderingOrder.REVERSE
+    // Draw background annotations (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.BACKGROUND, info)
+    
+    // Render data (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      foundData = render(g2, dataArea, i, info) || foundData
+    
+    // Draw foreground annotations (reverse)
+    for i = this.datasets.size()-1 downto 0 do
+      CategoryItemRenderer r = getRenderer(i)
+      if r != null then
+        CategoryAxis domainAxis = getDomainAxisForDataset(i)
+        ValueAxis rangeAxis = getRangeAxisForDataset(i)
+        r.drawAnnotations(g2, dataArea, domainAxis, rangeAxis, Layer.FOREGROUND, info)
+  
+  // 12. Draw foreground markers
+  for i = 0 to this.renderers.size()-1 do
+    drawDomainMarkers(g2, dataArea, i, Layer.FOREGROUND)
+    drawRangeMarkers(g2, dataArea, i, Layer.FOREGROUND)
+  
+  // 13. Draw plot annotations
+  drawAnnotations(g2, dataArea, info)
+  
+  // 14. Restore graphics state
+  g2.setClip(savedClip)
+  g2.setComposite(originalComposite)
+  
+  // 15. Draw no data message if needed
+  if !foundData then
+    drawNoDataMessage(g2, dataArea)
+  
+  // 16. Draw range crosshair if visible
+  if isRangeCrosshairVisible() then
+    drawRangeCrosshair(g2, dataArea, getOrientation(), 
+        getRangeCrosshairValue(), getRangeAxis(),
+        getRangeCrosshairStroke(), getRangeCrosshairPaint())
+  
+  // 17. Draw outline
+  if getRenderer() != null then
+    getRenderer().drawOutline(g2, this, dataArea)
+  else
+    drawOutline(g2, dataArea)
+Functional Scenario Form 
+areaTooSmall && skipped || 
+validArea && backgroundDrawn || 
+rendererExists && backgroundRendered || 
+noRenderer && defaultBackground || 
+axesDrawn && gridlinesDrawn || 
+markersDrawn && annotationsDrawn || 
+forwardOrder && dataRendered || 
+reverseOrder && dataRendered || 
+alphaApplied && stateRestored || 
+noData && messageDrawn || 
+crosshairVisible && drawn || 
+outlineDrawn
+end_process
+
+process drawAxes(g2: Graphics2D, plotArea: Rectangle2D, dataArea: Rectangle2D, plotState: PlotRenderingInfo) result: Map
+pre g2 != null && plotArea != null && dataArea != null
+post
+  AxisCollection axisCollection = new AxisCollection()
+  
+  for index = 0 to this.domainAxes.size()-1 do
+    CategoryAxis xAxis = (CategoryAxis) this.domainAxes.get(index)
+    if xAxis != null then
+      axisCollection.add(xAxis, getDomainAxisEdge(index))
+  
+  for index = 0 to this.rangeAxes.size()-1 do
+    ValueAxis yAxis = (ValueAxis) this.rangeAxes.get(index)
+    if yAxis != null then
+      axisCollection.add(yAxis, getRangeAxisEdge(index))
+  
+  Map axisStateMap = new HashMap()
+  
+  double cursor = dataArea.getMinY() - this.axisOffset.calculateTopOutset(dataArea.getHeight())
+  Iterator topIterator = axisCollection.getAxesAtTop().iterator()
+  while topIterator.hasNext() do
+    Axis axis = (Axis) topIterator.next()
+    if axis != null then
+      AxisState axisState = axis.draw(g2, cursor, plotArea, dataArea, RectangleEdge.TOP, plotState)
+      cursor = axisState.getCursor()
+      axisStateMap.put(axis, axisState)
+  
+  cursor = dataArea.getMaxY() + this.axisOffset.calculateBottomOutset(dataArea.getHeight())
+  Iterator bottomIterator = axisCollection.getAxesAtBottom().iterator()
+  while bottomIterator.hasNext() do
+    Axis axis = (Axis) bottomIterator.next()
+    if axis != null then
+      AxisState axisState = axis.draw(g2, cursor, plotArea, dataArea, RectangleEdge.BOTTOM, plotState)
+      cursor = axisState.getCursor()
+      axisStateMap.put(axis, axisState)
+  
+  cursor = dataArea.getMinX() - this.axisOffset.calculateLeftOutset(dataArea.getWidth())
+  Iterator leftIterator = axisCollection.getAxesAtLeft().iterator()
+  while leftIterator.hasNext() do
+    Axis axis = (Axis) leftIterator.next()
+    if axis != null then
+      AxisState axisState = axis.draw(g2, cursor, plotArea, dataArea, RectangleEdge.LEFT, plotState)
+      cursor = axisState.getCursor()
+      axisStateMap.put(axis, axisState)
+  
+  cursor = dataArea.getMaxX() + this.axisOffset.calculateRightOutset(dataArea.getWidth())
+  Iterator rightIterator = axisCollection.getAxesAtRight().iterator()
+  while rightIterator.hasNext() do
+    Axis axis = (Axis) rightIterator.next()
+    if axis != null then
+      AxisState axisState = axis.draw(g2, cursor, plotArea, dataArea, RectangleEdge.RIGHT, plotState)
+      cursor = axisState.getCursor()
+      axisStateMap.put(axis, axisState)
+  
+  result' = axisStateMap
+Functional Scenario Form 
+axesCollected && domainAdded || 
+axesCollected && rangeAdded || 
+topAxesDrawn && cursorUpdated || 
+bottomAxesDrawn && cursorUpdated || 
+leftAxesDrawn && cursorUpdated || 
+rightAxesDrawn && cursorUpdated || 
+axisStatesMapped
+end_process
+
+process render(g2: Graphics2D, dataArea: Rectangle2D, index: int, info: PlotRenderingInfo) result: boolean
+pre true
+post
+  boolean foundData = false
+  CategoryDataset currentDataset = getDataset(index)
+  CategoryItemRenderer renderer = getRenderer(index)
+  CategoryAxis domainAxis = getDomainAxisForDataset(index)
+  ValueAxis rangeAxis = getRangeAxisForDataset(index)
+  boolean hasData = !DatasetUtilities.isEmptyOrNull(currentDataset)
+  
+  if hasData && renderer != null then
+    foundData = true
+    CategoryItemRendererState state = renderer.initialise(g2, dataArea, this, index, info)
+    int columnCount = currentDataset.getColumnCount()
+    int rowCount = currentDataset.getRowCount()
+    int passCount = renderer.getPassCount()
+    
+    for pass = 0 to passCount-1 do
+      if this.columnRenderingOrder == SortOrder.ASCENDING then
+        for column = 0 to columnCount-1 do
+          if this.rowRenderingOrder == SortOrder.ASCENDING then
+            for row = 0 to rowCount-1 do
+              renderer.drawItem(g2, state, dataArea, this, domainAxis, rangeAxis, 
+                                currentDataset, row, column, pass)
+          else
+            for row = rowCount-1 downto 0 do
+              renderer.drawItem(g2, state, dataArea, this, domainAxis, rangeAxis, 
+                                currentDataset, row, column, pass)
+      else
+        for column = columnCount-1 downto 0 do
+          if this.rowRenderingOrder == SortOrder.ASCENDING then
+            for row = 0 to rowCount-1 do
+              renderer.drawItem(g2, state, dataArea, this, domainAxis, rangeAxis, 
+                                currentDataset, row, column, pass)
+          else
+            for row = rowCount-1 downto 0 do
+              renderer.drawItem(g2, state, dataArea, this, domainAxis, rangeAxis, 
+                                currentDataset, row, column, pass)
+  
+  result' = foundData
+Functional Scenario Form 
+validData && rendererExists && itemsRendered || 
+noData && falseReturned || 
+noRenderer && falseReturned
+end_process
+
+process drawDomainGridlines(g2: Graphics2D, dataArea: Rectangle2D)
+pre true
+post
+  if isDomainGridlinesVisible() then
+    CategoryAnchor anchor = getDomainGridlinePosition()
+    RectangleEdge domainAxisEdge = getDomainAxisEdge()
+    Stroke gridStroke = getDomainGridlineStroke()
+    Paint gridPaint = getDomainGridlinePaint()
+    
+    if gridStroke != null && gridPaint != null then
+      CategoryDataset data = getDataset()
+      if data != null then
+        CategoryAxis axis = getDomainAxis()
+        if axis != null then
+          int columnCount = data.getColumnCount()
+          for c = 0 to columnCount-1 do
+            double xx = axis.getCategoryJava2DCoordinate(anchor, c, columnCount, dataArea, domainAxisEdge)
+            CategoryItemRenderer renderer = getRenderer()
+            if renderer != null then
+              renderer.drawDomainGridline(g2, this, dataArea, xx)
+Functional Scenario Form 
+gridlinesVisible && validStrokePaint && dataExists && axisExists && gridlinesDrawn || 
+gridlinesInvisible && skipped || 
+invalidStrokePaint && skipped || 
+noData && skipped || 
+noAxis && skipped
+end_process
+
+process drawRangeGridlines(g2: Graphics2D, dataArea: Rectangle2D, ticks: List)
+pre true
+post
+  if isRangeGridlinesVisible() then
+    Stroke gridStroke = getRangeGridlineStroke()
+    Paint gridPaint = getRangeGridlinePaint()
+    if gridStroke != null && gridPaint != null then
+      ValueAxis axis = getRangeAxis()
+      if axis != null then
+        Iterator iterator = ticks.iterator()
+        while iterator.hasNext() do
+          ValueTick tick = (ValueTick) iterator.next()
+          CategoryItemRenderer renderer = getRenderer()
+          if renderer != null then
+            renderer.drawRangeGridline(g2, this, axis, dataArea, tick.getValue())
+Functional Scenario Form 
+gridlinesVisible && validStrokePaint && axisExists && ticksExist && gridlinesDrawn || 
+gridlinesInvisible && skipped || 
+invalidStrokePaint && skipped || 
+noAxis && skipped || 
+noTicks && skipped
+end_process
+
+process drawAnnotations(g2: Graphics2D, dataArea: Rectangle2D, info: PlotRenderingInfo)
+pre true
+post
+  Iterator iterator = getAnnotations().iterator()
+  while iterator.hasNext() do
+    CategoryAnnotation annotation = (CategoryAnnotation) iterator.next()
+    annotation.draw(g2, this, dataArea, getDomainAxis(), getRangeAxis(), 0, info)
+Functional Scenario Form 
+annotationsExist && drawn || 
+noAnnotations && skipped
+end_process
+
+process drawDomainMarkers(g2: Graphics2D, dataArea: Rectangle2D, index: int, layer: Layer)
+pre true
+post
+  CategoryItemRenderer r = getRenderer(index)
+  if r != null then
+    Collection markers = getDomainMarkers(index, layer)
+    CategoryAxis axis = getDomainAxisForDataset(index)
+    if markers != null && axis != null then
+      Iterator iterator = markers.iterator()
+      while iterator.hasNext() do
+        CategoryMarker marker = (CategoryMarker) iterator.next()
+        r.drawDomainMarker(g2, this, axis, marker, dataArea)
+Functional Scenario Form 
+rendererExists && markersExist && axisExists && markersDrawn || 
+noRenderer && skipped || 
+noMarkers && skipped || 
+noAxis && skipped
+end_process
+
+process drawRangeMarkers(g2: Graphics2D, dataArea: Rectangle2D, index: int, layer: Layer)
+pre true
+post
+  CategoryItemRenderer r = getRenderer(index)
+  if r != null then
+    Collection markers = getRangeMarkers(index, layer)
+    ValueAxis axis = getRangeAxisForDataset(index)
+    if markers != null && axis != null then
+      Iterator iterator = markers.iterator()
+      while iterator.hasNext() do
+        Marker marker = (Marker) iterator.next()
+        r.drawRangeMarker(g2, this, axis, marker, dataArea)
+Functional Scenario Form 
+rendererExists && markersExist && axisExists && markersDrawn || 
+noRenderer && skipped || 
+noMarkers && skipped || 
+noAxis && skipped
+end_process
+
+process drawRangeLine(g2: Graphics2D, dataArea: Rectangle2D, value: double, stroke: Stroke, paint: Paint)
+pre true
+post
+  double java2D = getRangeAxis().valueToJava2D(value, dataArea, getRangeAxisEdge())
+  Line2D line = null
+  if this.orientation == PlotOrientation.HORIZONTAL then
+    line = new Line2D.Double(java2D, dataArea.getMinY(), java2D, dataArea.getMaxY())
+  else if this.orientation == PlotOrientation.VERTICAL then
+    line = new Line2D.Double(dataArea.getMinX(), java2D, dataArea.getMaxX(), java2D)
+  
+  if line != null then
+    g2.setStroke(stroke)
+    g2.setPaint(paint)
+    g2.draw(line)
+Functional Scenario Form 
+horizontalOrientation && lineDrawn || 
+verticalOrientation && lineDrawn || 
+invalidOrientation && skipped
+end_process
+
+process drawRangeCrosshair(g2: Graphics2D, dataArea: Rectangle2D, orientation: PlotOrientation, 
+                          value: double, axis: ValueAxis, stroke: Stroke, paint: Paint)
+pre true
+post
+  if !axis.getRange().contains(value) then return
+  
+  Line2D line = null
+  if orientation == PlotOrientation.HORIZONTAL then
+    double xx = axis.valueToJava2D(value, dataArea, RectangleEdge.BOTTOM)
+    line = new Line2D.Double(xx, dataArea.getMinY(), xx, dataArea.getMaxY())
+  else
+    double yy = axis.valueToJava2D(value, dataArea, RectangleEdge.LEFT)
+    line = new Line2D.Double(dataArea.getMinX(), yy, dataArea.getMaxX(), yy)
+  
+  if line != null then
+    g2.setStroke(stroke)
+    g2.setPaint(paint)
+    g2.draw(line)
+Functional Scenario Form 
+valueInRange && horizontalOrientation && crosshairDrawn || 
+valueInRange && verticalOrientation && crosshairDrawn || 
+valueOutOfRange && skipped
+end_process
+
+process getDataRange(axis: ValueAxis) result: Range
+pre true
+post
+  Range result = null
+  List mappedDatasets = new ArrayList()
+  
+  int rangeIndex = this.rangeAxes.indexOf(axis)
+  if rangeIndex >= 0 then
+    mappedDatasets.addAll(datasetsMappedToRangeAxis(rangeIndex))
+  else if axis == getRangeAxis() then
+    mappedDatasets.addAll(datasetsMappedToRangeAxis(0))
+  
+  Iterator iterator = mappedDatasets.iterator()
+  while iterator.hasNext() do
+    CategoryDataset d = (CategoryDataset) iterator.next()
+    CategoryItemRenderer r = getRendererForDataset(d)
+    if r != null then
+      result = Range.combine(result, r.findRangeBounds(d))
+  
+  result' = result
+Functional Scenario Form 
+axisMapped && datasetsExist && rangeCalculated || 
+axisNotMapped && nullReturned || 
+noDatasets && nullReturned
+end_process
+
+// 私有方法按约定不公开，但为完整性包含在规范中
+process datasetsMappedToDomainAxis(axisIndex: int) result: List
+pre true
+post
+  List result = new ArrayList()
+  for datasetIndex = 0 to this.datasets.size()-1 do
+    Object dataset = this.datasets.get(datasetIndex)
+    if dataset != null then
+      Integer m = (Integer) this.datasetToDomainAxisMap.get(datasetIndex)
+      if m == null then
+        if axisIndex == 0 then
+          result.add(dataset)
+      else
+        if m.intValue() == axisIndex then
+          result.add(dataset)
+  
+  result' = result
+Functional Scenario Form 
+datasetFound && mapped || 
+datasetFound && notMapped || 
+noDataset && skipped
+end_process
+
+process datasetsMappedToRangeAxis(index: int) result: List
+pre true
+post
+  List result = new ArrayList()
+  for i = 0 to this.datasets.size()-1 do
+    Object dataset = this.datasets.get(i)
+    if dataset != null then
+      Integer m = (Integer) this.datasetToRangeAxisMap.get(i)
+      if m == null then
+        if index == 0 then 
+          result.add(dataset)
+      else
+        if m.intValue() == index then
+          result.add(dataset)
+  
+  result' = result
+Functional Scenario Form 
+datasetFound && mapped || 
+datasetFound && notMapped || 
+noDataset && skipped
+end_process
+
+process getWeight() result: int
+pre true
+post
+  result' = this.weight
+Functional Scenario Form weightReturned
+end_process
+
+process setWeight(weight: int)
+pre true
+post
+  this.weight' = weight
+  fireChangeEvent()
+Functional Scenario Form weightSet
+end_process
+
+process getFixedDomainAxisSpace() result: AxisSpace
+pre true
+post
+  result' = this.fixedDomainAxisSpace
+Functional Scenario Form spaceReturned
+end_process
+
+process setFixedDomainAxisSpace(space: AxisSpace)
+pre true
+post
+  setFixedDomainAxisSpace(space, true)
+Functional Scenario Form spaceSet
+end_process
+
+process setFixedDomainAxisSpace(space: AxisSpace, notify: boolean)
+pre true
+post
+  this.fixedDomainAxisSpace' = space
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+spaceSet || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process getFixedRangeAxisSpace() result: AxisSpace
+pre true
+post
+  result' = this.fixedRangeAxisSpace
+Functional Scenario Form spaceReturned
+end_process
+
+process setFixedRangeAxisSpace(space: AxisSpace)
+pre true
+post
+  setFixedRangeAxisSpace(space, true)
+Functional Scenario Form spaceSet
+end_process
+
+process setFixedRangeAxisSpace(space: AxisSpace, notify: boolean)
+pre true
+post
+  this.fixedRangeAxisSpace' = space
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+spaceSet || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process getCategories() result: List
+pre true
+post
+  List result = null
+  if getDataset() != null then
+    result = Collections.unmodifiableList(getDataset().getColumnKeys())
+  result' = result
+Functional Scenario Form 
+datasetExists && categoriesReturned || 
+noDataset && nullReturned
+end_process
+
+process getCategoriesForAxis(axis: CategoryAxis) result: List
+pre axis != null
+post
+  List result = new ArrayList()
+  int axisIndex = this.domainAxes.indexOf(axis)
+  List datasets = datasetsMappedToDomainAxis(axisIndex)
+  Iterator iterator = datasets.iterator()
+  while iterator.hasNext() do
+    CategoryDataset dataset = (CategoryDataset) iterator.next()
+    for i = 0 to dataset.getColumnCount()-1 do
+      Comparable category = dataset.getColumnKey(i)
+      if !result.contains(category) then
+        result.add(category)
+  result' = result
+Functional Scenario Form 
+axisExists && datasetsMapped && categoriesCollected || 
+axisNotMapped && emptyListReturned
+end_process
+
+process zoomRangeAxes(factor: double, info: PlotRenderingInfo, source: Point2D, useAnchor: boolean)
+pre true
+post
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis rangeAxis = (ValueAxis) this.rangeAxes.get(i)
+    if rangeAxis != null then
+      if useAnchor then
+        double sourceY = source.getY()
+        if this.orientation == PlotOrientation.HORIZONTAL then
+          sourceY = source.getX()
+        double anchorY = rangeAxis.java2DToValue(sourceY, info.getDataArea(), getRangeAxisEdge())
+        rangeAxis.resizeRange(factor, anchorY)
+      else
+        rangeAxis.resizeRange(factor)
+Functional Scenario Form 
+rangeAxisExists && useAnchorTrue && anchorCalculated && resized || 
+rangeAxisExists && useAnchorFalse && resized || 
+noRangeAxis && skipped
+end_process
+
+process zoomRangeAxes(lowerPercent: double, upperPercent: double, state: PlotRenderingInfo, source: Point2D)
+pre true
+post
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis rangeAxis = (ValueAxis) this.rangeAxes.get(i)
+    if rangeAxis != null then
+      rangeAxis.zoomRange(lowerPercent, upperPercent)
+Functional Scenario Form 
+rangeAxisExists && zoomed || 
+noRangeAxis && skipped
+end_process
+
+process getAnchorValue() result: double
+pre true
+post
+  result' = this.anchorValue
+Functional Scenario Form valueReturned
+end_process
+
+process setAnchorValue(value: double)
+pre true
+post
+  setAnchorValue(value, true)
+Functional Scenario Form valueSet
+end_process
+
+process setAnchorValue(value: double, notify: boolean)
+pre true
+post
+  this.anchorValue' = value
+  if notify then fireChangeEvent()
+Functional Scenario Form 
+valueSet || 
+notifyTrue && eventFired || 
+notifyFalse && silent
+end_process
+
+process equals(obj: Object) result: boolean
+pre true
+post
+  if obj == this then
+    result' = true
+    return
+  
+  if !(obj instanceof CategoryPlot) then
+    result' = false
+    return
+  
+  if !super.equals(obj) then
+    result' = false
+    return
+  
+  CategoryPlot that = (CategoryPlot) obj
+  
+  result' = 
+    this.orientation == that.orientation &&
+    ObjectUtilities.equal(this.axisOffset, that.axisOffset) &&
+    this.domainAxes.equals(that.domainAxes) &&
+    this.domainAxisLocations.equals(that.domainAxisLocations) &&
+    this.drawSharedDomainAxis == that.drawSharedDomainAxis &&
+    this.rangeAxes.equals(that.rangeAxes) &&
+    this.rangeAxisLocations.equals(that.rangeAxisLocations) &&
+    ObjectUtilities.equal(this.datasetToDomainAxisMap, that.datasetToDomainAxisMap) &&
+    ObjectUtilities.equal(this.datasetToRangeAxisMap, that.datasetToRangeAxisMap) &&
+    ObjectUtilities.equal(this.renderers, that.renderers) &&
+    this.renderingOrder == that.renderingOrder &&
+    this.columnRenderingOrder == that.columnRenderingOrder &&
+    this.rowRenderingOrder == that.rowRenderingOrder &&
+    this.domainGridlinesVisible == that.domainGridlinesVisible &&
+    this.domainGridlinePosition == that.domainGridlinePosition &&
+    ObjectUtilities.equal(this.domainGridlineStroke, that.domainGridlineStroke) &&
+    PaintUtilities.equal(this.domainGridlinePaint, that.domainGridlinePaint) &&
+    this.rangeGridlinesVisible == that.rangeGridlinesVisible &&
+    ObjectUtilities.equal(this.rangeGridlineStroke, that.rangeGridlineStroke) &&
+    PaintUtilities.equal(this.rangeGridlinePaint, that.rangeGridlinePaint) &&
+    this.anchorValue == that.anchorValue &&
+    this.rangeCrosshairVisible == that.rangeCrosshairVisible &&
+    this.rangeCrosshairValue == that.rangeCrosshairValue &&
+    ObjectUtilities.equal(this.rangeCrosshairStroke, that.rangeCrosshairStroke) &&
+    PaintUtilities.equal(this.rangeCrosshairPaint, that.rangeCrosshairPaint) &&
+    this.rangeCrosshairLockedOnData == that.rangeCrosshairLockedOnData &&
+    ObjectUtilities.equal(this.foregroundRangeMarkers, that.foregroundRangeMarkers) &&
+    ObjectUtilities.equal(this.backgroundRangeMarkers, that.backgroundRangeMarkers) &&
+    ObjectUtilities.equal(this.annotations, that.annotations) &&
+    this.weight == that.weight &&
+    ObjectUtilities.equal(this.fixedDomainAxisSpace, that.fixedDomainAxisSpace) &&
+    ObjectUtilities.equal(this.fixedRangeAxisSpace, that.fixedRangeAxisSpace)
+Functional Scenario Form 
+sameInstance && trueReturned || 
+notCategoryPlot && falseReturned || 
+superNotEqual && falseReturned || 
+allAttributesEqual && trueReturned || 
+anyAttributeDiffers && falseReturned
+end_process
+
+process clone() result: Object throws CloneNotSupportedException
+pre true
+post
+  CategoryPlot clone = (CategoryPlot) super.clone()
+  
+  clone.domainAxes = new ObjectList()
+  for i = 0 to this.domainAxes.size()-1 do
+    CategoryAxis xAxis = (CategoryAxis) this.domainAxes.get(i)
+    if xAxis != null then
+      CategoryAxis clonedAxis = (CategoryAxis) xAxis.clone()
+      clone.setDomainAxis(i, clonedAxis)
+  clone.domainAxisLocations = (ObjectList) this.domainAxisLocations.clone()
+  
+  clone.rangeAxes = new ObjectList()
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis yAxis = (ValueAxis) this.rangeAxes.get(i)
+    if yAxis != null then
+      ValueAxis clonedAxis = (ValueAxis) yAxis.clone()
+      clone.setRangeAxis(i, clonedAxis)
+  clone.rangeAxisLocations = (ObjectList) this.rangeAxisLocations.clone()
+  
+  clone.datasets = (ObjectList) this.datasets.clone()
+  for i = 0 to clone.datasets.size()-1 do
+    CategoryDataset dataset = clone.getDataset(i)
+    if dataset != null then
+      dataset.addChangeListener(clone)
+  
+  clone.datasetToDomainAxisMap = (ObjectList) this.datasetToDomainAxisMap.clone()
+  clone.datasetToRangeAxisMap = (ObjectList) this.datasetToRangeAxisMap.clone()
+  clone.renderers = (ObjectList) this.renderers.clone()
+  
+  if this.fixedDomainAxisSpace != null then
+    clone.fixedDomainAxisSpace = (AxisSpace) ObjectUtilities.clone(this.fixedDomainAxisSpace)
+  if this.fixedRangeAxisSpace != null then
+    clone.fixedRangeAxisSpace = (AxisSpace) ObjectUtilities.clone(this.fixedRangeAxisSpace)
+  
+  result' = clone
+Functional Scenario Form 
+clonedSuccessfully || 
+cloneNotSupported && exceptionThrown
+end_process
+
+process writeObject(stream: ObjectOutputStream) throws IOException
+pre true
+post
+  stream.defaultWriteObject()
+  SerialUtilities.writeStroke(this.domainGridlineStroke, stream)
+  SerialUtilities.writePaint(this.domainGridlinePaint, stream)
+  SerialUtilities.writeStroke(this.rangeGridlineStroke, stream)
+  SerialUtilities.writePaint(this.rangeGridlinePaint, stream)
+  SerialUtilities.writeStroke(this.rangeCrosshairStroke, stream)
+  SerialUtilities.writePaint(this.rangeCrosshairPaint, stream)
+Functional Scenario Form 
+serializedSuccessfully || 
+ioError && exceptionThrown
+end_process
+
+process readObject(stream: ObjectInputStream) throws IOException, ClassNotFoundException
+pre true
+post
+  stream.defaultReadObject()
+  this.domainGridlineStroke = SerialUtilities.readStroke(stream)
+  this.domainGridlinePaint = SerialUtilities.readPaint(stream)
+  this.rangeGridlineStroke = SerialUtilities.readStroke(stream)
+  this.rangeGridlinePaint = SerialUtilities.readPaint(stream)
+  this.rangeCrosshairStroke = SerialUtilities.readStroke(stream)
+  this.rangeCrosshairPaint = SerialUtilities.readPaint(stream)
+  
+  for i = 0 to this.domainAxes.size()-1 do
+    CategoryAxis xAxis = (CategoryAxis) this.domainAxes.get(i)
+    if xAxis != null then
+      xAxis.setPlot(this)
+      xAxis.addChangeListener(this)
+  
+  for i = 0 to this.rangeAxes.size()-1 do
+    ValueAxis yAxis = (ValueAxis) this.rangeAxes.get(i)
+    if yAxis != null then
+      yAxis.setPlot(this)
+      yAxis.addChangeListener(this)
+  
+  for i = 0 to this.datasets.size()-1 do
+    Dataset dataset = (Dataset) this.datasets.get(i)
+    if dataset != null then
+      dataset.addChangeListener(this)
+  
+  for i = 0 to this.renderers.size()-1 do
+    CategoryItemRenderer renderer = (CategoryItemRenderer) this.renderers.get(i)
+    if renderer != null then
+      renderer.addChangeListener(this)
+Functional Scenario Form 
+deserializedSuccessfully || 
+ioError && exceptionThrown || 
+classNotFound && exceptionThrown
+end_process
+
+
+end_module

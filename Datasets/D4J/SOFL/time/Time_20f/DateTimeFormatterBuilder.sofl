@@ -1,0 +1,2457 @@
+module DateTimeFormatterBuilder  
+
+// Constructor
+process constructor()  
+pre true  
+post  
+  iElementPairs' = new ArrayList<Object>()  
+  iFormatter' = null  
+Functional Scenario Form  
+initializes empty list and null formatter  
+end_process  
+
+// Formatter retrieval
+process getFormatter() result: Object  
+pre true  
+post  
+  result' = iFormatter  
+Functional Scenario Form  
+returns cached formatter  
+end_process  
+
+// Check if object is printer
+process isPrinter(obj: Object) result: boolean  
+pre true  
+post  
+  obj instanceof DateTimePrinter  
+    ? result' = true  
+    : result' = false  
+Functional Scenario Form  
+obj=DateTimePrinter instance && returns true  
+obj=other type && returns false  
+end_process  
+
+// Check if object is parser
+process isParser(obj: Object) result: boolean  
+pre true  
+post  
+  obj instanceof DateTimeParser  
+    ? result' = true  
+    : result' = false  
+Functional Scenario Form  
+obj=DateTimeParser instance && returns true  
+obj=other type && returns false  
+end_process  
+
+// Build final formatter
+process toFormatter() result: DateTimeFormatter  
+pre true  
+post  
+  f = getFormatter()  
+  printer = null  
+  isPrinter(f)  
+    ? printer' = (DateTimePrinter)f  
+  parser = null  
+  isParser(f)  
+    ? parser' = (DateTimeParser)f  
+  printer ≠ null ∨ parser ≠ null  
+    ? result' = new DateTimeFormatter(printer, parser)  
+    : throw new UnsupportedOperationException("Both printing and parsing not supported")  
+Functional Scenario Form  
+f supports printing && returns formatter  
+f supports neither && throws exception  
+end_process  
+
+// Build printer
+process toPrinter() result: DateTimePrinter  
+pre true  
+post  
+  f = getFormatter()  
+  isPrinter(f)  
+    ? result' = (DateTimePrinter)f  
+    : throw new UnsupportedOperationException("Printing is not supported")  
+Functional Scenario Form  
+f is printer && returns it  
+f not printer && throws exception  
+end_process  
+
+// Build parser
+process toParser() result: DateTimeParser  
+pre true  
+post  
+  f = getFormatter()  
+  isParser(f)  
+    ? result' = (DateTimeParser)f  
+    : throw new UnsupportedOperationException("Parsing is not supported")  
+Functional Scenario Form  
+f is parser && returns it  
+f not parser && throws exception  
+end_process  
+
+// Formatter capability check
+process canBuildFormatter() result: boolean  
+pre true  
+post  
+  f = getFormatter()  
+  result' = isPrinter(f) ∨ isParser(f)  
+Functional Scenario Form  
+f supports either && returns true  
+f supports neither && returns false  
+end_process  
+
+// Printer capability check
+process canBuildPrinter() result: boolean  
+pre true  
+post  
+  f = getFormatter()  
+  result' = isPrinter(f)  
+Functional Scenario Form  
+f is printer && returns true  
+f not printer && returns false  
+end_process  
+
+// Parser capability check
+process canBuildParser() result: boolean  
+pre true  
+post  
+  f = getFormatter()  
+  result' = isParser(f)  
+Functional Scenario Form  
+f is parser && returns true  
+f not parser && returns false  
+end_process  
+
+// Clear builder state
+process clear()  
+pre true  
+post  
+  iFormatter' = null  
+  iElementPairs.clear()  
+Functional Scenario Form  
+resets formatter and clears element pairs  
+end_process  
+
+// Append formatter
+process append(formatter: DateTimeFormatter)  
+pre formatter ≠ null  
+post  
+  append0(formatter.getPrinter(), formatter.getParser())  
+Functional Scenario Form  
+valid formatter && appends its printer/parser  
+end_process  
+
+// Append parser
+process append(parser: DateTimeParser)  
+pre parser ≠ null  
+post  
+  append0(null, parser)  
+Functional Scenario Form  
+valid parser && appends with null printer  
+end_process  
+
+// Append printer-parser pair
+process append(printer: DateTimePrinter, parser: DateTimeParser)  
+pre printer ≠ null ∧ parser ≠ null  
+post  
+  append0(printer, parser)  
+Functional Scenario Form  
+valid pair && appends both  
+end_process  
+
+
+// Append printer with parser array
+process append(printer: DateTimePrinter, parsers: DateTimeParser[])  
+pre parsers ≠ null  
+post  
+  printer ≠ null  
+    ? checkPrinter(printer)  
+  parsers.length = 1  
+    ? parsers[0] ≠ null  
+        ? append0(printer, parsers[0])  
+    : copy = new DateTimeParser[parsers.length]  
+      for i=0 to parsers.length-2  
+        parsers[i] = null  
+          ? throw new IllegalArgumentException("Incomplete parser array")  
+        : copy[i]' = parsers[i]  
+      copy[parsers.length-1]' = parsers[parsers.length-1]  
+      append0(printer, new MatchingParser(copy))  
+Functional Scenario Form  
+parsers.length=1 && appends single parser  
+parsers.length>1 && creates MatchingParser  
+parsers contains null && throws incomplete array exception  
+end_process  
+
+// Append optional parser
+process appendOptional(parser: DateTimeParser)  
+pre true  
+post  
+  checkParser(parser)  
+  parsers = [parser, null]  
+  append0(null, new MatchingParser(parsers))  
+Functional Scenario Form  
+valid parser && appends with MatchingParser  
+end_process  
+
+// Parser validation
+private process checkParser(parser: DateTimeParser)  
+pre true  
+post  
+  parser = null  
+    ? throw new IllegalArgumentException("No parser supplied")  
+Functional Scenario Form  
+parser=null && throws exception  
+end_process  
+
+// Printer validation
+private process checkPrinter(printer: DateTimePrinter)  
+pre true  
+post  
+  printer = null  
+    ? throw new IllegalArgumentException("No printer supplied")  
+Functional Scenario Form  
+printer=null && throws exception  
+end_process  
+
+// Single element append (private)
+private process append0(element: Object)  
+pre true  
+post  
+  iFormatter' = null  
+  iElementPairs.add(element)  
+  iElementPairs.add(element)  
+Functional Scenario Form  
+element=Literal instance && adds twice  
+end_process  
+
+// Character literal append
+process appendLiteral(c: char)  
+pre true  
+post  
+  append0(new CharacterLiteral(c))  
+Functional Scenario Form  
+c=',' && adds comma literal  
+end_process  
+
+// String literal append
+process appendLiteral(text: String)  
+pre text ≠ null  
+post  
+  text.length = 0  
+    ? return  
+  text.length = 1  
+    ? append0(new CharacterLiteral(text.charAt(0)))  
+  else  
+    append0(new StringLiteral(text))  
+Functional Scenario Form  
+text="" && no append  
+text="T" && adds CharacterLiteral  
+text="GMT" && adds StringLiteral  
+end_process 
+
+// Decimal number field (unsigned)
+process appendDecimal(fieldType: DateTimeFieldType, minDigits: int, maxDigits: int)  
+pre fieldType ≠ null  
+post  
+  maxDigits < minDigits  
+    ? maxDigits' = minDigits  
+  minDigits < 0 ∨ maxDigits ≤ 0  
+    ? throw IllegalArgumentException  
+  minDigits ≤ 1  
+    ? append0(new UnpaddedNumber(fieldType, maxDigits, false))  
+  else  
+    append0(new PaddedNumber(fieldType, maxDigits, false, minDigits))  
+Functional Scenario Form  
+minDigits=1 maxDigits=2 && appends UnpaddedNumber  
+minDigits=3 maxDigits=4 && appends PaddedNumber  
+minDigits=-1 && throws exception  
+end_process  
+
+// Fixed-width decimal (unsigned)
+process appendFixedDecimal(fieldType: DateTimeFieldType, numDigits: int)  
+pre fieldType ≠ null ∧ numDigits > 0  
+post  
+  append0(new FixedNumber(fieldType, numDigits, false))  
+Functional Scenario Form  
+numDigits=2 && appends FixedNumber  
+numDigits=0 && throws exception  
+end_process  
+
+// Signed decimal field
+process appendSignedDecimal(fieldType: DateTimeFieldType, minDigits: int, maxDigits: int)  
+pre fieldType ≠ null  
+post  
+  maxDigits < minDigits  
+    ? maxDigits' = minDigits  
+  minDigits < 0 ∨ maxDigits ≤ 0  
+    ? throw IllegalArgumentException  
+  minDigits ≤ 1  
+    ? append0(new UnpaddedNumber(fieldType, maxDigits, true))  
+  else  
+    append0(new PaddedNumber(fieldType, maxDigits, true, minDigits))  
+Functional Scenario Form  
+minDigits=1 maxDigits=2 signed=true && appends UnpaddedNumber  
+minDigits=3 maxDigits=4 signed=true && appends PaddedNumber  
+end_process  
+
+// Fixed-width signed decimal
+process appendFixedSignedDecimal(fieldType: DateTimeFieldType, numDigits: int)  
+pre fieldType ≠ null ∧ numDigits > 0  
+post  
+  append0(new FixedNumber(fieldType, numDigits, true))  
+Functional Scenario Form  
+numDigits=3 signed=true && appends FixedNumber  
+end_process  
+
+// Text field
+process appendText(fieldType: DateTimeFieldType)  
+pre fieldType ≠ null  
+post  
+  append0(new TextField(fieldType, false))  
+Functional Scenario Form  
+fieldType=monthOfYear && appends TextField  
+end_process  
+
+process appendFraction(fieldType: DateTimeFieldType, minDigits: int, maxDigits: int)  
+pre fieldType ≠ null  
+post  
+  maxDigits < minDigits  
+    ? maxDigits' = minDigits  
+  minDigits < 0 ∨ maxDigits ≤ 0  
+    ? throw IllegalArgumentException  
+  else  
+    append0(new Fraction(fieldType, minDigits, maxDigits))  
+Functional Scenario Form  
+minDigits=3 maxDigits=6 && appends Fraction  
+minDigits=-1 && throws exception  
+end_process  
+
+// Fraction of second
+process appendFractionOfSecond(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendFraction(DateTimeFieldType.secondOfDay(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=3 maxDigits=6 && calls with secondOfDay  
+end_process  
+
+// Fraction of minute
+process appendFractionOfMinute(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendFraction(DateTimeFieldType.minuteOfDay(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=2 maxDigits=4 && calls with minuteOfDay  
+end_process  
+
+// Fraction of hour
+process appendFractionOfHour(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendFraction(DateTimeFieldType.hourOfDay(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=1 maxDigits=3 && calls with hourOfDay  
+end_process  
+
+// Fraction of day
+process appendFractionOfDay(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendFraction(DateTimeFieldType.dayOfYear(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=1 maxDigits=3 && calls with dayOfYear  
+end_process  
+
+// Millis of second
+process appendMillisOfSecond(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.millisOfSecond(), minDigits, 3)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=3  
+end_process  
+
+// Millis of day
+process appendMillisOfDay(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.millisOfDay(), minDigits, 8)  
+Functional Scenario Form  
+minDigits=3 && calls with maxDigits=8  
+end_process  
+
+// Second of minute
+process appendSecondOfMinute(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.secondOfMinute(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Second of day
+process appendSecondOfDay(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.secondOfDay(), minDigits, 5)  
+Functional Scenario Form  
+minDigits=2 && calls with maxDigits=5  
+end_process  
+
+// Minute of hour
+process appendMinuteOfHour(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.minuteOfHour(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Minute of day
+process appendMinuteOfDay(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.minuteOfDay(), minDigits, 4)  
+Functional Scenario Form  
+minDigits=2 && calls with maxDigits=4  
+end_process  
+
+// Hour of day
+process appendHourOfDay(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.hourOfDay(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Clockhour of day
+process appendClockhourOfDay(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.clockhourOfDay(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Hour of halfday
+process appendHourOfHalfday(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.hourOfHalfday(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Clockhour of halfday
+process appendClockhourOfHalfday(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.clockhourOfHalfday(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Day of week
+process appendDayOfWeek(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.dayOfWeek(), minDigits, 1)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=1  
+end_process  
+
+// Day of month
+process appendDayOfMonth(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.dayOfMonth(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+// Day of year
+process appendDayOfYear(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.dayOfYear(), minDigits, 3)  
+Functional Scenario Form  
+minDigits=2 && calls with maxDigits=3  
+end_process  
+
+// Week of weekyear
+process appendWeekOfWeekyear(minDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.weekOfWeekyear(), minDigits, 2)  
+Functional Scenario Form  
+minDigits=1 && calls with maxDigits=2  
+end_process  
+
+process appendYear(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendSignedDecimal(DateTimeFieldType.year(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=2 maxDigits=4 && calls with year field  
+end_process  
+
+// Two-digit year (default)
+process appendTwoDigitYear(pivot: int)  
+pre true  
+post  
+  appendTwoDigitYear(pivot, false)  
+Functional Scenario Form  
+pivot=2000 && calls with lenientParse=false  
+end_process  
+
+// Two-digit year (configurable)
+process appendTwoDigitYear(pivot: int, lenientParse: boolean)  
+pre true  
+post  
+  append0(new TwoDigitYear(DateTimeFieldType.year(), pivot, lenientParse))  
+Functional Scenario Form  
+pivot=2000 lenientParse=true && appends TwoDigitYear  
+end_process  
+
+// Two-digit weekyear (default)
+process appendTwoDigitWeekyear(pivot: int)  
+pre true  
+post  
+  appendTwoDigitWeekyear(pivot, false)  
+Functional Scenario Form  
+pivot=2025 && calls with lenientParse=false  
+end_process  
+
+// Two-digit weekyear (configurable)
+process appendTwoDigitWeekyear(pivot: int, lenientParse: boolean)  
+pre true  
+post  
+  append0(new TwoDigitYear(DateTimeFieldType.weekyear(), pivot, lenientParse))  
+Functional Scenario Form  
+pivot=2025 lenientParse=true && appends TwoDigitYear  
+end_process  
+
+// Year of era field
+process appendYearOfEra(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.yearOfEra(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=2 maxDigits=4 && calls appendDecimal with yearOfEra  
+end_process  
+
+// Year of century field
+process appendYearOfCentury(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendDecimal(DateTimeFieldType.yearOfCentury(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=1 maxDigits=2 && calls appendDecimal with yearOfCentury  
+end_process  
+
+// Century of era field
+process appendCenturyOfEra(minDigits: int, maxDigits: int)  
+pre true  
+post  
+  appendSignedDecimal(DateTimeFieldType.centuryOfEra(), minDigits, maxDigits)  
+Functional Scenario Form  
+minDigits=1 maxDigits=2 && calls appendSignedDecimal with centuryOfEra  
+end_process  
+
+// Time zone offset (single text)
+process appendTimeZoneOffset(zeroOffsetText: String, showSeparators: boolean, minFields: int, maxFields: int)  
+pre true  
+post  
+  append0(new TimeZoneOffset(zeroOffsetText, zeroOffsetText, showSeparators, minFields, maxFields))  
+Functional Scenario Form  
+zeroOffsetText="Z" minFields=1 maxFields=2 && creates TimeZoneOffset  
+end_process  
+
+// Time zone offset (dual text)
+process appendTimeZoneOffset(zeroOffsetPrintText: String, zeroOffsetParseText: String, showSeparators: boolean, minFields: int, maxFields: int)  
+pre true  
+post  
+  append0(new TimeZoneOffset(zeroOffsetPrintText, zeroOffsetParseText, showSeparators, minFields, maxFields))  
+Functional Scenario Form  
+printText="Z" parseText="UTC" && creates with different texts  
+end_process  
+
+// Pattern append
+process appendPattern(pattern: String)  
+pre true  
+post  
+  DateTimeFormat.appendPatternTo(this, pattern)  
+Functional Scenario Form  
+pattern="yyyy-MM" && calls DateTimeFormat  
+end_process  
+
+// Formatter retrieval (updated)
+process getFormatter() result: Object  
+pre true  
+post  
+  f = iFormatter  
+  f = null  
+    ? iElementPairs.size() = 2  
+        ? printer = iElementPairs.get(0)  
+          parser = iElementPairs.get(1)  
+          printer ≠ null  
+            ? printer = parser ∨ parser = null  
+                ? f' = printer  
+          else  
+            f' = parser  
+      f' = null  
+        ? f'' = new Composite(iElementPairs)  
+      iFormatter' = f''  
+      result' = f''  
+    : result' = f  
+Functional Scenario Form  
+iFormatter≠null && returns cached formatter  
+single element pair printer=parser && returns printer  
+complex pairs && creates Composite  
+end_process  
+
+// Printer capability check
+private process isPrinter(f: Object) result: boolean  
+pre true  
+post  
+  f instanceof DateTimePrinter  
+    ? f instanceof Composite  
+        ? result' = ((Composite)f).isPrinter()  
+      else  
+        result' = true  
+    : result' = false  
+Functional Scenario Form  
+f=Composite printer && returns its isPrinter  
+f=DateTimePrinter instance && returns true  
+f=other type && returns false  
+end_process  
+
+// Parser capability check
+private process isParser(f: Object) result: boolean  
+pre true  
+post  
+  f instanceof DateTimeParser  
+    ? f instanceof Composite  
+        ? result' = ((Composite)f).isParser()  
+      else  
+        result' = true  
+    : result' = false  
+Functional Scenario Form  
+f=Composite parser && returns its isParser  
+f=DateTimeParser instance && returns true  
+f=other type && returns false  
+end_process  
+
+// Formatter capability check
+private process isFormatter(f: Object) result: boolean  
+pre true  
+post  
+  result' = isPrinter(f) ∨ isParser(f)  
+Functional Scenario Form  
+f supports printing or parsing && returns true  
+f supports neither && returns false  
+end_process  
+
+// Unknown string buffer append
+static process appendUnknownString(buf: StringBuffer, len: int)  
+pre true  
+post  
+  for i=len-1 downto 0  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+len=3 && appends three unknown chars  
+end_process  
+
+// Unknown string writer output
+static process printUnknownString(out: Writer, len: int)  
+pre true  
+post  
+  for i=len-1 downto 0  
+    out.write('\ufffd')  
+Functional Scenario Form  
+len=2 && writes two unknown chars  
+end_process  
+
+end_module  
+
+module CharacterLiteral  
+type:  
+  iValue: char  
+
+// Constructor
+process constructor(value: char)  
+pre true  
+post  
+  iValue' = value  
+Functional Scenario Form  
+value='X' && sets iValue='X'  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = 1  
+Functional Scenario Form  
+always returns 1  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  buf.append(iValue)  
+Functional Scenario Form  
+iValue='-' && appends '-' to buffer  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  out.write(iValue)  
+Functional Scenario Form  
+iValue='T' && writes 'T' to writer  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  buf.append(iValue)  
+Functional Scenario Form  
+iValue=':' && appends ':' to buffer  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  out.write(iValue)  
+Functional Scenario Form  
+iValue='Z' && writes 'Z' to writer  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = 1  
+Functional Scenario Form  
+always returns 1  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  position ≥ text.length()  
+    ? result' = ~position  
+  else  
+    char = text.charAt(position)  
+    char = iValue  
+      ? result' = position + 1  
+    else  
+      upperChar = Character.toUpperCase(char)  
+      upperValue = Character.toUpperCase(iValue)  
+      upperChar = upperValue  
+        ? result' = position + 1  
+      else  
+        lowerChar = Character.toLowerCase(char)  
+        lowerValue = Character.toLowerCase(iValue)  
+        lowerChar = lowerValue  
+          ? result' = position + 1  
+          : result' = ~position  
+Functional Scenario Form  
+char matches iValue && returns position+1  
+case-insensitive match && returns position+1  
+no match && returns ~position  
+end_process  
+
+end_module  
+
+module StringLiteral  
+type:  
+  iValue: String  
+
+// Constructor
+process constructor(value: String)  
+pre true  
+post  
+  iValue' = value  
+Functional Scenario Form  
+value="GMT" && sets iValue="GMT"  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iValue.length()  
+Functional Scenario Form  
+iValue="UTC" && returns 3  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  buf.append(iValue)  
+Functional Scenario Form  
+iValue="+" && appends "+" to buffer  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  out.write(iValue)  
+Functional Scenario Form  
+iValue=":" && writes ":" to writer  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  buf.append(iValue)  
+Functional Scenario Form  
+iValue="/" && appends "/" to buffer  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  out.write(iValue)  
+Functional Scenario Form  
+iValue="." && writes "." to writer  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iValue.length()  
+Functional Scenario Form  
+iValue="EST" && returns 3  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  text.regionMatches(true, position, iValue, 0, iValue.length())  
+    ? result' = position + iValue.length()  
+    : result' = ~position  
+Functional Scenario Form  
+text contains iValue at position && returns new position  
+case-insensitive match && returns new position  
+no match && returns ~position  
+end_process  
+
+end_module
+ 	  
+module NumberFormatter  
+type:  
+  iMaxParsedDigits: int  
+  iSigned: boolean  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, maxParsedDigits: int, signed: boolean)  
+pre true  
+post  
+  iFieldType' = fieldType  
+  iMaxParsedDigits' = maxParsedDigits  
+  iSigned' = signed  
+Functional Scenario Form  
+fieldType=year() maxParsedDigits=4 signed=true && initializes fields  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iMaxParsedDigits  
+Functional Scenario Form  
+iMaxParsedDigits=3 && returns 3  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  limit = min(iMaxParsedDigits, text.length - position)  
+  negative = false  
+  len = 0  
+  // Sign handling
+  iSigned ∧ len = 0 ∧ position + len < text.length  
+    ? c = text.charAt(position + len)  
+      (c = '-' ∨ c = '+')  
+        ? negative = (c = '-')  
+          nextPos = position + len + 1  
+          nextPos < text.length ∧ text.charAt(nextPos) ≥ '0' ∧ text.charAt(nextPos) ≤ '9'  
+            ? len < limit - 1  
+                ? len' = len + 1  
+                  ¬negative  
+                    ? position' = position + 1  
+                  limit' = min(limit + 1, text.length - position)  
+            : break  
+  // Digit parsing
+  while len < limit  
+    ? c = text.charAt(position + len)  
+      (c < '0' ∨ c > '9')  
+        ? break  
+        : len' = len + 1  
+  len = 0  
+    ? result' = ~position  
+  else  
+    // Value calculation
+    len ≥ 9  
+      ? value = Integer.parseInt(text.substring(position, position + len))  
+        position' = position + len  
+    else  
+      start = position  
+      negative  
+        ? start' = position + 1  
+      value = text.charAt(start) - '0'  
+      for i = start + 1 to position + len - 1  
+        ? value' = (value * 10) + (text.charAt(i) - '0')  
+      negative  
+        ? value' = -value  
+      position' = position + len  
+    bucket.saveField(iFieldType, value)  
+    result' = position  
+Functional Scenario Form  
+text="123" position=0 && saves 123, returns 3  
+text="-456" position=0 iSigned=true && saves -456, returns 4  
+text="+78" position=0 iSigned=true && saves 78, returns 3  
+text="abc" position=0 && returns ~0  
+iSigned=true text="-" position=0 && returns ~0  
+len=8 position=0 text="12345678" && calculates value without parseInt  
+end_process  
+
+end_module 
+
+module UnpaddedNumber  
+type:  
+  iMaxParsedDigits: int  
+  iSigned: boolean  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, maxParsedDigits: int, signed: boolean)  
+pre true  
+post  
+  iFieldType' = fieldType  
+  iMaxParsedDigits' = maxParsedDigits  
+  iSigned' = signed  
+Functional Scenario Form  
+fieldType=year() maxParsedDigits=4 signed=true && initializes fields  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iMaxParsedDigits  
+Functional Scenario Form  
+iMaxParsedDigits=3 && returns 3  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    field = iFieldType.getField(chrono)  
+    value = field.get(instant)  
+    FormatUtils.appendUnpaddedInteger(buf, value)  
+  catch  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+valid field && appends unpadded integer  
+exception && appends unknown char  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    field = iFieldType.getField(chrono)  
+    value = field.get(instant)  
+    FormatUtils.writeUnpaddedInteger(out, value)  
+  catch  
+    out.write('\ufffd')  
+Functional Scenario Form  
+valid field && writes unpadded integer  
+exception && writes unknown char  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  partial.isSupported(iFieldType)  
+    ? try  
+        value = partial.get(iFieldType)  
+        FormatUtils.appendUnpaddedInteger(buf, value)  
+      catch  
+        buf.append('\ufffd')  
+    : buf.append('\ufffd')  
+Functional Scenario Form  
+supported field && appends value  
+unsupported field && appends unknown char  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  partial.isSupported(iFieldType)  
+    ? try  
+        value = partial.get(iFieldType)  
+        FormatUtils.writeUnpaddedInteger(out, value)  
+      catch  
+        out.write('\ufffd')  
+    : out.write('\ufffd')  
+Functional Scenario Form  
+supported field && writes value  
+unsupported field && writes unknown char  
+end_process  
+
+end_module  
+
+
+module PaddedNumber  
+type:  
+  iMaxParsedDigits: int  
+  iSigned: boolean  
+  iMinPrintedDigits: int  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, maxParsedDigits: int, signed: boolean, minPrintedDigits: int)  
+pre true  
+post  
+  iFieldType' = fieldType  
+  iMaxParsedDigits' = maxParsedDigits  
+  iSigned' = signed  
+  iMinPrintedDigits' = minPrintedDigits  
+Functional Scenario Form  
+fieldType=monthOfYear() minPrintedDigits=2 && initializes fields  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iMaxParsedDigits  
+Functional Scenario Form  
+iMaxParsedDigits=4 && returns 4  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    field = iFieldType.getField(chrono)  
+    value = field.get(instant)  
+    FormatUtils.appendPaddedInteger(buf, value, iMinPrintedDigits)  
+  catch  
+    appendUnknownString(buf, iMinPrintedDigits)  
+Functional Scenario Form  
+value=5 minDigits=2 && appends "05"  
+exception && appends unknown chars  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    field = iFieldType.getField(chrono)  
+    value = field.get(instant)  
+    FormatUtils.writePaddedInteger(out, value, iMinPrintedDigits)  
+  catch  
+    printUnknownString(out, iMinPrintedDigits)  
+Functional Scenario Form  
+value=3 minDigits=2 && writes "03"  
+exception && writes unknown chars  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  partial.isSupported(iFieldType)  
+    ? try  
+        value = partial.get(iFieldType)  
+        FormatUtils.appendPaddedInteger(buf, value, iMinPrintedDigits)  
+      catch  
+        appendUnknownString(buf, iMinPrintedDigits)  
+    : appendUnknownString(buf, iMinPrintedDigits)  
+Functional Scenario Form  
+supported field value=9 minDigits=3 && appends "009"  
+unsupported field && appends unknown chars  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  partial.isSupported(iFieldType)  
+    ? try  
+        value = partial.get(iFieldType)  
+        FormatUtils.writePaddedInteger(out, value, iMinPrintedDigits)  
+      catch  
+        printUnknownString(out, iMinPrintedDigits)  
+    : printUnknownString(out, iMinPrintedDigits)  
+Functional Scenario Form  
+supported field value=12 minDigits=4 && writes "0012"  
+unsupported field && writes unknown chars  
+end_process  
+
+end_module  
+
+ 
+module FixedNumber  
+type:  
+  iMaxParsedDigits: int  
+  iSigned: boolean  
+  iMinPrintedDigits: int  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, numDigits: int, signed: boolean)  
+pre true  
+post  
+  super(fieldType, numDigits, signed, numDigits)  // Calls PaddedNumber constructor  
+Functional Scenario Form  
+numDigits=3 && sets min/max digits to 3  
+end_process  
+
+// Parsing with fixed-digit enforcement
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  newPos = super.parseInto(bucket, text, position)  
+  newPos < 0  
+    ? result' = newPos  
+  else  
+    expected = position + iMaxParsedDigits  
+    newPos ≠ expected  
+      ? iSigned  
+          ? signChar = text.charAt(position)  
+            (signChar = '-' ∨ signChar = '+')  
+              ? expected' = expected + 1  
+      newPos > expected  
+        ? result' = ~(expected + 1)  
+      newPos < expected  
+        ? result' = ~newPos  
+      else  
+        result' = newPos  
+    : result' = newPos  
+Functional Scenario Form  
+text="123" position=0 iMaxParsedDigits=3 && returns 3  
+text="12" position=0 iMaxParsedDigits=3 && returns ~2 (missing digit)  
+text="1234" position=0 iMaxParsedDigits=3 && returns ~4 (extra digit)  
+text="-12" position=0 iSigned=true iMaxParsedDigits=2 && returns ~4 (expected 3 digits)  
+end_process  
+
+end_module  
+
+module TwoDigitYear  
+type:  
+  iType: DateTimeFieldType  
+  iPivot: int  
+  iLenientParse: boolean  
+
+// Constructor
+process constructor(type: DateTimeFieldType, pivot: int, lenientParse: boolean)  
+pre true  
+post  
+  iType' = type  
+  iPivot' = pivot  
+  iLenientParse' = lenientParse  
+Functional Scenario Form  
+type=year() pivot=2000 lenientParse=false && initializes fields  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iLenientParse ? 4 : 2  
+Functional Scenario Form  
+lenientParse=true && returns 4  
+lenientParse=false && returns 2  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  limit = text.length - position  
+  ¬iLenientParse  
+    ? limit = min(2, limit)  
+      limit < 2  
+        ? result' = ~position  
+  else  
+    // Lenient parsing logic
+    hasSign = false  
+    negative = false  
+    len = 0  
+    while len < limit  
+      ? c = text.charAt(position + len)  
+        len = 0 ∧ (c = '-' ∨ c = '+')  
+          ? hasSign' = true  
+            negative' = (c = '-')  
+            ¬negative  
+              ? position' = position + 1  
+                limit' = limit - 1  
+            : len' = len + 1  
+            continue  
+        c < '0' ∨ c > '9'  
+          ? break  
+        : len' = len + 1  
+    len = 0  
+      ? result' = ~position  
+    hasSign ∨ len ≠ 2  
+      ? // Parse absolute year
+        len ≥ 9  
+          ? value = Integer.parseInt(text.substring(position, position + len))  
+            position' = position + len  
+        else  
+          start = position  
+          negative  
+            ? start' = position + 1  
+          value = text.charAt(start) - '0'  
+          for i = start+1 to position+len-1  
+            ? value' = (value * 10) + (text.charAt(i) - '0')  
+          negative  
+            ? value' = -value  
+          position' = position + len  
+        bucket.saveField(iType, value)  
+        result' = position  
+  // Non-lenient or lenient 2-digit case
+  position < text.length  
+    ? char1 = text.charAt(position)  
+      char1 < '0' ∨ char1 > '9'  
+        ? result' = ~position  
+      year = char1 - '0'  
+      position+1 < text.length  
+        ? char2 = text.charAt(position+1)  
+          char2 < '0' ∨ char2 > '9'  
+            ? result' = ~position  
+          year' = (year * 10) + (char2 - '0')  
+          pivot = bucket.getPivotYear() ≠ null ? bucket.getPivotYear().intValue() : iPivot  
+          low = pivot - 50  
+          t = low ≥ 0 ? low mod 100 : 99 + ((low + 1) mod 100)  
+          year'' = low + (year < t ? 100 : 0) - t + year  
+          bucket.saveField(iType, year'')  
+          result' = position + 2  
+Functional Scenario Form  
+lenientParse=false text="25" position=0 pivot=2000 && saves 2025, returns 2  
+lenientParse=false text="2" position=0 && returns ~0 (too short)  
+lenientParse=true text="2025" position=0 && saves 2025, returns 4  
+lenientParse=true text="-25" position=0 && saves -25, returns 3  
+lenientParse=true text="25" position=0 pivot=1975 && saves 1925, returns 2  
+bucket pivot=2010 text="30" position=0 && saves 2030 (uses bucket pivot)  
+end_process  
+
+process getTwoDigitYear(partial: ReadablePartial) result: int  
+pre true  
+post  
+  partial.isSupported(iType)  
+    ? try  
+        year = partial.get(iType)  
+        year < 0  
+          ? absYear' = -year  
+        : absYear' = year  
+        result' = absYear mod 100  
+      catch  
+        result' = -1  
+    : result' = -1  
+Functional Scenario Form  
+year=1999 && returns 99  
+year=-200 && returns 0  
+unsupported field && returns -1  
+end_process  
+
+end_module  
+
+module TextField  
+type:  
+  iShort: boolean  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, isShort: boolean)  
+pre true  
+post  
+  iFieldType' = fieldType  
+  iShort' = isShort  
+Functional Scenario Form  
+fieldType=monthOfYear() isShort=true && initializes fields  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iShort ? 6 : 20  
+Functional Scenario Form  
+iShort=true && returns 6  
+iShort=false && returns 20  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    text = print(instant, chrono, locale)  
+    buf.append(text)  
+  catch  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+valid print && appends text  
+exception && appends unknown char  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    text = print(instant, chrono, locale)  
+    out.write(text)  
+  catch  
+    out.write('\ufffd')  
+Functional Scenario Form  
+valid print && writes text  
+exception && writes unknown char  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  try  
+    text = print(partial, locale)  
+    buf.append(text)  
+  catch  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+valid print && appends text  
+exception && appends unknown char  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  try  
+    text = print(partial, locale)  
+    out.write(text)  
+  catch  
+    out.write('\ufffd')  
+Functional Scenario Form  
+valid print && writes text  
+exception && writes unknown char  
+end_process  
+
+// Text printing (instant)
+process print(instant: long, chrono: Chronology, locale: Locale) result: String  
+pre true  
+post  
+  field = iFieldType.getField(chrono)  
+  iShort  
+    ? result' = field.getAsShortText(instant, locale)  
+    : result' = field.getAsText(instant, locale)  
+Functional Scenario Form  
+iShort=true && returns short text  
+iShort=false && returns full text  
+end_process  
+
+// Text printing (partial)
+process print(partial: ReadablePartial, locale: Locale) result: String  
+pre true  
+post  
+  partial.isSupported(iFieldType)  
+    ? field = iFieldType.getField(partial.getChronology())  
+      iShort  
+        ? result' = field.getAsShortText(partial, locale)  
+        : result' = field.getAsText(partial, locale)  
+    : result' = "\ufffd"  
+Functional Scenario Form  
+supported field iShort=true && returns short text  
+unsupported field && returns unknown char  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = estimatePrintedLength()  
+Functional Scenario Form  
+calls estimatePrintedLength  
+end_process  
+
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  locale = bucket.getLocale()  
+  // Cache retrieval/initialization  
+  innerMap = cParseCache.get(locale)  
+  innerMap = null  
+    ? innerMap' = new map  
+      cParseCache' = cParseCache with [locale -> innerMap]  
+      array = null  
+    : array = innerMap.get(iFieldType)  
+  array = null  
+    ? // Build cache  
+      validValues' = new set  
+      dt = new MutableDateTime(0L, DateTimeZone.UTC)  
+      property = dt.property(iFieldType)  
+      min = property.getMinimumValueOverall()  
+      max = property.getMaximumValueOverall()  
+      max - min > 32  
+        ? result' = ~position  
+        : (maxLength = property.getMaximumTextLength(locale)  
+           for i=min to max  
+             ? property.set(i)  
+               shortText = property.getAsShortText(locale)  
+               validValues.add(shortText)  
+               validValues.add(shortText.toLowerCase(locale))  
+               validValues.add(shortText.toUpperCase(locale))  
+               longText = property.getAsText(locale)  
+               validValues.add(longText)  
+               validValues.add(longText.toLowerCase(locale))  
+               validValues.add(longText.toUpperCase(locale))  
+           // English era special case  
+           ("en".equals(locale.getLanguage()) && iFieldType = DateTimeFieldType.era())  
+             ? (validValues.add("BCE")  
+                validValues.add("bce")  
+                validValues.add("CE")  
+                validValues.add("ce")  
+                maxLength' = 3)  
+           array' = [validValues, maxLength]  
+           innerMap' = innerMap with [iFieldType -> array']  
+           cParseCache' = cParseCache with [locale -> innerMap']  
+           validValuesToUse = validValues  
+           maxLengthToUse = maxLength)  
+    : (validValuesToUse = array[0]  
+       maxLengthToUse = array[1])  
+  // Matching logic  
+  maxLengthToUse ≠ null  
+    ? limit = min(text.length, position + maxLengthToUse)  
+      found = false  
+      matchEnd = position  
+      for end=limit downto position+1  
+        ? substr = text.substring(position, end)  
+          validValuesToUse contains substr  
+            ? (bucket.saveField(iFieldType, substr, locale)  
+               found' = true  
+               matchEnd' = end  
+               break)  
+      found  
+        ? result' = matchEnd  
+        : result' = ~position  
+Functional Scenario Form  
+cached validValues contains "January" at position && returns matchEnd  
+uncached fieldType && builds cache && matches  
+max-min>32 && returns ~position  
+english era locale && adds BCE/CE variants  
+no match found && returns ~position  
+end_process  
+
+end_module  
+
+module Fraction  
+type:  
+  iMinDigits: int  
+  iMaxDigits: int  
+
+// Constructor
+process constructor(fieldType: DateTimeFieldType, minDigits: int, maxDigits: int)  
+pre true  
+post  
+  iFieldType' = fieldType  
+  maxDigits > 18  
+    ? iMaxDigits' = 18  
+    : iMaxDigits' = maxDigits  
+  iMinDigits' = minDigits  
+Functional Scenario Form  
+maxDigits=20 && sets iMaxDigits=18  
+maxDigits=10 && sets iMaxDigits=10  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iMaxDigits  
+Functional Scenario Form  
+iMaxDigits=5 && returns 5  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  try  
+    printTo(buf, null, instant, chrono)  
+  catch  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+success && calls private printTo  
+exception && appends unknown char  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  printTo(null, out, instant, chrono)  
+Functional Scenario Form  
+calls private printTo with writer  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  millis = partial.getChronology().set(partial, 0L)  
+  try  
+    printTo(buf, null, millis, partial.getChronology())  
+  catch  
+    buf.append('\ufffd')  
+Functional Scenario Form  
+converts partial to millis && calls private printTo  
+exception && appends unknown char  
+end_process  
+
+// Writer printing (partial)
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  millis = partial.getChronology().set(partial, 0L)  
+  printTo(null, out, millis, partial.getChronology())  
+Functional Scenario Form  
+converts partial to millis && calls private printTo  
+end_process  
+
+process printTo(buf: StringBuffer, out: Writer, instant: long, chrono: Chronology)  
+pre true  
+post  
+  field = iFieldType.getField(chrono)  
+  minDigits = iMinDigits  
+  try  
+    fraction = field.remainder(instant)  
+  catch  
+    buf ≠ null  
+      ? appendUnknownString(buf, minDigits)  
+    : printUnknownString(out, minDigits)  
+    return  
+  fraction = 0  
+    ? buf ≠ null  
+        ? for i=minDigits-1 downto 0  
+            buf.append('0')  
+      else  
+        for i=minDigits-1 downto 0  
+          out.write('0')  
+      return  
+  // Fraction processing  
+  fractionData = getFractionData(fraction, field)  
+  scaled = fractionData[0]  
+  maxDigits = fractionData[1]  
+  (scaled & 0x7fffffff) = scaled  
+    ? str = Integer.toString((int)scaled)  
+    : str = Long.toString(scaled)  
+  length = str.length()  
+  digits = maxDigits  
+  length < digits  
+    ? buf ≠ null  
+        ? for i=0 to digits-length-1  
+            buf.append('0')  
+            minDigits' = minDigits - 1  
+            digits' = digits - 1  
+      else  
+        for i=0 to digits-length-1  
+          out.write('0')  
+          minDigits' = minDigits - 1  
+          digits' = digits - 1  
+  minDigits < digits  
+    ? while minDigits < digits  
+        length ≤ 1 ∨ str.charAt(length-1) ≠ '0'  
+          ? break  
+        digits' = digits - 1  
+        length' = length - 1  
+      length < str.length()  
+        ? buf ≠ null  
+            ? for i=0 to length-1  
+                buf.append(str.charAt(i))  
+          else  
+            for i=0 to length-1  
+              out.write(str.charAt(i))  
+          return  
+  buf ≠ null  
+    ? buf.append(str)  
+    : out.write(str)  
+Functional Scenario Form  
+fraction=0 minDigits=3 && outputs "000"  
+fraction=5 rangeMillis=1000 maxDigits=3 && outputs "005"  
+fraction=12345 maxDigits=6 && outputs "012345"  
+fraction=123400 maxDigits=6 minDigits=3 && truncates to "1234"  
+exception && outputs unknown chars  
+end_process  
+
+// Fraction data calculation
+process getFractionData(fraction: long, field: DateTimeField) result: long[]  
+pre true  
+post  
+  rangeMillis = field.getDurationField().getUnitMillis()  
+  maxDigits = iMaxDigits  
+  while true  
+    scalar = case maxDigits  
+      1: 10L, 2: 100L, ..., 18: 1000000000000000000L  
+      default: 1L  
+    (rangeMillis * scalar) / scalar = rangeMillis  
+      ? break  
+    maxDigits' = maxDigits - 1  
+  result' = [fraction * scalar / rangeMillis, maxDigits]  
+Functional Scenario Form  
+fraction=500 && rangeMillis=1000 && maxDigits=3 && returns [5,3]  
+rangeMillis=10000000000000000000 && maxDigits=18 && reduces maxDigits until no overflow  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iMaxDigits  
+Functional Scenario Form  
+iMaxDigits=5 && returns 5  
+end_process  
+
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  field = iFieldType.getField(bucket.getChronology())  
+  limit = min(iMaxDigits, text.length - position)  
+  value = 0  
+  n = field.getDurationField().getUnitMillis() * 10  
+  length = 0  
+  while length < limit  
+    c = text.charAt(position + length)  
+    c < '0' ∨ c > '9'  
+      ? break  
+    length' = length + 1  
+    nn = n / 10  
+    value' = value + (c - '0') * nn  
+    n' = nn  
+  value' = value / 10  
+  length = 0  
+    ? result' = ~position  
+  value > Integer.MAX_VALUE  
+    ? result' = ~position  
+  else  
+    parseField = new PreciseDateTimeField(  
+      DateTimeFieldType.millisOfSecond(),  
+      MillisDurationField.INSTANCE,  
+      field.getDurationField())  
+    bucket.saveField(parseField, (int)value)  
+    result' = position + length  
+Functional Scenario Form  
+text="123" position=0 iMaxDigits=3 && saves value and returns 3  
+text="abc" position=0 && returns ~position  
+length=0 && returns ~position  
+value=2147483648 && returns ~position  
+end_process  
+
+end_module  
+
+
+module TimeZoneOffset  
+type:  
+  iZeroOffsetPrintText: String  
+  iZeroOffsetParseText: String  
+  iShowSeparators: boolean  
+  iMinFields: int  
+  iMaxFields: int  
+
+// Constructor
+process constructor(zeroOffsetPrintText: String, zeroOffsetParseText: String, showSeparators: boolean, minFields: int, maxFields: int)  
+pre true  
+post  
+  minFields ≤ 0 ∨ maxFields < minFields  
+    ? throw IllegalArgumentException  
+  minFields > 4  
+    ? minFields' = 4  
+      maxFields' = 4  
+  iZeroOffsetPrintText' = zeroOffsetPrintText  
+  iZeroOffsetParseText' = zeroOffsetParseText  
+  iShowSeparators' = showSeparators  
+  iMinFields' = minFields  
+  iMaxFields' = maxFields  
+Functional Scenario Form  
+minFields=3 maxFields=2 && throws exception  
+minFields=5 maxFields=6 && sets min/max=4  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  baseEst = 1 + (iMinFields << 1)  
+  iShowSeparators  
+    ? baseEst' = baseEst + iMinFields - 1  
+  iZeroOffsetPrintText ≠ null ∧ iZeroOffsetPrintText.length > baseEst  
+    ? result' = iZeroOffsetPrintText.length  
+    : result' = baseEst  
+Functional Scenario Form  
+minFields=2 showSeparators=true && returns 1+4+1=6  
+zeroOffsetPrintText="Z" length=1 && returns max(5,1)=5  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  displayZone = null  
+    ? return  
+  displayOffset = 0 ∧ iZeroOffsetPrintText ≠ null  
+    ? buf.append(iZeroOffsetPrintText)  
+      return  
+  displayOffset ≥ 0  
+    ? buf.append('+')  
+    : buf.append('-')  
+      displayOffset' = -displayOffset  
+  hours = displayOffset / MILLIS_PER_HOUR  
+  FormatUtils.appendPaddedInteger(buf, hours, 2)  
+  iMaxFields = 1  
+    ? return  
+  displayOffset = displayOffset - hours * MILLIS_PER_HOUR  
+  displayOffset = 0 ∧ iMinFields ≤ 1  
+    ? return  
+  minutes = displayOffset / MILLIS_PER_MINUTE  
+  iShowSeparators  
+    ? buf.append(':')  
+  FormatUtils.appendPaddedInteger(buf, minutes, 2)  
+  iMaxFields = 2  
+    ? return  
+  displayOffset = displayOffset - minutes * MILLIS_PER_MINUTE  
+  displayOffset = 0 ∧ iMinFields ≤ 2  
+    ? return  
+  seconds = displayOffset / MILLIS_PER_SECOND  
+  iShowSeparators  
+    ? buf.append(':')  
+  FormatUtils.appendPaddedInteger(buf, seconds, 2)  
+  iMaxFields = 3  
+    ? return  
+  displayOffset = displayOffset - seconds * MILLIS_PER_SECOND  
+  displayOffset = 0 ∧ iMinFields ≤ 3  
+    ? return  
+  iShowSeparators  
+    ? buf.append('.')  
+  FormatUtils.appendPaddedInteger(buf, displayOffset, 3)  
+Functional Scenario Form  
+displayZone=null && no output  
+displayOffset=0 && zeroText="Z" && appends "Z"  
+displayOffset=3600000 && minFields=1 maxFields=1 && appends "+01"  
+displayOffset=3723000 && showSeparators=true minFields=4 && appends "+01:02:03.000"  
+end_process  
+
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  displayZone = null  
+    ? return  
+  displayOffset = 0 ∧ iZeroOffsetPrintText ≠ null  
+    ? out.write(iZeroOffsetPrintText)  
+      return  
+  displayOffset ≥ 0  
+    ? out.write('+')  
+    : out.write('-')  
+      displayOffset' = -displayOffset  
+  hours = displayOffset / MILLIS_PER_HOUR  
+  FormatUtils.writePaddedInteger(out, hours, 2)  
+  iMaxFields = 1  
+    ? return  
+  displayOffset = displayOffset - hours * MILLIS_PER_HOUR  
+  displayOffset = 0 ∧ iMinFields ≤ 1  
+    ? return  
+  minutes = displayOffset / MILLIS_PER_MINUTE  
+  iShowSeparators  
+    ? out.write(':')  
+  FormatUtils.writePaddedInteger(out, minutes, 2)  
+  iMaxFields = 2  
+    ? return  
+  displayOffset = displayOffset - minutes * MILLIS_PER_MINUTE  
+  displayOffset = 0 ∧ iMinFields ≤ 2  
+    ? return  
+  seconds = displayOffset / MILLIS_PER_SECOND  
+  iShowSeparators  
+    ? out.write(':')  
+  FormatUtils.writePaddedInteger(out, seconds, 2)  
+  iMaxFields = 3  
+    ? return  
+  displayOffset = displayOffset - seconds * MILLIS_PER_SECOND  
+  displayOffset = 0 ∧ iMinFields ≤ 3  
+    ? return  
+  iShowSeparators  
+    ? out.write('.')  
+  FormatUtils.writePaddedInteger(out, displayOffset, 3)  
+Functional Scenario Form  
+displayOffset=-7200000 && writes "-02"  
+displayOffset=3723000 showSeparators=true minFields=4 && writes "+01:02:03.000"  
+end_process  
+
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  limit = text.length - position  
+  // Zero offset handling  
+  iZeroOffsetParseText ≠ null  
+    ? iZeroOffsetParseText.length = 0  
+        ? limit > 0  
+            ? c = text.charAt(position)  
+              (c = '-' ∨ c = '+')  
+                ? // Continue parsing  
+            : bucket.setOffset(0)  
+              result' = position  
+        : text.regionMatches(true, position, iZeroOffsetParseText, 0, iZeroOffsetParseText.length)  
+            ? bucket.setOffset(0)  
+              result' = position + iZeroOffsetParseText.length  
+  // Sign parsing  
+  limit ≤ 1  
+    ? result' = ~position  
+  c = text.charAt(position)  
+  c = '-'  
+    ? negative = true  
+  c = '+'  
+    ? negative = false  
+    : result' = ~position  
+  limit' = limit - 1  
+  position' = position + 1  
+  // Hour parsing  
+  digitCount(text, position, 2) < 2  
+    ? result' = ~position  
+  hours = FormatUtils.parseTwoDigits(text, position)  
+  hours > 23  
+    ? result' = ~position  
+  offset = hours * MILLIS_PER_HOUR  
+  limit' = limit - 2  
+  position' = position + 2  
+  // Minute parsing (optional)  
+  limit > 0  
+    ? c = text.charAt(position)  
+      c = ':'  
+        ? expectSeparators = true  
+          limit' = limit - 1  
+          position' = position + 1  
+      c ≥ '0' ∧ c ≤ '9'  
+        ? expectSeparators = false  
+        : break parse  
+    : break parse  
+  count = digitCount(text, position, 2)  
+  (count = 0 ∧ ¬expectSeparators) ∨ count < 2  
+    ? result' = ~position  
+  minutes = FormatUtils.parseTwoDigits(text, position)  
+  minutes > 59  
+    ? result' = ~position  
+  offset' = offset + minutes * MILLIS_PER_MINUTE  
+  limit' = limit - 2  
+  position' = position + 2  
+  // Second parsing (optional)  
+  limit > 0  
+    ? expectSeparators  
+        ? text.charAt(position) = ':'  
+          limit' = limit - 1  
+          position' = position + 1  
+        : // No separator check  
+      count = digitCount(text, position, 2)  
+      (count = 0 ∧ ¬expectSeparators) ∨ count < 2  
+        ? result' = ~position  
+      seconds = FormatUtils.parseTwoDigits(text, position)  
+      seconds > 59  
+        ? result' = ~position  
+      offset' = offset + seconds * MILLIS_PER_SECOND  
+      limit' = limit - 2  
+      position' = position + 2  
+  // Fraction parsing (not fully implemented in snippet)  
+  // [Additional fraction parsing logic would go here]  
+  negative  
+    ? offset' = -offset  
+  bucket.setOffset(offset)  
+  result' = position  
+Functional Scenario Form  
+zeroOffsetParseText="Z" text="Z" position=0 && sets offset=0, returns 1  
+text="+01" position=0 && sets offset=3600000, returns 3  
+text="-0230" position=0 && sets offset=-9000000, returns 5  
+text="+12" position=0 hours=12 && sets offset=43200000  
+text="+2361" position=0 && returns ~position (invalid minutes)  
+end_process  
+
+// Digit count helper
+process digitCount(text: String, position: int, amount: int) result: int  
+pre true  
+post  
+  limit = min(text.length - position, amount)  
+  count = 0  
+  while limit > 0  
+    ? c = text.charAt(position + count)  
+      c < '0' ∨ c > '9'  
+        ? break  
+      count' = count + 1  
+      limit' = limit - 1  
+  result' = count  
+Functional Scenario Form  
+text="AB12" position=0 amount=2 && returns 0  
+text="12AB" position=0 amount=3 && returns 2  
+end_process  
+
+// Parsing logic (complete)
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  limit = text.length - position  
+  // Zero offset handling  
+  iZeroOffsetParseText ≠ null  
+    ? iZeroOffsetParseText.length = 0  
+        ? limit > 0  
+            ? c = text.charAt(position)  
+              (c = '-' ∨ c = '+')  
+                ? // Continue  
+            : bucket.setOffset(0)  
+              result' = position  
+        : text.regionMatches(true, position, iZeroOffsetParseText, 0, iZeroOffsetParseText.length)  
+            ? bucket.setOffset(0)  
+              result' = position + iZeroOffsetParseText.length  
+  // Sign parsing  
+  limit ≤ 1  
+    ? result' = ~position  
+  c = text.charAt(position)  
+  c = '-'  
+    ? negative = true  
+  c = '+'  
+    ? negative = false  
+    : result' = ~position  
+  limit' = limit - 1  
+  position' = position + 1  
+  // Hour parsing  
+  digitCount(text, position, 2) < 2  
+    ? result' = ~position  
+  hours = FormatUtils.parseTwoDigits(text, position)  
+  hours > 23  
+    ? result' = ~position  
+  offset = hours * MILLIS_PER_HOUR  
+  limit' = limit - 2  
+  position' = position + 2  
+  // Minute parsing  
+  limit > 0  
+    ? c = text.charAt(position)  
+      c = ':'  
+        ? expectSep = true  
+          limit' = limit - 1  
+          position' = position + 1  
+      c ≥ '0' ∧ c ≤ '9'  
+        ? expectSep = false  
+        : break  
+    : break  
+  digitCount(text, position, 2) < 2  
+    ? result' = ~position  
+  minutes = FormatUtils.parseTwoDigits(text, position)  
+  minutes > 59  
+    ? result' = ~position  
+  offset' = offset + minutes * MILLIS_PER_MINUTE  
+  limit' = limit - 2  
+  position' = position + 2  
+  // Second parsing  
+  limit > 0  
+    ? expectSep  
+        ? text.charAt(position) = ':'  
+          limit' = limit - 1  
+          position' = position + 1  
+        : // No sep check  
+      digitCount(text, position, 2) < 2  
+        ? result' = ~position  
+      seconds = FormatUtils.parseTwoDigits(text, position)  
+      seconds > 59  
+        ? result' = ~position  
+      offset' = offset + seconds * MILLIS_PER_SECOND  
+      limit' = limit - 2  
+      position' = position + 2  
+  // Fraction parsing  
+  limit > 0  
+    ? expectSep  
+        ? text.charAt(position) = '.' ∨ text.charAt(position) = ','  
+          limit' = limit - 1  
+          position' = position + 1  
+      digitCount = digitCount(text, position, 3)  
+      digitCount = 0  
+        ? result' = ~position  
+      fraction = Integer.parseInt(text.substring(position, position + digitCount))  
+      offset' = offset + fraction * (1000 / pow(10, digitCount))  
+      position' = position + digitCount  
+  negative  
+    ? offset' = -offset  
+  bucket.setOffset(offset)  
+  result' = position  
+Functional Scenario Form  
+zeroOffsetParseText="Z" text="Z" position=0 && sets offset=0  
+text="+01:02:03.456" position=0 && parses all components  
+text="-12" position=0 && sets offset=-43200000  
+text="+2361" position=0 && returns ~position (invalid)  
+end_process  
+
+end_module  
+
+module TimeZoneName  
+type:  
+  iType: int  
+
+// Constructor
+process constructor(type: int, parseLookup: Map<String, DateTimeZone>)  
+pre true  
+post  
+  iType' = type  
+  iParseLookup' = parseLookup  
+Functional Scenario Form  
+type=LONG_NAME parseLookup≠null && initializes  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = (iType = SHORT_NAME ? 4 : 20)  
+Functional Scenario Form  
+iType=LONG_NAME && returns 20  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  text = print(instant - displayOffset, displayZone, locale)  
+  buf.append(text)  
+Functional Scenario Form  
+displayZone=UTC iType=LONG_NAME && appends "Coordinated Universal Time"  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  text = print(instant - displayOffset, displayZone, locale)  
+  out.write(text)  
+Functional Scenario Form  
+displayZone=EST iType=SHORT_NAME && writes "EST"  
+end_process  
+
+// Text printing
+process print(instant: long, displayZone: DateTimeZone, locale: Locale) result: String  
+pre true  
+post  
+  displayZone = null  
+    ? result' = ""  
+  iType = LONG_NAME  
+    ? result' = displayZone.getName(instant, locale)  
+  iType = SHORT_NAME  
+    ? result' = displayZone.getShortName(instant, locale)  
+    : result' = ""  
+Functional Scenario Form  
+iType=LONG_NAME instant=0 displayZone=UTC && returns "Coordinated Universal Time"  
+end_process  
+
+// Partial printing (no-op)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  // No operation  
+end_process  
+
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  // No operation  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = (iType = SHORT_NAME ? 4 : 20)  
+Functional Scenario Form  
+iType=SHORT_NAME && returns 4  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  str = text.substring(position)  
+  for name in iParseLookup.keySet()  
+    ? str.startsWith(name)  
+        ? bucket.setZone(iParseLookup.get(name))  
+          result' = position + name.length  
+  result' = ~position  
+Functional Scenario Form  
+text="PST" position=0 iParseLookup contains "PST" && sets PST zone  
+no match && returns ~position  
+end_process  
+
+end_module  
+
+module TimeZoneId  
+type:  
+  ALL_IDS: set of String  
+  MAX_LENGTH: int  
+
+// Static initialization equivalent
+process init()  
+pre true  
+post  
+  max = 0  
+  for id in ALL_IDS  
+    ? id.length > max  
+        ? max' = id.length  
+  MAX_LENGTH' = max  
+Functional Scenario Form  
+ALL_IDS = ["EST", "PST"] && sets MAX_LENGTH=3  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = MAX_LENGTH  
+Functional Scenario Form  
+MAX_LENGTH=5 && returns 5  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  displayZone ≠ null  
+    ? buf.append(displayZone.getID())  
+    : buf.append("")  
+Functional Scenario Form  
+displayZone=UTC && appends "UTC"  
+displayZone=null && appends empty string  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  displayZone ≠ null  
+    ? out.write(displayZone.getID())  
+    : out.write("")  
+Functional Scenario Form  
+displayZone=GMT && writes "GMT"  
+end_process  
+
+// Partial printing (no-op)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  // No operation  
+end_process  
+
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  // No operation  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = MAX_LENGTH  
+Functional Scenario Form  
+MAX_LENGTH=8 && returns 8  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  str = text.substring(position)  
+  best = null  
+  for id in ALL_IDS  
+    ? str.startsWith(id)  
+        ? best = null ∨ id.length > best.length  
+            ? best' = id  
+  best ≠ null  
+    ? bucket.setZone(DateTimeZone.forID(best))  
+      result' = position + best.length  
+    : result' = ~position  
+Functional Scenario Form  
+text="America/New_York" position=0 ALL_IDS contains "America/New_York" && sets zone and returns 16  
+text="GMT+01" position=0 ALL_IDS contains "GMT" && sets GMT zone (longest match not applicable)  
+no match && returns ~position  
+end_process  
+
+end_module  
+
+module Composite  
+type:  
+  iPrintedLengthEstimate: int  
+  iParsedLengthEstimate: int  
+
+// Constructor
+process constructor(elementPairs: list of Object)  
+pre true  
+post  
+  printerList = new list  
+  parserList = new list  
+  decompose(elementPairs, printerList, parserList)  
+  printerList.size ≤ 0  
+    ? iPrinters' = null  
+      iPrintedLengthEstimate' = 0  
+    : size = printerList.size  
+      printers = new array of DateTimePrinter[size]  
+      printEst = 0  
+      for i=0 to size-1  
+        ? printer = printerList.get(i)  
+          printEst' = printEst + printer.estimatePrintedLength()  
+          printers[i] = printer  
+      iPrinters' = printers  
+      iPrintedLengthEstimate' = printEst  
+  parserList.size ≤ 0  
+    ? iParsers' = null  
+      iParsedLengthEstimate' = 0  
+    : size = parserList.size  
+      parsers = new array of DateTimeParser[size]  
+      parseEst = 0  
+      for i=0 to size-1  
+        ? parser = parserList.get(i)  
+          parseEst' = parseEst + parser.estimateParsedLength()  
+          parsers[i] = parser  
+      iParsers' = parsers  
+      iParsedLengthEstimate' = parseEst  
+Functional Scenario Form  
+elementPairs contains printers && initializes iPrinters  
+elementPairs contains parsers && initializes iParsers  
+empty elementPairs && sets all to null  
+end_process  
+
+// Printed length estimation
+process estimatePrintedLength() result: int  
+pre true  
+post  
+  result' = iPrintedLengthEstimate  
+Functional Scenario Form  
+iPrintedLengthEstimate=10 && returns 10  
+end_process  
+
+// StringBuffer printing (instant)
+process printTo(buf: StringBuffer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  iPrinters = null  
+    ? throw UnsupportedOperationException  
+  locale = null  
+    ? locale' = Locale.getDefault()  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(buf, instant, chrono, displayOffset, displayZone, locale)  
+Functional Scenario Form  
+iPrinters=[printer1, printer2] && calls both printers  
+iPrinters=null && throws exception  
+end_process  
+
+// Writer printing (instant)
+process printTo(out: Writer, instant: long, chrono: Chronology, displayOffset: int, displayZone: DateTimeZone, locale: Locale)  
+pre true  
+post  
+  iPrinters = null  
+    ? throw UnsupportedOperationException  
+  locale = null  
+    ? locale' = Locale.getDefault()  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(out, instant, chrono, displayOffset, displayZone, locale)  
+Functional Scenario Form  
+iPrinters=[printer] && calls printer with writer  
+iPrinters=null && throws exception  
+end_process  
+
+// StringBuffer printing (partial)
+process printTo(buf: StringBuffer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  iPrinters = null  
+    ? throw UnsupportedOperationException  
+  locale = null  
+    ? locale' = Locale.getDefault()  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(buf, partial, locale)  
+Functional Scenario Form  
+iPrinters=[printer1, printer2] && calls both for partial  
+end_process  
+
+process printTo(out: Writer, partial: ReadablePartial, locale: Locale)  
+pre true  
+post  
+  iPrinters = null  
+    ? throw UnsupportedOperationException  
+  locale = null  
+    ? locale' = Locale.getDefault()  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(out, partial, locale)  
+Functional Scenario Form  
+iPrinters=[printer] && calls printer for partial  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iParsedLengthEstimate  
+Functional Scenario Form  
+iParsedLengthEstimate=15 && returns 15  
+end_process  
+
+// Parsing logic
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  iParsers = null  
+    ? throw UnsupportedOperationException  
+  pos = position  
+  for i=0 to iParsers.length-1 ∧ pos ≥ 0  
+    ? pos' = iParsers[i].parseInto(bucket, text, pos)  
+  result' = pos  
+Functional Scenario Form  
+iParsers=[parser1, parser2] text="2023-08" position=0 && chains parsers  
+iParsers=null && throws exception  
+parsing fails at parser2 && returns negative position  
+end_process  
+
+// Decompose helper
+process decompose(elementPairs: list of Object, printerList: list, parserList: list)  
+pre true  
+post  
+  size = elementPairs.size  
+  for i=0 to size-1 step 2  
+    ? element = elementPairs.get(i)  
+      element instanceof DateTimePrinter  
+        ? element instanceof Composite  
+            ? addArrayToList(printerList, ((Composite)element).iPrinters)  
+            : printerList.add(element)  
+    element = elementPairs.get(i+1)  
+    element instanceof DateTimeParser  
+        ? element instanceof Composite  
+            ? addArrayToList(parserList, ((Composite)element).iParsers)  
+            : parserList.add(element)  
+Functional Scenario Form  
+elementPairs=[printer, parser] && adds to lists  
+elementPairs=[composite] && expands composite elements  
+end_process  
+
+// Array to list helper
+process addArrayToList(list: list, array: array of Object)  
+pre true  
+post  
+  array ≠ null  
+    ? for i=0 to array.length-1  
+        list.add(array[i])  
+Functional Scenario Form  
+array=[printer1, printer2] && adds both to list  
+end_process  
+
+// Utility checks
+process isPrinter() result: boolean  
+pre true  
+post  
+  result' = iPrinters ≠ null  
+Functional Scenario Form  
+iPrinters≠null && returns true  
+end_process  
+
+process isParser() result: boolean  
+pre true  
+post  
+  result' = iParsers ≠ null  
+Functional Scenario Form  
+iParsers=null && returns false  
+end_process  
+
+end_module  
+
+module MatchingParser  
+type:  
+  iParsedLengthEstimate: int  
+
+// Constructor
+process constructor(parsers: array of DateTimeParser)  
+pre true  
+post  
+  iParsers' = parsers  
+  maxEst = 0  
+  for i=parsers.length-1 downto 0  
+    ? parser = parsers[i]  
+      parser ≠ null  
+        ? len = parser.estimateParsedLength()  
+          len > maxEst  
+            ? maxEst' = len  
+  iParsedLengthEstimate' = maxEst  
+Functional Scenario Form  
+parsers=[parser1(est=5), parser2(est=8)] && sets estimate=8  
+parsers=[null] && sets estimate=0  
+end_process  
+
+// Parsed length estimation
+process estimateParsedLength() result: int  
+pre true  
+post  
+  result' = iParsedLengthEstimate  
+Functional Scenario Form  
+iParsedLengthEstimate=10 && returns 10  
+end_process  
+
+// Parsing logic with backtracking
+process parseInto(bucket: DateTimeParserBucket, text: String, position: int) result: int  
+pre true  
+post  
+  originalState = bucket.saveState()  
+  bestValidPos = position  
+  bestValidState = null  
+  bestInvalidPos = position  
+  isOptional = false  
+  for i=0 to iParsers.length-1  
+    ? parser = iParsers[i]  
+      parser = null  
+        ? bestValidPos ≤ position  
+            ? result' = position  
+          isOptional' = true  
+          break  
+        : parsePos = parser.parseInto(bucket, text, position)  
+          parsePos ≥ position  
+            ? parsePos > bestValidPos  
+                ? bestValidPos' = parsePos  
+                  bestValidState' = bucket.saveState()  
+                  (parsePos ≥ text.length ∨ (i+1 ≥ iParsers.length ∨ iParsers[i+1] = null))  
+                    ? result' = parsePos  
+                      return  
+            : parsePos < 0  
+                ? failPos = ~parsePos  
+                  failPos > bestInvalidPos  
+                    ? bestInvalidPos' = failPos  
+      bucket.restoreState(originalState)  
+  bestValidPos > position ∨ (bestValidPos = position ∧ isOptional)  
+    ? bestValidState ≠ null  
+        ? bucket.restoreState(bestValidState)  
+      result' = bestValidPos  
+    : result' = ~bestInvalidPos  
+Functional Scenario Form  
+parsers=[null] position=0 && returns 0  
+parsers=[parser1] parser1 succeeds at pos=5 && returns 5  
+parsers=[parser1,parser2] parser1 fails, parser2 succeeds at pos=3 && returns 3  
+end_process  
+
+end_module  
+

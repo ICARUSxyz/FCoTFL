@@ -1,0 +1,61 @@
+module SerializationUtils
+type
+    object: Serializable
+    result: Serializable
+    obj: Serializable
+    outputStream: OutputStream
+    inputStream: InputStream
+    objectData: sequence of byte
+    deserialized: Object
+
+process clone(object: Serializable) result: Serializable
+pre
+    true
+post
+    (object = null => result = null) or
+    (object ≠ null => result ≠ null and result ≠ object and result equals object)
+Functional Scenario Form
+(object = null) && (result = null) or
+(object ≠ null) && (result ≠ object and result equals object)
+end_process
+
+process serialize(obj: Serializable, outputStream: OutputStream)
+pre
+    outputStream ≠ null
+post
+    outputStream contains serialized(obj)
+Functional Scenario Form
+(outputStream = null) && (throw IllegalArgumentException) or
+(outputStream ≠ null) && (outputStream contains serialized(obj))
+end_process
+
+process serialize(obj: Serializable) result: sequence of byte
+pre
+    true
+post
+    result = serialized byte array of obj
+Functional Scenario Form
+true && (result = serialized(obj))
+end_process
+
+process deserialize(inputStream: InputStream) result: Object
+pre
+    inputStream ≠ null
+post
+    result = deserialized object from inputStream
+Functional Scenario Form
+(inputStream = null) && (throw IllegalArgumentException) or
+(inputStream ≠ null) && (result = deserialized(inputStream))
+end_process
+
+process deserialize(objectData: sequence of byte) result: Object
+pre
+    objectData ≠ null
+post
+    result = deserialized object from ByteArrayInputStream(objectData)
+Functional Scenario Form
+(objectData = null) && (throw IllegalArgumentException) or
+(objectData ≠ null) && (result = deserialized(ByteArrayInputStream(objectData)))
+end_process
+
+end_module

@@ -1,0 +1,65 @@
+**Bug Report: Issues Observed During File Initialization and Syntax Highlighting in MdiChild**
+
+---
+
+**Test Case 1: Syntax Highlighting Initialization**
+
+**Action:**
+Open a document window and check whether syntax highlighting is applied.
+
+**Expected:**
+Syntax highlighting should be active immediately upon opening the document.
+
+**Observed:**
+Highlighting does not appear until after manual text modification.
+
+**Log:**
+
+```plaintext
+[DEBUG] Creating MdiChild
+[INFO] Highlighter instance created
+[WARN] Highlighting not applied on initial load
+```
+
+---
+
+**Test Case 2: File Naming in New Document**
+
+**Action:**
+Create a new file without providing a filename.
+
+**Expected:**
+File should be named `document1.txt`, `document2.txt`, etc., incrementing with each new document.
+
+**Observed:**
+New documents always named `document1.txt`, sequence number not increasing.
+
+**Log:**
+
+```plaintext
+[CALL] newFile("")
+[INFO] Generated filename: document1.txt
+[CALL] newFile("")
+[INFO] Generated filename: document1.txt
+```
+
+---
+
+**Test Case 3: Filename Placeholder Not Replaced**
+
+**Action:**
+Create new file with default naming logic.
+
+**Expected:**
+Filename should be rendered as `document1.txt`, not `document%1.txt`.
+
+**Observed:**
+Filename displays literal `%1` instead of a number.
+
+**Log:**
+
+```plaintext
+[CALL] newFile("")
+[WARN] Filename generated: document%1.txt
+[UI] Window title: document%1.txt[*]
+```

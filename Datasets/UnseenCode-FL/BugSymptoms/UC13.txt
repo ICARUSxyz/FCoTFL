@@ -1,0 +1,45 @@
+#### Test Case 1: Double-click on a rule item in the tree view
+
+**Expected:** Rule description dialog opens.
+**Observed:** No dialog appears.
+
+```plaintext
+[TEST] Triggered double-click on ruleTree item  
+[INFO] No response from UI, dialog not shown  
+```
+
+---
+
+#### Test Case 2: Dropdown item labels in file selection
+
+**Expected:** Dropdown shows option labeled "File1"
+**Observed:** Dropdown shows "File"
+
+```plaintext
+[INFO] fileSelectBox item text = "File"  
+[NOTE] Label differs from expected UI string  
+```
+
+---
+
+#### Test Case 3: Dropdown item order
+
+**Expected:** \["All Files", "File"]
+**Observed:** \["File", "All Files"]
+
+```plaintext
+[DEBUG] Model inserted: File (index 0), All Files (index 1)  
+[INFO] Visual order = [File, All Files]  
+```
+
+---
+
+#### Test Case 4: Clicking "Manage" button
+
+**Expected:** Modal dialog appears, blocks interaction with main window
+**Observed:** Dialog appears but does not block main window
+
+```plaintext
+[INFO] ManagePropertySetDialog shown  
+[WARN] Dialog is not modal — main window still interactive  
+```

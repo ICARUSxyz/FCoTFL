@@ -1,0 +1,135 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: ﻿using System.Collections;
+2: using System.Collections.Generic;
+3: using UnityEngine;
+4: 
+5: public class Spwaner : MonoBehaviour
+6: {
+7:     public List<GameObject> platforms = new List<GameObject>();
+8: 
+9:     public float spwanTime;
+10:     private float countTime;
+11:     private Vector3 spwanPosition;
+12: 
+13:     void Update()
+14:     {
+15:         SpwanPlatform();
+16:     }
+17: 
+18:     public void SpwanPlatform()
+19:     {
+20:         countTime += Time.deltaTime;
+21:         spwanPosition = transform.position;
+22:         spwanPosition.y = Random.Range(-3.5f, 3.5f);
+23: 
+24:         if (countTime >= spwanTime)
+25:         {
+26:             CreatePlatform();
+27:             countTime = 0;
+28:         }
+29: 
+30:     }
+31: 
+32:     public void CreatePlatform()
+33:     {
+34:         int index = Random.Range(0, platforms.Count);
+35:         int spikeNum = 0;
+36:         if (index == 4)
+37:         {
+38:             spikeNum++;
+39:         }
+40:         if (spikeNum >= 1)
+41:         {
+42:             spikeNum = 0;
+43:             countTime = spwanTime;
+44:             return;
+45:         }
+46:         GameObject newPlatform = Instantiate(platforms[index], spwanPosition, Quaternion.identity);
+47:         newPlatform.transform.SetParent(this.gameObject.transform);
+48:     }
+49: }]
+
+SOFL:[
+module UC63_Spwaner
+type 
+  spwanTime: float
+  countTime: float
+  index: int
+  spikeNum: int
+
+process Update() result: Boolean
+pre  
+  true
+post 
+  SpwanPlatform() is executed ∧ result = true
+Functional Scenario Form 
+(true) && (SpwanPlatform() is executed ∧ result = true)
+end_process
+
+process SpwanPlatform() result: Boolean
+pre  
+  spwanTime ≥ 0 ∧ platforms ≠ null
+post 
+  countTime = countTime@pre + Time.deltaTime ∧
+  spwanPosition = transform.position with spwanPosition.x ∈ [-3.5, 3.5] ∧
+  (countTime ≥ spwanTime → (CreatePlatform() is executed ∧ countTime = 0)) ∧
+  result = true
+Functional Scenario Form 
+(countTime < spwanTime) && (countTime updated ∧ spwanPosition updated ∧ result = true) or 
+(countTime ≥ spwanTime) && (CreatePlatform() is executed ∧ countTime reset ∧ result = true)
+end_process
+
+process CreatePlatform() result: Boolean
+pre  
+  platforms ≠ null ∧ platforms.length > 0
+post 
+  index = Random(0, platforms.length - 1) ∧
+  (index = 4 → spikeNum = spikeNum@pre + 1) ∧
+  (spikeNum > 1 → spikeNum = 0 ∧ countTime = spwanTime ∧ return) ∧
+  (spikeNum ≤ 1 → newPlatform = Instantiate(platforms[index], spwanPosition, identity) ∧ newPlatform.parent = this.gameObject.transform) ∧
+  result = true
+Functional Scenario Form 
+(index ≠ 4 ∨ spikeNum ≤ 1) && (platform instantiated ∧ result = true) or 
+(index = 4 ∧ spikeNum > 1) && (platform not instantiated ∧ spikeNum reset ∧ countTime reset ∧ result = true)
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Platform Spawn Position
+→ Setup: Game running with spawner active
+→ Expected Output: Platforms appear along varying X-axis positions
+→ Actual Output: Platforms always spawn at the same X-axis, only Y-axis varies
+// Indicates the wrong coordinate was randomized (Y instead of X).
+
+
+// Test Case 2: Spike Platform Control
+→ Setup: Index randomly returns 4 multiple times in succession
+→ Expected Output: At most one spike platform appears, others are skipped
+→ Actual Output: Some spike platforms are still skipped even if only one is generated
+// The conditional check may be too aggressive, preventing valid spawns.]

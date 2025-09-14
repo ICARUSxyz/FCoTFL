@@ -1,0 +1,235 @@
+module BasicMonthOfYearDateTimeField  
+type:  
+  iMax: int               // Maximum month value  
+  iLeapMonth: int         // Leap month identifier  
+
+// Constructor
+process constructor(chronology: BasicChronology, leapMonth: int)  
+pre true  
+post  
+  super(DateTimeFieldType.monthOfYear(), chronology.getAverageMillisPerMonth())  
+  iChronology' = chronology  
+  iMax' = chronology.getMaxMonth()  
+  iLeapMonth' = leapMonth  
+Functional Scenario Form  
+leapMonth=2 && sets leap month to February  
+end_process  
+
+// Leniency check
+process isLenient() result: boolean  
+pre true  
+post  
+  result' = false  
+Functional Scenario Form  
+always returns false  
+end_process  
+
+// Month retrieval
+process get(instant: long) result: int  
+pre true  
+post  
+  result' = iChronology.getMonthOfYear(instant)  
+Functional Scenario Form  
+instant=validTimestamp && returns month [1-12]  
+end_process  
+
+// Month addition
+process add(instant: long, months: int) result: long  
+pre true  
+post  
+  months = 0  
+    ? result' = instant  
+  else  
+    timePart = iChronology.getMillisOfDay(instant)  
+    thisYear = iChronology.getYear(instant)  
+    thisMonth = iChronology.getMonthOfYear(instant, thisYear)  
+    monthToUse = thisMonth - 1 + months  
+    monthToUse ≥ 0  
+      ? yearToUse = thisYear + (monthToUse / iMax)  
+        monthToUse' = (monthToUse mod iMax) + 1  
+      : yearToUse = thisYear + (monthToUse / iMax) - 1  
+        rem = abs(monthToUse) mod iMax  
+        rem = 0  
+          ? rem' = iMax  
+        monthToUse' = iMax - rem + 1  
+        monthToUse' = 1  
+          ? yearToUse' = yearToUse + 1  
+    dayToUse = iChronology.getDayOfMonth(instant, thisYear, thisMonth)  
+    maxDay = iChronology.getDaysInYearMonth(yearToUse, monthToUse')  
+    dayToUse > maxDay  
+      ? dayToUse' = maxDay  
+    datePart = iChronology.getYearMonthDayMillis(yearToUse, monthToUse', dayToUse')  
+    result' = datePart + timePart  
+Functional Scenario Form  
+months=0 && returns same instant  
+months=3 && adds three months  
+months=-5 && subtracts five months  
+monthToUse=0 && wraps to year+1  
+dayToUse=31 in February && sets to 28/29  
+end_process  
+
+process add(partial: ReadablePartial, fieldIndex: int, values: int[], valueToAdd: int) result: int[]  
+pre true  
+post  
+  valueToAdd = 0  
+    ? result' = values  
+  partial.size() > 0 ∧ partial.getFieldType(0) = DateTimeFieldType.monthOfYear() ∧ fieldIndex = 0  
+    ? curMonth0 = values[0] - 1  
+      newMonth = ((curMonth0 + (valueToAdd mod 12) + 12) mod 12) + 1  
+      values[0]' = newMonth  
+      result' = values  
+  DateTimeUtils.isContiguous(partial)  
+    ? instant = 0  
+      for i=0 to partial.size()-1  
+        field = partial.getFieldType(i).getField(iChronology)  
+        instant' = field.set(instant, values[i])  
+      instant'' = add(instant', valueToAdd)  
+      result' = iChronology.get(partial, instant'')  
+  else  
+    result' = super.add(partial, fieldIndex, values, valueToAdd)  
+Functional Scenario Form  
+valueToAdd=0 && returns values  
+partial[0]=monthOfYear && fieldIndex=0 && wraps month within 1-12  
+DateTimeUtils.isContiguous(partial) && converts to instant and adds  
+else && calls super method  
+end_process  
+
+// Wrapped field addition
+process addWrapField(instant: long, months: int) result: long  
+pre true  
+post  
+  currentMonth = get(instant)  
+  wrappedMonth = FieldUtils.getWrappedValue(currentMonth, months, MIN, iMax)  
+  result' = set(instant, wrappedMonth)  
+Functional Scenario Form  
+currentMonth=12 months=3 && returns 3  
+currentMonth=1 months=-2 && returns 11  
+end_process  
+
+// Month difference calculation
+process getDifferenceAsLong(minuendInstant: long, subtrahendInstant: long) result: long  
+pre minuendInstant ≥ subtrahendInstant  
+post  
+  minYear = iChronology.getYear(minuendInstant)  
+  minMonth = iChronology.getMonthOfYear(minuendInstant, minYear)  
+  subYear = iChronology.getYear(subtrahendInstant)  
+  subMonth = iChronology.getMonthOfYear(subtrahendInstant, subYear)  
+  diff = (minYear - subYear) * iMax + minMonth - subMonth  
+  minDom = iChronology.getDayOfMonth(minuendInstant, minYear, minMonth)  
+  maxDom = iChronology.getDaysInYearMonth(minYear, minMonth)  
+  minDom = maxDom  
+    ? subDom = iChronology.getDayOfMonth(subtrahendInstant, subYear, subMonth)  
+      subDom > minDom  
+        ? subtrahendInstant' = iChronology.dayOfMonth().set(subtrahendInstant, minDom)  
+  minRem = minuendInstant - iChronology.getYearMonthMillis(minYear, minMonth)  
+  subRem = subtrahendInstant - iChronology.getYearMonthMillis(subYear, subMonth)  
+  minRem < subRem  
+    ? diff' = diff - 1  
+  result' = diff  
+Functional Scenario Form  
+minDom=maxDom && subDom>minDom && adjusts subtrahend  
+minRem<subRem && decreases diff by 1  
+minuend=2025-03-31 subtrahend=2025-02-30 && accounts for day adjustment  
+end_process  
+
+// Month setting
+process set(instant: long, month: int) result: long  
+pre month ≥ MIN ∧ month ≤ iMax  
+post  
+  year = iChronology.getYear(instant)  
+  dom = iChronology.getDayOfMonth(instant, year)  
+  maxDom = iChronology.getDaysInYearMonth(year, month)  
+  dom > maxDom  
+    ? dom' = maxDom  
+  result' = iChronology.getYearMonthDayMillis(year, month, dom') +  
+            iChronology.getMillisOfDay(instant)  
+Functional Scenario Form  
+month=2 (Feb) dom=31 && sets dom=28/29  
+valid month dom && preserves time part  
+end_process  
+
+// Range duration field
+process getRangeDurationField() result: DurationField  
+pre true  
+post  
+  result' = iChronology.years()  
+Functional Scenario Form  
+always && returns years duration field  
+end_process  
+
+// Leap month check
+process isLeap(instant: long) result: boolean  
+pre true  
+post  
+  year = iChronology.getYear(instant)  
+  iChronology.isLeapYear(year)  
+    ? month = iChronology.getMonthOfYear(instant, year)  
+      result' = (month = iLeapMonth)  
+    : result' = false  
+Functional Scenario Form  
+iChronology.isLeapYear(year) && month=iLeapMonth && returns true  
+¬iChronology.isLeapYear(year) && returns false  
+end_process  
+
+// Leap amount
+process getLeapAmount(instant: long) result: int  
+pre true  
+post  
+  isLeap(instant)  
+    ? result' = 1  
+    : result' = 0  
+Functional Scenario Form  
+isLeap=true && returns 1  
+isLeap=false && returns 0  
+end_process  
+
+// Leap duration field
+process getLeapDurationField() result: DurationField  
+pre true  
+post  
+  result' = iChronology.days()  
+Functional Scenario Form  
+always && returns days duration field  
+end_process  
+
+// Minimum value
+process getMinimumValue() result: int  
+pre true  
+post  
+  result' = MIN  
+Functional Scenario Form  
+always && returns MIN constant  
+end_process  
+
+// Maximum value
+process getMaximumValue() result: int  
+pre true  
+post  
+  result' = iMax  
+Functional Scenario Form  
+always && returns iMax  
+end_process  
+
+// Round floor
+process roundFloor(instant: long) result: long  
+pre true  
+post  
+  year = iChronology.getYear(instant)  
+  month = iChronology.getMonthOfYear(instant, year)  
+  result' = iChronology.getYearMonthMillis(year, month)  
+Functional Scenario Form  
+instant=2025-03-15T14:30 && returns 2025-03-01T00:00  
+end_process  
+
+// Remainder calculation
+process remainder(instant: long) result: long  
+pre true  
+post  
+  floor = roundFloor(instant)  
+  result' = instant - floor  
+Functional Scenario Form  
+instant=2025-03-15T14:30 && returns 14h30m duration  
+end_process  
+
+
+end_module  

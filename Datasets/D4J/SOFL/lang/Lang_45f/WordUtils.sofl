@@ -1,0 +1,36 @@
+module WordUtils
+type
+    str: String,
+    lower: int,
+    upper: int,
+    appendToEnd: String,
+    result: String
+
+process abbreviate(str: String, lower: int, upper: int, appendToEnd: String) result: String
+pre
+    true
+post
+    ((str = null) ⇒ result = null) or
+    ((length(str) = 0) ⇒ result = "") or
+    ((lower > length(str)) ⇒ lower = length(str)) and
+    ((upper = -1 or upper > length(str)) ⇒ upper = length(str)) and
+    ((upper < lower) ⇒ upper = lower) and
+    (
+        let index = indexOf(str, " ", lower) in
+        (
+            (index = -1 ∧ upper ≠ length(str)) ⇒ result = substring(str, 0, upper) + defaultString(appendToEnd)
+        or  (index = -1 ∧ upper = length(str)) ⇒ result = substring(str, 0, upper)
+        or  (index > upper) ⇒ result = substring(str, 0, upper) + defaultString(appendToEnd)
+        or  (index ≤ upper) ⇒ result = substring(str, 0, index) + defaultString(appendToEnd)
+        )
+    )
+Functional Scenario Form
+(str = null) && (result = null) or
+(length(str) = 0) && (result = "") or
+(indexOf(str, " ", lower) = -1 && upper ≠ length(str)) && (result = substring(str, 0, upper) + defaultString(appendToEnd)) or
+(indexOf(str, " ", lower) = -1 && upper = length(str)) && (result = substring(str, 0, upper)) or
+(indexOf(str, " ", lower) > upper) && (result = substring(str, 0, upper) + defaultString(appendToEnd)) or
+(indexOf(str, " ", lower) ≤ upper) && (result = substring(str, 0, index) + defaultString(appendToEnd))
+end_process
+
+end_module

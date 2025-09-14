@@ -1,0 +1,1641 @@
+module Dfp  
+
+var:  
+  RADIX: int = 10000  
+  MIN_EXP: int = -32767  
+  MAX_EXP: int = 32768  
+  ERR_SCALE: int = 32760  
+  FINITE: byte = 0  
+  INFINITE: byte = 1  
+  SNAN: byte = 2  
+  QNAN: byte = 3  
+  NAN_STRING: string = "NaN"  
+  POS_INFINITY_STRING: string = "Infinity"  
+  NEG_INFINITY_STRING: string = "-Infinity"  
+
+
+type Dfp:  
+  mant: int[]  // Array of RADIX digits  
+  sign: byte   // 1=positive, -1=negative  
+  exp: int     // Exponent value  
+  nans: byte   // NaN/Infinity indicator  
+
+// Constructors  
+process Dfp_constructor_field(field: DfpField) result: Dfp  
+pre true  
+post  
+  result.mant' = new int[field.radixDigits]  // All zeros  
+  result.sign' = 1  
+  result.exp' = 0  
+  result.nans' = FINITE  
+  result.field' = field  
+Functional Scenario Form  
+field.radixDigits=4 && result.mant.length=4 and result.sign=1 and result.exp=0 and result.nans=FINITE  
+end_process  
+
+process Dfp_constructor_field_long(field: DfpField, x: long) result: Dfp  
+pre true  
+post  
+  isLongMin = (x == Long.MIN_VALUE)  
+  isLongMin && x' = x + 1  // Handle special case  
+  
+  // Set sign and absolute value  
+  x < 0 && result.sign' = -1, absX = -x  
+  else && result.sign' = 1, absX = x  
+  
+  // Initialize  
+  result.mant' = new int[field.radixDigits]  
+  result.field' = field  
+  result.exp' = 0  
+  result.nans' = FINITE  
+  
+  // Convert to RADIX digits  
+  while absX ≠ 0  
+    digit = absX % RADIX  
+    absX = absX / RADIX  
+    // Shift existing digits  
+    System.arraycopy(result.mant, field.radixDigits - result.exp,   
+                    result.mant, field.radixDigits - 1 - result.exp, result.exp)  
+    result.mant'[field.radixDigits - 1] = digit  
+    result.exp' = result.exp + 1  
+  
+  // Long.MIN_VALUE correction  
+  isLongMin &&  
+    i = 0  
+    while i < field.radixDigits - 1  
+      result.mant[i] ≠ 0 && result.mant'[i] = result.mant[i] + 1, break  
+      i' = i + 1  
+Functional Scenario Form  
+x=0 field.radixDigits=4 && result.mant=[0,0,0,0] result.exp=0  
+x=1234 field.radixDigits=4 && result.mant=[0,0,0,1234] result.exp=1  
+x=10000 field.radixDigits=4 && result.mant=[0,0,1,0] result.exp=2  
+x=Long.MIN_VALUE field.radixDigits=8 && result.mant[0] adjusted  
+end_process  
+
+// Double to Dfp conversion  
+process Dfp_constructor_field_double(field: DfpField, x: double) result: Dfp  
+pre true  
+post  
+  // Initialize as zero  
+  result.mant' = new int[field.radixDigits]  
+  result.sign' = 1  
+  result.exp' = 0  
+  result.nans' = FINITE  
+  result.field' = field  
+
+  bits = Double.doubleToLongBits(x)  
+  mantissa = bits & 0x000fffffffffffffL  
+  exponent = ((int)((bits & 0x7ff0000000000000L) >> 52)) - 1023  
+
+  exponent = -1023  
+    ? x = 0 && bits & 0x8000000000000000L ≠ 0 && result.sign' = -1  // -0.0  
+    : exponent' = exponent + 1  
+      // Normalize subnormal  
+      (mantissa & 0x0010000000000000L) = 0 && exponent' = exponent - 1, mantissa' = mantissa << 1  
+      mantissa' = mantissa & 0x000fffffffffffffL  
+
+  exponent = 1024  
+    ? x ≠ x && result.nans' = QNAN  // NaN  
+      x < 0 && result.sign' = -1, result.nans' = INFINITE  // -Inf  
+      else && result.nans' = INFINITE  // +Inf  
+    : // Normal number conversion  
+      mantDfp = Dfp_constructor_field_long(field, mantissa)  
+      divisor = Dfp_constructor_field_long(field, 4503599627370496L)  // 2^52  
+      normalized = mantDfp.divide(divisor).add(field.getOne())  
+      pow2 = DfpMath.pow(field.getTwo(), exponent)  
+      xdfp = normalized.multiply(pow2)  
+      bits & 0x8000000000000000L ≠ 0 && xdfp' = xdfp.negate()  
+      // Copy final values  
+      result.mant' = xdfp.mant.clone()  
+      result.sign' = xdfp.sign  
+      result.exp' = xdfp.exp  
+      result.nans' = xdfp.nans  
+Functional Scenario Form  
+x=0.0 && result.sign=1, result.mant=zeros  
+x=-0.0 && result.sign=-1, result.mant=zeros  
+x=Double.NaN && result.nans=QNAN  
+x=Double.POSITIVE_INFINITY && result.nans=INFINITE, result.sign=1  
+x=1.0 && result.mant=[0,...,0,10000], result.exp=1 (if RADIX=10000)  
+x=1.0e-300 && result.exp≈-300  
+end_process  
+
+// Copy constructor  
+process Dfp_copy_constructor(d: Dfp) result: Dfp  
+pre true  
+post  
+  result.mant' = d.mant.clone()  
+  result.sign' = d.sign  
+  result.exp' = d.exp  
+  result.nans' = d.nans  
+  result.field' = d.field  
+Functional Scenario Form  
+d.sign=-1, d.exp=5, d.mant=[1,2,3,4] && result identical copy  
+d.nans=INFINITE && result.nans=INFINITE  
+end_process  
+
+// String to Dfp conversion  
+process Dfp_constructor_field_string(field: DfpField, s: string) result: Dfp  
+pre true  
+post  
+  // Initialize default values  
+  result.mant' = new int[field.radixDigits]  
+  result.sign' = 1  
+  result.exp' = 0  
+  result.nans' = FINITE  
+  result.field' = field  
+
+  // Special value handling  
+  s == POS_INFINITY_STRING && result.nans' = INFINITE  
+  s == NEG_INFINITY_STRING && result.sign' = -1 && result.nans' = INFINITE  
+  s == NAN_STRING && result.nans' = QNAN  
+
+  // Scientific notation parsing  
+  p = indexOf(s, "e")  
+  p == -1 && p = indexOf(s, "E")  
+  p != -1 && fpdecimal = substring(s, 0, p)  
+  p != -1 && fpexp = substring(s, p+1, length(s))  
+  p != -1 && sciexp = 0  
+  p != -1 && negative = false  
+  p != -1 && i = 0  
+  p != -1 && while i < length(fpexp)  
+    fpexp[i] == '-' && negative = true  
+    fpexp[i] >= '0' && fpexp[i] <= '9' && sciexp = sciexp * 10 + (fpexp[i] - '0')  
+    i' = i + 1  
+  p != -1 && negative && sciexp' = -sciexp  
+  p == -1 && fpdecimal = s  
+  p == -1 && sciexp = 0  
+
+  // Sign detection  
+  fpdecimal.indexOf("-") != -1 && result.sign' = -1  
+
+  // Decimal point processing  
+  decimalFound = false  
+  rsize = 4  
+  offset = 4  
+  striped = new char[field.radixDigits * rsize + offset * 2]  
+  p = 0  
+  decimalPos = 0  
+  while p < length(fpdecimal)  
+    fpdecimal[p] >= '1' && fpdecimal[p] <= '9' && break  
+    decimalFound && fpdecimal[p] == '0' && decimalPos' = decimalPos - 1  
+    fpdecimal[p] == '.' && decimalFound = true  
+    p' = p + 1  
+
+  // Significant digit extraction  
+  q = offset  
+  striped[0] = '0'  
+  striped[1] = '0'  
+  striped[2] = '0'  
+  striped[3] = '0'  
+  significantDigits = 0  
+  while p < length(fpdecimal) && q < (field.radixDigits * rsize + offset)  
+    fpdecimal[p] == '.' && decimalFound = true && decimalPos = significantDigits && p' = p + 1  
+    fpdecimal[p] >= '0' && fpdecimal[p] <= '9' && striped[q] = fpdecimal[p] && q' = q + 1 && p' = p + 1 && significantDigits' = significantDigits + 1  
+    !(fpdecimal[p] >= '0' && fpdecimal[p] <= '9') && p' = p + 1  
+
+  // Trailing zero removal  
+  decimalFound && q != offset && while q > offset  
+    q' = q - 1  
+    striped[q] == '0' && significantDigits' = significantDigits - 1  
+    striped[q] != '0' && break  
+
+  // Exponent calculation  
+  decimalFound && significantDigits == 0 && decimalPos = 0  
+  !decimalFound && decimalPos = q - offset  
+  q = offset  
+  p = significantDigits - 1 + offset  
+  while p > q  
+    striped[p] != '0' && break  
+    p' = p - 1  
+
+  // Digit alignment  
+  i = ((rsize * 100) - decimalPos - sciexp % rsize) % rsize  
+  q' = q - i  
+  decimalPos' = decimalPos + i  
+
+  // Padding  
+  (p - q) < (field.radixDigits * rsize) && while i < rsize  
+    p' = p + 1  
+    striped[p] = '0'  
+    i' = i + 1  
+
+  // Mantissa conversion  
+  i = field.radixDigits - 1  
+  while i >= 0  
+    result.mant'[i] = (striped[q]-'0')*1000 + (striped[q+1]-'0')*100 + (striped[q+2]-'0')*10 + (striped[q+3]-'0')  
+    q' = q + 4  
+    i' = i - 1  
+
+  // Final exponent  
+  result.exp' = (decimalPos + sciexp) / rsize  
+
+  // Rounding  
+  q < length(striped) && round_digit = (striped[q]-'0')*1000  
+  q < length(striped) && round(round_digit)  
+
+end_process  
+
+Functional Scenario Form  
+s == POS_INFINITY_STRING && result.nans == INFINITE  
+s == NEG_INFINITY_STRING && result.nans == INFINITE && result.sign == -1  
+s == NAN_STRING && result.nans == QNAN  
+s == "0" && result.sign == 1 && result.mant[all] == 0  
+s == "123.45e1" && decimalPos == 3 && sciexp == 1 && result.exp == 1  
+s == "10000" && result.mant[0] == 1000  
+s == "0.001" && decimalPos == -3 && result.exp == -1  
+s == "12345678" && field.radixDigits == 4 && result.mant[0] == 1 && result.mant[1] == 2345  
+end_process
+
+// Constructor with sign and nans  
+process Dfp_constructor_sign_nans(field: DfpField, sign: byte, nans: byte) result: Dfp  
+pre true  
+post  
+  result.mant' = new int[field.radixDigits]  
+  result.sign' = sign  
+  result.exp' = 0  
+  result.nans' = nans  
+  result.field' = field  
+Functional Scenario Form  
+field.radixDigits==4 && result.mant.length==4  
+sign==-1 && nans==INFINITE && result.sign==-1 && result.nans==INFINITE  
+end_process  
+
+// Create zero instance  
+process newInstance_zero() result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field(field)  
+Functional Scenario Form  
+field.radixDigits==8 && result.mant.length==8  
+result.sign==1 && result.exp==0  
+end_process  
+
+// Create instance from byte  
+process newInstance_byte(x: byte) result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field_long(field, x)  
+Functional Scenario Form  
+x==0 && result==getZero()  
+x==100 && result.mant[last]==100  
+end_process  
+
+// Create instance from int  
+process newInstance_int(x: int) result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field_long(field, x)  
+Functional Scenario Form  
+x==0 && result==getZero()  
+x==10000 && result.mant[last]==10000  
+end_process  
+
+// Create instance from long  
+process newInstance_long(x: long) result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field_long(field, x)  
+Functional Scenario Form  
+x==Long.MIN_VALUE && result.mant[0]==1  
+x==100000L && result.mant[last]==100000  
+end_process  
+
+// Create instance from double  
+process newInstance_double(x: double) result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field_double(field, x)  
+Functional Scenario Form  
+x==0.0 && result==getZero()  
+x==1.0e-300 && result.exp≈-300  
+end_process  
+
+// Copy instance with validation  
+process newInstance_Dfp(d: Dfp) result: Dfp  
+pre true  
+post  
+  field.radixDigits != d.field.radixDigits  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance_zero()  
+      result.nans' = QNAN  
+      dotrap(DfpField.FLAG_INVALID, NEW_INSTANCE_TRAP, d, result)  
+    : result' = Dfp_copy_constructor(d)  
+Functional Scenario Form  
+field.radixDigits==8 && d.field.radixDigits==4 && result.nans==QNAN  
+field.radixDigits==4 && d.field.radixDigits==4 && result.mant==d.mant  
+end_process  
+
+// Create instance from string  
+process newInstance_string(s: string) result: Dfp  
+pre true  
+post  
+  result' = Dfp_constructor_field_string(field, s)  
+Functional Scenario Form  
+s=="123.45" && result.mant[last]==12345  
+s=="1e3" && result.exp==3  
+end_process  
+
+// Create non-finite instance  
+process newInstance_sign_code(sig: byte, code: byte) result: Dfp  
+pre true  
+post  
+  result' = field.newDfp(sig, code)  
+Functional Scenario Form  
+sig==-1 && code==INFINITE && result.sign==-1 && result.nans==INFINITE  
+sig==1 && code==QNAN && result.nans==QNAN  
+end_process  
+
+// Field accessors  
+process getField() result: DfpField  
+pre true  
+post  
+  result' = field  
+Functional Scenario Form  
+field==someField && result==someField  
+end_process  
+
+process getRadixDigits() result: int  
+pre true  
+post  
+  result' = field.radixDigits  
+Functional Scenario Form  
+field.radixDigits==8 && result==8  
+end_process  
+
+// Constants  
+process getZero() result: Dfp  
+pre true  
+post  
+  result' = field.getZero()  
+Functional Scenario Form  
+field.getZero().sign==1 && result.sign==1  
+end_process  
+
+process getOne() result: Dfp  
+pre true  
+post  
+  result' = field.getOne()  
+Functional Scenario Form  
+field.getOne().mant[last]==10000 && result.mant[last]==10000  
+end_process  
+
+process getTwo() result: Dfp  
+pre true  
+post  
+  result' = field.getTwo()  
+Functional Scenario Form  
+field.getTwo().mant[last]==20000 && result.mant[last]==20000  
+end_process  
+
+// Mantissa shift operation  
+process shiftLeft()  
+pre true  
+post  
+  i = mant.length - 1  
+  while i > 0  
+    mant'[i] = mant[i-1]  
+    i' = i - 1  
+  mant'[0] = 0  
+  exp' = exp - 1  
+Functional Scenario Form  
+mant=[1,2,3,4] && result.mant=[0,1,2,3]  
+exp==5 && result.exp==4  
+end_process  
+
+// Shift mantissa right  
+process shiftRight()  
+pre true  
+post  
+  i = 0  
+  while i < mant.length - 1  
+    mant'[i] = mant[i+1]  
+    i' = i + 1  
+  mant'[mant.length - 1] = 0  
+  exp' = exp + 1  
+Functional Scenario Form  
+mant=[0,1,2,3] && result.mant=[1,2,3,0]  
+exp==5 && result.exp==6  
+end_process  
+
+// Align exponents  
+process align(e: int) result: lostdigit  
+pre true  
+post  
+  diff = exp - e  
+  adiff = (diff < 0) ? -diff : diff  
+
+  diff == 0 → lostdigit' = 0  
+
+  adiff > (mant.length + 1)  
+    ? Arrays.fill(mant, 0)  
+      exp' = e  
+      field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+      dotrap(DfpField.FLAG_INEXACT, ALIGN_TRAP, this, this)  
+      lostdigit' = 0  
+
+  else  
+    inexact = false  
+    i = 0  
+    while i < adiff  
+      diff < 0  
+        ? lostdigit != 0 → inexact = true  
+          lostdigit' = mant[0]  
+          shiftRight()  
+        : shiftLeft()  
+      i' = i + 1  
+
+    inexact  
+      ? field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+        dotrap(DfpField.FLAG_INEXACT, ALIGN_TRAP, this, this)  
+
+Functional Scenario Form  
+exp==10 && e==10 && diff==0 && lostdigit=0  
+exp==5 && e==100 && adiff=95 > mant.length+1 && mant filled with 0 && exp=100  
+exp==5 && e==3 && diff=2 && shiftLeft called twice  
+exp==3 && e==5 && diff=-2 && lostdigit set to first digit  
+end_process  
+
+// Less than comparison  
+process lessThan(x: Dfp) result: boolean  
+pre true  
+post  
+  field.radixDigits != x.field.radixDigits  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, x, newInstance(getZero()))  
+
+  isNaN() || x.isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, x, newInstance(getZero()))  
+
+  else → result = compare(this, x) < 0  
+Functional Scenario Form  
+field.radixDigits=8 && x.field.radixDigits=4 && result=false && FLAG_INVALID set  
+this=NaN && x=5.0 && result=false && FLAG_INVALID set  
+this=3.0 && x=5.0 && result=true  
+this=5.0 && x=3.0 && result=false  
+end_process  
+
+// Greater than comparison  
+process greaterThan(x: Dfp) result: boolean  
+pre true  
+post  
+  field.radixDigits != x.field.radixDigits  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, GREATER_THAN_TRAP, x, newInstance(getZero()))  
+
+  isNaN() || x.isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, GREATER_THAN_TRAP, x, newInstance(getZero()))  
+
+  else → result = compare(this, x) > 0  
+Functional Scenario Form  
+field.radixDigits=4 && x.field.radixDigits=8 && result=false && FLAG_INVALID set  
+this=5.0 && x=NaN && result=false && FLAG_INVALID set  
+this=5.0 && x=3.0 && result=true  
+this=3.0 && x=5.0 && result=false  
+end_process  
+
+// Negative or zero check  
+process negativeOrNull() result: boolean  
+pre true  
+post  
+  isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, this, newInstance(getZero()))  
+
+  else → result = (sign < 0) || (mant[mant.length - 1] == 0 && !isInfinite())  
+Functional Scenario Form  
+this=NaN && result=false && FLAG_INVALID set  
+this=-3.0 && result=true  
+this=0.0 && result=true  
+this=5.0 && result=false  
+this=INFINITE && result=false  
+end_process  
+
+// Strictly negative check  
+process strictlyNegative() result: boolean  
+pre true  
+post  
+  isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, this, newInstance(getZero()))  
+
+  else → result = (sign < 0) && (mant[mant.length - 1] != 0 || isInfinite())  
+Functional Scenario Form  
+this=NaN && result=false && FLAG_INVALID set  
+this=-3.0 && result=true  
+this=-0.0 && result=false  
+this=-INFINITE && result=true  
+this=5.0 && result=false  
+end_process  
+
+// Positive or zero check  
+process positiveOrNull() result: boolean  
+pre true  
+post  
+  isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, this, newInstance(getZero()))  
+
+  else → result = (sign > 0) || (mant[mant.length - 1] == 0 && !isInfinite())  
+Functional Scenario Form  
+this=NaN && result=false && FLAG_INVALID set  
+this=3.0 && result=true  
+this=0.0 && result=true  
+this=-5.0 && result=false  
+this=INFINITE && result=false  
+end_process  
+
+// Strictly positive check  
+process strictlyPositive() result: boolean  
+pre true  
+post  
+  isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, this, newInstance(getZero()))  
+
+  else → result = (sign > 0) && (mant[mant.length - 1] != 0 || isInfinite())  
+Functional Scenario Form  
+this=NaN && result=false && FLAG_INVALID set  
+this=3.0 && result=true  
+this=0.0 && result=false  
+this=INFINITE && result=true  
+end_process  
+
+// Absolute value  
+process abs() result: Dfp  
+pre true  
+post  
+  result' = newInstance(this)  
+  result.sign' = 1  
+Functional Scenario Form  
+this=-5.0 && result.sign=1  
+this=3.0 && result.sign=1  
+end_process  
+
+// Infinity check  
+process isInfinite() result: boolean  
+pre true  
+post  
+  result = (nans == INFINITE)  
+Functional Scenario Form  
+nans=INFINITE && result=true  
+nans=FINITE && result=false  
+end_process  
+
+// NaN check  
+process isNaN() result: boolean  
+pre true  
+post  
+  result = (nans == QNAN) || (nans == SNAN)  
+Functional Scenario Form  
+nans=QNAN && result=true  
+nans=SNAN && result=true  
+nans=FINITE && result=false  
+end_process  
+
+// Zero check  
+process isZero() result: boolean  
+pre true  
+post  
+  isNaN()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result = false  
+      dotrap(DfpField.FLAG_INVALID, LESS_THAN_TRAP, this, newInstance(getZero()))  
+
+  else → result = (mant[mant.length - 1] == 0) && !isInfinite()  
+Functional Scenario Form  
+this=NaN && result=false && FLAG_INVALID set  
+this=0.0 && result=true  
+this=INFINITE && result=false  
+this=5.0 && result=false  
+end_process  
+
+// Equality check  
+process equals(other: Object) result: boolean  
+pre true  
+post  
+  other instanceof Dfp  
+    ? x = (Dfp)other  
+      isNaN() || x.isNaN() || field.getRadixDigits() != x.field.getRadixDigits()  
+        ? result = false  
+      : result = compare(this, x) == 0  
+    : result = false  
+Functional Scenario Form  
+other=Dfp(5.0) && this=5.0 && result=true  
+other=Dfp(3.0) && this=5.0 && result=false  
+other=String && result=false  
+field.radixDigits=4 && x.field.radixDigits=8 && result=false  
+this=NaN && result=false  
+end_process  
+
+// Hash code generation  
+process hashCode() result: int  
+pre true  
+post  
+  result = 17 + (sign << 8) + (nans << 16) + exp + Arrays.hashCode(mant)  
+Functional Scenario Form  
+sign=1 && nans=FINITE && exp=0 && mant=[0] && result==17+256+0+0+Arrays.hashCode([0])  
+sign=-1 && nans=QNAN && exp=5 && mant=[1,2] && result==17-256+(QNAN<<16)+5+Arrays.hashCode([1,2])  
+end_process  
+
+// Inequality check  
+process unequal(x: Dfp) result: boolean  
+pre true  
+post  
+  isNaN() || x.isNaN() || field.getRadixDigits() != x.field.getRadixDigits()  
+    ? result = false  
+    : result = greaterThan(x) || lessThan(x)  
+Functional Scenario Form  
+this=5.0 && x=3.0 && result=true  
+this=3.0 && x=5.0 && result=true  
+this=5.0 && x=5.0 && result=false  
+this=NaN && result=false  
+end_process  
+
+// Internal comparison  
+process compare(a: Dfp, b: Dfp) result: int  
+pre true  
+post  
+  // Both zero  
+  a.mant[a.mant.length-1]==0 && b.mant[b.mant.length-1]==0 && a.nans==FINITE && b.nans==FINITE  
+    ? result = 0  
+  
+  // Different signs  
+  a.sign != b.sign  
+    ? a.sign == -1 → result = -1  
+      else → result = 1  
+  
+  // Infinity cases  
+  a.nans==INFINITE && b.nans==FINITE → result = a.sign  
+  a.nans==FINITE && b.nans==INFINITE → result = -b.sign  
+  a.nans==INFINITE && b.nans==INFINITE → result = 0  
+  
+  // Compare exponents for non-zero  
+  b.mant[b.mant.length-1]!=0 && a.mant[a.mant.length-1]!=0  
+    ? a.exp < b.exp → result = -a.sign  
+      a.exp > b.exp → result = a.sign  
+  
+  // Compare mantissas  
+  i = a.mant.length - 1  
+  while i >= 0  
+    a.mant[i] > b.mant[i] → result = a.sign  
+    a.mant[i] < b.mant[i] → result = -a.sign  
+    i' = i - 1  
+  
+  result = 0  
+Functional Scenario Form  
+a=0.0 && b=0.0 && result=0  
+a=-5.0 && b=3.0 && result=-1  
+a=INFINITE && b=5.0 && result=1  
+a=5.0 && b=INFINITE && result=-1  
+a.exp=3 && b.exp=5 && result=-a.sign  
+a.mant=[1,2] && b.mant=[1,1] && result=a.sign  
+a.mant=[1,1] && b.mant=[1,1] && result=0  
+end_process  
+
+// Round to nearest integer (half-even)  
+process rint() result: Dfp  
+pre true  
+post  
+  result' = trunc(DfpField.RoundingMode.ROUND_HALF_EVEN)  
+Functional Scenario Form  
+this=2.5 && result=2  
+this=3.5 && result=4  
+this=4.5 && result=4  
+end_process  
+
+// Round towards negative infinity  
+process floor() result: Dfp  
+pre true  
+post  
+  result' = trunc(DfpField.RoundingMode.ROUND_FLOOR)  
+Functional Scenario Form  
+this=2.3 && result=2  
+this=-2.3 && result=-3  
+end_process  
+
+// Round towards positive infinity  
+process ceil() result: Dfp  
+pre true  
+post  
+  result' = trunc(DfpField.RoundingMode.ROUND_CEIL)  
+Functional Scenario Form  
+this=2.3 && result=3  
+this=-2.3 && result=-2  
+end_process  
+
+// IEEE remainder calculation  
+process remainder(d: Dfp) result: Dfp  
+pre true  
+post  
+  quotient = this.divide(d)  
+  rounded = quotient.rint()  
+  result' = this.subtract(rounded.multiply(d))  
+  result.mant[result.mant.length-1] == 0 && result.sign' = this.sign  
+Functional Scenario Form  
+this=10.0 && d=3.0 && result≈1.0  
+this=11.0 && d=2.5 && result≈1.0  
+this=10.0 && d=5.0 && result=0.0 && result.sign=this.sign  
+end_process  
+
+// Truncate with rounding mode  
+process trunc(rmode: DfpField.RoundingMode) result: Dfp  
+pre true  
+post  
+  isNaN() || nans == INFINITE || mant[mant.length-1] == 0  
+    ? result' = newInstance(this)  
+  
+  exp < 0  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+      result' = newInstance(getZero())  
+      result' = dotrap(DfpField.FLAG_INEXACT, TRUNC_TRAP, this, result)  
+  
+  exp >= mant.length  
+    ? result' = newInstance(this)  
+  
+  else  
+    result' = newInstance(this)  
+    changed = false  
+    i = 0  
+    while i < mant.length - result.exp  
+      changed = changed || result.mant[i] != 0  
+      result.mant'[i] = 0  
+      i' = i + 1  
+  
+    changed  
+      ? rmode == ROUND_FLOOR && result.sign == -1  
+          ? result' = result.add(newInstance(-1))  
+        rmode == ROUND_CEIL && result.sign == 1  
+          ? result' = result.add(getOne())  
+        rmode == ROUND_HALF_EVEN  
+          ? half = newInstance("0.5")  
+            a = this.subtract(result)  
+            a.sign = 1  
+            a.greaterThan(half)  
+              ? inc = newInstance(getOne())  
+                inc.sign = this.sign  
+                result' = result.add(inc)  
+            a.equals(half) && result.exp > 0 && (result.mant[mant.length-result.exp] & 1) != 0  
+              ? inc = newInstance(getOne())  
+                inc.sign = this.sign  
+                result' = result.add(inc)  
+        field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+        result' = dotrap(DfpField.FLAG_INEXACT, TRUNC_TRAP, this, result)  
+Functional Scenario Form  
+this=2.3 && rmode=ROUND_FLOOR && result=2  
+this=2.3 && rmode=ROUND_CEIL && result=3  
+this=2.5 && rmode=ROUND_HALF_EVEN && result=2  
+this=3.5 && rmode=ROUND_HALF_EVEN && result=4  
+this=0.999 && exp<0 && result=0  
+end_process  
+
+// Convert to integer value  
+process intValue() result: int  
+pre true  
+post  
+  rounded = rint()  
+  rounded.greaterThan(newInstance(2147483647))  
+    ? result' = 2147483647  
+  rounded.lessThan(newInstance(-2147483648))  
+    ? result' = -2147483648  
+  else  
+    result' = 0  
+    i = mant.length - 1  
+    while i >= mant.length - rounded.exp  
+      result' = result * RADIX + rounded.mant[i]  
+      i' = i - 1  
+    rounded.sign == -1  
+      ? result' = -result  
+Functional Scenario Form  
+this=123.7 && result=124  
+this=2147483648.0 && result=2147483647  
+this=-2147483649.0 && result=-2147483648  
+this=32768 && RADIX=10000 && rounded.exp=2 && result=32768  
+end_process  
+
+// Logarithm base 10000  
+process log10K() result: int  
+pre true  
+post  
+  result' = exp - 1  
+Functional Scenario Form  
+exp=5 && result=4  
+exp=0 && result=-1  
+end_process  
+
+// Power of 10000  
+process power10K(e: int) result: Dfp  
+pre true  
+post  
+  result' = newInstance(getOne())  
+  result.exp' = e + 1  
+Functional Scenario Form  
+e=3 && result.exp=4  
+e=-2 && result.exp=-1  
+end_process  
+
+// Base-10 logarithm  
+process log10() result: int  
+pre true  
+post  
+  mant[mant.length-1] > 1000 → result' = exp*4 - 1  
+  mant[mant.length-1] > 100 → result' = exp*4 - 2  
+  mant[mant.length-1] > 10 → result' = exp*4 - 3  
+  else → result' = exp*4 - 4  
+Functional Scenario Form  
+mant[last]=1001 && exp=3 && result=11  
+mant[last]=101 && exp=2 && result=6  
+mant[last]=11 && exp=1 && result=1  
+mant[last]=9 && exp=1 && result=0  
+end_process  
+
+// Power of 10  
+process power10(e: int) result: Dfp  
+pre true  
+post  
+  result' = newInstance(getOne())  
+  e >= 0 → result.exp' = e/4 + 1  
+  e < 0 → result.exp' = (e+1)/4  
+  rem = (e % 4 + 4) % 4  
+  rem == 0 → result' = result  
+  rem == 1 → result' = result.multiply(10)  
+  rem == 2 → result' = result.multiply(100)  
+  rem == 3 → result' = result.multiply(1000)  
+Functional Scenario Form  
+e=0 && result.exp=1 && rem=0  
+e=1 && rem=1 && result=result.multiply(10)  
+e=5 && rem=1 && result.exp=2  
+e=-1 && result.exp=0 && rem=3  
+end_process  
+
+// Mantissa complement  
+process complement(extra: int) result: int  
+pre true  
+post  
+  extra' = RADIX - extra  
+  i = 0  
+  while i < mant.length  
+    mant'[i] = RADIX - mant[i] - 1  
+    i' = i + 1  
+  rh = extra / RADIX  
+  extra' = extra - rh * RADIX  
+  i = 0  
+  while i < mant.length  
+    r = mant[i] + rh  
+    rh' = r / RADIX  
+    mant'[i] = r - rh * RADIX  
+    i' = i + 1  
+  result' = extra  
+Functional Scenario Form  
+extra=5 && RADIX=10000 && result=9995  
+mant=[100,200] && RADIX=1000 && result mant=[899,799]  
+end_process  
+
+// Negate operation  
+process negate() result: Dfp  
+pre true  
+post  
+  result' = newInstance(this)  
+  result.sign' = -this.sign  
+Functional Scenario Form  
+this.sign=1 && result.sign=-1  
+this.sign=-1 && result.sign=1  
+end_process  
+
+// Subtraction operation  
+process subtract(x: Dfp) result: Dfp  
+pre true  
+post  
+  result' = add(x.negate())  
+Functional Scenario Form  
+this=5.0 && x=3.0 && result=2.0  
+this=3.0 && x=5.0 && result=-2.0  
+end_process  
+
+// Rounding with digit n  
+process round(n: int) result: flag  
+pre true  
+post  
+  mode = field.getRoundingMode()  
+  mode == ROUND_DOWN → inc = false  
+  mode == ROUND_UP → inc = (n != 0)  
+  mode == ROUND_HALF_UP → inc = (n >= 5000)  
+  mode == ROUND_HALF_DOWN → inc = (n > 5000)  
+  mode == ROUND_HALF_EVEN → inc = (n > 5000) || (n == 5000 && (mant[0] & 1) == 1)  
+  mode == ROUND_HALF_ODD → inc = (n > 5000) || (n == 5000 && (mant[0] & 1) == 0)  
+  mode == ROUND_CEIL → inc = (sign == 1 && n != 0)  
+  else → inc = (sign == -1 && n != 0)  
+
+  inc  
+    ? rh = 1  
+      i = 0  
+      while i < mant.length  
+        r = mant[i] + rh  
+        rh' = r / RADIX  
+        mant'[i] = r - rh * RADIX  
+        i' = i + 1  
+      rh != 0  
+        ? shiftRight()  
+          mant'[mant.length-1] = rh  
+
+  exp < MIN_EXP  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_UNDERFLOW)  
+      flag' = DfpField.FLAG_UNDERFLOW  
+  exp > MAX_EXP  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_OVERFLOW)  
+      flag' = DfpField.FLAG_OVERFLOW  
+  n != 0 && !(exp<MIN_EXP || exp>MAX_EXP)  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+      flag' = DfpField.FLAG_INEXACT  
+  else → flag' = 0  
+Functional Scenario Form  
+n=5000 && mode=ROUND_HALF_UP && inc=true  
+n=4999 && mode=ROUND_HALF_DOWN && inc=false  
+n=5000 && mode=ROUND_HALF_EVEN && mant[0] odd && inc=true  
+exp=MIN_EXP-1 && flag=DfpField.FLAG_UNDERFLOW  
+n=1000 && flag=DfpField.FLAG_INEXACT  
+end_process  
+
+// Multiplication with another Dfp  
+process multiply_Dfp(x: Dfp) result: Dfp  
+pre true  
+post  
+  field.getRadixDigits() != x.field.getRadixDigits()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, MULTIPLY_TRAP, x, result)  
+  
+  isNaN() → result' = this  
+  x.isNaN() → result' = x  
+  nans==INFINITE && x.nans==FINITE && x.mant[x.mant.length-1]!=0  
+    ? result' = newInstance(this)  
+      result.sign' = sign * x.sign  
+  x.nans==INFINITE && nans==FINITE && mant[mant.length-1]!=0  
+    ? result' = newInstance(x)  
+      result.sign' = sign * x.sign  
+  x.nans==INFINITE && nans==INFINITE  
+    ? result' = newInstance(this)  
+      result.sign' = sign * x.sign  
+  (x.nans==INFINITE && nans==FINITE && mant[mant.length-1]==0) ||  
+  (nans==INFINITE && x.nans==FINITE && x.mant[mant.length-1]==0)  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, MULTIPLY_TRAP, x, result)  
+  else  
+    product = new int[mant.length*2]  
+    i = 0  
+    while i < mant.length  
+      rh = 0  
+      j = 0  
+      while j < mant.length  
+        r = mant[i] * x.mant[j] + product[i+j] + rh  
+        rh' = r / RADIX  
+        product[i+j]' = r - rh * RADIX  
+        j' = j + 1  
+      product[i+mant.length]' = rh  
+      i' = i + 1  
+  
+    md = mant.length*2 - 1  
+    i = mant.length*2 - 1  
+    while i >= 0  
+      product[i] != 0 → md' = i, break  
+      i' = i - 1  
+  
+    i = 0  
+    while i < mant.length  
+      result.mant'[mant.length-i-1] = product[md-i]  
+      i' = i + 1  
+  
+    result.exp' = exp + x.exp + md - 2*mant.length + 1  
+    result.sign' = (sign == x.sign) ? 1 : -1  
+    result.mant[result.mant.length-1] == 0 → result.exp' = 0  
+  
+    md > mant.length-1  
+      ? excp = result.round(product[md-mant.length])  
+      : excp = result.round(0)  
+    excp != 0 → result' = dotrap(excp, MULTIPLY_TRAP, x, result)  
+Functional Scenario Form  
+field.radixDigits=4 && x.field.radixDigits=8 && result.nans=QNAN  
+this=NaN && result=this  
+this=INFINITE && x=5.0 && result.sign=sign*x.sign  
+this=0.0 && x=INFINITE && result.nans=QNAN  
+mant=[1,2] && x.mant=[3,4] && product[0..3]=[0,0,0,0] -> after calc product[0]=?  
+md=3 && result.exp=exp+x.exp+3-2*2+1  
+result.mant[last]==0 && result.exp=0  
+end_process  
+
+// Multiplication with integer  
+process multiply_int(x: int) result: Dfp  
+pre true  
+post  
+  x >= 0 && x < RADIX  
+    ? result' = multiplyFast(x)  
+    : result' = multiply_Dfp(newInstance(x))  
+Functional Scenario Form  
+x=5 && RADIX=10000 && result=multiplyFast(5)  
+x=10001 && result=multiply_Dfp(newInstance(10001))  
+end_process  
+
+// Fast multiplication with small integer  
+process multiplyFast(x: int) result: Dfp  
+pre true  
+post  
+  result' = newInstance(this)  
+
+  isNaN() → result' = this  
+  nans == INFINITE && x != 0 → result' = newInstance(this)  
+  nans == INFINITE && x == 0  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, MULTIPLY_TRAP, newInstance(getZero()), result)  
+  x < 0 || x >= RADIX  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, MULTIPLY_TRAP, result, result)  
+  else  
+    rh = 0  
+    i = 0  
+    while i < mant.length  
+      r = mant[i] * x + rh  
+      rh' = r / RADIX  
+      result.mant'[i] = r - rh * RADIX  
+      i' = i + 1  
+    rh != 0  
+      ? lostdigit = result.mant[0]  
+        result.shiftRight()  
+        result.mant'[mant.length-1] = rh  
+      : lostdigit = 0  
+    result.mant[result.mant.length-1] == 0 → result.exp' = 0  
+    excp = result.round(lostdigit)  
+    excp != 0 → result' = dotrap(excp, MULTIPLY_TRAP, result, result)  
+Functional Scenario Form  
+this=NaN && result=this  
+this=INFINITE && x=5 && result=this  
+this=INFINITE && x=0 && result.nans=QNAN  
+x=-1 && RADIX=10000 && result.nans=QNAN  
+x=10000 && RADIX=10000 && result.nans=QNAN  
+this=3.0 && x=5 && result=15.0  
+this=1000.0 && x=10 && RADIX=10000 && rh=1 && result shifted right  
+end_process  
+
+// Division operation (complete implementation)
+process divide(divisor: Dfp) result: Dfp
+pre true
+post
+  // Precision validation
+  field.getRadixDigits() != divisor.field.getRadixDigits()
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)
+      result' = newInstance(getZero())
+      result.nans' = QNAN
+      result' = dotrap(DfpField.FLAG_INVALID, DIVIDE_TRAP, divisor, result)
+  
+  // Special values handling
+  isNaN() && result' = this
+  divisor.isNaN() && result' = divisor
+  nans == INFINITE && divisor.nans == FINITE && divisor.mant[divisor.mant.length-1] != 0
+    ? result' = newInstance(this)
+      result.sign' = sign * divisor.sign
+  divisor.nans == INFINITE && nans == FINITE && mant[mant.length-1] != 0
+    ? result' = newInstance(getZero())
+      result.sign' = sign * divisor.sign
+  divisor.nans == INFINITE && nans == INFINITE
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)
+      result' = newInstance(getZero())
+      result.nans' = QNAN
+      result' = dotrap(DfpField.FLAG_INVALID, DIVIDE_TRAP, divisor, result)
+  
+  // Division by zero detection
+  divisor.mant[divisor.mant.length-1] == 0
+    ? field.setIEEEFlagsBits(DfpField.FLAG_DIV_ZERO)
+      result' = newInstance(getZero())
+      result.sign' = sign * divisor.sign
+      result.nans' = INFINITE
+      result' = dotrap(DfpField.FLAG_DIV_ZERO, DIVIDE_TRAP, divisor, result)
+  
+  // Initialize division arrays
+  dividend = new int[mant.length+1]
+  quotient = new int[mant.length+2]
+  remainder = new int[mant.length+1]
+  dividend[mant.length] = 0
+  quotient[mant.length] = 0
+  quotient[mant.length+1] = 0
+  remainder[mant.length] = 0
+  i = 0
+  while i < mant.length
+    dividend[i]' = mant[i]
+    quotient[i]' = 0
+    remainder[i]' = 0
+    i' = i + 1
+  
+  // Division loop
+  nsqd = 0
+  qd = mant.length+1
+  while qd >= 0
+    divMsb = dividend[mant.length]*RADIX + dividend[mant.length-1]
+    min = divMsb / (divisor.mant[mant.length-1]+1)
+    max = (divMsb + 1) / divisor.mant[mant.length-1]
+    trialgood = false
+    while !trialgood
+      trial = (min + max) / 2
+      
+      // Multiply divisor by trial digit
+      rh = 0
+      i = 0
+      while i < mant.length + 1
+        dm = (i < mant.length) ? divisor.mant[i] : 0
+        r = dm * trial + rh
+        rh' = r / RADIX
+        remainder[i]' = r - rh * RADIX
+        i' = i + 1
+      
+      // Subtract product from dividend
+      rh = 1
+      i = 0
+      while i < mant.length + 1
+        r = ((RADIX-1) - remainder[i]) + dividend[i] + rh
+        rh' = r / RADIX
+        remainder[i]' = r - rh * RADIX
+        i' = i + 1
+      
+      // Analyze remainder
+      rh == 0
+        ? max' = trial - 1, continue
+      minadj = (remainder[mant.length] * RADIX) + remainder[mant.length-1]
+      minadj' = minadj / (divisor.mant[mant.length-1]+1)
+      minadj >= 2
+        ? min' = trial + minadj, continue
+      
+      // Validate trial digit
+      trialgood = true
+      i = mant.length - 1
+      while i >= 0
+        divisor.mant[i] > remainder[i] && break
+        divisor.mant[i] < remainder[i] && trialgood = false, break
+        i' = i - 1
+      remainder[mant.length] != 0 && trialgood = false
+      !trialgood && min' = trial + 1
+    
+    // Store valid trial digit
+    quotient[qd]' = trial
+    (trial != 0 || nsqd != 0) && nsqd' = nsqd + 1
+    
+    // Check for completion
+    (field.getRoundingMode() == ROUND_DOWN && nsqd == mant.length) && break
+    nsqd > mant.length && break
+    
+    // Prepare for next digit
+    dividend[0]' = 0
+    i = 0
+    while i < mant.length
+      dividend[i+1]' = remainder[i]
+      i' = i + 1
+    qd' = qd - 1
+  
+  // Process result
+  md = mant.length
+  i = mant.length + 1
+  while i >= 0
+    quotient[i] != 0 && md' = i, break
+    i' = i - 1
+  i = 0
+  while i < mant.length
+    result.mant'[mant.length-i-1] = quotient[md-i]
+    i' = i + 1
+  result.exp' = exp - divisor.exp + md - mant.length
+  result.sign' = (sign == divisor.sign) ? 1 : -1
+  result.mant[result.mant.length-1] == 0 && result.exp' = 0
+  
+  // Rounding
+  md > mant.length-1
+    ? excp = result.round(quotient[md-mant.length])
+    : excp = result.round(0)
+  excp != 0 && result' = dotrap(excp, DIVIDE_TRAP, divisor, result)
+  
+Functional Scenario Form
+field.radixDigits=4 && divisor.field.radixDigits=8 && result.nans=QNAN
+this=NaN && result=this
+divisor=NaN && result=divisor
+this=INFINITE && divisor=5.0 && result.sign=sign*divisor.sign
+divisor=INFINITE && this=5.0 && result=0.0
+divisor=0.0 && result.nans=INFINITE
+mant=[1,2] && divisor.mant=[3,4] && dividend[0..2]=[1,2,0]
+divMsb = 0*10000 + 1 = 1, divisor.mant[last]=4 → min=1/5=0, max=2/4=0 → trial=0
+trialgood=false → min=1 → trial=1
+rh=1 after subtraction → minadj calculation
+quotient[4]=1 → nsqd=1
+md=4 → result.exp=exp-divisor.exp+4-4
+end_process
+
+// Division by integer  
+process divide_int(divisor: int) result: Dfp  
+pre true  
+post  
+  isNaN() → result' = this  
+  nans == INFINITE → result' = newInstance(this)  
+  divisor == 0  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_DIV_ZERO)  
+      result' = newInstance(getZero())  
+      result.sign' = sign  
+      result.nans' = INFINITE  
+      result' = dotrap(DfpField.FLAG_DIV_ZERO, DIVIDE_TRAP, getZero(), result)  
+  divisor < 0 || divisor >= RADIX  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, DIVIDE_TRAP, result, result)  
+  else  
+    result' = newInstance(this)  
+    rl = 0  
+    i = mant.length - 1  
+    while i >= 0  
+      r = rl * RADIX + result.mant[i]  
+      rh = r / divisor  
+      rl' = r - rh * divisor  
+      result.mant'[i] = rh  
+      i' = i - 1  
+    result.mant[result.mant.length-1] == 0  
+      ? result.shiftLeft()  
+        r = rl * RADIX  
+        rh' = r / divisor  
+        rl' = r - rh * divisor  
+        result.mant'[0] = rh  
+    round_value = rl * RADIX / divisor  
+    excp = result.round(round_value)  
+    excp != 0 → result' = dotrap(excp, DIVIDE_TRAP, result, result)  
+Functional Scenario Form  
+divisor=0 → result.nans=INFINITE  
+divisor=10000 && RADIX=10000 → result.nans=QNAN  
+this=10.0 && divisor=2 → result=5.0  
+this=1.0 && divisor=3 → rl=1 → result.mant[0]=3333  
+end_process  
+
+// Reciprocal operation  
+process reciprocal() result: Dfp  
+pre true  
+post  
+  result' = field.getOne().divide(this)  
+Functional Scenario Form  
+this=4.0 && result=0.25  
+this=NaN && result=NaN  
+this=0.0 && result.nans=INFINITE  
+end_process  
+
+// Square root operation  
+process sqrt() result: Dfp  
+pre true  
+post  
+  // Special cases  
+  nans == FINITE && mant[mant.length-1] == 0 → result' = newInstance(this)  
+  nans == INFINITE && sign == 1 → result' = newInstance(this)  
+  nans == QNAN → result' = newInstance(this)  
+  nans == SNAN  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(this)  
+      result' = dotrap(DfpField.FLAG_INVALID, SQRT_TRAP, null, result)  
+  sign == -1  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(this)  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, SQRT_TRAP, null, result)  
+  else  
+    x = newInstance(this)  
+    (x.exp < -1 || x.exp > 1) → x.exp' = this.exp / 2  
+    msd = x.mant[x.mant.length-1] / 2000  
+    msd == 0 → x.mant[x.mant.length-1]' = x.mant[x.mant.length-1]/2 + 1  
+    msd == 2 → x.mant[x.mant.length-1]' = 1500  
+    msd == 3 → x.mant[x.mant.length-1]' = 2200  
+    else → x.mant[x.mant.length-1]' = 3000  
+    dx = newInstance(x)  
+    px = getZero()  
+    ppx = getZero()  
+    while x != px  
+      dx' = x.copy()  
+      dx.sign' = -1  
+      dx' = dx.add(this.divide(x))  
+      dx' = dx.divide(2)  
+      ppx' = px  
+      px' = x  
+      x' = x.add(dx)  
+      x == ppx → break  
+      dx.mant[dx.mant.length-1] == 0 → break  
+    result' = x  
+Functional Scenario Form  
+this=0.0 && result=0.0  
+this=INFINITE && sign=1 && result=INFINITE  
+this=-4.0 && result.nans=QNAN  
+this=4.0 && x.exp=2/2=1 → msd=4/2000=0 → x.mant[last]=4/2+1=3  
+convergence: after iterations x≈2.0  
+end_process  
+
+// String conversion  
+process toString() result: string  
+pre true  
+post  
+  nans != FINITE  
+    ? nans == INFINITE && sign < 0 → result' = NEG_INFINITY_STRING  
+      nans == INFINITE && sign >= 0 → result' = POS_INFINITY_STRING  
+      else → result' = NAN_STRING  
+  exp > mant.length || exp < -1  
+    ? result' = dfp2sci()  
+    : result' = dfp2string()  
+Functional Scenario Form  
+nans=INFINITE && sign=-1 && result=NEG_INFINITY_STRING  
+nans=QNAN && result=NAN_STRING  
+this=1.23e5 && exp=5 > mant.length=4 → result=dfp2sci()  
+this=123.45 && exp=2 → result=dfp2string()  
+end_process  
+
+// Scientific notation conversion  
+process dfp2sci() result: string  
+pre true  
+post  
+  rawdigits = new char[mant.length * 4]  
+  outputbuffer = new char[mant.length * 4 + 20]  
+  p = 0  
+  i = mant.length - 1  
+  while i >= 0  
+    rawdigits[p]' = (mant[i] / 1000) + '0'  
+    rawdigits[p+1]' = ((mant[i] / 100) %10) + '0'  
+    rawdigits[p+2]' = ((mant[i] / 10) %10) + '0'  
+    rawdigits[p+3]' = (mant[i] %10) + '0'  
+    p' = p + 4  
+    i' = i - 1  
+  shf = 0  
+  p = 0  
+  while p < rawdigits.length  
+    rawdigits[p] != '0' → break  
+    p' = p + 1  
+  shf' = p  
+  q = 0  
+  sign == -1 → outputbuffer[q]' = '-', q' = q + 1  
+  p != rawdigits.length  
+    ? outputbuffer[q]' = rawdigits[p]  
+      q' = q + 1  
+      outputbuffer[q]' = '.'  
+      q' = q + 1  
+      while p < rawdigits.length  
+        outputbuffer[q]' = rawdigits[p]  
+        q' = q + 1  
+        p' = p + 1  
+    : outputbuffer = ['0','.', '0','e','0'], result' = new String(outputbuffer,0,5)  
+  outputbuffer[q]' = 'e'  
+  q' = q + 1  
+  e = exp * 4 - shf - 1  
+  ae = (e < 0) ? -e : e  
+  pwr = 1000000000  
+  while pwr > ae  
+    pwr' = pwr / 10  
+  e < 0 → outputbuffer[q]' = '-', q' = q + 1  
+  while pwr > 0  
+    outputbuffer[q]' = (ae / pwr) + '0'  
+    ae' = ae % pwr  
+    pwr' = pwr / 10  
+    q' = q + 1  
+  result' = new String(outputbuffer,0,q)  
+Functional Scenario Form  
+mant=[1234] → rawdigits=['1','2','3','4']  
+exp=3 → e=3*4-0-1=11 → output="1.234e11"  
+mant=[0,567] → rawdigits=['0','0','0','0','5','6','7','0'] → shf=4 → e=0*4-4-1=-5 → output="5.67e-5"  
+end_process  
+
+// Standard notation conversion  
+process dfp2string() result: string  
+pre true  
+post  
+  buffer = new char[mant.length*4 + 20]  
+  p = 1  
+  e = exp  
+  pointInserted = false  
+  buffer[0]' = ' '  
+  e <= 0  
+    ? buffer[p]' = '0'  
+      p' = p + 1  
+      buffer[p]' = '.'  
+      p' = p + 1  
+      pointInserted' = true  
+  while e < 0  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    e' = e + 1  
+  i = mant.length - 1  
+  while i >= 0  
+    buffer[p]' = (mant[i]/1000)+'0', p'=p+1  
+    buffer[p]' = ((mant[i]/100)%10)+'0', p'=p+1  
+    buffer[p]' = ((mant[i]/10)%10)+'0', p'=p+1  
+    buffer[p]' = (mant[i]%10)+'0', p'=p+1  
+    e' = e - 1  
+    e == 0 && !pointInserted  
+      ? buffer[p]' = '.', p'=p+1  
+        pointInserted' = true  
+    i' = i - 1  
+  while e > 0  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    buffer[p]' = '0', p'=p+1  
+    e' = e - 1  
+  !pointInserted → buffer[p]' = '.', p'=p+1  
+  q = 1  
+  while buffer[q] == '0'  
+    q' = q + 1  
+  buffer[q] == '.' → q' = q - 1  
+  while buffer[p-1] == '0'  
+    p' = p - 1  
+  sign < 0 → q' = q - 1, buffer[q]' = '-'  
+  result' = new String(buffer,q,p-q)  
+Functional Scenario Form  
+mant=[1234] && exp=1 → buffer=" 1234" → "1234"  
+mant=[0,567] && exp=0 → "0000.0567" → q=4 (after leading zeros) → ".0567" → then suppress trailing zeros → "0.0567"  
+mant=[1000] && exp=1 → "1000" → adds decimal → "1000." → suppress trailing decimal → "1000"  
+sign=-1 && mant=[1234] → "-1234"  
+end_process  
+
+// Exception handling  
+process dotrap(type: int, what: string, oper: Dfp, result: Dfp) result: Dfp  
+pre true  
+post  
+  def = result  
+  type == DfpField.FLAG_INVALID  
+    ? def' = newInstance(getZero())  
+      def.sign' = result.sign  
+      def.nans' = QNAN  
+  type == DfpField.FLAG_DIV_ZERO  
+    ? nans == FINITE && mant[mant.length-1] != 0  
+        ? def' = newInstance(getZero())  
+          def.sign' = sign * oper.sign  
+          def.nans' = INFINITE  
+      nans == FINITE && mant[mant.length-1] == 0  
+        ? def' = newInstance(getZero())  
+          def.nans' = QNAN  
+      (nans == INFINITE || nans == QNAN || nans == SNAN)  
+        ? def' = newInstance(getZero())  
+          def.nans' = QNAN  
+  type == DfpField.FLAG_UNDERFLOW  
+    ? (result.exp + mant.length) < MIN_EXP  
+        ? def' = newInstance(getZero())  
+          def.sign' = result.sign  
+        : def' = newInstance(result)  
+      result.exp' = result.exp + ERR_SCALE  
+  type == DfpField.FLAG_OVERFLOW  
+    ? result.exp' = result.exp - ERR_SCALE  
+      def' = newInstance(getZero())  
+      def.sign' = result.sign  
+      def.nans' = INFINITE  
+  else → def' = result  
+  result' = trap(type, what, oper, def, result)  
+Functional Scenario Form  
+type=FLAG_INVALID && def.nans=QNAN  
+type=FLAG_DIV_ZERO && nans=FINITE && mant[last]!=0 && def.nans=INFINITE  
+type=FLAG_UNDERFLOW && (result.exp+4)<MIN_EXP && def=zero  
+type=FLAG_OVERFLOW && result.exp decreased by ERR_SCALE && def.nans=INFINITE  
+end_process  
+
+// Default trap handler  
+process trap(type: int, what: string, oper: Dfp, def: Dfp, result: Dfp) result: Dfp  
+pre true  
+post  
+  result' = def  
+Functional Scenario Form  
+def=5.0 && result=5.0  
+end_process  
+
+// Number classification  
+process classify() result: int  
+pre true  
+post  
+  result = nans  
+Functional Scenario Form  
+nans=FINITE && result=FINITE  
+nans=INFINITE && result=INFINITE  
+end_process  
+
+// Copy sign operation  
+process copysign(x: Dfp, y: Dfp) result: Dfp  
+pre true  
+post  
+  result' = x.newInstance(x)  
+  result.sign' = y.sign  
+Functional Scenario Form  
+x=5.0 && y=-3.0 && result.sign=-1  
+x=-2.0 && y=4.0 && result.sign=1  
+end_process  
+
+// Next representable number  
+process nextAfter(x: Dfp) result: Dfp  
+pre true  
+post  
+  field.getRadixDigits() != x.field.getRadixDigits()  
+    ? field.setIEEEFlagsBits(DfpField.FLAG_INVALID)  
+      result' = newInstance(getZero())  
+      result.nans' = QNAN  
+      result' = dotrap(DfpField.FLAG_INVALID, NEXT_AFTER_TRAP, x, result)  
+  compare(this, x) == 0 → result' = newInstance(x)  
+  else  
+    up = this.lessThan(x) ? true : false  
+    this.lessThan(getZero()) → up' = !up  
+    up  
+      ? inc' = newInstance(getOne())  
+        inc.exp' = this.exp - mant.length + 1  
+        inc.sign' = this.sign  
+        this.equals(getZero()) → inc.exp' = MIN_EXP - mant.length  
+        result' = this.add(inc)  
+      : inc' = newInstance(getOne())  
+        inc.exp' = this.exp  
+        inc.sign' = this.sign  
+        this.equals(inc) → inc.exp' = this.exp - mant.length  
+          : else → inc.exp' = this.exp - mant.length + 1  
+        this.equals(getZero()) → inc.exp' = MIN_EXP - mant.length  
+        result' = this.subtract(inc)  
+    result.classify() == INFINITE && this.classify() != INFINITE  
+      ? field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+        result' = dotrap(DfpField.FLAG_INEXACT, NEXT_AFTER_TRAP, x, result)  
+    result.equals(getZero()) && !this.equals(getZero())  
+      ? field.setIEEEFlagsBits(DfpField.FLAG_INEXACT)  
+        result' = dotrap(DfpField.FLAG_INEXACT, NEXT_AFTER_TRAP, x, result)  
+Functional Scenario Form  
+this=1.0 && x=2.0 && up=true → result=1.0 + 0.0001  
+this=2.0 && x=1.0 && up=false → result=2.0 - 0.0001  
+this=0.0 && x=1.0 → inc.exp=MIN_EXP-4 → result=smallest positive  
+result=INFINITE && this=FINITE → trigger INEXACT trap  
+end_process  
+
+// Convert to IEEE 754 double  
+process toDouble() result: double  
+pre true  
+post  
+  isInfinite() && lessThan(getZero()) && result = Double.NEGATIVE_INFINITY or  
+  isInfinite() && result = Double.POSITIVE_INFINITY or  
+  isNaN() && result = Double.NaN or  
+  compare(this, getZero()) == 0 && sign < 0 && result = -0.0 or  
+  compare(this, getZero()) == 0 && result = +0.0 or  
+  else  
+    y = (sign < 0) ? this.negate() : this  
+    negate = (sign < 0)  
+    exponent = (int)(y.log10() * 3.32)  
+    exponent < 0 && exponent = exponent - 1  
+    tempDfp = DfpMath.pow(getTwo(), exponent)  
+    while (tempDfp.lessThan(y) || tempDfp.equals(y))  
+      tempDfp = tempDfp.multiply(2)  
+      exponent = exponent + 1  
+    exponent = exponent - 1  
+    y = y.divide(DfpMath.pow(getTwo(), exponent))  
+    exponent > -1023 && y = y.subtract(getOne())  
+    exponent < -1074 && result = 0.0  
+    exponent > 1023 && negate && result = Double.NEGATIVE_INFINITY or  
+    exponent > 1023 && result = Double.POSITIVE_INFINITY  
+    y = y.multiply(newInstance(4503599627370496l)).rint()  
+    str = y.toString()  
+    mantissa = Long.parseLong(str.substring(0, str.length()-1))  
+    mantissa == 4503599627370496L && mantissa = 0 && exponent = exponent + 1  
+    exponent <= -1023 && exponent = exponent - 1  
+    while exponent < -1023  
+      exponent = exponent + 1  
+      mantissa = mantissa >>> 1  
+    bits = mantissa | ((exponent + 1023L) << 52)  
+    result = Double.longBitsToDouble(bits)  
+    negate && result = -result  
+Functional Scenario Form  
+isInfinite() && lessThan(getZero()) && result = Double.NEGATIVE_INFINITY or  
+isInfinite() && result = Double.POSITIVE_INFINITY or  
+isNaN() && result = Double.NaN or  
+this = 0.0 && sign = -1 && result = -0.0 or  
+this = 0.0 && result = +0.0 or  
+this = 1.0e300 && exponent > 1023 && result = Double.POSITIVE_INFINITY or  
+this = 1.0e-400 && exponent < -1074 && result = 0.0 or  
+this = 3.14159 && exponent ≈ 1 && mantissa ≈ 7074237757829120  
+end_process  
+
+// Split double representation  
+process toSplitDouble() result: double[]  
+pre true  
+post  
+  split = new double[2]  
+  mask = 0xffffffffc0000000L  
+  high = this.toDouble()  
+  low_bits = Double.doubleToLongBits(high) & mask  
+  split[0] = Double.longBitsToDouble(low_bits)  
+  split[1] = this.subtract(newInstance(split[0])).toDouble()  
+  result = split  
+Functional Scenario Form  
+this = 3.141592653589793 && split[0] ≈ 3.1415925 && split[1] ≈ 1.535898e-7 or  
+this = 1.0e200 && split[0] ≈ 1.0e200 && split[1] = 0.0  
+end_process  
+
+
+end_module
+

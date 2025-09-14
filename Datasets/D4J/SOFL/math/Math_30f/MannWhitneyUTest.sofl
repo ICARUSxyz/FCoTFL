@@ -1,0 +1,102 @@
+module MannWhitneyUTest
+
+// Constructors
+process MannWhitneyUTest() result: MannWhitneyUTest
+post 
+  result.naturalRanking = new NaturalRanking(NaNStrategy.FIXED, TiesStrategy.AVERAGE)
+Functional Scenario Form 
+defaultRankingCreated
+end_process
+
+process MannWhitneyUTest(nanStrategy: NaNStrategy, tiesStrategy: TiesStrategy) result: MannWhitneyUTest
+pre 
+  nanStrategy ≠ null ∧ tiesStrategy ≠ null
+post 
+  result.naturalRanking = new NaturalRanking(nanStrategy, tiesStrategy)
+Functional Scenario Form 
+customRankingCreated || 
+nullStrategyException
+end_process
+
+// Data validation
+process ensureDataConformance(x: double[], y: double[])
+pre 
+  true
+post 
+  (x = null ∨ y = null) ⇒ throw NullArgumentException ∧
+  (x.length = 0 ∨ y.length = 0) ⇒ throw NoDataException
+Functional Scenario Form 
+nullArray && nullExceptionThrown || 
+emptyArray && noDataExceptionThrown || 
+validData && noException
+end_process
+
+// Sample combination
+process concatenateSamples(x: double[], y: double[]) result: double[]
+pre 
+  x ≠ null ∧ y ≠ null
+post 
+  result = new double[x.length + y.length] ∧
+  System.arraycopy(x, 0, result, 0, x.length) ∧
+  System.arraycopy(y, 0, result, x.length, y.length)
+Functional Scenario Form 
+samplesCombined
+end_process
+
+// U-statistic calculation
+process mannWhitneyU(x: double[], y: double[]) result: real
+pre 
+  x ≠ null ∧ y ≠ null ∧ x.length > 0 ∧ y.length > 0
+post 
+  ensureDataConformance(x, y) ∧
+  z = concatenateSamples(x, y) ∧
+  ranks = naturalRanking.rank(z) ∧
+  
+  sumRankX = 0 ∧
+  for i = 0 to x.length - 1 •
+      sumRankX = sumRankX + ranks[i] ∧
+  
+  U1 = sumRankX - (x.length * (x.length + 1)) / 2 ∧
+  U2 = x.length * y.length - U1 ∧
+  result = FastMath.max(U1, U2)
+Functional Scenario Form 
+uStatisticComputed || 
+nullInputException || 
+emptyInputException
+end_process
+
+// Asymptotic p-value calculation
+process calculateAsymptoticPValue(Umin: real, n1: int, n2: int) result: real
+pre 
+  n1 > 0 ∧ n2 > 0
+post 
+  n1n2prod = n1 * n2 ∧
+  EU = n1n2prod / 2.0 ∧
+  VarU = n1n2prod * (n1 + n2 + 1) / 12.0 ∧
+  z = (Umin - EU) / FastMath.sqrt(VarU) ∧
+  standardNormal = new NormalDistribution(0, 1) ∧
+  result = 2 * standardNormal.cumulativeProbability(z)
+Functional Scenario Form 
+pValueComputed || 
+convergenceException || 
+maxCountExceededException
+end_process
+
+// Full test execution
+process mannWhitneyUTest(x: double[], y: double[]) result: real
+pre 
+  x ≠ null ∧ y ≠ null ∧ x.length > 0 ∧ y.length > 0
+post 
+  ensureDataConformance(x, y) ∧
+  Umax = mannWhitneyU(x, y) ∧
+  Umin = x.length * y.length - Umax ∧
+  result = calculateAsymptoticPValue(Umin, x.length, y.length)
+Functional Scenario Form 
+testExecutedSuccessfully || 
+nullInputException || 
+emptyInputException || 
+convergenceException || 
+maxCountExceededException
+end_process
+
+end_module

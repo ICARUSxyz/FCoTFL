@@ -1,0 +1,42 @@
+module UC6_suggestiondialog
+type
+  content: String
+
+process UC6_suggestiondialog(parent: QWidget) result: UC6_suggestiondialog
+pre
+  true
+post
+  this.parent = parent
+  this.tabWidget = new QTabWidget(this)
+  this.templateListCodeGen = new QListWidget(this)
+  this.templateListBugFix = new QListWidget(this)
+  this.templateListAnnotation = new QListWidget(this)
+  this.editAreaCodeGen = new QTextEdit(this)
+  this.editAreaBugFix = new QTextEdit(this)
+  this.editAreaAnnotation = new QTextEdit(this)
+  this.generateButton = new QPushButton("Generate", this)
+  this.generatedResultWidget = new GeneratedResultWidget(this)
+  setupUI() executed
+  setupConnections() executed
+Functional Scenario Form
+parent is valid && all widgets initialized && connections established
+end_process
+
+process setupConnections() result: Void
+pre
+  true
+post
+  when generateButton.clicked triggered:
+    currentEditArea assigned based on tabWidget.currentIndex
+    if currentEditArea ≠ null:
+      content = currentEditArea.toPlainText()
+      QApplication.clipboard().setText(content)
+      QDesktopServices.openUrl("https://chat.openai.com/") executed
+Functional Scenario Form
+tab index = 0 and editAreaCodeGen selected && content copied and URL opened or
+tab index = 1 and editAreaBugFix selected && content copied and URL opened or
+tab index = 2 and editAreaAnnotation selected && content copied and URL opened or
+invalid index or null editArea && no action performed
+end_process
+
+end_module

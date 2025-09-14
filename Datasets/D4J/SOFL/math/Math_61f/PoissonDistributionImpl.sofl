@@ -1,0 +1,183 @@
+module PoissonDistributionImpl
+type
+PoissonState: composed type of {
+mean: double,
+normal: NormalDistribution,
+epsilon: double,
+maxIterations: int
+}
+
+var
+DEFAULT_MAX_ITERATIONS: int = 10000000
+DEFAULT_EPSILON: double = 1E-12
+serialVersionUID: long = -3349935121172596109
+
+process ctor_mean(p: double) result: PoissonDistributionImpl
+pre
+p > 0.0
+post
+result ≠ null
+result.mean' = p
+result.normal' = new_NormalDistributionImpl(p, sqrt(p))
+result.epsilon' = DEFAULT_EPSILON
+result.maxIterations' = DEFAULT_MAX_ITERATIONS
+Functional Scenario Form
+p > 0 && result.mean' = p ∧ result.normal' = Normal(μ=p, σ=√p) ∧ result.epsilon' = DEFAULT_EPSILON ∧ result.maxIterations' = DEFAULT_MAX_ITERATIONS or
+p ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+process ctor_mean_eps_iters(p: double, epsilon: double, maxIterations: int) result: PoissonDistributionImpl
+pre
+p > 0.0
+post
+result ≠ null
+result.mean' = p
+result.normal' = new_NormalDistributionImpl(p, sqrt(p))
+result.epsilon' = epsilon
+result.maxIterations' = maxIterations
+Functional Scenario Form
+p > 0 && result.mean' = p ∧ result.normal' = Normal(μ=p, σ=√p) ∧ result.epsilon' = epsilon ∧ result.maxIterations' = maxIterations or
+p ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+process ctor_mean_eps(p: double, epsilon: double) result: PoissonDistributionImpl
+pre
+p > 0.0
+post
+result ≠ null
+result.mean' = p
+result.normal' = new_NormalDistributionImpl(p, sqrt(p))
+result.epsilon' = epsilon
+result.maxIterations' = DEFAULT_MAX_ITERATIONS
+Functional Scenario Form
+p > 0 && result.mean' = p ∧ result.normal' = Normal(μ=p, σ=√p) ∧ result.epsilon' = epsilon ∧ result.maxIterations' = DEFAULT_MAX_ITERATIONS or
+p ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+process ctor_mean_iters(p: double, maxIterations: int) result: PoissonDistributionImpl
+pre
+p > 0.0
+post
+result ≠ null
+result.mean' = p
+result.normal' = new_NormalDistributionImpl(p, sqrt(p))
+result.epsilon' = DEFAULT_EPSILON
+result.maxIterations' = maxIterations
+Functional Scenario Form
+p > 0 && result.mean' = p ∧ result.normal' = Normal(μ=p, σ=√p) ∧ result.epsilon' = DEFAULT_EPSILON ∧ result.maxIterations' = maxIterations or
+p ≤ 0 && raise(NotStrictlyPositiveException)
+end_process
+
+// ===== Accessor =====
+
+process getMean(self: PoissonDistributionImpl) result: double
+pre
+self ≠ null
+post
+result = self.mean
+Functional Scenario Form
+called && result = self.mean
+end_process
+
+// ===== PMF =====
+
+process probability(self: PoissonDistributionImpl, x: int) result: double
+pre
+self ≠ null
+post
+if x < 0 ∨ x = Integer_MAX then
+result = 0.0
+else if x = 0 then
+result = exp(-self.mean)
+else
+result =
+exp(-SaddlePointExpansion.getStirlingError(x)
+- SaddlePointExpansion.getDeviancePart(x, self.mean))
+/ sqrt(MathUtils.TWO_PI * x)
+Functional Scenario Form
+x < 0 && result = 0 or
+x = Integer_MAX && result = 0 or
+x = 0 && result = exp(-self.mean) or
+x > 0 && x ≠ Integer_MAX && result = exp(-SE(x) - DP(x, self.mean))/sqrt(2π·x)
+end_process
+
+// ===== CDF =====
+
+process cumulativeProbability(self: PoissonDistributionImpl, x: int) result: double
+pre
+self ≠ null
+post
+if x < 0 then result = 0.0
+else if x = Integer_MAX then result = 1.0
+else result = Gamma.regularizedGammaQ(x + 1.0, self.mean, self.epsilon, self.maxIterations)
+Functional Scenario Form
+x < 0 && result = 0 or
+x = Integer_MAX && result = 1 or
+0 ≤ x < Integer_MAX && result = Q(x+1, self.mean; ε=self.epsilon, iters=self.maxIterations)
+end_process
+
+// ===== Normal approximation to CDF (half-correction) =====
+
+process normalApproximateProbability(self: PoissonDistributionImpl, x: int) result: double
+pre
+self ≠ null
+post
+result = self.normal.cumulativeProbability(x + 0.5)
+Functional Scenario Form
+called && result = Φ_{μ=self.mean, σ=√self.mean}(x + 0.5)
+end_process
+
+// ===== Sampling =====
+
+process sample(self: PoissonDistributionImpl) result: int
+pre
+self ≠ null ∧ self.mean > 0.0
+post
+let v == random_nextPoisson(self.mean) in
+result = (int) min(v, Integer_MAX)
+Functional Scenario Form
+called && result = (int) min(PoissonRV(self.mean), Integer_MAX)
+end_process
+
+// ===== Root-bracketing helpers for inverse CDF (inherited algorithm) =====
+
+process getDomainLowerBound(self: PoissonDistributionImpl, p: double) result: int
+pre
+self ≠ null ∧ 0.0 ≤ p ∧ p ≤ 1.0
+post
+result = 0
+Functional Scenario Form
+called && result = 0
+end_process
+
+process getDomainUpperBound(self: PoissonDistributionImpl, p: double) result: int
+pre
+self ≠ null ∧ 0.0 ≤ p ∧ p ≤ 1.0
+post
+result = Integer_MAX
+Functional Scenario Form
+called && result = Integer_MAX
+end_process
+
+// ===== External / superclass facilities (signatures only) =====
+
+process new_NormalDistributionImpl(mu: double, sigma: double) result: NormalDistribution
+pre
+sigma > 0.0
+post
+result = Normal(μ=mu, σ=sigma)
+Functional Scenario Form
+sigma > 0 && result = Normal(μ=mu, σ=sigma)
+end_process
+
+process random_nextPoisson(mean: double) result: double
+pre
+mean > 0.0
+post
+// Parent RNG: draw from Poisson(mean)
+result = poisson_sample(mean)
+Functional Scenario Form
+mean > 0 && result = poisson_sample(mean)
+end_process
+
+end_module

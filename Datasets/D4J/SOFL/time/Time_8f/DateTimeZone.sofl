@@ -1,0 +1,734 @@
+module DateTimeZone  
+type:  
+  cAvailableIDs: Set<String>
+  iID: String
+
+var:  
+  serialVersionUID: long = 5546345482340108586L
+  MAX_MILLIS: int = 86399999  // (86400*1000)-1  
+
+// Static initialization
+process static_init()  
+pre true  
+post  
+  setProvider0(null) ∧  
+  setNameProvider0(null)  
+
+Functional Scenario Form  
+always && initializes static fields  
+end_process  
+
+// Default time zone handling
+process getDefault() result: DateTimeZone  
+pre true  
+post  
+  cDefault ≠ null  
+    ⇒ result' = cDefault  
+    else  
+      synchronized(DateTimeZone.class)  
+        ? cDefault' = null  
+          ? (try  
+               id = System.getProperty("user.timezone") ∧  
+               (id ≠ null ? temp = forID(id) : skip)  
+             catch: skip) ∧  
+             (temp = null ? temp = forTimeZone(TimeZone.getDefault()) : skip) ∧  
+             (temp = null ? temp = UTC : skip) ∧  
+             cDefault' = temp  
+          ) ∧  
+          result' = cDefault'  
+        : error  
+
+Functional Scenario Form  
+cDefault=UTC && returns UTC  
+cDefault=null && initializes from system  
+end_process  
+
+process setDefault(zone: DateTimeZone)  
+pre zone ≠ null  
+post  
+  SecurityManager sm = System.getSecurityManager() ∧  
+  (sm ≠ null  
+    ? sm.checkPermission(new JodaTimePermission("DateTimeZone.setDefault"))  
+    : skip) ∧  
+  synchronized(DateTimeZone.class)  
+    ? cDefault' = zone  
+    : error  
+
+Functional Scenario Form  
+zone=UTC && sets default UTC  
+zone=null && throws IllegalArgumentException  
+end_process  
+
+// ID-based zone retrieval
+process forID(id: String?) result: DateTimeZone  
+pre true  
+post  
+  id = null  
+    ⇒ result' = getDefault()  
+  id = "UTC"  
+    ⇒ result' = UTC  
+  cProvider.getZone(id) ≠ null  
+    ⇒ result' = cProvider.getZone(id)  
+  id.startsWith("+") ∨ id.startsWith("-")  
+    ? offset = parseOffset(id) ∧  
+      (offset = 0  
+        ? result' = UTC  
+        : id' = printOffset(offset) ∧  
+          result' = fixedOffsetZone(id', offset)  
+      )  
+    : error = IllegalArgumentException("Unrecognized zone ID")  
+
+Functional Scenario Form  
+id="UTC" && returns UTC  
+id="+03:00" && returns fixed offset zone  
+id="Europe/London" && returns provider's zone  
+id=null && returns default zone  
+end_process  
+
+// Offset-based zone creation
+process forOffsetHours(hoursOffset: int) result: DateTimeZone  
+pre true  
+post  
+  result' = forOffsetHoursMinutes(hoursOffset, 0)  
+
+Functional Scenario Form  
+hoursOffset=3 && returns UTC+3  
+hoursOffset=-5 && returns UTC-5  
+end_process  
+
+// Offset hours+minutes processing
+process forOffsetHoursMinutes(hoursOffset: int, minutesOffset: int) result: DateTimeZone  
+pre true  
+post  
+  hoursOffset = 0 ∧ minutesOffset = 0  
+    ⇒ result' = UTC  
+  hoursOffset < -23 ∨ hoursOffset > 23  
+    ⇒ error = IllegalArgumentException("Hours out of range")  
+  minutesOffset < -59 ∨ minutesOffset > 59  
+    ⇒ error = IllegalArgumentException("Minutes out of range")  
+  hoursOffset > 0 ∧ minutesOffset < 0  
+    ⇒ error = IllegalArgumentException("Positive hours with negative minutes")  
+  else  
+    hoursInMinutes = hoursOffset * 60 ∧  
+    (hoursInMinutes < 0  
+      ? totalMinutes = hoursInMinutes - |minutesOffset|  
+      : totalMinutes = hoursInMinutes + minutesOffset  
+    ) ∧  
+    offset = FieldUtils.safeMultiply(totalMinutes, 60000) ∧  
+    result' = forOffsetMillis(offset)  
+
+Functional Scenario Form  
+hoursOffset=3 minutesOffset=30 && returns UTC+03:30  
+hoursOffset=0 minutesOffset=0 && returns UTC  
+hoursOffset=25 minutesOffset=0 && throws exception  
+end_process  
+
+// Millis offset handling
+process forOffsetMillis(millisOffset: int) result: DateTimeZone  
+pre true  
+post  
+  millisOffset < -MAX_MILLIS ∨ millisOffset > MAX_MILLIS  
+    ⇒ error = IllegalArgumentException("Millis out of range")  
+  else  
+    id = printOffset(millisOffset) ∧  
+    result' = fixedOffsetZone(id, millisOffset)  
+
+Functional Scenario Form  
+millisOffset=3600000 (1 hour) && returns UTC+01:00  
+millisOffset=86400000 && throws exception (exceeds max)  
+end_process  
+
+// Java TimeZone conversion
+process forTimeZone(zone: java.util.TimeZone?) result: DateTimeZone  
+pre true  
+post  
+  zone = null  
+    ⇒ result' = getDefault()  
+  id = zone.getID() ∧  
+  id = "UTC"  
+    ⇒ result' = UTC  
+  convId = getConvertedId(id) ∧  
+  (convId ≠ null  
+    ? dtz = cProvider.getZone(convId)  
+    : dtz = null  
+  ) ∧  
+  (dtz = null  
+    ? dtz = cProvider.getZone(id)  
+    : skip  
+  ) ∧  
+  dtz ≠ null  
+    ⇒ result' = dtz  
+  else  
+    (id.startsWith("GMT+") ∨ id.startsWith("GMT-")  
+      ? offsetStr = id.substring(3) ∧  
+        offset = parseOffset(offsetStr) ∧  
+        (offset = 0  
+          ? result' = UTC  
+          : convId' = printOffset(offset) ∧  
+            result' = fixedOffsetZone(convId', offset)  
+        )  
+      : error = IllegalArgumentException("Unrecognized zone ID")  
+    )  
+
+Functional Scenario Form  
+zone=TimeZone.getTimeZone("GMT+08:00") && returns UTC+08:00  
+zone=TimeZone.getTimeZone("Asia/Tokyo") && returns provider's zone  
+zone=null && returns default zone  
+end_process  
+
+// Fixed offset caching
+process fixedOffsetZone(id: String, offset: int) result: DateTimeZone  
+pre true  
+post  
+  offset = 0  
+    ⇒ result' = UTC  
+  else  
+    iFixedOffsetCache ≠ null  
+      ? ref = iFixedOffsetCache.get(id) ∧  
+        (ref ≠ null  
+          ? zone = ref.get() ∧  
+            (zone ≠ null ? result' = zone : skip)  
+          : skip  
+        )  
+      : iFixedOffsetCache' = new HashMap()  
+    ) ∧  
+    (result' not defined  
+      ? zone' = new FixedDateTimeZone(id, null, offset, offset) ∧  
+        iFixedOffsetCache.put(id, new SoftReference(zone')) ∧  
+        result' = zone'  
+      : skip  
+    )  
+
+Functional Scenario Form  
+id="+03:00" offset=10800000 && creates new fixed zone  
+id="+03:00" called again && returns cached instance  
+offset=0 && returns UTC  
+end_process  
+
+// Provider management
+process getAvailableIDs() result: Set<String>  
+pre true  
+post  
+  result' = cAvailableIDs  
+
+Functional Scenario Form  
+always && returns available IDs  
+end_process  
+
+process getProvider() result: Provider  
+pre true  
+post  
+  result' = cProvider  
+
+Functional Scenario Form  
+always && returns current provider  
+end_process  
+
+process setProvider(provider: Provider)  
+pre true  
+post  
+  SecurityManager sm = System.getSecurityManager() ∧  
+  (sm ≠ null  
+    ? sm.checkPermission(new JodaTimePermission("DateTimeZone.setProvider"))  
+    : skip) ∧  
+  setProvider0(provider)  
+
+Functional Scenario Form  
+provider=ZoneInfoProvider && sets new provider  
+end_process  
+
+// Internal provider setter (simplified)
+process setProvider0(provider: Provider?)  
+pre true  
+post  
+  provider' = (provider ≠ null ? provider : new DefaultProvider()) ∧  
+  cProvider' = provider' ∧  
+  cAvailableIDs' = cProvider.getAvailableIDs()  
+
+Functional Scenario Form  
+provider=null && initializes default provider  
+provider=CustomProvider && sets custom provider  
+end_process  
+
+// Provider initialization
+process setProvider0(provider: Provider?)  
+pre true  
+post  
+  provider' = (provider ≠ null ? provider : getDefaultProvider())  
+  ids = provider'.getAvailableIDs()  
+  (ids = null ∨ ids.size() = 0 ⇒ error = IllegalArgumentException)  
+  (¬ids.contains("UTC") ⇒ error = IllegalArgumentException)  
+  (¬UTC.equals(provider'.getZone("UTC")) ⇒ error = IllegalArgumentException)  
+  cProvider' = provider'  
+  cAvailableIDs' = ids  
+
+Functional Scenario Form  
+provider=null && initializes default provider  
+provider=ValidProvider && sets provided instance  
+provider=InvalidProvider && throws exception for missing UTC  
+end_process  
+
+// Default provider resolution
+process getDefaultProvider() result: Provider  
+pre true  
+post  
+  providerClass = System.getProperty("org.joda.time.DateTimeZone.Provider")  
+  (providerClass ≠ null  
+    ? try provider' = Class.forName(providerClass).newInstance() catch: log exception  
+    : skip  
+  )  
+  (provider' = null  
+    ? try provider'' = new ZoneInfoProvider("org/joda/time/tz/data") catch: log exception  
+    : skip  
+  )  
+  (provider' = null ⇒ result' = new UTCProvider() else result' = provider')  
+
+Functional Scenario Form  
+System property set && uses specified provider  
+No property available && uses ZoneInfoProvider  
+Fallback case && uses UTCProvider  
+end_process  
+
+// Name provider management
+process setNameProvider0(nameProvider: NameProvider?)  
+pre true  
+post  
+  nameProvider' = (nameProvider ≠ null ? nameProvider : getDefaultNameProvider())  
+  cNameProvider' = nameProvider'  
+
+Functional Scenario Form  
+nameProvider=null && initializes default  
+nameProvider=CustomNameProvider && sets provided instance  
+end_process  
+
+// Default name provider resolution
+process getDefaultNameProvider() result: NameProvider  
+pre true  
+post  
+  providerClass = System.getProperty("org.joda.time.DateTimeZone.NameProvider")  
+  (providerClass ≠ null  
+    ? try provider' = Class.forName(providerClass).newInstance() catch: log exception  
+    : skip  
+  )  
+  (provider' = null ⇒ result' = new DefaultNameProvider() else result' = provider')  
+
+Functional Scenario Form  
+System property set && uses specified name provider  
+No property available && uses DefaultNameProvider  
+end_process  
+
+// Time zone ID conversion
+process getConvertedId(id: String) result: String?  
+pre true  
+post  
+  map = cZoneIdConversion  
+  (map = null  
+    ? map' = new HashMap<String, String>()  
+      map'.put("GMT", "UTC")  
+      map'.put("MET", "CET")  
+      // ... full alias mappings  
+      cZoneIdConversion' = map'  
+    : skip  
+  )  
+  result' = map.get(id)  
+
+Functional Scenario Form  
+id="GMT" && returns "UTC"  
+id="PST" && returns "America/Los_Angeles"  
+id="Unknown" && returns null  
+end_process  
+
+// Offset parsing
+process parseOffset(str: String) result: int  
+pre true  
+post  
+  chrono = new BaseChronology() {  
+    getZone() = null  
+    withUTC() = this  
+    withZone(zone) = this  
+  }  
+  millis = offsetFormatter().withChronology(chrono).parseMillis(str)  
+  result' = -(int)millis  
+
+Functional Scenario Form  
+str="+03:00" && returns -10800000  
+str="-05:00" && returns 18000000  
+end_process  
+
+// Offset formatting
+process printOffset(offset: int) result: String  
+pre true  
+post  
+  buf = new StringBuffer()  
+  (offset ≥ 0 ? buf.append('+') : (buf.append('-') ∧ offset' = -offset))  
+  hours = offset / 3600000  
+  FormatUtils.appendPaddedInteger(buf, hours, 2)  
+  offset = offset - (hours * 3600000)  
+  minutes = offset / 60000  
+  buf.append(':')  
+  FormatUtils.appendPaddedInteger(buf, minutes, 2)  
+  offset = offset - (minutes * 60000)  
+  (offset = 0 ? skip  
+    : seconds = offset / 1000  
+      buf.append(':')  
+      FormatUtils.appendPaddedInteger(buf, seconds, 2)  
+      offset = offset - (seconds * 1000)  
+      (offset = 0 ? skip  
+        : buf.append('.')  
+          FormatUtils.appendPaddedInteger(buf, offset, 3)  
+      )  
+  )  
+  result' = buf.toString()  
+
+Functional Scenario Form  
+offset=10800000 && returns "+03:00"  
+offset=-18000000 && returns "-05:00"  
+offset=3723000 && returns "+01:02:03"  
+offset=3723123 && returns "+01:02:03.123"  
+end_process  
+
+// Offset formatter singleton
+process offsetFormatter() result: DateTimeFormatter  
+pre true  
+post  
+  cOffsetFormatter = null  
+    ? cOffsetFormatter' = new DateTimeFormatterBuilder()  
+        .appendTimeZoneOffset(null, true, 2, 4)  
+        .toFormatter()  
+    : skip  
+  result' = cOffsetFormatter  
+
+Functional Scenario Form  
+first call && creates new formatter  
+subsequent calls && returns existing formatter  
+end_process  
+
+// DateTimeZone constructor
+process DateTimeZone_constructor(id: String)  
+pre id ≠ null  
+post  
+  iID' = id  
+
+Functional Scenario Form  
+id="UTC" && sets UTC ID  
+id="Europe/Paris" && sets Paris ID  
+end_process  
+
+// Name retrieval
+process getNameKey(instant: long)  
+pre true  
+post  
+  // Abstract method - no implementation  
+
+process getShortName(instant: long) result: String  
+pre true  
+post  
+  result' = getShortName(instant, null)  
+
+Functional Scenario Form  
+instant=0 && returns short name for UTC  
+end_process  
+
+process getShortName(instant: long, locale: Locale?) result: String  
+pre true  
+post  
+  locale' = (locale ≠ null ? locale : Locale.getDefault())  
+  nameKey = getNameKey(instant)  
+  (nameKey = null  
+    ? result' = iID  
+    : name = cNameProvider.getShortName(locale', iID, nameKey)  
+      (name ≠ null  
+        ? result' = name  
+        : result' = printOffset(getOffset(instant))  
+      )  
+  )  
+
+Functional Scenario Form  
+locale=Locale.US nameKey="PST" && returns "Pacific Time"  
+nameKey=null && returns zone ID  
+no name available && returns formatted offset  
+end_process  
+
+// Full name retrieval
+process getName(instant: long) result: String  
+pre true  
+post  
+  result' = getName(instant, null)  
+
+Functional Scenario Form  
+instant=0 && returns full name for UTC  
+end_process  
+
+process getName(instant: long, locale: Locale?) result: String  
+pre true  
+post  
+  locale' = (locale ≠ null ? locale : Locale.getDefault())  
+  nameKey = getNameKey(instant)  
+  (nameKey = null  
+    ? result' = iID  
+    : name = cNameProvider.getName(locale', iID, nameKey)  
+      (name ≠ null  
+        ? result' = name  
+        : result' = printOffset(getOffset(instant))  
+      )  
+  )  
+
+Functional Scenario Form  
+locale=Locale.FRANCE nameKey="CET" && returns "Heure d'Europe Centrale"  
+no name available && returns offset string  
+end_process  
+
+// Offset retrieval
+process getOffset(instant: ReadableInstant?) result: int  
+pre true  
+post  
+  instant = null  
+    ? result' = getOffset(DateTimeUtils.currentTimeMillis())  
+    : result' = getOffset(instant.getMillis())  
+
+Functional Scenario Form  
+instant=null && returns current offset  
+instant=DateTimeObj && returns offset at that time  
+end_process  
+
+// Daylight saving check
+process isStandardOffset(instant: long) result: boolean  
+pre true  
+post  
+  result' = (getOffset(instant) = getStandardOffset(instant))  
+
+Functional Scenario Form  
+instant in DST period && false  
+instant in standard time && true  
+end_process  
+
+// Local offset calculation
+process getOffsetFromLocal(instantLocal: long) result: int  
+pre true  
+post  
+  offsetLocal = getOffset(instantLocal)  
+  instantAdjusted = instantLocal - offsetLocal  
+  offsetAdjusted = getOffset(instantAdjusted)  
+  (offsetLocal ≠ offsetAdjusted  
+    ? (offsetLocal - offsetAdjusted < 0  
+        ? nextLocal = nextTransition(instantAdjusted)  
+          nextAdjusted = nextTransition(instantLocal - offsetAdjusted)  
+          (nextLocal ≠ nextAdjusted  
+            ? result' = offsetLocal  
+            : result' = offsetAdjusted  
+          )  
+        : result' = offsetAdjusted  
+      )  
+    : (offsetLocal ≥ 0  
+        ? prev = previousTransition(instantAdjusted)  
+          (prev < instantAdjusted  
+            ? offsetPrev = getOffset(prev)  
+              diff = offsetPrev - offsetLocal  
+              (instantAdjusted - prev ≤ diff  
+                ? result' = offsetPrev  
+                : result' = offsetAdjusted  
+              )  
+            : result' = offsetAdjusted  
+          )  
+        : result' = offsetAdjusted  
+      )  
+  )  
+
+Functional Scenario Form  
+normal case && returns offsetAdjusted  
+DST gap start && returns pre-transition offset  
+DST gap end && returns post-transition offset  
+negative offset adjustment && handles time reversal  
+end_process  
+
+// UTC to local time conversion
+process convertUTCToLocal(instantUTC: long) result: long  
+pre true  
+post  
+  offset = getOffset(instantUTC)  
+  instantLocal = instantUTC + offset  
+  ((instantUTC XOR instantLocal) < 0 ∧ (instantUTC XOR offset) ≥ 0)  
+    ? error = ArithmeticException  
+    : result' = instantLocal  
+
+Functional Scenario Form  
+instantUTC=0 offset=3600000 && returns 3600000  
+instantUTC=Long.MAX_VALUE offset=3600000 && throws overflow  
+end_process  
+
+// Local to UTC conversion (with reference)
+process convertLocalToUTC(instantLocal: long, strict: boolean, originalInstantUTC: long) result: long  
+pre true  
+post  
+  offsetOriginal = getOffset(originalInstantUTC)  
+  instantUTC = instantLocal - offsetOriginal  
+  offsetLocalFromOriginal = getOffset(instantUTC)  
+  (offsetLocalFromOriginal = offsetOriginal  
+    ? result' = instantUTC  
+    : result' = convertLocalToUTC(instantLocal, strict)  
+  )  
+
+Functional Scenario Form  
+offsetOriginal=offsetLocalFromOriginal && returns instantUTC  
+offsetOriginal≠offsetLocalFromOriginal && calls single-arg version  
+end_process  
+
+// Local to UTC conversion (primary)
+process convertLocalToUTC(instantLocal: long, strict: boolean) result: long  
+pre true  
+post  
+  offsetLocal = getOffset(instantLocal)  
+  adjustedInstant = instantLocal - offsetLocal  
+  offset = getOffset(adjustedInstant)  
+  (offsetLocal ≠ offset  
+    ? (strict ∨ offsetLocal < 0  
+        ? nextLocal = nextTransition(adjustedInstant)  
+          nextAdjusted = nextTransition(instantLocal - offset)  
+          (nextLocal = adjustedInstant ? nextLocal = Long.MAX_VALUE : skip)  
+          (nextAdjusted = (instantLocal - offset) ? nextAdjusted = Long.MAX_VALUE : skip)  
+          (nextLocal ≠ nextAdjusted  
+            ? (strict  
+                ? error = IllegalInstantException  
+                : offset' = offsetLocal  
+              )  
+            : skip  
+          )  
+        : skip  
+      )  
+    : skip  
+  )  
+  instantUTC = instantLocal - offset  
+  ((instantLocal XOR instantUTC) < 0 ∧ (instantLocal XOR offset) < 0)  
+    ? error = ArithmeticException  
+    : result' = instantUTC  
+
+Functional Scenario Form  
+normal case && returns instantUTC  
+DST gap with strict=true && throws IllegalInstantException  
+DST gap with strict=false && uses offsetLocal  
+overflow case && throws ArithmeticException  
+end_process  
+
+// Time preservation across zones
+process getMillisKeepLocal(newZone: DateTimeZone?, oldInstant: long) result: long  
+pre true  
+post  
+  newZone' = (newZone ≠ null ? newZone : getDefault())  
+  newZone' = this  
+    ? result' = oldInstant  
+    : instantLocal = convertUTCToLocal(oldInstant)  
+      result' = newZone'.convertLocalToUTC(instantLocal, false, oldInstant)  
+
+Functional Scenario Form  
+newZone=same as this && returns oldInstant  
+newZone=UTC oldInstant=3600000 && returns 0  
+end_process  
+
+// DST gap detection
+process isLocalDateTimeGap(localDateTime: LocalDateTime) result: boolean  
+pre true  
+post  
+  isFixed()  
+    ? result' = false  
+    : try  
+        localDateTime.toDateTime(this)  
+        result' = false  
+      catch IllegalInstantException  
+        result' = true  
+
+Functional Scenario Form  
+fixed zone && returns false  
+valid local time && returns false  
+DST gap time && returns true  
+end_process  
+
+// Time adjustment for overlaps
+process adjustOffset(instant: long, earlierOrLater: boolean) result: long  
+pre true  
+post  
+  instantBefore = instant - 10800000  // 3 hours  
+  instantAfter = instant + 10800000  
+  offsetBefore = getOffset(instantBefore)  
+  offsetAfter = getOffset(instantAfter)  
+  (offsetBefore ≤ offsetAfter  
+    ? result' = instant  // not in overlap  
+    : diff = offsetBefore - offsetAfter  
+      transition = nextTransition(instantBefore)  
+      overlapStart = transition - diff  
+      overlapEnd = transition + diff  
+      (instant < overlapStart ∨ instant ≥ overlapEnd  
+        ? result' = instant  
+        : afterStart = instant - overlapStart  
+          (afterStart ≥ diff  
+            ? (earlierOrLater ? result' = instant : result' = instant - diff)  
+            : (earlierOrLater ? result' = instant + diff : result' = instant)  
+          )  
+      )  
+  )  
+
+Functional Scenario Form  
+not in overlap period && returns instant  
+in overlap earlier=true && shifts to later offset  
+in overlap earlier=false && shifts to earlier offset  
+end_process  
+
+// Transition methods (abstract)
+process nextTransition(instant: long)  
+abstract: true  
+
+process previousTransition(instant: long)  
+abstract: true  
+
+// TimeZone conversion
+process toTimeZone() result: java.util.TimeZone  
+pre true  
+post  
+  result' = java.util.TimeZone.getTimeZone(iID)  
+
+Functional Scenario Form  
+iID="America/New_York" && returns EST TimeZone  
+end_process  
+
+// Object methods
+process equals(object: Object) result: boolean  
+abstract: true  
+
+process hashCode() result: int  
+pre true  
+post  
+  result' = 57 + iID.hashCode()  
+
+Functional Scenario Form  
+always && returns hash based on ID  
+end_process  
+
+process toString() result: String  
+pre true  
+post  
+  result' = iID  
+
+Functional Scenario Form  
+iID="Europe/London" && returns "Europe/London"  
+end_process  
+
+// Serialization handling
+process writeReplace() result: Object  
+pre true  
+post  
+  result' = new Stub(iID)  
+
+Functional Scenario Form  
+serialization && returns Stub with ID  
+end_process  
+
+// Stub class behavior
+process Stub.readResolve() result: Object  
+pre true  
+post  
+  result' = forID(iID)  
+
+Functional Scenario Form  
+deserialization && reconstructs DateTimeZone from ID  
+end_process  
+
+end_module  

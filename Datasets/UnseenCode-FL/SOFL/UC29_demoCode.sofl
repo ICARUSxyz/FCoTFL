@@ -1,0 +1,68 @@
+module UC29_demoCode
+type
+  id: int
+  name, department: string
+  filePath, videoData, encryptedData, encryptedFilePath: string
+
+process setPoliceInfo(id: int, name: string, department: string) result: Boolean
+pre
+  true
+post
+  policemanInfo = PolicemanInfo(id, name, department) ∧ result = true
+Functional Scenario Form
+(true) && (policemanInfo is updated with new id, name, and department)
+end_process
+
+process configureVideoSettings() result: Boolean
+pre
+  true
+post
+  videoConfig.frameRate = 30 ∧
+  videoConfig.resolution = "1920x1080" ∧
+  videoConfig.encodingStandard = "H264" ∧
+  videoConfig.bitrate = 2500 ∧
+  result = true
+Functional Scenario Form
+(true) && (videoConfig is set to predefined full HD settings)
+end_process
+
+process startRecording() result: Boolean
+pre
+  true
+post
+  videoRecorder ≠ null ∧
+  videoRecorder.config = videoConfig ∧
+  videoRecorder.started = true ⇒ result = true ∨
+  videoRecorder = null ⇒ result = false
+Functional Scenario Form
+(videoRecorder created successfully) && (startRecording executed) or
+(videoRecorder creation failed) && (return false)
+end_process
+
+process stopRecording() result: Boolean
+pre
+  videoRecorder ≠ null
+post
+  if videoRecorder.getCurrentVideoFilePath() ≠ "" then
+    videoRecorder.started = false ∧ result = true
+  else
+    result = false
+Functional Scenario Form
+(videoRecorder is running and has valid file path) && (recording is stopped) or
+(videoRecorder is null or no file path) && (return false)
+end_process
+
+process encryptAndStoreVideo(filePath: string, videoData: string) result: Boolean
+pre
+  filePath ≠ "" ∧ videoData ≠ ""
+post
+  encryptedData = encryptionModule.encrypt(videoData) ∧
+  encryptedFilePath = storageManager.generateEncryptedFileName(filePath) ∧
+  storageManager.write(encryptedData) ∧
+  result = true
+Functional Scenario Form
+(valid file path and data) && (data encrypted and stored) or
+(filePath = "" ∨ videoData = "") && (skip or fail to encrypt)
+end_process
+
+end_module

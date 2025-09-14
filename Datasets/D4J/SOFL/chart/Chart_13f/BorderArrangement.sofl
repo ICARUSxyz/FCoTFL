@@ -1,0 +1,176 @@
+module BorderArrangement
+
+var
+  serialVersionUID: long = 506071142274883745L
+
+process BorderArrangement()
+pre true
+post
+  // Initialize all blocks to null
+  this.centerBlock' = null
+  this.topBlock' = null
+  this.bottomBlock' = null
+  this.leftBlock' = null
+  this.rightBlock' = null
+Functional Scenario Form
+defaultInitialization
+end_process
+
+process add(block: Block, key: Object)
+pre true
+post
+  if key == null then
+    this.centerBlock' = block
+  else
+    RectangleEdge edge = (RectangleEdge) key
+    if edge == RectangleEdge.TOP then
+      this.topBlock' = block
+    else if edge == RectangleEdge.BOTTOM then
+      this.bottomBlock' = block
+    else if edge == RectangleEdge.LEFT then
+      this.leftBlock' = block
+    else if edge == RectangleEdge.RIGHT then
+      this.rightBlock' = block
+Functional Scenario Form
+centerPosition && blockAdded || 
+topPosition && blockAdded || 
+bottomPosition && blockAdded || 
+leftPosition && blockAdded || 
+rightPosition && blockAdded
+end_process
+
+process arrange(container: BlockContainer, g2: Graphics2D, constraint: RectangleConstraint) result: Size2D
+pre
+  container != null && g2 != null && constraint != null
+post
+  RectangleConstraint contentConstraint = container.toContentConstraint(constraint)
+  Size2D contentSize = null
+  LengthConstraintType w = contentConstraint.getWidthConstraintType()
+  LengthConstraintType h = contentConstraint.getHeightConstraintType()
+  
+  // Width: NONE cases
+  if w == LengthConstraintType.NONE then
+    if h == LengthConstraintType.NONE then
+      contentSize = arrangeNN(container, g2)
+    else if h == LengthConstraintType.FIXED then
+      throw new RuntimeException("Not implemented.")
+    else if h == LengthConstraintType.RANGE then
+      throw new RuntimeException("Not implemented.")
+  
+  // Width: FIXED cases
+  else if w == LengthConstraintType.FIXED then
+    if h == LengthConstraintType.NONE then
+      contentSize = arrangeFN(container, g2, constraint.getWidth())
+    else if h == LengthConstraintType.FIXED then
+      contentSize = arrangeFF(container, g2, constraint)
+    else if h == LengthConstraintType.RANGE then
+      contentSize = arrangeFR(container, g2, constraint)
+  
+  // Width: RANGE cases
+  else if w == LengthConstraintType.RANGE then
+    if h == LengthConstraintType.NONE then
+      throw new RuntimeException("Not implemented.")
+    else if h == LengthConstraintType.FIXED then
+      throw new RuntimeException("Not implemented.")
+    else if h == LengthConstraintType.RANGE then
+      contentSize = arrangeRR(container, constraint.getWidthRange(), constraint.getHeightRange(), g2)
+  
+  // Calculate final size
+  result' = new Size2D(
+    container.calculateTotalWidth(contentSize.getWidth()),
+    container.calculateTotalHeight(contentSize.getHeight())
+  )
+Functional Scenario Form
+allConstraintsNone && arrangedNN ||
+widthFixedHeightNone && arrangedFN ||
+widthFixedHeightFixed && arrangedFF ||
+widthFixedHeightRange && arrangedFR ||
+widthRangeHeightRange && arrangedRR ||
+unimplementedCase && exceptionThrown
+end_process
+
+process arrangeNN(container: BlockContainer, g2: Graphics2D) result: Size2D
+pre
+  container != null && g2 != null
+post
+  double[] w = new double[5]
+  double[] h = new double[5]
+  
+  // 1. Arrange top block
+  if this.topBlock != null then
+    Size2D size = this.topBlock.arrange(g2, RectangleConstraint.NONE)
+    w[0] = size.width
+    h[0] = size.height
+  
+  // 2. Arrange bottom block
+  if this.bottomBlock != null then
+    Size2D size = this.bottomBlock.arrange(g2, RectangleConstraint.NONE)
+    w[1] = size.width
+    h[1] = size.height
+  
+  // 3. Arrange left and right blocks
+  if this.leftBlock != null then
+    Size2D size = this.leftBlock.arrange(g2, RectangleConstraint.NONE)
+    w[2] = size.width
+    h[2] = size.height
+  if this.rightBlock != null then
+    Size2D size = this.rightBlock.arrange(g2, RectangleConstraint.NONE)
+    w[3] = size.width
+    h[3] = size.height
+  
+  // 4. Sync side heights
+  h[2] = max(h[2], h[3])
+  h[3] = h[2]
+  
+  // 5. Arrange center block
+  if this.centerBlock != null then
+    Size2D size = this.centerBlock.arrange(g2, RectangleConstraint.NONE)
+    w[4] = size.width
+    h[4] = size.height
+  
+  // 6. Calculate dimensions
+  double width = max(w[0], max(w[1], w[2] + w[4] + w[3]))
+  double centerHeight = max(h[2], max(h[3], h[4]))
+  double height = h[0] + h[1] + centerHeight
+  
+  // 7. Set block bounds
+  if this.topBlock != null then
+    this.topBlock.setBounds(new Rectangle2D.Double(0.0, 0.0, width, h[0]))
+  if this.bottomBlock != null then
+    this.bottomBlock.setBounds(new Rectangle2D.Double(0.0, height - h[1], width, h[1]))
+  if this.leftBlock != null then
+    this.leftBlock.setBounds(new Rectangle2D.Double(0.0, h[0], w[2], centerHeight))
+  if this.rightBlock != null then
+    this.rightBlock.setBounds(new Rectangle2D.Double(width - w[3], h[0], w[3], centerHeight))
+  if this.centerBlock != null then
+    this.centerBlock.setBounds(new Rectangle2D.Double(w[2], h[0], width - w[2] - w[3], centerHeight))
+  
+  // 8. Return final size
+  result' = new Size2D(width, height)
+Functional Scenario Form
+allBlocksExist && arranged || 
+partialBlocks && arranged || 
+noCenterBlock && arranged
+end_process
+
+process arrangeFR(container: BlockContainer, g2: Graphics2D, constraint: RectangleConstraint) result: Size2D
+pre
+  container != null && g2 != null && constraint != null
+post
+  // 1. First arrangement attempt
+  Size2D size1 = arrangeFN(container, g2, constraint.getWidth())
+  
+  // 2. Check height constraint
+  if constraint.getHeightRange().contains(size1.getHeight()) then
+    result' = size1
+  else
+    // 3. Constrain height and re-arrange
+    double h = constraint.getHeightRange().constrain(size1.getHeight())
+    RectangleConstraint c2 = constraint.toFixedHeight(h)
+    result' = arrange(container, g2, c2)
+Functional Scenario Form
+heightInRange && firstArrangementUsed || 
+heightOutOfRange && constrainedArrangement
+end_process
+
+end_module

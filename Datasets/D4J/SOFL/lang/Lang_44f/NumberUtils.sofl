@@ -1,0 +1,645 @@
+module NumberUtils
+
+type
+  str: sequence of char,
+  defaultInt: int,
+  defaultLong: long,
+  defaultFloat: float,
+  defaultDouble: double
+
+process toInt(str: sequence of char) result: int
+pre
+  true
+post
+  (str = null) → result = 0 &&
+  (str ≠ null ∧ isDigits(str)) → result = parseInt(str) &&
+  (str ≠ null ∧ ¬isDigits(str)) → result = 0
+Functional Scenario Form
+  (str = null) &&
+    (result = 0) or
+  (str ≠ null ∧ isDigits(str)) &&
+    (result = parseInt(str)) or
+  (str ≠ null ∧ ¬isDigits(str)) &&
+    (result = 0)
+end_process
+
+process toInt(str: sequence of char, defaultInt: int) result: int
+pre
+  true
+post
+  (str = null) → result = defaultInt &&
+  (str ≠ null ∧ isDigits(str)) → result = parseInt(str) &&
+  (str ≠ null ∧ ¬isDigits(str)) → result = defaultInt
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultInt) or
+  (str ≠ null ∧ isDigits(str)) &&
+    (result = parseInt(str)) or
+  (str ≠ null ∧ ¬isDigits(str)) &&
+    (result = defaultInt)
+end_process
+
+process toLong(str: sequence of char) result: long
+pre
+  true
+post
+  (str = null) → result = 0L &&
+  (str ≠ null ∧ isDigits(str)) → result = parseLong(str) &&
+  (str ≠ null ∧ ¬isDigits(str)) → result = 0L
+Functional Scenario Form
+  (str = null) &&
+    (result = 0L) or
+  (str ≠ null ∧ isDigits(str)) &&
+    (result = parseLong(str)) or
+  (str ≠ null ∧ ¬isDigits(str)) &&
+    (result = 0L)
+end_process
+
+process toLong(str: sequence of char, defaultLong: long) result: long
+pre
+  true
+post
+  (str = null) → result = defaultLong &&
+  (str ≠ null ∧ isDigits(str)) → result = parseLong(str) &&
+  (str ≠ null ∧ ¬isDigits(str)) → result = defaultLong
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultLong) or
+  (str ≠ null ∧ isDigits(str)) &&
+    (result = parseLong(str)) or
+  (str ≠ null ∧ ¬isDigits(str)) &&
+    (result = defaultLong)
+end_process
+
+process toFloat(str: sequence of char) result: float
+pre
+  true
+post
+  (str = null) → result = 0.0f &&
+  (str ≠ null ∧ validFloat(str)) → result = parseFloat(str) &&
+  (str ≠ null ∧ ¬validFloat(str)) → result = 0.0f
+Functional Scenario Form
+  (str = null) &&
+    (result = 0.0f) or
+  (str ≠ null ∧ validFloat(str)) &&
+    (result = parseFloat(str)) or
+  (str ≠ null ∧ ¬validFloat(str)) &&
+    (result = 0.0f)
+end_process
+
+process toFloat(str: sequence of char, defaultFloat: float) result: float
+pre
+  true
+post
+  (str = null) → result = defaultFloat &&
+  (str ≠ null ∧ validFloat(str)) → result = parseFloat(str) &&
+  (str ≠ null ∧ ¬validFloat(str)) → result = defaultFloat
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultFloat) or
+  (str ≠ null ∧ validFloat(str)) &&
+    (result = parseFloat(str)) or
+  (str ≠ null ∧ ¬validFloat(str)) &&
+    (result = defaultFloat)
+end_process
+
+process toDouble(str: sequence of char) result: double
+pre
+  true
+post
+  (str = null) → result = 0.0d &&
+  (str ≠ null ∧ validDouble(str)) → result = parseDouble(str) &&
+  (str ≠ null ∧ ¬validDouble(str)) → result = 0.0d
+Functional Scenario Form
+  (str = null) &&
+    (result = 0.0d) or
+  (str ≠ null ∧ validDouble(str)) &&
+    (result = parseDouble(str)) or
+  (str ≠ null ∧ ¬validDouble(str)) &&
+    (result = 0.0d)
+end_process
+
+process toDouble(str: sequence of char, defaultDouble: double) result: double
+pre
+  true
+post
+  (str = null) → result = defaultDouble &&
+  (str ≠ null ∧ validDouble(str)) → result = parseDouble(str) &&
+  (str ≠ null ∧ ¬validDouble(str)) → result = defaultDouble
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultDouble) or
+  (str ≠ null ∧ validDouble(str)) &&
+    (result = parseDouble(str)) or
+  (str ≠ null ∧ ¬validDouble(str)) &&
+    (result = defaultDouble)
+end_process
+
+process toByte(str: sequence of char) result: byte
+pre
+  true
+post
+  (str = null) → result = 0 &&
+  (str ≠ null ∧ validByte(str)) → result = parseByte(str) &&
+  (str ≠ null ∧ ¬validByte(str)) → result = 0
+Functional Scenario Form
+  (str = null) &&
+    (result = 0) or
+  (str ≠ null ∧ validByte(str)) &&
+    (result = parseByte(str)) or
+  (str ≠ null ∧ ¬validByte(str)) &&
+    (result = 0)
+end_process
+
+process toByte(str: sequence of char, defaultByte: byte) result: byte
+pre
+  true
+post
+  (str = null) → result = defaultByte &&
+  (str ≠ null ∧ validByte(str)) → result = parseByte(str) &&
+  (str ≠ null ∧ ¬validByte(str)) → result = defaultByte
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultByte) or
+  (str ≠ null ∧ validByte(str)) &&
+    (result = parseByte(str)) or
+  (str ≠ null ∧ ¬validByte(str)) &&
+    (result = defaultByte)
+end_process
+
+process toShort(str: sequence of char) result: short
+pre
+  true
+post
+  (str = null) → result = 0 &&
+  (str ≠ null ∧ validShort(str)) → result = parseShort(str) &&
+  (str ≠ null ∧ ¬validShort(str)) → result = 0
+Functional Scenario Form
+  (str = null) &&
+    (result = 0) or
+  (str ≠ null ∧ validShort(str)) &&
+    (result = parseShort(str)) or
+  (str ≠ null ∧ ¬validShort(str)) &&
+    (result = 0)
+end_process
+
+process toShort(str: sequence of char, defaultShort: short) result: short
+pre
+  true
+post
+  (str = null) → result = defaultShort &&
+  (str ≠ null ∧ validShort(str)) → result = parseShort(str) &&
+  (str ≠ null ∧ ¬validShort(str)) → result = defaultShort
+Functional Scenario Form
+  (str = null) &&
+    (result = defaultShort) or
+  (str ≠ null ∧ validShort(str)) &&
+    (result = parseShort(str)) or
+  (str ≠ null ∧ ¬validShort(str)) &&
+    (result = defaultShort)
+end_process
+
+process createNumber(str: sequence of char) result: Number
+pre
+  true
+post
+  (str = null) → result = null &&
+  (isBlank(str)) → NumberFormatException &&
+  (hasHexPrefix(str) ∧ hexDigits > 16) → result = createBigInteger(str) &&
+  (hasHexPrefix(str) ∧ hexDigits > 8 ∧ hexDigits ≤ 16) → result = createLong(str) &&
+  (hasHexPrefix(str) ∧ hexDigits ≤ 8) → result = createInteger(str) &&
+  (¬hasHexPrefix(str) ∧ isTypeQualifier(str, 'L') ∧ validLong(numeric)) → result = createLong(numeric) &&
+  (¬hasHexPrefix(str) ∧ isTypeQualifier(str, {'F','D'}) ∧ validFloatOrDouble(numeric)) → result = chooseFloatOrDouble(numeric) &&
+  (¬hasHexPrefix(str) ∧ ¬hasTypeQualifier(str) ∧ ¬hasDecimalOrExp(str)) → result = chooseIntegerLongBigInteger(str) &&
+  (¬hasHexPrefix(str) ∧ ¬hasTypeQualifier(str) ∧ hasDecimalOrExp(str)) → result = chooseFloatDoubleBigDecimal(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (isBlank(str)) &&
+    (throws NumberFormatException) or
+  (hasHexPrefix(str) ∧ hexDigits > 16) &&
+    (result = createBigInteger(str)) or
+  (hasHexPrefix(str) ∧ hexDigits > 8 ∧ hexDigits ≤ 16) &&
+    (result = createLong(str)) or
+  (hasHexPrefix(str) ∧ hexDigits ≤ 8) &&
+    (result = createInteger(str)) or
+  (¬hasHexPrefix(str) ∧ isTypeQualifier(str, 'L') ∧ validLong(numeric)) &&
+    (result = createLong(numeric)) or
+  (¬hasHexPrefix(str) ∧ isTypeQualifier(str, {'F','D'}) ∧ validFloatOrDouble(numeric)) &&
+    (result = chooseFloatOrDouble(numeric)) or
+  (¬hasHexPrefix(str) ∧ ¬hasTypeQualifier(str) ∧ ¬hasDecimalOrExp(str)) &&
+    (result = chooseIntegerLongBigInteger(str)) or
+  (¬hasHexPrefix(str) ∧ ¬hasTypeQualifier(str) ∧ hasDecimalOrExp(str)) &&
+    (result = chooseFloatDoubleBigDecimal(str))
+end_process
+
+process isAllZeros(str: sequence of char) result: boolean
+pre
+  true
+post
+  (str = null) → result = true &&
+  (str ≠ null ∧ ∀ i ∈ 0..|str|-1. str[i] = '0') → result = true &&
+  (str ≠ null ∧ ∃ i ∈ 0..|str|-1. str[i] ≠ '0') → result = false
+Functional Scenario Form
+  (str = null) &&
+    (result = true) or
+  (str ≠ null ∧ all characters are '0') &&
+    (result = true) or
+  (str ≠ null ∧ some character ≠ '0') &&
+    (result = false)
+end_process
+
+process createFloat(str: sequence of char) result: Float
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null) → result = Float.valueOf(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (str ≠ null) &&
+    (result = Float.valueOf(str))
+end_process
+
+process createDouble(str: sequence of char) result: Double
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null) → result = Double.valueOf(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (str ≠ null) &&
+    (result = Double.valueOf(str))
+end_process
+
+process createInteger(str: sequence of char) result: Integer
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null) → result = Integer.decode(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (str ≠ null) &&
+    (result = Integer.decode(str))
+end_process
+
+process createLong(str: sequence of char) result: Long
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null) → result = Long.decode(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (str ≠ null) &&
+    (result = Long.decode(str))
+end_process
+
+process createBigInteger(str: sequence of char) result: BigInteger
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null) → result = BigInteger(str_substring, radix)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (str ≠ null) &&
+    (result = BigInteger created from str using hex/octal/decimal rules)
+end_process
+
+process createBigDecimal(str: sequence of char) result: BigDecimal
+pre
+  true
+post
+  (str = null) → result = null &&
+  (isBlank(str)) → NumberFormatException &&
+  (startsWith(str, "--")) → NumberFormatException &&
+  (¬isBlank(str) ∧ ¬startsWith(str, "--")) → result = new BigDecimal(str)
+Functional Scenario Form
+  (str = null) &&
+    (result = null) or
+  (isBlank(str)) &&
+    (throws NumberFormatException) or
+  (startsWith(str, "--")) &&
+    (throws NumberFormatException) or
+  (valid content) &&
+    (result = BigDecimal.valueOf(str))
+end_process
+
+process min(arrayLong: sequence of long) result: long
+pre
+  arrayLong ≠ []
+post
+  result ∈ arrayLong &&
+  ∀ x ∈ arrayLong. result ≤ x
+Functional Scenario Form
+  (arrayLong = [l₀,…,lₙ]) &&
+    (result = the smallest of l₀…lₙ)
+end_process
+
+process min(arrayInt: sequence of int) result: int
+pre
+  arrayInt ≠ []
+post
+  result ∈ arrayInt &&
+  ∀ x ∈ arrayInt. result ≤ x
+Functional Scenario Form
+  (arrayInt = [i₀,…,iₙ]) &&
+    (result = the smallest of i₀…iₙ)
+end_process
+
+process min(arrayShort: sequence of short) result: short
+pre
+  arrayShort ≠ []
+post
+  result ∈ arrayShort &&
+  ∀ x ∈ arrayShort. result ≤ x
+Functional Scenario Form
+  (arrayShort = [s₀,…,sₙ]) &&
+    (result = the smallest of s₀…sₙ)
+end_process
+
+process min(arrayByte: sequence of byte) result: byte
+pre
+  arrayByte ≠ []
+post
+  result ∈ arrayByte &&
+  ∀ x ∈ arrayByte. result ≤ x
+Functional Scenario Form
+  (arrayByte = [b₀,…,bₙ]) &&
+    (result = the smallest of b₀…bₙ)
+end_process
+
+process min(arrayDouble: sequence of double) result: double
+pre
+  arrayDouble ≠ []
+post
+  (∃ x ∈ arrayDouble. isNaN(x)) → result = NaN &&
+  (¬∃ x. isNaN(x)) → (
+    result ∈ arrayDouble &&
+    ∀ x ∈ arrayDouble. result ≤ x
+  )
+Functional Scenario Form
+  (arrayDouble contains NaN) &&
+    (result = NaN) or
+  (arrayDouble no NaN) &&
+    (result = smallest element)
+end_process
+
+process min(arrayFloat: sequence of float) result: float
+pre
+  arrayFloat ≠ []
+post
+  (∃ x ∈ arrayFloat. isNaN(x)) → result = NaN &&
+  (¬∃ x. isNaN(x)) → (
+    result ∈ arrayFloat &&
+    ∀ x ∈ arrayFloat. result ≤ x
+  )
+Functional Scenario Form
+  (arrayFloat contains NaN) &&
+    (result = NaN) or
+  (arrayFloat no NaN) &&
+    (result = smallest element)
+end_process
+
+process max(arrayLong: sequence of long) result: long
+pre
+  arrayLong ≠ []
+post
+  result ∈ arrayLong &&
+  ∀ x ∈ arrayLong. result ≥ x
+Functional Scenario Form
+  (arrayLong = [l₀,…,lₙ]) &&
+    (result = the largest of l₀…lₙ)
+end_process
+
+process max(arrayInt: sequence of int) result: int
+pre
+  arrayInt ≠ []
+post
+  result ∈ arrayInt &&
+  ∀ x ∈ arrayInt. result ≥ x
+Functional Scenario Form
+  (arrayInt = [i₀,…,iₙ] ∧ ∃ k. iₖ = NaN is false) &&
+    (result = max(i₀…iₙ))
+end_process
+
+process max(arrayShort: sequence of short) result: short
+pre
+  arrayShort ≠ []
+post
+  result ∈ arrayShort &&
+  ∀ x ∈ arrayShort. result ≥ x
+Functional Scenario Form
+  (arrayShort = [s₀,…,sₙ]) &&
+    (result = max(s₀…sₙ))
+end_process
+
+process max(arrayByte: sequence of byte) result: byte
+pre
+  arrayByte ≠ []
+post
+  result ∈ arrayByte &&
+  ∀ x ∈ arrayByte. result ≥ x
+Functional Scenario Form
+  (arrayByte = [b₀,…,bₙ]) &&
+    (result = max(b₀…bₙ))
+end_process
+
+process max(arrayDouble: sequence of double) result: double
+pre
+  arrayDouble ≠ []
+post
+  (∃ x ∈ arrayDouble. isNaN(x)) → result = NaN &&
+  (¬∃ x. isNaN(x)) → (
+    result ∈ arrayDouble &&
+    ∀ x ∈ arrayDouble. result ≥ x
+  )
+Functional Scenario Form
+  (arrayDouble contains NaN) &&
+    (result = NaN) or
+  (arrayDouble no NaN) &&
+    (result = largest element)
+end_process
+
+process max(arrayFloat: sequence of float) result: float
+pre
+  arrayFloat ≠ []
+post
+  (∃ x ∈ arrayFloat. isNaN(x)) → result = NaN &&
+  (¬∃ x. isNaN(x)) → (
+    result ∈ arrayFloat &&
+    ∀ x ∈ arrayFloat. result ≥ x
+  )
+Functional Scenario Form
+  (arrayFloat contains NaN) &&
+    (result = NaN) or
+  (arrayFloat no NaN) &&
+    (result = largest element)
+end_process
+
+process validateArray(array: sequence of τ) result: void
+pre
+  true
+post
+  (array = null) → throws IllegalArgumentException &&
+  (array ≠ null ∧ |array| = 0) → throws IllegalArgumentException &&
+  (array ≠ null ∧ |array| > 0) → no exception
+Functional Scenario Form
+  (array = null) &&
+    (throws IllegalArgumentException) or
+  (|array| = 0) &&
+    (throws IllegalArgumentException) or
+  (|array| > 0) &&
+    (returns void)
+end_process
+
+process min(a: long, b: long, c: long) result: long
+pre
+  true
+post
+  result = min_of_three(a,b,c)
+Functional Scenario Form
+  (result = the smallest of a,b,c)
+end_process
+
+process min(a: int, b: int, c: int) result: int
+pre
+  true
+post
+  result = min_of_three(a,b,c)
+Functional Scenario Form
+  (result = the smallest of a,b,c)
+end_process
+
+process min(a: short, b: short, c: short) result: short
+pre
+  true
+post
+  result = min_of_three(a,b,c)
+Functional Scenario Form
+  (result = the smallest of a,b,c)
+end_process
+
+process min(a: byte, b: byte, c: byte) result: byte
+pre
+  true
+post
+  result = min_of_three(a,b,c)
+Functional Scenario Form
+  (result = the smallest of a,b,c)
+end_process
+
+process min(a: double, b: double, c: double) result: double
+pre
+  true
+post
+  result = Math.min(Math.min(a,b),c)
+Functional Scenario Form
+  (result = smallest of a,b,c, with NaN propagation)
+end_process
+
+process min(a: float, b: float, c: float) result: float
+pre
+  true
+post
+  result = Math.min(Math.min(a,b),c)
+Functional Scenario Form
+  (result = smallest of a,b,c, with NaN propagation)
+end_process
+
+process max(a: long, b: long, c: long) result: long
+pre
+  true
+post
+  result = max_of_three(a,b,c)
+Functional Scenario Form
+  (result = the largest of a,b,c)
+end_process
+
+process max(a: int, b: int, c: int) result: int
+pre
+  true
+post
+  result = max_of_three(a,b,c)
+Functional Scenario Form
+  (result = the largest of a,b,c)
+end_process
+
+process max(a: short, b: short, c: short) result: short
+pre
+  true
+post
+  result = max_of_three(a,b,c)
+Functional Scenario Form
+  (result = the largest of a,b,c)
+end_process
+
+process max(a: byte, b: byte, c: byte) result: byte
+pre
+  true
+post
+  result = max_of_three(a,b,c)
+Functional Scenario Form
+  (result = the largest of a,b,c)
+end_process
+
+process max(a: double, b: double, c: double) result: double
+pre
+  true
+post
+  result = Math.max(Math.max(a,b),c)
+Functional Scenario Form
+  (result = largest of a,b,c, with NaN propagation)
+end_process
+
+process max(a: float, b: float, c: float) result: float
+pre
+  true
+post
+  result = Math.max(Math.max(a,b),c)
+Functional Scenario Form
+  (result = largest of a,b,c, with NaN propagation)
+end_process
+
+process isDigits(str: sequence of char) result: boolean
+pre
+  true
+post
+  (str = null ∨ str = []) → result = false &&
+  (str ≠ null ∧ ∃ non-digit in str) → result = false &&
+  (str ≠ null ∧ all characters are digits) → result = true
+Functional Scenario Form
+  (str null/empty) &&
+    (result = false) or
+  (str contains non-digit) &&
+    (result = false) or
+  (str all digits) &&
+    (result = true)
+end_process
+
+process isNumber(str: sequence of char) result: boolean
+pre
+  true
+post
+  (str = null ∨ str = []) → result = false &&
+  (validHex(str)) → result = true &&
+  (validNumeric(str, allowExp, allowTypeQualifier)) → result = true &&
+  (otherwise) → result = false
+Functional Scenario Form
+  (str null/empty) &&
+    (result = false) or
+  (matches Java number format) &&
+    (result = true) or
+  (invalid format) &&
+    (result = false)
+end_process
+
+end_module

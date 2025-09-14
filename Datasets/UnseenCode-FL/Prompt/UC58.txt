@@ -1,0 +1,197 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: "use strict";
+2: Object.defineProperty(exports, "__esModule", { value: true });
+3: const Mysql = require("mysql");
+4: const mylogger_1 = require("./mylogger");
+5: class MysqlPool {
+6:     constructor(config) {
+7:         this._mysqlPool = null;
+8:         this._config = {};
+9:         this.initialize(config);
+10:     }
+11:     initialize(config) {
+12:         this._config = config;
+13:         if (this._config.database == undefined) {
+14:             mylogger_1.myLogger.log('no config parse to json right.');
+15:             return false;
+16:         }
+17:         if (!this._config.host) {
+18:             this._config.host = '127.0.0.1';
+19:         }
+20:         if (!this._config.port) {
+21:             this._config.port = 3306;
+22:         }
+23:         if (!this._config.connectionLimit) {
+24:             this._config.connectionLimit = 5;
+25:         }
+26:         this._mysqlPool = Mysql.createPool(this._config);
+27:         return true;
+28:     }
+29:     getPool() {
+30:         return this._mysqlPool;
+31:     }
+32:     query(querystr, queryparams) {
+33:         // 返回一个 Promise
+34:         return new Promise((resolve, reject) => {
+35:             this._mysqlPool.getConnection((err, connection) => {
+36:                 if (err) {
+37:                     reject(err);
+38:                 }
+39:                 else {
+40:                     connection.query(querystr, queryparams, (err, rows) => {
+41:                         connection.release();
+42:                         if (err) {
+43:                             reject(err);
+44:                         }
+45:                         else {
+46:                             resolve(rows);
+47:                         }
+48:                     });
+49:                 }
+50:             });
+51:         });
+52:     }
+53:     cbquery(querystr, queryparam, cb) {
+54:         this._mysqlPool.getConnection((err, connection) => {
+55:             if (err) {
+56:                 var sql = querystr;
+57:                 connection.query(querystr, queryparam, (err, rows) => {
+58:                     connection.release();
+59:                     if (err) {
+60:                         cb(err);
+61:                     }
+62:                     else {
+63:                         cb(null, rows);
+64:                     }
+65:                 });
+66:             }
+67:             else {
+68:                 cb(err);
+69:             }
+70:         });
+71:     }
+72: }
+73: exports.MysqlPool = MysqlPool;
+74: //# sourceMappingURL=mysqlpool.js.map]
+
+SOFL:[
+module UC58_MysqlPool
+
+var 
+  defaultHost: string = '127.0.0.1'
+  defaultPort: int = 3306
+  defaultLimit: int = 10
+
+process constructor(config: record database: string, host: string, port: int, connectionLimit: int) result: MysqlPool
+pre 
+  true
+post 
+  result._config = config &&
+  result._mysqlPool = Mysql.createPool(config) &&
+  if config.database is undefined then result = null
+Functional Scenario Form 
+config.database ≠ undefined && result._mysqlPool = Mysql.createPool(config) or
+config.database = undefined && result = null
+end_process
+
+process initialize(config: record database: string, host: string, port: int, connectionLimit: int) result: Boolean
+pre 
+  true
+post 
+  if config.database = undefined then 
+    result = false 
+  else 
+    _config = config with default host/port/limit applied if missing &&
+    _mysqlPool = Mysql.createPool(_config) &&
+    result = true
+Functional Scenario Form 
+config.database = undefined && result = false or
+config.database ≠ undefined && result = true && _mysqlPool initialized
+end_process
+
+process getPool() result: MysqlPool
+pre 
+  true
+post 
+  result = _mysqlPool
+Functional Scenario Form 
+true && result = _mysqlPool
+end_process
+
+process query(querystr: string, queryparams: sequence of any) result: Promise
+pre 
+  _mysqlPool ≠ null
+post 
+  if connection error then result = rejected(err) 
+  else if query error then result = rejected(err)
+  else result = resolved(rows)
+Functional Scenario Form 
+connection fails && result = rejected(err) or
+connection succeeds && query fails && result = rejected(err) or
+connection succeeds && query succeeds && result = resolved(rows)
+end_process
+
+process cbquery(querystr: string, queryparam: sequence of any, cb: function) result: void
+pre 
+  _mysqlPool ≠ null
+post 
+  if connection fails then cb(err)
+  else if query fails then cb(err)
+  else cb(null, rows)
+Functional Scenario Form 
+connection fails && cb(err) or
+connection succeeds && query fails && cb(err) or
+connection succeeds && query succeeds && cb(null, rows)
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Missing database field in config
+→ Input config: { user: "root", password: "123456" }
+→ Expected: Connection initialization fails with warning
+→ Actual log: "no config parse to json right."
+// Initialization aborted when required config fields are missing.
+
+// Test Case 2: Query using Promise interface
+→ Input: query("SELECT * FROM users WHERE id = ?", [1])
+→ Expected: Returned user row
+→ Actual: Error: ER_ACCESS_DENIED_ERROR
+// Proper error passed to reject; connection gracefully released.
+
+// Test Case 3: Query using callback interface
+→ Simulated condition: MySQL server unavailable
+→ Expected: Error passed to callback
+→ Actual: TypeError: Cannot read property 'query' of undefined
+// Callback-based query attempts to access `connection` even after failed acquisition.
+
+// Test Case 4: Custom connection limit
+→ Input config: { host: "localhost", user: "root", password: "123", database: "testdb" }
+→ Expected pool config: connectionLimit = 5
+→ Actual behavior: Max connections hit quickly under load
+// Default or hardcoded limit results in connection exhaustion during concurrent queries.]

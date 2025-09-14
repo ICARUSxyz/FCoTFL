@@ -1,0 +1,474 @@
+module BasePeriod  
+type:
+  iType: PeriodType  
+  iValues: int[]  
+
+var:  
+  serialVersionUID: long = -2110953284060001145L  
+
+// Constructor 1: Scalar values
+process constructor1(years: int, months: int, weeks: int, days: int, hours: int, minutes: int, seconds: int, millis: int, type: PeriodType)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  iType' = type'  
+  setPeriodInternal(years, months, weeks, days, hours, minutes, seconds, millis)  
+Functional Scenario Form  
+type=null && sets iType to standard period type  
+years=1 months=2 && sets period values  
+end_process  
+
+// Constructor 2: Duration between instants
+process constructor2(startInstant: long, endInstant: long, type: PeriodType, chrono: Chronology)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  chrono' = DateTimeUtils.getChronology(chrono)  
+  iType' = type'  
+  iValues' = chrono'.get(this, startInstant, endInstant)  
+Functional Scenario Form  
+start=0L end=1000L type=standard && computes duration values  
+chrono=ISOChronology && uses ISO chronology  
+end_process  
+
+// Constructor 3: Duration between ReadableInstants
+process constructor3(startInstant: ReadableInstant, endInstant: ReadableInstant, type: PeriodType)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  startInstant=null ∧ endInstant=null  
+    ? iType' = type'  
+      iValues' = new int[size()]  
+  else  
+    startMillis = DateTimeUtils.getInstantMillis(startInstant)  
+    endMillis = DateTimeUtils.getInstantMillis(endInstant)  
+    chrono = DateTimeUtils.getIntervalChronology(startInstant, endInstant)  
+    iType' = type'  
+    iValues' = chrono.get(this, startMillis, endMillis)  
+Functional Scenario Form  
+both null && initializes zero-length period  
+start=instant1 end=instant2 && computes duration  
+end_process  
+
+// Constructor 4: Duration between ReadablePartials
+process constructor4(start: ReadablePartial, end: ReadablePartial, type: PeriodType)  
+pre true  
+post  
+  start=null ∨ end=null  
+    ? throw IllegalArgumentException  
+  start instanceof BaseLocal ∧ end instanceof BaseLocal ∧ start.getClass() = end.getClass()  
+    ? type' = checkPeriodType(type)  
+      startMillis = ((BaseLocal)start).getLocalMillis()  
+      endMillis = ((BaseLocal)end).getLocalMillis()  
+      chrono = start.getChronology()  
+      chrono' = DateTimeUtils.getChronology(chrono)  
+      iType' = type'  
+      iValues' = chrono'.get(this, startMillis, endMillis)  
+  else  
+    start.size() ≠ end.size()  
+      ? throw IllegalArgumentException  
+    for i=0 to start.size()-1  
+      ? start.getFieldType(i) ≠ end.getFieldType(i)  
+          ? throw IllegalArgumentException  
+    DateTimeUtils.isContiguous(start) = false  
+      ? throw IllegalArgumentException  
+    type' = checkPeriodType(type)  
+    chrono = DateTimeUtils.getChronology(start.getChronology()).withUTC()  
+    iType' = type'  
+    iValues' = chrono.get(this, chrono.set(start, 0L), chrono.set(end, 0L))  
+Functional Scenario Form  
+both BaseLocal same class && uses local millis  
+different field types && throws exception  
+non-contiguous partials && throws exception  
+same fields && computes duration  
+end_process  
+
+// Period type validation
+process checkPeriodType(type: PeriodType) result: PeriodType  
+pre true  
+post  
+  type ≠ null  
+    ? result' = type  
+    : result' = PeriodType.standard()  
+Functional Scenario Form  
+type=null && returns standard type  
+type=someType && returns same type  
+end_process
+
+// Constructor 5: Duration from start instant + duration
+process constructor5(startInstant: ReadableInstant, duration: ReadableDuration, type: PeriodType)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  startMillis = DateTimeUtils.getInstantMillis(startInstant)  
+  durationMillis = DateTimeUtils.getDurationMillis(duration)  
+  endMillis = FieldUtils.safeAdd(startMillis, durationMillis)  
+  chrono = DateTimeUtils.getInstantChronology(startInstant)  
+  iType' = type'  
+  iValues' = chrono.get(this, startMillis, endMillis)  
+Functional Scenario Form  
+startInstant=instant1 duration=duration1 && computes period  
+duration=null && durationMillis=0  
+end_process  
+
+// Constructor 6: Duration from duration + end instant
+process constructor6(duration: ReadableDuration, endInstant: ReadableInstant, type: PeriodType)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  durationMillis = DateTimeUtils.getDurationMillis(duration)  
+  endMillis = DateTimeUtils.getInstantMillis(endInstant)  
+  startMillis = FieldUtils.safeSubtract(endMillis, durationMillis)  
+  chrono = DateTimeUtils.getInstantChronology(endInstant)  
+  iType' = type'  
+  iValues' = chrono.get(this, startMillis, endMillis)  
+Functional Scenario Form  
+duration=duration1 endInstant=instant2 && computes period  
+endInstant=null && endMillis=current time  
+end_process  
+
+// Constructor 7: Time-only period from millis
+process constructor7(duration: long)  
+pre true  
+post  
+  tempType = PeriodType.time()  
+  tempValues = ISOChronology.getInstanceUTC().get(this, duration)  
+  iType' = PeriodType.standard()  
+  iValues' = new int[8]  
+  // Copy hours(0), minutes(1), seconds(2), millis(3) to positions 4-7  
+  for i=0 to 3  
+    iValues'[i+4] = tempValues[i]  
+Functional Scenario Form  
+duration=3723000L && copies [0,0,0,0,1,2,3,0]  
+end_process  
+
+// Constructor 8: Generic duration millis
+process constructor8(duration: long, type: PeriodType, chrono: Chronology)  
+pre true  
+post  
+  type' = checkPeriodType(type)  
+  chrono' = DateTimeUtils.getChronology(chrono)  
+  iType' = type'  
+  iValues' = chrono'.get(this, duration)  
+Functional Scenario Form  
+duration=1000 type=time chrono=ISO && sets time values  
+type=null && uses standard type  
+end_process  
+
+// Constructor 9: Conversion from object
+process constructor9(period: Object, type: PeriodType, chrono: Chronology)  
+pre true  
+post  
+  converter = ConverterManager.getInstance().getPeriodConverter(period)  
+  type' = (type = null ? converter.getPeriodType(period) : type)  
+  type'' = checkPeriodType(type')  
+  iType' = type''  
+  this instanceof ReadWritablePeriod  
+    ? iValues' = new int[size()]  
+      chrono' = DateTimeUtils.getChronology(chrono)  
+      converter.setInto(this, period, chrono')  
+    : iValues' = new MutablePeriod(period, type'', chrono).getValues()  
+Functional Scenario Form  
+period=Duration.standardHours(2) && converts to period  
+type=null && uses converter's period type  
+end_process  
+
+// Constructor 10: Trusted internal constructor
+process constructor10(values: int[], type: PeriodType)  
+pre true  
+post  
+  iType' = type  
+  iValues' = values  
+Functional Scenario Form  
+values=[1,2,3] type=standard && directly sets  
+end_process  
+
+// Helper: FieldUtils.safeAdd
+process safeAdd(a: long, b: long) result: long  
+pre true  
+post  
+  result' = a + b  
+  // Implementation with overflow checks (omitted for brevity)  
+Functional Scenario Form  
+a=1000 b=2000 && returns 3000  
+end_process  
+
+// Helper: FieldUtils.safeSubtract
+process safeSubtract(a: long, b: long) result: long  
+pre true  
+post  
+  result' = a - b  
+  // Implementation with overflow checks  
+Functional Scenario Form  
+a=3000 b=1000 && returns 2000  
+end_process  
+  
+ int[]  
+
+// Period type validation
+process checkPeriodType(type: PeriodType) result: PeriodType  
+pre true  
+post  
+  result' = DateTimeUtils.getPeriodType(type)  
+Functional Scenario Form  
+type=null && returns standard  
+type=dayTime() && returns same  
+end_process  
+
+// Field accessors
+process getPeriodType() result: PeriodType  
+pre true  
+post  
+  result' = iType  
+Functional Scenario Form  
+iType=standard && returns standard  
+end_process  
+
+process size() result: int  
+pre true  
+post  
+  result' = iType.size()  
+Functional Scenario Form  
+iType=standard && returns 8  
+end_process  
+
+process getFieldType(index: int) result: DurationFieldType  
+pre true  
+post  
+  index < 0 ∨ index ≥ size()  
+    ? throw IndexOutOfBoundsException  
+  result' = iType.getFieldType(index)  
+Functional Scenario Form  
+index=0 && returns years  
+index=9 && throws exception  
+end_process  
+
+process getValue(index: int) result: int  
+pre true  
+post  
+  index < 0 ∨ index ≥ iValues.length  
+    ? throw IndexOutOfBoundsException  
+  result' = iValues[index]  
+Functional Scenario Form  
+iValues=[1,2,3] index=1 && returns 2  
+end_process  
+
+// Duration conversion
+process toDurationFrom(startInstant: ReadableInstant) result: Duration  
+pre true  
+post  
+  startMillis = DateTimeUtils.getInstantMillis(startInstant)  
+  chrono = DateTimeUtils.getInstantChronology(startInstant)  
+  endMillis = chrono.add(this, startMillis, 1)  
+  result' = new Duration(startMillis, endMillis)  
+Functional Scenario Form  
+period=P1D startInstant=epoch && returns 86400000ms  
+end_process  
+
+process toDurationTo(endInstant: ReadableInstant) result: Duration  
+pre true  
+post  
+  endMillis = DateTimeUtils.getInstantMillis(endInstant)  
+  chrono = DateTimeUtils.getInstantChronology(endInstant)  
+  startMillis = chrono.add(this, endMillis, -1)  
+  result' = new Duration(startMillis, endMillis)  
+Functional Scenario Form  
+period=P1H endInstant=epoch && returns -3600000ms  
+end_process  
+
+// Field validation
+process checkAndUpdate(type: DurationFieldType, values: int[], newValue: int)  
+pre true  
+post  
+  index = indexOf(type)  
+  index = -1  
+    ? newValue ≠ 0  
+        ? throw IllegalArgumentException  
+  else  
+    values'[index] = newValue  
+Functional Scenario Form  
+type=era values=[0,0,0] newValue=1 && throws exception  
+type=years index=0 newValue=5 && sets values[0]=5  
+end_process  
+
+// Period modification
+process setPeriod(period: ReadablePeriod)  
+pre true  
+post  
+  period = null  
+    ? setValues(new int[size()])  
+    : setPeriodInternal(period)  
+Functional Scenario Form  
+period=null && zeroes all values  
+period=P1Y && copies year value  
+end_process  
+
+process setPeriod(years: int, months: int, weeks: int, days: int, hours: int, minutes: int, seconds: int, millis: int)  
+pre true  
+post  
+  setPeriodInternal(years, months, weeks, days, hours, minutes, seconds, millis)  
+Functional Scenario Form  
+years=2 hours=3 && sets [2,0,0,0,3,0,0,0]  
+end_process  
+
+// Set scalar period implementation (reiterated)
+process setPeriodInternal(years: int, months: int, weeks: int, days: int, hours: int, minutes: int, seconds: int, millis: int)  
+pre true  
+post  
+  newValues = new int[size()]  
+  checkAndUpdate(DurationFieldType.years(), newValues, years)  
+  ... // all 8 fields  
+  iValues' = newValues  
+Functional Scenario Form  
+years=2 hours=3 && sets [2,0,0,0,3,0,0,0]  
+end_process  
+
+// Field setter
+process setField(field: DurationFieldType, value: int)  
+pre true  
+post  
+  setFieldInto(iValues, field, value)  
+Functional Scenario Form  
+field=years value=5 && sets iValues[0]=5  
+field=era value=1 && throws exception  
+end_process  
+
+// Field setter implementation
+process setFieldInto(values: int[], field: DurationFieldType, value: int)  
+pre true  
+post  
+  index = indexOf(field)  
+  index = -1  
+    ? (value ≠ 0 ∨ field = null)  
+        ? throw IllegalArgumentException("Unsupported field: " + field)  
+  else  
+    values'[index] = value  
+Functional Scenario Form  
+field=minutes index=5 value=30 && sets values[5]=30  
+field=centuries value=1 && throws exception  
+end_process  
+
+// Field adder
+process addField(field: DurationFieldType, value: int)  
+pre true  
+post  
+  addFieldInto(iValues, field, value)  
+Functional Scenario Form  
+field=days value=3 && adds 3 to days field  
+end_process  
+
+// Field adder implementation
+process addFieldInto(values: int[], field: DurationFieldType, value: int)  
+pre true  
+post  
+  index = indexOf(field)  
+  index = -1  
+    ? (value ≠ 0 ∨ field = null)  
+        ? throw IllegalArgumentException("Unsupported field: " + field)  
+  else  
+    values'[index] = FieldUtils.safeAdd(values[index], value)  
+Functional Scenario Form  
+values[3]=5 field=days value=3 && sets values[3]=8  
+values[4]=0 field=hours value=24 && sets values[4]=24  
+end_process  
+
+// Period merger
+process mergePeriod(period: ReadablePeriod)  
+pre true  
+post  
+  period ≠ null  
+    ? iValues' = mergePeriodInto(iValues, period)  
+Functional Scenario Form  
+period=P1M && adds 1 to months field  
+period contains era && throws if non-zero  
+end_process  
+
+// Period merger implementation
+process mergePeriodInto(values: int[], period: ReadablePeriod) result: int[]  
+pre true  
+post  
+  for i=0 to period.size()-1  
+    ? type = period.getFieldType(i)  
+      value = period.getValue(i)  
+      checkAndUpdate(type, values, value)  
+  result' = values  
+Functional Scenario Form  
+values=[1,0,0] period=months(2) && returns [1,2,0]  
+end_process  
+
+// Period adder
+process addPeriod(period: ReadablePeriod)  
+pre true  
+post  
+  period ≠ null  
+    ? iValues' = addPeriodInto(iValues, period)  
+Functional Scenario Form  
+period=hours(3) && adds 3 to hours field  
+end_process  
+
+// Period adder implementation
+process addPeriodInto(values: int[], period: ReadablePeriod) result: int[]  
+pre true  
+post  
+  for i=0 to period.size()-1  
+    ? type = period.getFieldType(i)  
+      value = period.getValue(i)  
+      addFieldInto(values, type, value)  
+  result' = values  
+Functional Scenario Form  
+values=[0,0,0] period=minutes(30) && returns [0,0,30]  
+end_process  
+
+// Safe addition helper
+process safeAdd(a: int, b: int) result: int  
+pre true  
+post  
+  result' = a + b  
+  // With overflow checks (implementation omitted)  
+Functional Scenario Form  
+a=2147483640 b=7 && returns 2147483647  
+a=2147483647 b=1 && throws ArithmeticException  
+end_process  
+
+// Period adder implementation (optimized)
+process addPeriodInto(values: int[], period: ReadablePeriod) result: int[]  
+pre true  
+post  
+  for i=0 to period.size()-1  
+    ? type = period.getFieldType(i)  
+      value = period.getValue(i)  
+      value ≠ 0  
+        ? index = indexOf(type)  
+          index = -1  
+            ? throw IllegalArgumentException("Unsupported field: " + type.getName)  
+          else  
+            values'[index] = FieldUtils.safeAdd(values[index], value)  
+  result' = values  
+Functional Scenario Form  
+values=[0,0,0] period=minutes(30) && returns [0,0,30]  
+period contains era value=1 && throws exception  
+value=0 && no operation  
+end_process  
+
+// Direct field setter
+process setValue(index: int, value: int)  
+pre true  
+post  
+  index < 0 ∨ index ≥ iValues.length  
+    ? throw IndexOutOfBoundsException  
+  iValues'[index] = value  
+Functional Scenario Form  
+index=0 value=5 && sets iValues[0]=5  
+index=10 && throws exception  
+end_process  
+
+// Array setter
+process setValues(values: int[])  
+pre true  
+post  
+  iValues' = values  
+Functional Scenario Form  
+values=new int[8] && resets period  
+end_process 
+
+end_module

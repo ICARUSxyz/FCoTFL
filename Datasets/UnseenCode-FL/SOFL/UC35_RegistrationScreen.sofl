@@ -1,0 +1,45 @@
+module UC35_RegistrationScreen
+type
+  userID: string
+  password: string
+  confirmPassword: string
+  companyName: string
+  isUserRegistration: Boolean
+  registrationResult: string
+
+process checkPasswordMatch(password: string, confirmPassword: string) result: Boolean
+pre
+  true
+post
+  result = (password = confirmPassword)
+Functional Scenario Form
+(password = confirmPassword) && (result = true)
+or
+(password ≠ confirmPassword) && (result = false)
+end_process
+
+process registerAccount(userID: string, password: string, confirmPassword: string, isUserRegistration: Boolean, companyName: string) result: string
+pre
+  userID ≠ "" ∧ password ≠ "" ∧ confirmPassword ≠ ""
+post
+  (¬checkPasswordMatch(password, confirmPassword)) ⇒ result = "PasswordMismatch"
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ isUserRegistration) ⇒ 
+    (AccountManager.registerUser(userID, password) ∧ result = "UserRegistered")
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ ¬isUserRegistration ∧ companyName ≠ "") ⇒ 
+    (AccountManager.registerCompany(userID, password, companyName) ∧ result = "CompanyRegistered")
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ ¬isUserRegistration ∧ companyName = "") ⇒ 
+    result = "InvalidCompanyName"
+Functional Scenario Form
+(password mismatch) && (result = "PasswordMismatch")
+or
+(user registration and password match) && (result = "UserRegistered")
+or
+(company registration with valid company name) && (result = "CompanyRegistered")
+or
+(company registration with empty company name) && (result = "InvalidCompanyName")
+end_process
+
+end_module

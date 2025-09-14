@@ -1,0 +1,136 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "templateselector.h"
+2: #include "templateeditor.h"  // or the correct path to TemplateEditor's header file
+3: 
+4: TemplateSelector::~TemplateSelector() {}
+5: 
+6: void TemplateSelector::addTemplateBlock(const QString &title, const QString &templateText)
+7: {
+8:     QFrame *frame = new QFrame(this);
+9:     frame->setFrameShape(QFrame::StyledPanel);
+10:     QVBoxLayout *frameLayout = new QVBoxLayout(frame);
+11: 
+12:     QLabel *titleLabel = new QLabel(title, this);
+13:     frameLayout->addWidget(titleLabel);
+14: 
+15:     QLabel *templateLabel = new QLabel("<pre>" + templateText + "</pre>", this);
+16:     templateLabel->setWordWrap(true);
+17:     frameLayout->addWidget(templateLabel);
+18: 
+19:     QPushButton *editButton = new QPushButton("Edit Templat", this);
+20:     frameLayout->addWidget(editButton);
+21: 
+22:     connect(editButton, &QPushButton::clicked, this, []() {
+23:         // Close the TemplateSelector dialog before opening the TemplateEditor
+24:         this->close();  // Close TemplateSelector dialog immediately
+25: 
+26:         TemplateEditor *editor = new TemplateEditor(templateText, this);
+27:         if (editor->exec() == QDialog::Accepted) {
+28: 
+29:             QString result = editor->getEditedTemplate();
+30:             emit templateSelected(result);  // Signal to return the edited template
+31: 
+32: 
+33:         }
+34:         delete editor;
+35:     });
+36: 
+37:     mainLayout->addWidget(frame);
+38: }]
+
+SOFL:[
+module UC10_templateselector
+type
+  title, templateText, result: String
+
+process addTemplateBlock(title: String, templateText: String) result: Void
+pre
+  title ≠ null ∧ templateText ≠ null
+post
+  frame = new QFrame(this)
+  frame.setFrameShape(QFrame::StyledPanel)
+  frameLayout = new QVBoxLayout(frame)
+
+  titleLabel = new QLabel("<b>" + title + "</b>", this)
+  frameLayout.addWidget(titleLabel)
+
+  templateLabel = new QLabel("<pre>" + templateText + "</pre>", this)
+  templateLabel.wordWrap = true
+  frameLayout.addWidget(templateLabel)
+
+  editButton = new QPushButton("Edit Template", this)
+  frameLayout.addWidget(editButton)
+
+  connect editButton.clicked to lambda:
+    this.close() executed
+    editor = new TemplateEditor(templateText, this)
+    if editor.exec() = QDialog::Accepted then
+      result = editor.getEditedTemplate()
+      emit templateSelected(result)
+    delete editor
+
+  mainLayout.addWidget(frame)
+Functional Scenario Form
+valid title and templateText && block with title/label/button added and editor launches on click or
+editor cancelled or rejected && block still created, no result emitted
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report: CodeAnalysis::analyzeCode
+
+Test Input:
+
+```cpp
+QString sampleCode = R"(class MyClass {
+    void doSomething() {
+        int x = 10;
+    }
+})";
+CodeAnalysis::analyzeCode(sampleCode);
+```
+
+Observed Behavior:
+
+* Compilation warning: missing ')' in regular expression for method matching.
+* Runtime error: cannot convert 'AnalysisResult' to 'AnalysisResult' in return statement.
+* Program terminated with segmentation fault.
+* Output counts:
+
+  * Classes: \["class MyClass"]
+  * Methods: \[]
+  * Variables: \[]
+
+Expected Behavior:
+
+* Output counts:
+
+  * Classes: \["MyClass"]
+  * Methods: \["doSomething"]
+  * Variables: \["x"]]

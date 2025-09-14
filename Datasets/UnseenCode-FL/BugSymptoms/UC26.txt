@@ -1,0 +1,46 @@
+**Bug Report: IssueManager Behavior During Issue List Handling**
+
+---
+
+**Test Case 1: Append Undefined Issues**
+
+**Action:**
+Call `appendUndefinedIssue()` with a non-empty list of issues.
+
+**Expected:**
+All issues are copied and added to the `undefinedIssueList`.
+
+**Observed:**
+No issues appear in the list after execution.
+
+**Log:**
+
+```plaintext
+[CALL] appendUndefinedIssue(list size=3)
+[INFO] Creating shared pointer for issue
+[ERROR] append() called with no arguments
+[STATE] undefinedIssueList size = 0
+```
+
+---
+
+**Test Case 2: Append Unspecified Issues**
+
+**Action:**
+Call `appendUnspecifiedIssue()` with a list of N elements.
+
+**Expected:**
+All N elements are appended without accessing beyond bounds.
+
+**Observed:**
+Application crashes when reaching the end of the list.
+
+**Log:**
+
+```plaintext
+[CALL] appendUnspecifiedIssue(list size=2)
+[ERROR] index 2 out of range (max index = 1)
+[CRASH] std::out_of_range exception thrown
+```
+
+---

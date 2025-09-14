@@ -1,0 +1,545 @@
+module DefaultIntervalCategoryDataset  
+
+var:  
+  DEFAULT_SERIES_PREFIX: String = "Series "  
+  DEFAULT_CATEGORY_PREFIX: String = "Category "  
+
+process constructor1(starts: double[][], ends: double[][])  
+pre starts ≠ null ∧ ends ≠ null  
+post  
+  startData' = DataUtilities.createNumberArray2D(starts) ∧  
+  endData' = DataUtilities.createNumberArray2D(ends) ∧  
+  seriesKeys' = generateKeys(starts.length, DEFAULT_SERIES_PREFIX) ∧  
+  categoryKeys' = generateKeys(starts[0].length, DEFAULT_CATEGORY_PREFIX)  
+
+Functional Scenario Form  
+starts.length = 2 && starts[0].length = 3  
+    && seriesKeys = ["Series 1", "Series 2"] ∧ categoryKeys = ["Category 1", "Category 2", "Category 3"]  
+starts.length = 0  
+    && seriesKeys = empty array  
+ends[0].length = 0  
+    && categoryKeys = empty array  
+end_process  
+
+process constructor2(starts: Number[][], ends: Number[][])  
+pre starts ≠ null ∧ ends ≠ null  
+post  
+  startData' = starts ∧  
+  endData' = ends ∧  
+  seriesKeys' = generateKeys(starts.length, DEFAULT_SERIES_PREFIX) ∧  
+  categoryKeys' = generateKeys(starts[0].length, DEFAULT_CATEGORY_PREFIX)  
+
+Functional Scenario Form  
+starts.length = 1 && starts[0].length = 2  
+    && seriesKeys = ["Series 1"] ∧ categoryKeys = ["Category 1", "Category 2"]  
+starts = [[1,2],[3,4]]  
+    && startData = [[1,2],[3,4]]  
+ends = [[5,6],[7,8]]  
+    && endData = [[5,6],[7,8]]  
+end_process  
+
+process constructor3(seriesNames: String[]?, starts: Number[][], ends: Number[][])  
+pre starts ≠ null ∧ ends ≠ null  
+post  
+  startData' = starts ∧  
+  endData' = ends ∧  
+  seriesKeys' = if seriesNames ≠ null then seriesNames else generateKeys(starts.length, DEFAULT_SERIES_PREFIX) ∧  
+  categoryKeys' = generateKeys(starts[0].length, DEFAULT_CATEGORY_PREFIX)  
+
+Functional Scenario Form  
+seriesNames = ["A","B"]  
+    && seriesKeys = ["A","B"]  
+seriesNames = null && starts.length = 3  
+    && seriesKeys = ["Series 1", "Series 2", "Series 3"]  
+starts[0].length = 4  
+    && categoryKeys = ["Category 1", "Category 2", "Category 3", "Category 4"]  
+end_process  
+
+var:  
+  SERIES_PREFIX: String = "series.default-prefix"  
+  CATEGORY_PREFIX: String = "categories.default-prefix"  
+
+process constructor4(seriesKeys: Comparable[]?, categoryKeys: Comparable[]?, starts: Number[][], ends: Number[][])  
+pre starts ≠ null ∧ ends ≠ null  
+post  
+  startData' = starts ∧  
+  endData' = ends ∧  
+  (  
+    starts.length = 0 ∨ ends.length = 0 ⇒  
+      seriesKeys' = new Comparable[0] ∧  
+      categoryKeys' = new Comparable[0]  
+    starts.length > 0 ∧ ends.length > 0 ⇒  
+      (  
+        starts.length ≠ ends.length ⇒  
+          errorMsg = "number of series in start/end data mismatch" ∧  
+          result = IllegalArgumentException  
+        starts.length = ends.length ⇒  
+          seriesCount = starts.length ∧  
+          (  
+            seriesKeys ≠ null ⇒  
+              seriesKeys.length ≠ seriesCount ⇒  
+                errorMsg = "series keys length mismatch" ∧  
+                result = IllegalArgumentException  
+              seriesKeys.length = seriesCount ⇒  
+                seriesKeys' = seriesKeys  
+            seriesKeys = null ⇒  
+              resources = ResourceBundle.getBundle("org.jfree.data.resources.DataPackageResources") ∧  
+              prefix = resources.getString(SERIES_PREFIX) + " " ∧  
+              seriesKeys' = generateKeys(seriesCount, prefix)  
+          ) ∧  
+          categoryCount = starts[0].length ∧  
+          (  
+            starts[0].length ≠ ends[0].length ⇒  
+              errorMsg = "category count in start/end data mismatch" ∧  
+              result = IllegalArgumentException  
+            starts[0].length = ends[0].length ⇒  
+              (  
+                categoryKeys ≠ null ⇒  
+                  categoryKeys.length ≠ categoryCount ⇒  
+                    errorMsg = "category keys length mismatch" ∧  
+                    result = IllegalArgumentException  
+                  categoryKeys.length = categoryCount ⇒  
+                    categoryKeys' = categoryKeys  
+                categoryKeys = null ⇒  
+                  resources = ResourceBundle.getBundle("org.jfree.data.resources.DataPackageResources") ∧  
+                  prefix = resources.getString(CATEGORY_PREFIX) + " " ∧  
+                  categoryKeys' = generateKeys(categoryCount, prefix)  
+              )  
+          )  
+      )  
+  )  
+
+Functional Scenario Form  
+starts.length = 2 && ends.length = 3  
+    && throws IllegalArgumentException  
+starts.length = 2 && ends.length = 2 && seriesKeys ≠ null && seriesKeys.length = 1  
+    && throws IllegalArgumentException  
+starts.length = 2 && ends.length = 2 && seriesKeys = null  
+    && seriesKeys generated with resource prefix  
+starts[0].length = 3 && ends[0].length = 4  
+    && throws IllegalArgumentException  
+starts[0].length = 3 && ends[0].length = 3 && categoryKeys ≠ null && categoryKeys.length = 2  
+    && throws IllegalArgumentException  
+starts[0].length = 3 && ends[0].length = 3 && categoryKeys = null  
+    && categoryKeys generated with resource prefix  
+end_process  
+
+process getSeriesCount() result: int  
+pre true  
+post  
+  startData ≠ null ⇒ result' = startData.length  
+  startData = null ⇒ result' = 0  
+
+Functional Scenario Form  
+startData = [[1,2],[3,4]]  
+    && result = 2  
+startData = null  
+    && result = 0  
+end_process  
+
+process getSeriesIndex(seriesKey: Comparable) result: int  
+pre true  
+post  
+  result' = -1 ∧  
+  ∀ i ∈ [0, seriesKeys.length-1]:  
+    seriesKey.equals(seriesKeys[i]) ⇒ result' = i  
+
+Functional Scenario Form  
+seriesKeys = ["A","B"] ∧ seriesKey = "A"  
+    && result = 0  
+seriesKeys = ["A","B"] ∧ seriesKey = "C"  
+    && result = -1  
+end_process  
+
+process getSeriesKey(series: int) result: Comparable  
+pre true  
+post  
+  (  
+    series < 0 ∨ series ≥ getSeriesCount() ⇒  
+      errorMsg = "No such series : " + series ∧  
+      result = IllegalArgumentException  
+    else ⇒ result' = seriesKeys[series]  
+  )  
+
+Functional Scenario Form  
+series = 0 && seriesKeys.length > 0  
+    && returns seriesKeys[0]  
+series = -1  
+    && throws IllegalArgumentException  
+series = 5 && seriesKeys.length = 3  
+    && throws IllegalArgumentException  
+end_process  
+
+process setSeriesKeys(seriesKeys: Comparable[])  
+pre true  
+post  
+  seriesKeys = null  
+    ⇒ errorMsg = "Null 'seriesKeys' argument." ∧ result = IllegalArgumentException  
+  seriesKeys ≠ null ∧ seriesKeys.length ≠ getSeriesCount()  
+    ⇒ errorMsg = "Number of series keys does not match data." ∧ result = IllegalArgumentException  
+  seriesKeys ≠ null ∧ seriesKeys.length = getSeriesCount()  
+    ⇒ this.seriesKeys' = seriesKeys ∧ fireDatasetChanged()  
+
+Functional Scenario Form  
+seriesKeys = null  
+    && throws IllegalArgumentException  
+seriesKeys.length = 3 && getSeriesCount() = 2  
+    && throws IllegalArgumentException  
+seriesKeys.length = 2 && getSeriesCount() = 2  
+    && keys updated ∧ dataset change event fired  
+end_process  
+
+process getCategoryCount() result: int  
+pre true  
+post  
+  (  
+    startData = null ⇒ result' = 0  
+    startData ≠ null ∧ getSeriesCount() > 0 ⇒ result' = startData[0].length  
+    startData ≠ null ∧ getSeriesCount() = 0 ⇒ result' = 0  
+  )  
+
+Functional Scenario Form  
+startData = [[1,2,3],[4,5,6]]  
+    && result = 3  
+startData = []  
+    && result = 0  
+startData = null  
+    && result = 0  
+end_process  
+
+process getColumnKeys() result: List  
+pre true  
+post  
+  categoryKeys = null  
+    ⇒ result' = new ArrayList()  
+  categoryKeys ≠ null  
+    ⇒ result' = Collections.unmodifiableList(Arrays.asList(categoryKeys))  
+
+Functional Scenario Form  
+categoryKeys = ["A","B"]  
+    && returns unmodifiable list ["A","B"]  
+categoryKeys = null  
+    && returns empty ArrayList  
+end_process  
+
+process setCategoryKeys(categoryKeys: Comparable[])  
+pre true  
+post  
+  categoryKeys = null  
+    ⇒ errorMsg = "Null 'categoryKeys' argument." ∧ result = IllegalArgumentException  
+  categoryKeys ≠ null ∧ categoryKeys.length ≠ getCategoryCount()  
+    ⇒ errorMsg = "Number of categories does not match data." ∧ result = IllegalArgumentException  
+  categoryKeys ≠ null ∧ ∃ i ∈ [0, categoryKeys.length-1]: categoryKeys[i] = null  
+    ⇒ errorMsg = "null category not permitted" ∧ result = IllegalArgumentException  
+  categoryKeys ≠ null ∧ categoryKeys.length = getCategoryCount() ∧ ∀ i: categoryKeys[i] ≠ null  
+    ⇒ this.categoryKeys' = categoryKeys ∧ fireDatasetChanged()  
+
+Functional Scenario Form  
+categoryKeys = null  
+    && throws IllegalArgumentException  
+categoryKeys.length = 3 && getCategoryCount() = 2  
+    && throws IllegalArgumentException  
+categoryKeys = ["A", null, "C"]  
+    && throws IllegalArgumentException  
+categoryKeys = ["X","Y"] ∧ getCategoryCount() = 2  
+    && keys updated ∧ dataset change event fired  
+end_process  
+
+process getValue(series: Comparable, category: Comparable) result: Number  
+pre true  
+post  
+  seriesIndex = getSeriesIndex(series) ∧  
+  (  
+    seriesIndex < 0  
+      ⇒ errorMsg = "Unknown 'series' key." ∧ result = UnknownKeyException  
+    seriesIndex ≥ 0 ⇒  
+      itemIndex = getColumnIndex(category) ∧  
+      (  
+        itemIndex < 0  
+          ⇒ errorMsg = "Unknown 'category' key." ∧ result = UnknownKeyException  
+        itemIndex ≥ 0  
+          ⇒ result' = getValue(seriesIndex, itemIndex)  
+      )  
+  )  
+
+Functional Scenario Form  
+series = "X" not in seriesKeys  
+    && throws UnknownKeyException  
+category = "Y" not in categoryKeys  
+    && throws UnknownKeyException  
+series = "A" ∧ category = "B" valid  
+    && returns endData[seriesIndex][itemIndex]  
+end_process  
+
+process getValue(series: int, category: int) result: Number  
+pre true  
+post  
+  result' = getEndValue(series, category)  
+
+Functional Scenario Form  
+series = 0 && category = 0  
+    && returns endData[0][0]  
+end_process  
+
+process getStartValue(seriesKey: Comparable, categoryKey: Comparable) result: Number  
+pre true  
+post  
+  seriesIndex = getSeriesIndex(seriesKey) ∧  
+  (  
+    seriesIndex < 0  
+      ⇒ errorMsg = "Unknown 'series' key." ∧ result = UnknownKeyException  
+    seriesIndex ≥ 0 ⇒  
+      itemIndex = getColumnIndex(categoryKey) ∧  
+      (  
+        itemIndex < 0  
+          ⇒ errorMsg = "Unknown 'category' key." ∧ result = UnknownKeyException  
+        itemIndex ≥ 0  
+          ⇒ result' = getStartValue(seriesIndex, itemIndex)  
+      )  
+  )  
+
+Functional Scenario Form  
+seriesKey = "X" not in seriesKeys  
+    && throws UnknownKeyException  
+categoryKey = "Y" not in categoryKeys  
+    && throws UnknownKeyException  
+valid keys  
+    && returns startData[seriesIndex][itemIndex]  
+end_process  
+
+process getStartValue(series: int, category: int) result: Number  
+pre true  
+post  
+  (  
+    series < 0 ∨ series ≥ getSeriesCount()  
+      ⇒ errorMsg = "series index out of range" ∧ result = IllegalArgumentException  
+    category < 0 ∨ category ≥ getCategoryCount()  
+      ⇒ errorMsg = "category index out of range" ∧ result = IllegalArgumentException  
+    else  
+      ⇒ result' = startData[series][category]  
+  )  
+
+Functional Scenario Form  
+series = -1  
+    && throws IllegalArgumentException  
+category = 5 with categoryCount=3  
+    && throws IllegalArgumentException  
+valid indices  
+    && returns startData[series][category]  
+end_process  
+
+process getEndValue(seriesKey: Comparable, categoryKey: Comparable) result: Number  
+pre true  
+post  
+  seriesIndex = getSeriesIndex(seriesKey) ∧  
+  (  
+    seriesIndex < 0  
+      ⇒ errorMsg = "Unknown 'series' key." ∧ result = UnknownKeyException  
+    seriesIndex ≥ 0 ⇒  
+      itemIndex = getColumnIndex(categoryKey) ∧  
+      (  
+        itemIndex < 0  
+          ⇒ errorMsg = "Unknown 'category' key." ∧ result = UnknownKeyException  
+        itemIndex ≥ 0  
+          ⇒ result' = getEndValue(seriesIndex, itemIndex)  
+      )  
+  )  
+
+Functional Scenario Form  
+seriesKey = "X" not in seriesKeys  
+    && throws UnknownKeyException  
+categoryKey = "Y" not in categoryKeys  
+    && throws UnknownKeyException  
+valid keys  
+    && returns endData[seriesIndex][itemIndex]  
+end_process  
+
+process getEndValue(series: int, category: int) result: Number  
+pre true  
+post  
+  (  
+    series < 0 ∨ series ≥ getSeriesCount()  
+      ⇒ errorMsg = "series index out of range" ∧ result = IllegalArgumentException  
+    category < 0 ∨ category ≥ getCategoryCount()  
+      ⇒ errorMsg = "category index out of range" ∧ result = IllegalArgumentException  
+    else  
+      ⇒ result' = endData[series][category]  
+  )  
+
+Functional Scenario Form  
+series = 5 with seriesCount=3  
+    && throws IllegalArgumentException  
+category = -1  
+    && throws IllegalArgumentException  
+valid indices  
+    && returns endData[series][category]  
+end_process  
+
+process setStartValue(series: int, categoryKey: Comparable, value: Number)  
+pre true  
+post  
+  (  
+    series < 0 ∨ series > getSeriesCount() - 1  
+      ⇒ errorMsg = "series outside valid range" ∧ result = IllegalArgumentException  
+    else  
+      categoryIndex = getCategoryIndex(categoryKey) ∧  
+      (  
+        categoryIndex < 0  
+          ⇒ errorMsg = "unrecognised category" ∧ result = IllegalArgumentException  
+        categoryIndex ≥ 0  
+          ⇒ startData[series][categoryIndex]' = value ∧ fireDatasetChanged()  
+      )  
+  )  
+
+Functional Scenario Form  
+series = -1  
+    && throws IllegalArgumentException  
+categoryKey = "X" not in categoryKeys  
+    && throws IllegalArgumentException  
+valid parameters  
+    && startData updated ∧ change event fired  
+end_process 
+
+process setEndValue(series: int, categoryKey: Comparable, value: Number)  
+pre true  
+post  
+  (  
+    series < 0 ∨ series > getSeriesCount() - 1  
+      ⇒ errorMsg = "series outside valid range" ∧ result = IllegalArgumentException  
+    else  
+      categoryIndex = getCategoryIndex(categoryKey) ∧  
+      (  
+        categoryIndex < 0  
+          ⇒ errorMsg = "unrecognised category" ∧ result = IllegalArgumentException  
+        categoryIndex ≥ 0  
+          ⇒ endData[series][categoryIndex]' = value ∧ fireDatasetChanged()  
+      )  
+  )  
+
+Functional Scenario Form  
+series = 10 with seriesCount=5  
+    && throws IllegalArgumentException  
+categoryKey = "Z" not in categoryKeys  
+    && throws IllegalArgumentException  
+valid parameters  
+    && endData updated ∧ change event fired  
+end_process  
+
+process getCategoryIndex(category: Comparable) result: int  
+pre true  
+post  
+  result' = -1 ∧  
+  ∀ i ∈ [0, categoryKeys.length-1]:  
+    category.equals(categoryKeys[i]) ⇒ result' = i  
+
+Functional Scenario Form  
+categoryKeys = ["X","Y"] ∧ category = "X"  
+    && result = 0  
+category = "Z"  
+    && result = -1  
+end_process  
+
+process generateKeys(count: int, prefix: String) result: Comparable[]  
+pre count ≥ 0  
+post  
+  result' = new Comparable[count] ∧  
+  ∀ i ∈ [0, count-1]:  
+    name = prefix + (i+1) ∧  
+    result[i]' = name  
+
+Functional Scenario Form  
+count = 3 ∧ prefix = "Cat"  
+    && result = ["Cat1","Cat2","Cat3"]  
+count = 0  
+    && returns empty array  
+end_process  
+
+process getColumnKey(column: int) result: Comparable  
+pre true  
+post  
+  (  
+    column < 0 ∨ column ≥ categoryKeys.length  
+      ⇒ errorMsg = "Invalid column index" ∧ result = ArrayIndexOutOfBoundsException  
+    else ⇒ result' = categoryKeys[column]  
+  )  
+
+Functional Scenario Form  
+categoryKeys = ["A","B"] ∧ column = 0  
+    && returns "A"  
+column = 5 with categoryKeys.length=3  
+    && throws ArrayIndexOutOfBoundsException  
+end_process  
+
+process getColumnIndex(columnKey: Comparable) result: int  
+pre true  
+post  
+  columnKey = null  
+    ⇒ errorMsg = "Null 'columnKey' argument." ∧ result = IllegalArgumentException  
+  columnKey ≠ null  
+    ⇒ result' = getCategoryIndex(columnKey)  
+
+Functional Scenario Form  
+columnKey = null  
+    && throws IllegalArgumentException  
+columnKey = "X" ∧ categoryKeys = ["X","Y"]  
+    && returns 0  
+end_process  
+
+process getRowIndex(rowKey: Comparable) result: int  
+pre true  
+post  
+  result' = getSeriesIndex(rowKey)  
+
+Functional Scenario Form  
+rowKey = "Series1" ∧ seriesKeys = ["Series1","Series2"]  
+    && returns 0  
+end_process  
+
+process equal(array1: Number[][], array2: Number[][]) result: bool  
+pre true  
+post  
+  (  
+    array1 = null  
+      ⇒ result' = (array2 = null)  
+    array1 ≠ null ∧ array2 = null  
+      ⇒ result' = false  
+    array1 ≠ null ∧ array2 ≠ null ∧ array1.length ≠ array2.length  
+      ⇒ result' = false  
+    array1 ≠ null ∧ array2 ≠ null ∧ array1.length = array2.length  
+      ⇒ result' = ∀ i ∈ [0, array1.length-1]: Arrays.equals(array1[i], array2[i])  
+  )  
+
+Functional Scenario Form  
+array1 = null && array2 = null  
+    && result = true  
+array1 = null && array2 ≠ null  
+    && result = false  
+array1.length = 2 && array2.length = 3  
+    && result = false  
+array1 = [[1,2],[3,4]] && array2 = [[1,2],[3,4]]  
+    && result = true  
+array1 = [[1,2],[3,4]] && array2 = [[1,2],[5,6]]  
+    && result = false  
+end_process  
+
+process clone(array: Number[][]) result: Number[][]  
+pre array ≠ null  
+post  
+  result' = new Number[array.length][] ∧  
+  ∀ i ∈ [0, array.length-1]:  
+    child = array[i] ∧  
+    copychild = new Number[child.length] ∧  
+    System.arraycopy(child, 0, copychild, 0, child.length) ∧  
+    result[i]' = copychild  
+
+Functional Scenario Form  
+array = [[1,2],[3,4]]  
+    && result = [[1,2],[3,4]]  
+array = [[5]]  
+    && result = [[5]]  
+array = []  
+    && result = []  
+end_process  
+
+
+end_module  

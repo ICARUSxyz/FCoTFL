@@ -1,0 +1,46 @@
+module UC51_IntelligentTrafficSystem
+type
+  intersection: string
+  defaultGreenTime: int
+  trafficDensity: int
+  greenTime: int
+  greenTime': int
+  logEntry: sequence of string
+
+process updateGreenTime(intersection: string, greenTime: int, trafficDensity: int)
+  greenTime': int
+pre
+  greenTime ≥ 0
+post
+  (
+    (trafficDensity > 80 ∧ trafficDensity ≤ 100) →
+      greenTime' = 45 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 45 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity > 50 ∧ trafficDensity ≤ 80) →
+      greenTime' = 30 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 30 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity > 0 ∧ trafficDensity ≤ 50) →
+      greenTime' = 15 ∧
+      logEntry = 
+        <"Intersection " + intersection + ": Green time updated to 15 seconds (Traffic: " + trafficDensity + "%)">
+  ) ∨
+  (
+    (trafficDensity ≤ 0 ∨ trafficDensity > 100) →
+      greenTime' = 0 ∧
+      logEntry = <>
+  )
+Functional Scenario Form
+        trafficDensity > 80 ∧ trafficDensity ≤ 100 && greenTime = 45, High traffic! Green time updated to 45 seconds.
+        OR
+        (trafficDensity > 50∧trafficDensity ≤ 100  && greenTime = 30, Moderate traffic! Green time updated to 30 seconds.
+        OR
+        trafficDensity ≤ 50 ∧ trafficDensity ≥ 0 && greenTime = 15 Low traffic! Green time updated to 15 seconds.
+end_process
+
+end_module

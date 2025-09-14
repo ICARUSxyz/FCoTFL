@@ -1,0 +1,51 @@
+module UC50_SmartWarehouse
+type
+  name: string
+  stock: int
+  quantity: int
+  restockThreshold: int
+  restockAmount: int
+  stock': int
+  result: Boolean
+  logEntry: sequence of string
+
+var
+  restockThreshold = 5
+  restockAmount = 20
+
+process processOrder(name: string, stock: int, quantity: int) 
+  result: Boolean
+pre
+  stock ≥ 0
+post
+  (
+    quantity > 0 ∧ quantity ≤ stock →
+      result = true ∧
+      (stock - quantity < restockThreshold →
+        stock' = stock - quantity + restockAmount ∧
+        logEntry = 
+          <"Order processed: -" + quantity + " " + name + ", Remaining stock: " + (stock - quantity)> 
+          ^ <"Auto-restocked: +" + restockAmount + " " + name + ", New stock: " + (stock - quantity + restockAmount)>
+      )
+      ∨
+      (stock - quantity ≥ restockThreshold →
+        stock' = stock - quantity ∧
+        logEntry = 
+          <"Order processed: -" + quantity + " " + name + ", Remaining stock: " + (stock - quantity)>
+      )
+  ) ∨
+  (
+    quantity ≤ 0 ∨ quantity > stock →
+      result = false ∧
+      stock' = stock ∧
+      logEntry = <>
+  )
+Functional Scenario Form
+ (quantity > 0 ∧ quantity ≤ stock) && flag = true ∧ stock = stock – quantity ∧ transactionHistory = transactionHistory ⨁ ("Order processed") ∧ (if stock < restockThreshold then stock = stock + restockAmount), Valid order, stock updated, check for restocking
+        OR
+        (quantity > stock) && flag = false, Invalid order, insufficient stock, values unchanged
+        OR
+        (quantity ≤ 0) && flag = false, Invalid order, quantity must be positive, values unchanged
+end_process
+
+end_module

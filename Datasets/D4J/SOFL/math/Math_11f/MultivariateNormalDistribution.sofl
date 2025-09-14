@@ -1,0 +1,174 @@
+module MultivariateNormalDistribution  
+type:  
+  means: double[]  
+  covarianceMatrixDeterminant: double  
+
+
+// Primary constructor  
+process constructor(rng: RandomGenerator,  
+                    inputMeans: double[],  
+                    covariances: double[][])  
+pre true  
+post  
+  dim = inputMeans.length  
+  covariances.length ≠ dim → throw DimensionMismatchException(covariances.length, dim)  
+  ∀i:0≤i<dim → covariances[i].length ≠ dim → throw DimensionMismatchException(covariances[i].length, dim)  
+  means' = MathArrays.copyOf(inputMeans)  
+  covarianceMatrix' = new Array2DRowRealMatrix(covariances)  
+  covMatDec = new EigenDecomposition(covarianceMatrix)  
+  covarianceMatrixInverse' = covMatDec.getSolver().getInverse()  
+  covarianceMatrixDeterminant' = covMatDec.getDeterminant()  
+  covMatEigenvalues = covMatDec.getRealEigenvalues()  
+  ∀i:0≤i<covMatEigenvalues.length → covMatEigenvalues[i] < 0 → throw NonPositiveDefiniteMatrixException(covMatEigenvalues[i], i, 0)  
+  covMatEigenvectors = new Array2DRowRealMatrix(dim, dim)  
+  ∀v:0≤v<dim → evec = covMatDec.getEigenvector(v).toArray() → covMatEigenvectors.setColumn(v, evec)  
+  tmpMatrix = covMatEigenvectors.transpose()  
+  ∀row:0≤row<dim → factor = FastMath.sqrt(covMatEigenvalues[row]) → ∀col:0≤col<dim → tmpMatrix.multiplyEntry(row, col, factor)  
+  samplingMatrix' = covMatEigenvectors.multiply(tmpMatrix)  
+Functional Scenario Form  
+valid means and covariances && creates distribution  
+non-square covariance input && throws DimensionMismatchException  
+negative eigenvalue && throws NonPositiveDefiniteMatrixException  
+end_process  
+
+// Convenience constructor  
+process constructor_simple(inputMeans: double[],  
+                           covariances: double[][])  
+pre true  
+post  
+  this(new Well19937c(), inputMeans, covariances)  
+Functional Scenario Form  
+valid inputs && creates distribution  
+end_process  
+
+// Dimension accessor  
+process getDimension() result: int  
+pre true  
+post  
+  result' = means.length  
+end_process  
+
+// Means accessor  
+process getMeans() result: double[]  
+pre true  
+post  
+  result' = means  
+end_process  
+
+// Covariance matrix accessor  
+process getCovariances() result: double[][]  
+pre true  
+post  
+  result' = covarianceMatrix.getData()  
+end_process  
+
+// Sampling matrix accessor  
+process getSamplingMatrix() result: RealMatrix  
+pre true  
+post  
+  result' = samplingMatrix  
+end_process  
+
+// Probability density function  
+process density(x: double[]) result: double  
+pre true  
+post  
+  dim = getDimension()  
+  dim ≠ x.length → throw DimensionMismatchException(x.length, dim)  
+  diff = MathArrays.ebeSubtract(x, means)  
+  result' = FastMath.exp(-0.5 * MatrixUtils.vectorToMatrix(diff).transpose().multiply(covarianceMatrixInverse).multiply(MatrixUtils.vectorToMatrix(diff)).getData()[0][0]) /  
+             FastMath.sqrt(FastMath.pow(2 * π, dim) * covarianceMatrixDeterminant)  
+Functional Scenario Form  
+x=means && returns peak density  
+end_process  
+
+// Random vector generation  
+process sample() result: double[]  
+pre true  
+post  
+  dim = getDimension()  
+  randoms = new double[dim]  
+  ∀i:0≤i<dim → randoms[i] = rng.nextGaussian()  
+  result' = MathArrays.ebeAdd(means, samplingMatrix.operate(randoms))  
+Functional Scenario Form  
+generates vector && mean=means  
+end_process  
+
+// Means accessor (safe copy)  
+process getMeans() result: double[]  
+pre true  
+post  
+  result' = MathArrays.copyOf(means)  
+end_process  
+
+// Covariance matrix accessor  
+process getCovariances() result: RealMatrix  
+pre true  
+post  
+  result' = covarianceMatrix.copy()  
+end_process  
+
+// Dimension accessor  
+process getDimension() result: int  
+pre true  
+post  
+  result' = means.length  
+end_process  
+
+// Standard deviations calculation  
+process getStandardDeviations() result: double[]  
+pre true  
+post  
+  dim = getDimension()  
+  std = new double[dim]  
+  s = covarianceMatrix.getData()  
+  ∀i:0≤i<dim → std[i] = FastMath.sqrt(s[i][i])  
+  result' = std  
+Functional Scenario Form  
+covarianceMatrix=diag[4,9] && returns [2,3]  
+end_process  
+
+// Density calculation  
+process density(vals: double[]) result: double  
+pre true  
+post  
+  dim = getDimension()  
+  vals.length ≠ dim → throw DimensionMismatchException(vals.length, dim)  
+  result' = FastMath.pow(2 * π, -0.5 * dim) *  
+             FastMath.pow(covarianceMatrixDeterminant, -0.5) *  
+             getExponentTerm(vals)  
+Functional Scenario Form  
+vals=means && returns peak density  
+vals.length≠dim && throws DimensionMismatchException  
+end_process  
+
+// Exponent term (internal)  
+process getExponentTerm(values: double[]) result: double  
+pre true  
+post  
+  dim = getDimension()  
+  centered = new double[dim]  
+  ∀i:0≤i<dim → centered[i] = values[i] - means[i]  
+  preMultiplied = covarianceMatrixInverse.preMultiply(centered)  
+  sum = 0  
+  ∀i:0≤i<dim → sum += preMultiplied[i] * centered[i]  
+  result' = FastMath.exp(-0.5 * sum)  
+Functional Scenario Form  
+values=means && returns 1.0  
+end_process  
+
+// Sample generation  
+process sample() result: double[]  
+pre true  
+post  
+  dim = getDimension()  
+  normalVals = new double[dim]  
+  ∀i:0≤i<dim → normalVals[i] = rng.nextGaussian()  
+  vals = samplingMatrix.operate(normalVals)  
+  ∀i:0≤i<dim → vals[i] += means[i]  
+  result' = vals  
+Functional Scenario Form  
+means=[0,0] covariances=identity && generates standard normal sample  
+end_process  
+
+end_module

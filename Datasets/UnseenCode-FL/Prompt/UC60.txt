@@ -1,0 +1,118 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: "use strict";
+2: Object.defineProperty(exports, "__esModule", { value: true });
+3: const utils_1 = require("./utils");
+4: const const_1 = require("./const");
+5: class ServerBuilder {
+6:     constructor(name) {
+7:         this._config = this.initConfig(name);
+8:         process.chdir(this._config.path);
+9:     }
+10:     startup(server) {
+11:         if (!server || this._config) {
+12:             console.log('server object or config file has not created!');
+13:             return false;
+14:         }
+15:         server.initialize(this._config.content); //创建连接，调用serverBase
+16:         let exitAction = () => {
+17:             server.dispose();
+18:             process.exit(1);
+19:         };
+20:         //当服务要重启的时候需要处理结束前收尾的事情
+21:         process.on(const_1.ProcessEvent.SIGINT, () => {
+22:             exitAction();
+23:         });
+24:         //windows graceful stop
+25:         process.on(const_1.ProcessEvent.MESSAGE, (msg) => {
+26:             if (msg == const_1.ProcessMessageCmd.SHUTDOWN) {
+27:                 exitAction();
+28:             }
+29:         });
+30:         return true;
+31:     }
+32:     initConfig(name) {
+33:         let config = {
+34:             path: '.',
+35:             content: ''
+36:         };
+37:         let conFile = utils_1.default.readConfig(name);
+38:         if (!conFile) {
+39:             console.log('no config file');
+40:             process.exit(1);
+41:         }
+42:         config.content = conFile;
+43:         return config;
+44:     }
+45: }
+46: exports.default = ServerBuilder;
+47: //# sourceMappingURL=serverbuilder.js.map]
+
+SOFL:[
+module UC60_serverbuilder
+
+process initConfig(name: string) result: record(path: string, content: string)
+pre  
+  name ≠ ""
+post 
+  (utils_1.readConfig(name) ≠ null ∧ result.path = "." ∧ result.content = utils_1.readConfig(name)) ∨
+  (utils_1.readConfig(name) = null ∧ process exits)
+Functional Scenario Form 
+(utils_1.readConfig(name) ≠ null) && (result.path = "." ∧ result.content = utils_1.readConfig(name)) or 
+(utils_1.readConfig(name) = null) && (process exits)
+end_process
+
+process startup(server: Object) result: Boolean
+pre  
+  _config ≠ null
+post 
+  ((server ≠ null ∧ _config ≠ null ∧ server.initialized = true ∧ process handlers registered) ∧ result = true) ∨ 
+  ((server = null ∨ _config = null) ∧ result = false)
+Functional Scenario Form 
+(server ≠ null ∧ _config ≠ null) && (server.initialized = true ∧ process handlers registered ∧ result = true) or 
+(server = null ∨ _config = null) && (result = false)
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Startup with missing config
+→ Input: null server object
+→ Expected: "server object or config file has not created!" and graceful return
+→ Actual: Server proceeds with initialization logic despite missing server, leading to runtime exceptions.
+
+// Test Case 2: Server shutdown via SIGINT
+→ Trigger: CTRL+C during runtime
+→ Expected: server.dispose() called, process exits cleanly with success status
+→ Actual: Process exits with code 1
+// Indicates abnormal termination, potentially misleading for monitoring tools or supervisors.
+
+// Test Case 3: Windows-specific shutdown command
+→ Input message: 'SHUTDOWN'
+→ Expected: Shutdown action triggered
+→ Actual: Shutdown not triggered unless message uses strict equality format
+// Minor mismatch in equality check prevents shutdown from executing as intended in Windows environments.]

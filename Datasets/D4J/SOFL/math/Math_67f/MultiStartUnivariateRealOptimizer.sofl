@@ -1,0 +1,193 @@
+module MultiStartUnivariateRealOptimizer
+type
+UnivariateRealPointValuePair: composed type of {
+point: double,
+value: double
+}
+
+process ctor(optimizer: BaseUnivariateRealOptimizer[UnivariateRealFunction],
+starts: int,
+generator: RandomGenerator) result: MultiStartUnivariateRealOptimizer
+pre
+true
+post
+result ≠ null
+result.optimizer' = optimizer
+result.starts' = starts
+result.generator' = generator
+// Fields left with default values
+result.maxEvaluations' = result.maxEvaluations
+result.totalEvaluations' = result.totalEvaluations
+result.optima' = result.optima
+Functional Scenario Form
+called && result.optimizer' = optimizer ∧ result.starts' = starts ∧ result.generator' = generator
+end_process
+
+process setConvergenceChecker(self: MultiStartUnivariateRealOptimizer,
+checker: ConvergenceChecker[UnivariateRealPointValuePair]) result: void
+pre
+self ≠ null
+post
+// Delegates to underlying optimizer
+effect(self.optimizer.setConvergenceChecker(checker))
+Functional Scenario Form
+called && effect(self.optimizer.setConvergenceChecker(checker))
+end_process
+
+process getConvergenceChecker(self: MultiStartUnivariateRealOptimizer) result: ConvergenceChecker[UnivariateRealPointValuePair]
+pre
+self ≠ null
+post
+result = self.optimizer.getConvergenceChecker()
+Functional Scenario Form
+called && result = self.optimizer.getConvergenceChecker()
+end_process
+
+process getMaxEvaluations(self: MultiStartUnivariateRealOptimizer) result: int
+pre
+self ≠ null
+post
+result = self.maxEvaluations
+Functional Scenario Form
+called && result = self.maxEvaluations
+end_process
+
+process getEvaluations(self: MultiStartUnivariateRealOptimizer) result: int
+pre
+self ≠ null
+post
+result = self.totalEvaluations
+Functional Scenario Form
+called && result = self.totalEvaluations
+end_process
+
+process setMaxEvaluations(self: MultiStartUnivariateRealOptimizer, maxEvaluations: int) result: void
+pre
+self ≠ null
+post
+self.maxEvaluations' = maxEvaluations
+effect(self.optimizer.setMaxEvaluations(maxEvaluations))
+Functional Scenario Form
+called && self.maxEvaluations' = maxEvaluations ∧ effect(self.optimizer.setMaxEvaluations(maxEvaluations))
+end_process
+
+process getOptima(self: MultiStartUnivariateRealOptimizer) result: sequence of UnivariateRealPointValuePair?
+pre
+self ≠ null
+post
+if self.optima = null then raise(MathIllegalStateException)
+else result = clone(self.optima)
+Functional Scenario Form
+self.optima = null && raise(MathIllegalStateException) or
+self.optima ≠ null && result = clone(self.optima)
+end_process
+
+process optimize_4(self: MultiStartUnivariateRealOptimizer,
+f: UnivariateRealFunction,
+goal: GoalType,
+min: double, max: double) result: UnivariateRealPointValuePair
+pre
+self ≠ null
+post
+result = optimize_5(self, f, goal, min, max, min + 0.5*(max - min))
+Functional Scenario Form
+called && result = optimize_5(self, f, goal, min, max, min + 0.5*(max - min))
+end_process
+
+process optimize_5(self: MultiStartUnivariateRealOptimizer,
+f: UnivariateRealFunction,
+goal: GoalType,
+min: double, max: double, startValue: double) result: UnivariateRealPointValuePair
+pre
+self ≠ null
+post
+// Initialize per-invocation state
+self.optima' = new sequence of UnivariateRealPointValuePair? with length self.starts
+self.totalEvaluations' = 0
+
+// For i from 0 to starts-1:
+// s = (i = 0) ? startValue : min + generator.nextDouble() * (max - min)
+// try optima[i] = optimizer.optimize(f, goal, min, max, s)
+// catch FunctionEvaluationException or ConvergenceException => optima[i] = null
+// used = optimizer.getEvaluations()
+// optimizer.setMaxEvaluations(optimizer.getMaxEvaluations() - used)
+// totalEvaluations += used
+iterate_fill:
+∀ i • 0 ≤ i < self.starts ⇒
+let s == (i = 0 ? startValue : (min + self.generator.nextDouble() * (max - min))) in
+( self.optima'[i] = try_optimize(self.optimizer, f, goal, min, max, s) )
+∧ ( let used == self.optimizer.getEvaluations() in
+effect(self.optimizer.setMaxEvaluations(self.optimizer.getMaxEvaluations() - used))
+∧ (self.totalEvaluations' = self.totalEvaluations'@pre + Σ{ self.optimizer.getEvaluations() at each i } )
+)
+
+// Sort by best-to-worst with nulls last according to goal
+effect(sortPairs(self, goal))
+
+// If best is null, throw; else return best
+if self.optima'[0] = null then
+raise(ConvergenceException)
+else
+result = self.optima'[0]
+Functional Scenario Form
+all runs fail (optima'[0] = null) && raise(ConvergenceException) or
+at least one run succeeds && result = best_element_after_sort(self.optima', goal) ∧ self.totalEvaluations' = Σ usedEvaluations
+end_process
+
+process sortPairs(self: MultiStartUnivariateRealOptimizer, goal: GoalType) result: void
+pre
+self ≠ null ∧ self.optima ≠ null
+post
+// Arrays.sort with comparator:
+// - nulls last
+// - otherwise compare by value ascending for MINIMIZE, descending for MAXIMIZE
+effect(Arrays.sort(self.optima, cmp(goal)))
+Functional Scenario Form
+called && effect(Arrays.sort(self.optima, cmp(goal)))
+end_process
+
+// ----- Helper abstractions for effects/try-catch semantics -----
+
+process try_optimize(optimizer: BaseUnivariateRealOptimizer[UnivariateRealFunction],
+f: UnivariateRealFunction, goal: GoalType,
+min: double, max: double, s: double) result: UnivariateRealPointValuePair?
+pre
+true
+post
+// Emulate: try { opt = optimizer.optimize(...)} catch (FEE|CE) { opt = null; }
+result = try_call_optimize(optimizer, f, goal, min, max, s)
+Functional Scenario Form
+underlying converges && result = optimizer.optimize(f, goal, min, max, s) or
+FunctionEvaluationException || ConvergenceException && result = null
+end_process
+
+process cmp(goal: GoalType) result: Comparator[UnivariateRealPointValuePair]
+pre
+true
+post
+// Comparator behavior:
+// if o1 = null and o2 = null => 0
+// if o1 = null => 1
+// if o2 = null => -1
+// else compare by o1.value vs o2.value; ascending when MINIMIZE, descending when MAXIMIZE
+result ≠ null
+Functional Scenario Form
+called && result ≠ null
+end_process
+
+// ----- Underlying optimizer interface placeholders -----
+
+process try_call_optimize(optimizer: BaseUnivariateRealOptimizer[UnivariateRealFunction],
+f: UnivariateRealFunction, goal: GoalType,
+min: double, max: double, s: double) result: UnivariateRealPointValuePair?
+pre
+true
+post
+// Placeholder for exception-wrapping call; returns null on FEE/CE
+result = maybe_null_pointvaluepair
+Functional Scenario Form
+successful && result = some_pointvaluepair or
+exception_thrown && result = null
+end_process
+
+end_module

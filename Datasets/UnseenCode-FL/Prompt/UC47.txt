@@ -1,0 +1,167 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: package a;
+2: 
+3: import com.code_intelligence.jazzer.api.FuzzedDataProvider;
+4: 
+5: public class c02_ATMValidation {
+6: 
+7: 	
+8: 	public static boolean isValidWithdrawal(double amount, double accountBalance) {
+9:         boolean flag;
+10:         if(amount > 0 && accountBalance > 0 && amount < accountBalance) {
+11:         	flag = true;
+12:         }
+13:         else flag = false;
+14:         return flag;
+15:     }
+16: 
+17:     public static void main(String[] args) {
+18:         // testcase-VT:
+19:         double[][] testCases = {
+20:         		{2598.16, 1784.78}, //amount > 0 && accountBalance > 0 && amount > accountBalance
+21:         		{197.64, 102.47}, //amount > 0 && accountBalance > 0 && amount > accountBalance
+22:         		{1015.07, 4908.75}, //amount > 0 && accountBalance > 0 && amount <= accountBalance
+23:         		{-1939.66, 2509.62}, //amount <= 0 && accountBalance > 0 && amount <= accountBalance
+24:         		{1707.62, -753.75}, //amount > 0 && accountBalance <= 0 && amount > accountBalance 
+25:         };
+26: 
+27:         
+28:         for (double[] testCase : testCases) {
+29:             boolean result = isValidWithdrawal(testCase[0], testCase[1]);
+30:             System.out.printf("isValidWithdrawal(%.1f, %.1f) = %b%n",
+31:                 testCase[0], testCase[1]);
+32:         }
+33:     }
+34: }
+35: 
+36: 
+37: class t02 {
+38:     public static void fuzzerTestOneInput(FuzzedDataProvider data) {
+39:         // generate 2 random double value
+40:         double a = data.consumeDouble();
+41:         double b = data.consumeDouble();
+42: 
+43:         // call target method
+44:         boolean result = c02_ATMValidation.isValidWithdrawal(a);
+45: 
+46: //        System.out.println("Testing with: a=" + a + ", b=" + b + ", c=" + c + " => ");
+47:         System.out.println("Testing with: a=" + a + ", b=" + b + ", => Result: " + result);
+48:     }
+49: 
+50: }]
+
+SOFL:[
+module UC47_ATMValidation
+type
+  amount: real
+  accountBalance: real
+  result: Boolean
+
+process isValidWithdrawal(amount: real, accountBalance: real) result: Boolean
+pre
+  true
+post
+  ((amount > 0) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance) → result = true) ∧
+  (¬((amount > 0) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance)) → result = false)
+Functional Scenario Form
+(amount > 0 ) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance) && flag =true, Valid withdrawal, amount meets all conditions 
+OR 
+(amount > accountBalance) && flag = false, Invalid withdrawal, insufficient account balance 
+OR 
+(amount ≤ 0) && flag = false, Invalid withdrawal, amount must be greater than zero
+OR 
+(accountBalance≤ 0) && flag = false, Invalid withdrawal, balance must be greater than zero
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: ATM Withdrawal Validation – Symptom Summary**
+
+---
+
+### **Test Case 1: Output Missing Expected Result**
+
+**Input:**
+
+```java
+isValidWithdrawal(1015.07, 4908.75)
+```
+
+**Expected Output:**
+
+```
+isValidWithdrawal(1015.1, 4908.8) = true
+```
+
+**Observed Output:**
+
+```
+isValidWithdrawal(1015.1, 4908.8)
+```
+
+---
+
+### **Test Case 2: Fuzzed Method Invocation Fails**
+
+**Input:**
+
+```java
+fuzzerTestOneInput(consumeDouble() → a, b)
+```
+
+**Expected Behavior:**
+Call method with two arguments.
+
+**Observed Behavior:**
+
+```
+Error: isValidWithdrawal(double) in c02_ATMValidation cannot be applied to (double, double)
+```
+
+---
+
+### **Test Case 3: Validation Fails for Boundary Amounts**
+
+**Input:**
+
+```java
+isValidWithdrawal(1784.78, 1784.78)
+```
+
+**Expected Output:**
+
+```
+true
+```
+
+**Observed Output:**
+
+```
+false
+```]

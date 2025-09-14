@@ -1,0 +1,43 @@
+module RungeKuttaIntegrator
+type
+step: double
+
+process ctor(name: String,
+c: sequence of double,
+a: sequence of sequence of double,
+b: sequence of double,
+prototype: RungeKuttaStepInterpolator,
+step: double) result: RungeKuttaIntegrator
+pre
+name ≠ null ∧ c ≠ null ∧ a ≠ null ∧ b ≠ null ∧ prototype ≠ null ∧ step ≠ 0
+∧ |a| = |c| ∧ |b| = |c| + 1
+post
+self.c' = c ∧ self.a' = a ∧ self.b' = b ∧ self.prototype' = prototype ∧ self.step' = abs(step) ∧ result = self
+Functional Scenario Form
+called && self.c' = c ∧ self.a' = a ∧ self.b' = b ∧ self.prototype' = prototype ∧ self.step' = abs(step) ∧ result = self
+end_process
+
+process integrate(self: RungeKuttaIntegrator,
+equations: FirstOrderDifferentialEquations,
+t0: double, y0: sequence of double,
+t: double, y: sequence of double) result: double
+pre
+self ≠ null ∧ equations ≠ null ∧ y0 ≠ null ∧ y ≠ null ∧ |y| = |y0|
+post
+let forward == (t > t0) in
+(∃ m: int, τ: sequence of double, Y: sequence of sequence of double •
+m ≥ 0 ∧ τ(0) = t0 ∧ τ(m) = result ∧
+(∀ k • 0 ≤ k < m ⇒
+( forward ⇒ τ(k+1) > τ(k) | ¬forward ⇒ τ(k+1) < τ(k) ) ∧
+( |τ(k+1) − τ(k)| > 0 ∧ ( |τ(k+1) − τ(k)| = self.step ∨ τ(k+1) is an event time ∨ τ(k+1) = t ) ) ∧
+Y(k+1) = Y(k) + (τ(k+1) − τ(k)) * Σ_{i=0..|b|-1} ( self.b[i] * F_i(k) ) ) ∧
+Y(0) = y0 ∧ y' = Y(m) )
+∧ ( result = t ∨ (t0 < result ∧ result < t) ∨ (t0 > result ∧ result > t) )
+∧ isNaN(stepStart') ∧ isNaN(stepSize')
+Functional Scenario Form
+no event before t && result = t or
+some event time in (t0,t] reached first && result = event_time or
+reverse integration with event or end reached && result = chosen stop
+end_process
+
+end_module

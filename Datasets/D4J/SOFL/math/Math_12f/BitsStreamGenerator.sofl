@@ -1,0 +1,129 @@
+module BitsStreamGenerator  
+type:
+  nextGaussian: double  
+
+var:  
+  serialVersionUID: long = 20130104L  
+  π: double = 3.141592653589793
+
+// Default constructor  
+process constructor()  
+pre true  
+post  
+  nextGaussian' = Double.NaN  
+end_process  
+
+// Abstract seed setters (implemented in subclasses)  
+abstract process setSeed_int(seed: int)  
+abstract process setSeed_intArray(seed: int[])  
+abstract process setSeed_long(seed: long)  
+
+// Core bit generator (implemented in subclasses)  
+abstract process next(bits: int) result: int  
+
+// Boolean generation  
+process nextBoolean() result: boolean  
+pre true  
+post  
+  result' = next(1) ≠ 0  
+end_process  
+
+// Byte array generation  
+process nextBytes(bytes: byte[])  
+pre true  
+post  
+  i = 0  
+  iEnd = bytes.length - 3  
+  while i < iEnd  
+    random = next(32)  
+    bytes[i] = (byte)(random & 0xff)  
+    bytes[i+1] = (byte)((random >> 8) & 0xff)  
+    bytes[i+2] = (byte)((random >> 16) & 0xff)  
+    bytes[i+3] = (byte)((random >> 24) & 0xff)  
+    i = i + 4  
+  random = next(32)  
+  while i < bytes.length  
+    bytes[i] = (byte)(random & 0xff)  
+    random = random >> 8  
+    i = i + 1  
+Functional Scenario Form  
+bytes length=4 && fills all bytes  
+bytes length=5 && handles final bytes  
+end_process  
+
+// Double generation  
+process nextDouble() result: double  
+pre true  
+post  
+  high = (long)next(26) << 26  
+  low = next(26)  
+  result' = (high | low) * 0x1.0p-52d  
+end_process  
+
+// Float generation  
+process nextFloat() result: float  
+pre true  
+post  
+  result' = next(23) * 0x1.0p-23f  
+end_process  
+
+// Gaussian generation (Box-Muller)  
+process nextGaussian() result: double  
+pre true  
+post  
+  Double.isNaN(nextGaussian)  
+    ? x = nextDouble()  
+      y = nextDouble()  
+      alpha = 2 * π * x  
+      r = FastMath.sqrt(-2 * FastMath.log(y))  
+      result' = r * FastMath.cos(alpha)  
+      nextGaussian' = r * FastMath.sin(alpha)  
+    : result' = nextGaussian  
+      nextGaussian' = Double.NaN  
+Functional Scenario Form  
+first call && returns new gaussian  
+second call && returns cached gaussian  
+end_process  
+
+// Integer generation  
+process nextInt() result: int  
+pre true  
+post  
+  result' = next(32)  
+end_process  
+
+// Bounded integer generation  
+process nextInt_bounded(n: int) result: int  
+pre true  
+post  
+  n ≤ 0 → throw NotStrictlyPositiveException(n)  
+  (n & -n) = n  
+    ? result' = (int)((n * (long)next(31)) >> 31)  
+    : bits = 0  
+      val = 0  
+      do  
+        bits = next(31)  
+        val = bits % n  
+      while bits - val + (n - 1) < 0  
+      result' = val  
+Functional Scenario Form  
+n=power of 2 && uses bit shift  
+n=non-power of 2 && uses rejection sampling  
+n=0 && throws exception  
+end_process  
+
+// Long generation  
+process nextLong() result: long  
+pre true  
+post  
+  high = (long)next(32) << 32  
+  low = (long)next(32) & 0xffffffffL  
+  result' = high | low  
+end_process  
+
+// Clear Gaussian cache  
+process clear()  
+pre true  
+post  
+  nextGaussian' = Double.NaN  
+end_process  

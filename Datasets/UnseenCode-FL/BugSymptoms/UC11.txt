@@ -1,0 +1,25 @@
+Bug Report: AllRuleDescriptDialog
+
+Test Input:
+
+```cpp
+AllRuleDescriptDialog dialog;
+dialog.show();
+```
+
+Observed Behavior:
+
+* Application fails to compile.
+* Dialog does not display on execution due to unresolved slots or sizing errors.
+
+Expected Behavior:
+
+* Double-clicking on tree or table items opens a resizable `RuleDescriptDialog`.
+* Dialog resizes correctly using screen factor scaling.
+* Application compiles and runs without syntax errors.
+
+Actual Behavior:
+
+* Compilation error at line 8 due to incorrect syntax: `Ui:AllRuleDescriptDialog` instead of `Ui::AllRuleDescriptDialog`.
+* Slot `showRuleDescript(QTreeWidgetItem*)` not resolved due to missing `int` parameter in signal-slot connection.
+* Resize behavior incorrect: width is used twice instead of width × height at line 35.

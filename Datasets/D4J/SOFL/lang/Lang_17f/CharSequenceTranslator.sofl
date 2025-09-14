@@ -1,0 +1,55 @@
+module CharSequenceTranslator
+type 
+  input: CharSequence
+  index: int
+  out: Writer
+  result: String
+  consumed: int
+  codepoint: int
+  hexStr: String
+  translators: sequence of CharSequenceTranslator
+  merged: CharSequenceTranslator
+
+process translate(input: CharSequence, index: int, out: Writer) consumed: int
+pre  input ≠ null ∧ out ≠ null ∧ 0 ≤ index < length(input)
+post true
+Functional Scenario Form 
+true && consumed ≥ 0
+end_process
+
+process translate(input: CharSequence) result: String
+pre  true
+post 
+  input = null implies result = null ∧
+  input ≠ null implies result = translation of input to String using translate(CharSequence, Writer)
+Functional Scenario Form 
+(input = null) && (result = null) or
+(input ≠ null) && (result = translation using translate(CharSequence, Writer))
+end_process
+
+process translate(input: CharSequence, out: Writer) result: Void
+pre  out ≠ null
+post 
+  input = null implies output unchanged ∧
+  input ≠ null implies out contains translated content of input
+Functional Scenario Form 
+(out = null) && (exception = IllegalArgumentException) or
+(input = null) && (out unchanged) or
+(input ≠ null) && (out contains translated result)
+end_process
+
+process with(translators: sequence of CharSequenceTranslator) merged: CharSequenceTranslator
+pre  true
+post merged = new AggregateTranslator with this and translators
+Functional Scenario Form 
+true && (merged = AggregateTranslator(this + translators))
+end_process
+
+process hex(codepoint: int) hexStr: String
+pre  true
+post hexStr = uppercase hex string of codepoint in base 16
+Functional Scenario Form 
+true && (hexStr = Integer.toHexString(codepoint).toUpperCase(Locale.ENGLISH))
+end_process
+
+end_module

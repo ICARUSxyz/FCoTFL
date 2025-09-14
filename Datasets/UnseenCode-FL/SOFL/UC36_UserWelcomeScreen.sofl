@@ -1,0 +1,28 @@
+module UC36_UserWelcomeScreen
+type
+  userID: string
+  userChoice: string   /* "genreSearch", "keywordSearch", "logout", "cancelLogout" */
+  result: string       /* "GenreSearchScreenOpened", "KeywordSearchNotImplemented", "LoggedOut", "Cancelled" */
+
+process handleUserAction(userID: string, userChoice: string) result: string
+pre
+  userChoice ∈ {"genreSearch", "keywordSearch", "logout", "cancelLogout"}
+post
+  (userChoice = "genreSearch") ⇒ (GenreSearchScreen(userID, AccountManager) is opened ∧ result = "GenreSearchScreenOpened")
+  ∧
+  (userChoice = "keywordSearch") ⇒ (result = "KeywordSearchNotImplemented")
+  ∧
+  (userChoice = "logout") ⇒ (LoginScreen(AccountManager) is opened ∧ result = "LoggedOut")
+  ∧
+  (userChoice = "cancelLogout") ⇒ (result = "Cancelled")
+Functional Scenario Form
+(userChoice = "genreSearch") && (result = "GenreSearchScreenOpened")
+or
+(userChoice = "keywordSearch") && (result = "KeywordSearchNotImplemented")
+or
+(userChoice = "logout") && (result = "LoggedOut")
+or
+(userChoice = "cancelLogout") && (result = "Cancelled")
+end_process
+
+end_module

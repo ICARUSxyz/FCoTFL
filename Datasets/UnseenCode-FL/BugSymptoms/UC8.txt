@@ -1,0 +1,25 @@
+Bug Report: SyntaxHighlighter
+
+Test Input:
+
+```cpp
+QTextDocument doc;
+SyntaxHighlighter highlighter(&doc);
+doc.setPlainText("class Example { void foo(); int x = 42; // comment }");
+```
+
+Observed Behavior:
+
+* Application compiles but syntax highlighting does not appear.
+* Console may show runtime warnings related to regex or format.
+
+Expected Behavior:
+
+* Keywords, classes, functions, strings, and comments should be highlighted with distinct styles.
+
+Actual Behavior:
+
+* Keywords not bolded due to missing font weight.
+* Class highlighting rule not applied due to incorrect variable name (`Rule`).
+* Function pattern causes regex error and fails to match.
+* No highlights rendered because `globalMatch()` not applied on `text`.

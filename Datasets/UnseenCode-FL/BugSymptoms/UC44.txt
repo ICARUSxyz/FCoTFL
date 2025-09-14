@@ -1,0 +1,66 @@
+**Bug Report: Charge GUI – Symptom Summary**
+
+---
+
+### **Test Case 1: Charging History Button Not Displayed**
+
+**Steps:**
+
+1. Launch the application.
+2. Observe the GUI elements at the top of the window.
+
+**Expected:**
+A button labeled "View charging history." should appear and be clickable.
+
+**Observed:**
+The button does not appear in the interface.
+
+**Simulated Output Log:**
+
+```
+[UI Render] Missing component: "View charging history." button not shown
+```
+
+---
+
+### **Test Case 2: Navigation Panel Overlaps or Appears in Wrong Position**
+
+**Steps:**
+
+1. Launch the application.
+2. Check the position of the navigation panel containing wallet/settlement/charge/coupon buttons.
+
+**Expected:**
+The navigation panel should be aligned at the bottom of the window.
+
+**Observed:**
+The panel appears at the top, overlapping with other components.
+
+**Simulated Output Log:**
+
+```
+[Layout Warning] Panel added to unexpected position: NORTH instead of SOUTH
+```
+
+---
+
+### **Test Case 3: Duplicate Button Display**
+
+**Steps:**
+
+1. Launch the application.
+2. Look at the navigation panel for button layout.
+
+**Expected:**
+All four buttons ("wallet", "settlement", "charge", "coupon") should appear once.
+
+**Observed:**
+"wallet" button appears twice, "settlement" button is missing.
+
+**Simulated Output Log:**
+
+```
+[Component Mapping] Duplicate button: 'wallet'
+[Component Mapping] Missing button: 'settlement'
+```
+

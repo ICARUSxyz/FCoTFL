@@ -1,0 +1,578 @@
+module EigenDecompositionImpl
+type
+splitTolerance: double
+lowerSpectra: double
+upperSpectra: double
+minPivot: double
+sigma: double
+sigmaLow: double
+tau: double
+qMax: double
+eMin: double
+dMin: double
+dMin1: double
+dMin2: double
+dN: double
+dN1: double
+dN2: double
+g: double
+pingPong: int
+tType: int
+
+process ctor_fromMatrix(self: EigenDecompositionImpl, matrix: RealMatrix, splitTolerance: double) result: void
+pre
+matrix ≠ null ∧ isSymmetric(matrix) = true
+post
+self.splitTolerance' = splitTolerance ∧
+self.transformer' ≠ null ∧
+self.main' ≠ null ∧ self.secondary' ≠ null ∧ self.squaredSecondary' ≠ null ∧
+self.work' ≠ null ∧
+self.realEigenvalues' ≠ null ∧ self.imagEigenvalues' ≠ null ∧
+self.cachedV' = null ∧ self.cachedD' = null ∧ self.cachedVt' = null ∧
+self.eigenvectors' = null
+Functional Scenario Form
+symmetric matrix && decomposition initialized with spectra and caches cleared
+or non-symmetric matrix && InvalidMatrixException thrown
+end_process
+
+process ctor_fromTridiagonal(self: EigenDecompositionImpl, main: double[], secondary: double[], splitTolerance: double) result: void
+pre
+main ≠ null ∧ secondary ≠ null ∧ main.length = secondary.length + 1 ∧ main.length ≥ 1
+post
+self.main' = main.clone() ∧
+self.secondary' = secondary.clone() ∧
+self.squaredSecondary' = [ secondary[i]^2 | i ∈ [0..secondary.length-1] ] ∧
+self.transformer' = null ∧
+self.splitTolerance' = splitTolerance ∧
+self.work' ≠ null ∧
+self.realEigenvalues' ≠ null ∧ self.imagEigenvalues' ≠ null ∧
+self.cachedV' = null ∧ self.cachedD' = null ∧ self.cachedVt' = null ∧
+self.eigenvectors' = null
+Functional Scenario Form
+valid tridiagonal arrays && decomposition initialized with spectra and caches cleared
+or invalid lengths && pre violated
+end_process
+
+process isSymmetric(self: EigenDecompositionImpl, matrix: RealMatrix) result: boolean
+pre
+matrix ≠ null
+post
+result' = (∀ i,j: 0 ≤ i < rows ∧ 0 ≤ j < cols ∧ j > i ::
+|matrix[i,j] − matrix[j,i]| ≤ max(|matrix[i,j]|, |matrix[j,i]|) * (10 * rows * cols * MathUtils.EPSILON))
+Functional Scenario Form
+matrix entries satisfy tolerance symmetry && return true
+or matrix entries violate tolerance symmetry && return false
+end_process
+
+process decompose(self: EigenDecompositionImpl) result: void
+pre
+self.main ≠ null ∧ self.secondary ≠ null ∧ self.squaredSecondary ≠ null
+post
+self.cachedV' = null ∧ self.cachedD' = null ∧ self.cachedVt' = null ∧
+self.work' = new double[6 * self.main.length] ∧
+self.realEigenvalues' ≠ null ∧ self.imagEigenvalues' ≠ null ∧
+self.eigenvectors' = null
+Functional Scenario Form
+inputs ready (main/secondary present) && eigenvalues computed, caches cleared
+or inputs missing && pre violated
+end_process
+
+process getV(self: EigenDecompositionImpl) result: RealMatrix
+pre
+self.realEigenvalues ≠ null
+post
+(self.cachedV ≠ null ⇒ result' = self.cachedV) ∨
+(self.cachedV = null ⇒
+(self.eigenvectors ≠ null ∨ findEigenVectors() executed) ∧
+self.cachedV' is matrix with column k = self.eigenvectors[k] ∧
+result' = self.cachedV')
+Functional Scenario Form
+V cached && return cached
+or V not cached && compute eigenvectors if needed, build V, cache and return
+end_process
+
+process getD(self: EigenDecompositionImpl) result: RealMatrix
+pre
+self.realEigenvalues ≠ null
+post
+(self.cachedD ≠ null ⇒ result' = self.cachedD) ∨
+(self.cachedD = null ⇒ self.cachedD' = diag(self.realEigenvalues) ∧ result' = self.cachedD')
+Functional Scenario Form
+D cached && return cached
+or D not cached && build diagonal from realEigenvalues and cache
+end_process
+
+process getVT(self: EigenDecompositionImpl) result: RealMatrix
+pre
+self.realEigenvalues ≠ null
+post
+(self.cachedVt ≠ null ⇒ result' = self.cachedVt) ∨
+(self.cachedVt = null ⇒
+(self.eigenvectors ≠ null ∨ findEigenVectors() executed) ∧
+self.cachedVt' is matrix with row k = self.eigenvectors[k] ∧
+result' = self.cachedVt')
+Functional Scenario Form
+Vᵀ cached && return cached
+or Vᵀ not cached && compute eigenvectors if needed, build Vᵀ, cache and return
+end_process
+
+process getRealEigenvalues(self: EigenDecompositionImpl) result: double[]
+pre
+self.realEigenvalues ≠ null
+post
+result' = copy(self.realEigenvalues)
+Functional Scenario Form
+eigenvalues available && return defensive copy
+end_process
+
+process getRealEigenvalue(self: EigenDecompositionImpl, i: int) result: double
+pre
+self.realEigenvalues ≠ null ∧ 0 ≤ i < length(self.realEigenvalues)
+post
+result' = self.realEigenvalues[i]
+Functional Scenario Form
+index in range && return value
+or index out of range && ArrayIndexOutOfBoundsException
+end_process
+
+process getImagEigenvalues(self: EigenDecompositionImpl) result: double[]
+pre
+self.imagEigenvalues ≠ null
+post
+result' = copy(self.imagEigenvalues)
+Functional Scenario Form
+imag part available (zeros for symmetric) && return defensive copy
+end_process
+
+process getImagEigenvalue(self: EigenDecompositionImpl, i: int) result: double
+pre
+self.imagEigenvalues ≠ null ∧ 0 ≤ i < length(self.imagEigenvalues)
+post
+result' = self.imagEigenvalues[i]
+Functional Scenario Form
+index in range && return value
+or index out of range && ArrayIndexOutOfBoundsException
+end_process
+
+process getEigenvector(self: EigenDecompositionImpl, i: int) result: RealVector
+pre
+self.realEigenvalues ≠ null ∧ 0 ≤ i < length(self.realEigenvalues)
+post
+(self.eigenvectors ≠ null ∨ findEigenVectors() executed) ∧
+result' = copy(self.eigenvectors[i])
+Functional Scenario Form
+eigenvectors ready or computed && return copy of i-th eigenvector
+or index out of range && ArrayIndexOutOfBoundsException
+end_process
+
+process getDeterminant(self: EigenDecompositionImpl) result: double
+pre
+self.realEigenvalues ≠ null
+post
+result' = Π{k | 0 ≤ k < length(self.realEigenvalues)} self.realEigenvalues[k]
+Functional Scenario Form
+eigenvalues available && return product
+end_process
+
+process getSolver(self: EigenDecompositionImpl) result: DecompositionSolver
+pre
+self.realEigenvalues ≠ null ∧ self.imagEigenvalues ≠ null
+post
+(self.eigenvectors ≠ null ∨ findEigenVectors() executed) ∧
+result' = new Solver(self.realEigenvalues, self.imagEigenvalues, self.eigenvectors)
+Functional Scenario Form
+eigenvectors available && return new solver with current spectra and eigenvectors
+or eigenvectors absent && compute eigenvectors then return solver
+end_process
+
+process Solver_solveArray(self: EigenDecompositionImpl.Solver, b: double[]) result: double[]
+pre
+self.isNonSingular() = true ∧ b ≠ null ∧ b.length = length(self.realEigenvalues)
+post
+let m = length(self.realEigenvalues) in
+result' = [ Σ{i | 0≤i<m} ( (dot(self.eigenvectors[i], b) / self.realEigenvalues[i]) * self.eigenvectors[i][j] ) | j ∈ [0..m-1] ]
+Functional Scenario Form
+nonsingular and length match && return Σ_i (v_i·b/λ_i) v_i
+or singular matrix && SingularMatrixException thrown
+or length mismatch && IllegalArgumentException thrown
+end_process
+
+process Solver_solveVector(self: EigenDecompositionImpl.Solver, b: RealVector) result: RealVector
+pre
+self.isNonSingular() = true ∧ b ≠ null ∧ b.dimension = length(self.realEigenvalues)
+post
+let m = length(self.realEigenvalues) in
+result' = vector( Σ{i | 0≤i<m} ( (dot(self.eigenvectors[i], b) / self.realEigenvalues[i]) * self.eigenvectors[i] ) )
+Functional Scenario Form
+nonsingular and dimension match && return Σ_i (v_i·b/λ_i) v_i
+or singular matrix && SingularMatrixException thrown
+or dimension mismatch && IllegalArgumentException thrown
+end_process
+
+process Solver_solveMatrix(self: EigenDecompositionImpl.Solver, b: RealMatrix) result: RealMatrix
+pre
+self.isNonSingular() = true ∧ b ≠ null ∧ b.rowDimension = length(self.realEigenvalues)
+post
+let m = length(self.realEigenvalues) ∧ n = b.columnDimension in
+result' = matrix of size m×n where column k = Σ{i | 0≤i<m} ( (dot(self.eigenvectors[i], b[:,k]) / self.realEigenvalues[i]) * self.eigenvectors[i] )
+Functional Scenario Form
+nonsingular and row dimension match && return X with columns Σ_i (v_i·b_k/λ_i) v_i
+or singular matrix && SingularMatrixException thrown
+or dimension mismatch && IllegalArgumentException thrown
+end_process
+
+process Solver_isNonSingular(self: EigenDecompositionImpl.Solver) result: boolean
+pre
+self.realEigenvalues ≠ null ∧ self.imagEigenvalues ≠ null
+post
+result' = ∀ i ∈ [0..length(self.realEigenvalues)-1] :: ¬(self.realEigenvalues[i] = 0 ∧ self.imagEigenvalues[i] = 0)
+Functional Scenario Form
+any eigenvalue has zero real and imag parts && return false
+or no zero eigenvalues && return true
+end_process
+
+process Solver_getInverse(self: EigenDecompositionImpl.Solver) result: RealMatrix
+pre
+self.isNonSingular() = true
+post
+let m = length(self.realEigenvalues) in
+result' = Σ{k | 0≤k<m} ( (1 / self.realEigenvalues[k]) * (self.eigenvectors[k] ⊗ self.eigenvectors[k]) )
+Functional Scenario Form
+nonsingular && return Σ_k (1/λ_k) v_k v_k^T
+or singular matrix && SingularMatrixException thrown
+end_process
+
+process transformToTridiagonal(self: EigenDecompositionImpl, matrix: RealMatrix) result: void
+pre
+matrix ≠ null
+post
+self.transformer' = new TriDiagonalTransformer(matrix) ∧
+self.main' = self.transformer'.getMainDiagonalRef() ∧
+self.secondary' = self.transformer'.getSecondaryDiagonalRef() ∧
+self.squaredSecondary' = [ self.secondary'[i]^2 | i ∈ [0..length(self.secondary')-1] ]
+Functional Scenario Form
+valid matrix && tridiagonal data and squares cached
+end_process
+
+process computeGershgorinCircles(self: EigenDecompositionImpl) result: void
+pre
+self.main ≠ null ∧ self.secondary ≠ null ∧ self.work ≠ null ∧ length(self.work) ≥ 6 * length(self.main)
+post
+let m = length(self.main) in
+∀ i ∈ [0..m-2] ::
+self.work'[4m + i] = self.main[i] - (|self.secondary[i-1]| if i>0 else 0 + |self.secondary[i]|) ∧
+self.work'[5m + i] = self.main[i] + (|self.secondary[i-1]| if i>0 else 0 + |self.secondary[i]|) ∧
+self.work'[4m + (m-1)] = self.main[m-1] - |self.secondary[m-2]| ∧
+self.work'[5m + (m-1)] = self.main[m-1] + |self.secondary[m-2]| ∧
+self.lowerSpectra' = min{ self.work'[4m + i] | i ∈ [0..m-1] } ∧
+self.upperSpectra' = max{ self.work'[5m + i] | i ∈ [0..m-1] } ∧
+self.minPivot' = MathUtils.SAFE_MIN * max(1.0, (max{ |self.secondary[i]| | i ∈ [0..m-2] })^2)
+Functional Scenario Form
+tridiagonal data available && Gershgorin bounds and minPivot computed
+end_process
+
+process findEigenvalues(self: EigenDecompositionImpl) result: void
+pre
+self.main ≠ null ∧ self.secondary ≠ null ∧ self.squaredSecondary ≠ null
+post
+self.realEigenvalues' ≠ null ∧ length(self.realEigenvalues') = length(self.main) ∧
+self.imagEigenvalues' ≠ null ∧ length(self.imagEigenvalues') = length(self.main) ∧
+self.realEigenvalues' is sorted in non-increasing order
+Functional Scenario Form
+all blocks diagonalized && real/imag eigenvalues set and sorted
+or some block fails to diagonalize && InvalidMatrixException thrown
+end_process
+
+process computeSplits(self: EigenDecompositionImpl) result: List<Integer>
+pre
+self.main ≠ null ∧ self.secondary ≠ null ∧ self.squaredSecondary ≠ null ∧
+length(self.main) = length(self.secondary) + 1
+post
+let L = length(self.secondary) in
+result' contains (L + 1) ∧
+∀ i ∈ [0..L-1] ::
+( |self.secondary[i]| ≤ self.splitTolerance * sqrt(|self.main[i]| * |self.main[i+1]|)
+⇒ ( (i+1) ∈ result' ∧ self.secondary'[i] = 0 ∧ self.squaredSecondary'[i] = 0 ) ) ∧
+( |self.secondary[i]| > self.splitTolerance * sqrt(|self.main[i]| * |self.main[i+1]|)
+⇒ ( (i+1) ∉ result' ∧ self.secondary'[i] = self.secondary[i] ∧ self.squaredSecondary'[i] = self.squaredSecondary[i] ) )
+Functional Scenario Form
+threshold satisfied at some indices && include those indices and zero corresponding secondary entries
+or no threshold satisfied && only include L+1 and leave arrays unchanged
+end_process
+
+process process1RowBlock(self: EigenDecompositionImpl, index: int) result: void
+pre
+0 ≤ index < length(self.main) ∧ self.realEigenvalues ≠ null ∧ length(self.realEigenvalues) = length(self.main)
+post
+self.realEigenvalues'[index] = self.main[index]
+Functional Scenario Form
+valid index && set realEigenvalues[index] to main[index]
+end_process
+
+process process2RowsBlock(self: EigenDecompositionImpl, index: int) result: void
+pre
+0 ≤ index < length(self.main) - 1 ∧ self.realEigenvalues ≠ null ∧ self.squaredSecondary ≠ null
+post
+let q0 = self.main[index] ∧ q1 = self.main[index+1] ∧ e12 = self.squaredSecondary[index] ∧
+s = q0 + q1 ∧ p = q0q1 - e12 ∧ delta = ss - 4*p in
+( delta ≥ 0 ⇒
+let r1 = 0.5 * (s + sqrt(delta)) ∧ r2 = p / r1 in
+self.realEigenvalues'[index] = r1 ∧ self.realEigenvalues'[index+1] = r2 ) ∧
+( delta < 0 ⇒ InvalidMatrixException thrown )
+Functional Scenario Form
+discriminant nonnegative && set roots r1 and r2 into positions index,index+1
+or discriminant negative && throw InvalidMatrixException
+end_process
+
+process process3RowsBlock(self: EigenDecompositionImpl, index: int) result: void
+pre
+0 ≤ index < length(self.main) - 2 ∧ self.realEigenvalues ≠ null ∧ self.squaredSecondary ≠ null
+post
+let q0 = self.main[index] ∧ q1 = self.main[index+1] ∧ q2 = self.main[index+2] ∧
+e12 = self.squaredSecondary[index] ∧ e23 = self.squaredSecondary[index+1] ∧
+b = -(q0 + q1 + q2) ∧ c = q0q1 + q0q2 + q1q2 - e12 - e23 ∧ d = q2e12 - q0*(q1q2 - e23) ∧
+b2 = bb ∧ q = (3c - b2)/9 ∧ r = ((9c - 2b2)b - 27d)/54 ∧ delta = qqq + rr in
+( delta < 0 ⇒
+let sqrtMq = sqrt(-q) ∧ theta = arccos(r / (-qsqrtMq)) ∧ alpha = 2sqrtMq ∧ beta = b/3 ∧
+z0 = alphacos(theta/3) - beta ∧ z1 = alphacos((theta + 2π)/3) - beta ∧ z2 = alphacos((theta + 4*π)/3) - beta ∧
+zmax = max{z0,z1,z2} ∧ zmin = min{z0,z1,z2} ∧ zmid = (z0 + z1 + z2) - zmax - zmin in
+self.realEigenvalues'[index] = zmax ∧ self.realEigenvalues'[index+1] = zmid ∧ self.realEigenvalues'[index+2] = zmin ) ∧
+( delta ≥ 0 ⇒ InvalidMatrixException thrown )
+Functional Scenario Form
+three distinct real roots (delta<0) && write sorted roots (desc) into positions index..index+2
+or non-distinct/complex roots (delta≥0) && throw InvalidMatrixException
+end_process
+
+process processGeneralBlock(self: EigenDecompositionImpl, n: int) result: void
+pre
+1 ≤ n ≤ length(self.main) ∧ self.work ≠ null ∧ length(self.work) ≥ 6n
+post
+let sumOff = Σ{i | 0≤i<n-1} self.work[4i + 2] in
+( sumOff = 0 ⇒ self.work' = self.work ) ∧
+( sumOff ≠ 0 ⇒
+(∃ q' :: (∀ i ∈ [0..n-1] :: q'[i] = self.work'[4i] ∧ q'[i] ≥ 0) ∧
+total iterations used ≤ 30(n - i0_final) ∧
+algorithm completed without exception ) )
+∨ InvalidMatrixException thrown when iterations exceed 30*(n - i0) at some stage
+Functional Scenario Form
+off-diagonals sum to zero && return with work unchanged
+or off-diagonals present and iterations ≤ limit && update qd array so work'[4*i] ≥ 0 (block diagonalized)
+or iteration limit exceeded && throw InvalidMatrixException
+end_process
+
+process initialSplits(self: EigenDecompositionImpl, n: int) result: void
+pre
+n ≥ 1 ∧ self.work ≠ null ∧ length(self.work) ≥ 4n + 1 ∧ self.pingPong ∈ {0,1}
+post
+self.pingPong' = 0 ∧
+∀ pass ∈ {1,2} ::
+∀ i ∈ {0,4,8,...,4(n-2)} ::
+let d_before = (pass = 1 ? self.work[4*(n-1)] : self.work'[4*(n-1)]) in
+( self.work[i+2] ≤ TOLERANCE_2 * d_before
+⇒ self.work'[i+2] = -0.0 ) ∧
+self.work'[4n - 3] = d_after_pass2
+Functional Scenario Form
+some off-diagonal entries ≤ TOLERANCE_2 * current d && set those work[4i+2] to -0.0 and update adjacent qd entries via forward test
+or no entries satisfy test && leave off-diagonals unchanged while propagating forward d per dqd
+end_process
+
+process goodStep(self: EigenDecompositionImpl, start: int, end: int) result: int
+pre
+0 ≤ start < end ∧ self.work ≠ null ∧ length(self.work) ≥ 4end + 1 ∧ self.pingPong ∈ {0,1}
+post
+(result' ≤ end ∧ result' ≥ start) ∧
+( (deflation of one eigenvalue occurred) ⇒
+self.work'[4result' - 4] = self.sigma + self.work[4result' - 4 + self.pingPong] ) ∧
+( (deflation of two eigenvalues occurred) ⇒
+self.work'[4result' - 8] = self.sigma + λ_hi ∧ self.work'[4*result' - 4] = self.sigma + λ_lo ) ∧
+( (no immediate deflation) ⇒
+( (shifted dqds accepted) ⇒ self.sigma' = self.sigma + self.tau ) ∨
+(fallback dqd step taken) ) ∧
+self.dMin', self.dMin1', self.dN', self.qMax' updated consistently with the chosen step
+Functional Scenario Form
+one eigenvalue detected at tail && set diagonal at tail to sigma + q and decrement end by 1
+or two eigenvalues detected at tail && set two trailing diagonals to sigma + ordered pair and decrement end by 2
+or no deflation and dqds with positive dMin succeeded && update sigma by tau and keep end
+or no deflation and dqds failed or unsafe && perform unshifted dqd update and keep end
+end_process
+
+process flipIfWarranted(self: EigenDecompositionImpl, n: int, step: int) result: boolean
+pre
+n ≥ 1 ∧ step ∈ {1,2} ∧ self.work ≠ null ∧ length(self.work) ≥ 4n + self.pingPong
+post
+( 1.5 * self.work[self.pingPong] < self.work[4(n-1) + self.pingPong]
+⇒ result' = true ∧
+∀ i ∈ {0,4,...,4*(n-1)} ::
+∀ k ∈ {0, step, 2step, 3step | k ≤ 3} ::
+self.work'[i+k] = self.work[4*(n-1) - i + (−k)] ) ∧
+( ¬(1.5 * self.work[self.pingPong] < self.work[4*(n-1) + self.pingPong])
+⇒ result' = false ∧ self.work' = self.work )
+Functional Scenario Form
+head much smaller than tail (per 1.5 test) && flip qd entries in-place with stride=step
+or head not smaller than tail && do nothing and return false
+end_process
+
+process eigenvaluesRange(self: EigenDecompositionImpl, index: int, n: int) result: double[2]
+pre
+0 ≤ index ∧ n ≥ 1 ∧ index + n ≤ length(self.main) ∧
+self.work ≠ null ∧ length(self.work) ≥ 6*length(self.main) ∧
+self.minPivot > 0
+post
+let lower' = result'[0] ∧ upper' = result'[1] in
+lower' ≤ upper' ∧
+1 ≤ countEigenValues(self, lower', index, n) ≤ n ∧
+countEigenValues(self, upper', index, n) = n
+Functional Scenario Form
+interval expanded from Gershgorin bounds && lower bound encloses at least one eigenvalue and upper bound encloses all n eigenvalues
+end_process
+
+process countEigenValues(self: EigenDecompositionImpl, t: double, index: int, n: int) result: int
+pre
+0 ≤ index ∧ n ≥ 1 ∧ index + n ≤ length(self.main) ∧ length(self.squaredSecondary) ≥ index + n - 1
+post
+result' = |{ i ∈ [1..n] | λ_i ≤ t }| // number of eigenvalues of the block ≤ t
+Functional Scenario Form
+threshold t given && return Sturm count for block (index, n)
+end_process
+
+process ldlTDecomposition(self: EigenDecompositionImpl, lambda: double, index: int, n: int) result: void
+pre
+0 ≤ index ∧ n ≥ 1 ∧ index + n ≤ length(self.main) ∧
+length(self.secondary) ≥ index + n - 1 ∧
+self.work ≠ null ∧ length(self.work) ≥ 4n
+post
+let d0 = self.main[index] - lambda in
+self.work'[0] = |d0| ∧
+∀ i ∈ [1..n-1] ::
+let ei_1 = self.secondary[index + i - 1] ∧ di_1 = (i=1 ? d0 : computed recursively) ∧
+r = ei_1 / di_1 ∧ di = (self.main[index + i] - lambda) - ei_1 * r in
+self.work'[4i - 2] = rr * |di_1| ∧
+self.work'[4i] = |di|
+Functional Scenario Form
+valid shift lambda and block indices && fill work with |D| on 4i and r^2|D| on 4*i-2 according to LDL^T recurrences
+end_process
+
+process dqds(self: EigenDecompositionImpl, start: int, end: int) result: void
+pre
+0 ≤ start < end ∧ self.work ≠ null ∧ length(self.work) ≥ 4end + 1 ∧ self.pingPong ∈ {0,1}
+post
+self.dMin' = min{ d | d is the running diagonal value produced by dqds on indices [start, end) } ∧
+self.dMin2' ≤ self.dMin' ∧
+self.dN2' = the penultimate running diagonal value after loop ∧
+self.dN1' = the last-but-one diagonal value from the unrolled step ∧
+self.dN' = the last diagonal value from the unrolled step ∧
+self.dMin' = min(self.dMin2', self.dN1', self.dN') ∧
+self.eMin' = min{ e | e is the updated off-diagonal value over indices [start, end) } ∧
+self.work'[4end - self.pingPong - 1] = self.eMin'
+Functional Scenario Form
+pingPong = 0 && run dqds forward on qd pairs, updating work and tracking dMin', eMin', then unroll last two steps to set dN2', dN1', dN' and store eMin' at tail
+or pingPong = 1 && run dqds on swapped positions (pong layout), updating work and tracking dMin', eMin', then unroll last two steps to set dN2', dN1', dN' and store eMin' at tail
+end_process
+
+process dqd(self: EigenDecompositionImpl, start: int, end: int) result: void
+pre
+0 ≤ start < end ∧ self.work ≠ null ∧ length(self.work) ≥ 4end + 1 ∧ self.pingPong ∈ {0,1}
+post
+self.dMin' = min{ d | d is the running diagonal value produced by dqd on indices [start, end) } ∧
+self.dMin2' ≤ self.dMin' ∧
+self.dN2' = the penultimate running diagonal value after loop ∧
+self.dN1' = the last-but-one diagonal value from the unrolled step ∧
+self.dN' = the last diagonal value from the unrolled step ∧
+self.dMin' = min(self.dMin2', self.dN1', self.dN') ∧
+self.eMin' = min{ e | e is the updated off-diagonal value over indices [start, end) } ∧
+self.work'[4end - self.pingPong - 1] = self.eMin'
+Functional Scenario Form
+pingPong = 0 && run dqd forward with safe-division guards, updating work and tracking dMin', eMin', then unroll last two steps to set dN2', dN1', dN' and store eMin' at tail
+or pingPong = 1 && run dqd on swapped positions (pong layout), updating work and tracking dMin', eMin', then unroll last two steps to set dN2', dN1', dN' and store eMin' at tail
+end_process
+
+process computeShiftIncrement(self: EigenDecompositionImpl, start: int, end: int, deflated: int) result: void
+type
+cnst1: real; cnst2: real; cnst3: real
+var
+cnst1 = 0.563; cnst2 = 1.010; cnst3 = 1.05
+pre
+0 ≤ start < end ∧ deflated ≥ 0 ∧ self.work ≠ null ∧ length(self.work) ≥ 4end + 1
+post
+self.tau' ≥ 0 ∧ self.tType' ∈ { -1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12 } ∧ self.sigma' = self.sigma
+Functional Scenario Form
+self.dMin ≤ 0 && (self.tau' = -self.dMin ∧ self.tType' = -1)
+or deflated = 0 ∧ self.dMin ∈ {self.dN, self.dN1} ∧ self.dMin1 = self.dN1 ∧ gap1 adequate && choose τ ensuring τ' ≥ max(0.5self.dMin, 0.333self.dMin) and set self.tType' ∈ {-2,-3}
+or deflated = 0 ∧ self.dMin ∈ {self.dN, self.dN1} ∧ self.dMin1 ≠ self.dN1 && set self.tType' = -4 ∧ self.tau' ∈ [0, 0.25self.dMin]
+or deflated = 0 ∧ self.dMin = self.dN2 && set self.tType' = -5 ∧ self.tau' ∈ [0, 0.25self.dMin]
+or deflated = 0 ∧ none of the above && set self.tType' = -6 ∧ self.tau' = g'self.dMin with g' ∈ {0.25, 0.250.333, 0.333(1 - self.g)}
+or deflated = 1 ∧ self.dMin1 = self.dN1 ∧ self.dMin2 = self.dN2 ∧ gap2 adequate && set self.tType' ∈ {-7,-8} ∧ self.tau' ≥ 0.333self.dMin1
+or deflated = 1 ∧ otherwise && set self.tType' = -9 ∧ self.tau' = (self.dMin1 = self.dN1 ? 0.5self.dMin1 : 0.25self.dMin1)
+or deflated = 2 ∧ self.dMin2 = self.dN2 ∧ 2self.work[4end + self.pingPong - 6] < self.work[4end + self.pingPong - 8] && set self.tType' = -10 ∧ self.tau' ≥ 0.333self.dMin2
+or deflated = 2 ∧ otherwise && set self.tType' = -11 ∧ self.tau' = 0.25self.dMin2
+or deflated ≥ 3 && set self.tType' = -12 ∧ self.tau' =0
+end_process
+
+process updateSigma(self: EigenDecompositionImpl, shift: real) result: void
+pre
+true
+post
+// compensated update invariant
+(self.sigma' + self.sigmaLow') = (self.sigma + self.sigmaLow) + shift ∧
+// sigma is advanced in the direction of shift
+(shift < 0 → self.sigma' ≤ self.sigma) ∧ (shift ≥ 0 → self.sigma' ≥ self.sigma)
+Functional Scenario Form
+shift < self.sigma && self.sigmaLow' = self.sigmaLow + shift ∧ t = self.sigma + self.sigmaLow' ∧ self.sigmaLow' = self.sigmaLow' - (t - self.sigma) ∧ self.sigma' = t
+or shift ≥ self.sigma && t = self.sigma + shift ∧ self.sigmaLow' = self.sigmaLow + (self.sigma - (t - shift)) ∧ self.sigma' = t
+end_process
+
+process findEigenVectors(self: EigenDecompositionImpl) result: void
+pre
+length(self.main) ≥ 1 ∧ length(self.realEigenvalues) = length(self.main)
+post
+length(self.eigenvectors') = length(self.main) ∧
+∀i • 0 ≤ i < length(self.main) ⇒
+let μ = (self.realEigenvalues[length(self.main)-1] ≤ 0 ∧ self.realEigenvalues[0] > 0) ? (0.5 - self.realEigenvalues[length(self.main)-1]) : 0 in
+self.eigenvectors'[i] = findEigenvector(self, self.realEigenvalues[i] + μ, d, l) ∧
+||self.eigenvectors'[i]||₂ = 1
+Functional Scenario Form
+self.realEigenvalues[last] ≤ 0 && self.realEigenvalues[0] > 0 && μ = 0.5 - self.realEigenvalues[last] ∧ build LDLᵗ with shift μ into arrays d,l ∧ map i ↦ findEigenvector(self.realEigenvalues[i]+μ,d,l)
+or otherwise && μ = 0 ∧ build LDLᵗ with shift 0 into arrays d,l ∧ map i ↦ findEigenvector(self.realEigenvalues[i],d,l)
+end_process
+
+process findEigenvector(self: EigenDecompositionImpl, eigenvalue: real, d: seq(real), l: seq(real)) result: ArrayRealVector
+pre
+length(d) = length(self.main) ∧ length(l) = length(self.main) - 1
+post
+let m = length(self.main) in
+let v = result in
+||v||₂ = 1 ∧
+(self.transformer = null → v equals twisted bidiagonal solve in ℝᵐ) ∧
+(self.transformer ≠ null → v = self.transformer.getQ().operate(v₀) with v₀ the twisted solve)
+Functional Scenario Form
+perform stationaryQuotientDifferenceWithShift(d,l,eigenvalue) && perform progressiveQuotientDifferenceWithShift(d,l,eigenvalue) ∧
+choose r ∈ [0..m-1] minimizing |work[6r] + d[r]work[6r+9]/work[6r+10]| ∧
+propagate down: z_{i} = -work[6i+2]·z_{i+1} from i=r-1 to 0 with z_r=1 ∧
+propagate up: z_{i} = -work[6i-1]·z_{i-1} from i=r+1 to m-1 with z_r=1 ∧
+normalize z to unit 2-norm and set result = (self.transformer = null ? z : self.transformer.getQ().operate(z))
+end_process
+
+process stationaryQuotientDifferenceWithShift(self: EigenDecompositionImpl, d: seq(real), l: seq(real), lambda: real) result: void
+pre
+length(d) = length(self.main) ∧ length(l) = length(self.main) - 1 ∧ length(self.work) ≥ 6length(self.main)
+post
+let nM1 = length(d) - 1 in
+work'[6i] = s_i, work'[6i+1] = d_i + s_i, work'[6i+2] = l_i * d_i / (d_i + s_i) for i∈[0..nM1-1] ∧
+work'[6nM1] = s_{nM1} ∧ work'[6nM1+1] = d_{nM1} + s_{nM1}
+Functional Scenario Form
+initialize s₀ = -lambda && for i from 0 to nM1-1 compute dᵢ₊ = d[i] + sᵢ, lᵢ₊ = l[i]*d[i]/dᵢ₊, store (sᵢ,dᵢ₊,lᵢ₊) in work, then sᵢ₊₁ = l[i]*lᵢ₊*sᵢ - lambda
+end_process
+
+process progressiveQuotientDifferenceWithShift(self: EigenDecompositionImpl, d: seq(real), l: seq(real), lambda: real) result: void
+pre
+length(d) = length(self.main) ∧ length(l) = length(self.main) - 1 ∧ length(self.work) ≥ 6length(self.main)
+post
+let nM1 = length(d) - 1 in
+for i ∈ [0..nM1-1] placed backward in work:
+work'[6i+9] = π_{i+1}, work'[6*i+10] = d[i]l[i]l[i] + π_{i+1}, work'[6i+5] = l[i](d[i]/(d[i]*l[i]*l[i] + π_{i+1})) ∧
+work'[3] = π_0 ∧ work'[4] = π_0
+Functional Scenario Form
+initialize π_{nM1} = d[nM1] - lambda && for i from nM1-1 down to 0 set π_i = (π_{i+1} * (d[i]/(d[i]*l[i]*l[i] + π_{i+1}))) - lambda and store (π_{i+1}, d[i]*l[i]^2 + π_{i+1}, l[i]*d[i]/(d[i]*l[i]^2 + π_{i+1})) into work slots
+end_process
+
+end_module

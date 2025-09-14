@@ -1,0 +1,419 @@
+module SummaryStatistics
+var
+  n: long = 0
+
+process ctor_default() result: SummaryStatistics
+pre
+  true
+post
+  // all fields initialized as defaults above; Java default ctor does nothing
+  result' = this
+Functional Scenario Form
+  true && result' = this
+end_process
+
+process copy_ctor(original: SummaryStatistics) result: SummaryStatistics
+pre
+  original ≠ null
+post
+  // deep copy via copy(original, this) per Java constructor
+  // Here we capture effects consistent with provided copy(original,this)
+  n' = original.n and
+  // statistic impl pointers copy their results/state (abstracted)
+  sumImpl'.setResult(original.sumImpl.getResult()) and
+  sumsqImpl'.setResult(original.sumsqImpl.getResult()) and
+  minImpl'.setResult(original.minImpl.getResult()) and
+  maxImpl'.setResult(original.maxImpl.getResult()) and
+  sumLogImpl'.setResult(original.sumLogImpl.getResult()) and
+  geoMeanImpl'.setResult(original.geoMeanImpl.getResult()) and
+  meanImpl'.setResult(original.meanImpl.getResult()) and
+  varianceImpl'.setResult(original.varianceImpl.getResult()) and
+  result' = this
+Functional Scenario Form
+  original ≠ null && result' = this
+end_process
+
+process getSummary() result: StatisticalSummary
+pre
+  true
+post
+  result' = StatisticalSummaryValues(getMean(), getVariance(), getN(), getMax(), getMin(), getSum())
+Functional Scenario Form
+  true && result' = StatisticalSummaryValues(getMean(), getVariance(), getN(), getMax(), getMin(), getSum())
+end_process
+
+process addValue(value: double) result: Void
+pre
+  true
+post
+  sumImpl'.increment(value) and
+  sumsqImpl'.increment(value) and
+  minImpl'.increment(value) and
+  maxImpl'.increment(value) and
+  sumLogImpl'.increment(value) and
+  secondMoment'.increment(value) and
+  (meanImpl ≠ mean → meanImpl'.increment(value)) and
+  (varianceImpl ≠ variance → varianceImpl'.increment(value)) and
+  (geoMeanImpl ≠ geoMean → geoMeanImpl'.increment(value)) and
+  n' = n + 1
+Functional Scenario Form
+  true && n' = n + 1
+end_process
+
+process getN() result: long
+pre
+  true
+post
+  result' = n
+Functional Scenario Form
+  true && result' = n
+end_process
+
+process getSum() result: double
+pre
+  true
+post
+  result' = sumImpl.getResult()
+Functional Scenario Form
+  true && result' = sumImpl.getResult()
+end_process
+
+process getSumsq() result: double
+pre
+  true
+post
+  result' = sumsqImpl.getResult()
+Functional Scenario Form
+  true && result' = sumsqImpl.getResult()
+end_process
+
+process getMean() result: double
+pre
+  true
+post
+  result' = meanImpl.getResult()
+Functional Scenario Form
+  true && result' = meanImpl.getResult()
+end_process
+
+process getStandardDeviation() result: double
+pre
+  true
+post
+  (n = 0 → isNaN(result')) and
+  (n = 1 → result' = 0.0) and
+  (n > 1 → result' = FastMath.sqrt(getVariance()))
+Functional Scenario Form
+  n = 0 && isNaN(result') or
+  n = 1 && result' = 0.0 or
+  n > 1 && result' = FastMath.sqrt(getVariance())
+end_process
+
+process getVariance() result: double
+pre
+  true
+post
+  result' = varianceImpl.getResult()
+Functional Scenario Form
+  true && result' = varianceImpl.getResult()
+end_process
+
+process getPopulationVariance() result: double
+pre
+  true
+post
+  let pv = Variance(secondMoment) in
+    pv.setBiasCorrected(false) and
+    result' = pv.getResult()
+Functional Scenario Form
+  true && result' = Variance(secondMoment with biasCorrected=false).getResult()
+end_process
+
+process getMax() result: double
+pre
+  true
+post
+  result' = maxImpl.getResult()
+Functional Scenario Form
+  true && result' = maxImpl.getResult()
+end_process
+
+process getMin() result: double
+pre
+  true
+post
+  result' = minImpl.getResult()
+Functional Scenario Form
+  true && result' = minImpl.getResult()
+end_process
+
+process getGeometricMean() result: double
+pre
+  true
+post
+  result' = geoMeanImpl.getResult()
+Functional Scenario Form
+  true && result' = geoMeanImpl.getResult()
+end_process
+
+process getSumOfLogs() result: double
+pre
+  true
+post
+  result' = sumLogImpl.getResult()
+Functional Scenario Form
+  true && result' = sumLogImpl.getResult()
+end_process
+
+process getSecondMoment() result: double
+pre
+  true
+post
+  result' = secondMoment.getResult()
+Functional Scenario Form
+  true && result' = secondMoment.getResult()
+end_process
+
+process toString() result: String
+pre
+  true
+post
+  result' =
+    "SummaryStatistics:\n" +
+    "n: " + toString(getN()) + "\n" +
+    "min: " + toString(getMin()) + "\n" +
+    "max: " + toString(getMax()) + "\n" +
+    "mean: " + toString(getMean()) + "\n" +
+    "geometric mean: " + toString(getGeometricMean()) + "\n" +
+    "variance: " + toString(getVariance()) + "\n" +
+    "sum of squares: " + toString(getSumsq()) + "\n" +
+    "standard deviation: " + toString(getStandardDeviation()) + "\n" +
+    "sum of logs: " + toString(getSumOfLogs()) + "\n"
+Functional Scenario Form
+  true && startsWith(result', "SummaryStatistics:")
+end_process
+
+process clear() result: Void
+pre
+  true
+post
+  n' = 0 and
+  minImpl', maxImpl', sumImpl', sumLogImpl', sumsqImpl', geoMeanImpl', secondMoment' are cleared and
+  (meanImpl ≠ mean ⇒ meanImpl' is cleared) and
+  (varianceImpl ≠ variance ⇒ varianceImpl' is cleared)
+Functional Scenario Form
+  true && (n' = 0 and all statistic implementations cleared)
+end_process
+
+process equals(object: Object) result: Boolean
+pre
+  true
+post
+  if object = this then result' = true
+  else if not (object instanceof SummaryStatistics) then result' = false
+  else let stat = (SummaryStatistics) object in
+    result' = Precision.equalsIncludingNaN(stat.getGeometricMean(), getGeometricMean()) and
+              Precision.equalsIncludingNaN(stat.getMax(), getMax()) and
+              Precision.equalsIncludingNaN(stat.getMean(), getMean()) and
+              Precision.equalsIncludingNaN(stat.getMin(), getMin()) and
+              Precision.equalsIncludingNaN(stat.getN(), getN()) and
+              Precision.equalsIncludingNaN(stat.getSum(), getSum()) and
+              Precision.equalsIncludingNaN(stat.getSumsq(), getSumsq()) and
+              Precision.equalsIncludingNaN(stat.getVariance(), getVariance())
+Functional Scenario Form
+  object = this && result' = true or
+  object is not SummaryStatistics && result' = false or
+  object is SummaryStatistics && all statistics equal && result' = true
+end_process
+
+process hashCode() result: int
+pre
+  true
+post
+  result' = 31 + MathUtils.hash(getGeometricMean());
+  result' = result' * 31 + MathUtils.hash(getGeometricMean());
+  result' = result' * 31 + MathUtils.hash(getMax());
+  result' = result' * 31 + MathUtils.hash(getMean());
+  result' = result' * 31 + MathUtils.hash(getMin());
+  result' = result' * 31 + MathUtils.hash(getN());
+  result' = result' * 31 + MathUtils.hash(getSum());
+  result' = result' * 31 + MathUtils.hash(getSumsq());
+  result' = result' * 31 + MathUtils.hash(getVariance())
+Functional Scenario Form
+  true && result' computed from hash of all statistic values
+end_process
+
+process getSumImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = sumImpl
+Functional Scenario Form
+  true && result' = sumImpl
+end_process
+
+process setSumImpl(sumImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  sumImpl' = sumImpl
+Functional Scenario Form
+  n = 0 && sumImpl' = sumImpl
+end_process
+
+process getSumsqImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = sumsqImpl
+Functional Scenario Form
+  true && result' = sumsqImpl
+end_process
+
+process setSumsqImpl(sumsqImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  sumsqImpl' = sumsqImpl
+Functional Scenario Form
+  n = 0 && sumsqImpl' = sumsqImpl
+end_process
+
+process getMinImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = minImpl
+Functional Scenario Form
+  true && result' = minImpl
+end_process
+
+process setMinImpl(minImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  minImpl' = minImpl
+Functional Scenario Form
+  n = 0 && minImpl' = minImpl
+end_process
+
+process getMaxImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = maxImpl
+Functional Scenario Form
+  true && result' = maxImpl
+end_process
+
+process setMaxImpl(maxImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  maxImpl' = maxImpl
+Functional Scenario Form
+  n = 0 && maxImpl' = maxImpl
+end_process
+
+process getSumLogImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = sumLogImpl
+Functional Scenario Form
+  true && result' = sumLogImpl
+end_process
+
+process setSumLogImpl(sumLogImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  sumLogImpl' = sumLogImpl and geoMean'.sumLogImpl = sumLogImpl
+Functional Scenario Form
+  n = 0 && sumLogImpl' = sumLogImpl && geoMean'.sumLogImpl = sumLogImpl
+end_process
+
+process getGeoMeanImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = geoMeanImpl
+Functional Scenario Form
+  true && result' = geoMeanImpl
+end_process
+
+process setGeoMeanImpl(geoMeanImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  geoMeanImpl' = geoMeanImpl
+Functional Scenario Form
+  n = 0 && geoMeanImpl' = geoMeanImpl
+end_process
+
+process getMeanImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = meanImpl
+Functional Scenario Form
+  true && result' = meanImpl
+end_process
+
+process setMeanImpl(meanImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  meanImpl' = meanImpl
+Functional Scenario Form
+  n = 0 && meanImpl' = meanImpl
+end_process
+
+process getVarianceImpl() result: StorelessUnivariateStatistic
+pre
+  true
+post
+  result' = varianceImpl
+Functional Scenario Form
+  true && result' = varianceImpl
+end_process
+
+process setVarianceImpl(varianceImpl: StorelessUnivariateStatistic) result: Void
+pre
+  n = 0
+post
+  varianceImpl' = varianceImpl
+Functional Scenario Form
+  n = 0 && varianceImpl' = varianceImpl
+end_process
+
+process checkEmpty() result: Void
+pre
+  true
+post
+  if n > 0 then throw MathIllegalStateException else true
+Functional Scenario Form
+  n > 0 && exception thrown or
+  n = 0 && true
+end_process
+
+process copy() result: SummaryStatistics
+pre
+  true
+post
+  result' = new SummaryStatistics() and copy(this, result')
+Functional Scenario Form
+  true && result' is deep copy of this
+end_process
+
+process copy(source: SummaryStatistics, dest: SummaryStatistics) result: Void
+pre
+  source ≠ null and dest ≠ null
+post
+  dest fields updated to match source, with correct deep/shallow copy semantics for embedded statistics
+Functional Scenario Form
+  source and dest not null && dest updated to match source with copy rules
+end_process
+
+
+end_module

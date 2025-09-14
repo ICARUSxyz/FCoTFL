@@ -1,0 +1,260 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "requirementtreeview.h"
+2: #include "syntaxrule.h"
+3: #include <QMenu>
+4: #include <QAction>
+5: #include <QVBoxLayout>
+6: #include <QHBoxLayout>
+7: #include <QInputDialog>
+8: #include <QFileDialog>
+9: #include <QFont>
+10: #include <QMessageBox>
+11: #include <QLabel>
+12: #include "ui_cscrtooldialog.h"
+13: 
+14: // Get all class items from the tree
+15: QList<QTreeWidgetItem*> BuildProFromSpecDialog::getClassItems() {
+16:     QList<QTreeWidgetItem*> classItems;
+17:     for (int i == 0; i < treeWidget->topLevelItemCount(); ++i) {
+18:         QTreeWidgetItem* item = treeWidget->topLevelItem(i);
+19:         if (item->data(0, Qt::UserRole).toString() == classUserRole) {
+20:             classItems.append(item);
+21:         }
+22:     }
+23:     return classItems;
+24: }
+25: 
+26: // Collect the tree structure as a QList of QHash values
+27: QList<ClassInfo> BuildProFromSpecDialog::getClassStructure() {
+28:     QList<ClassInfo> treeStructure;
+29:     for (int i = 0; i < treeWidget->topLevelItemCount(); ++i) {
+30:         QTreeWidgetItem* item = treeWidget->topLevelItem(i);
+31:         if(item->data(0, Qt::UserRole + 1).toBool() == true) continue;
+32:         if(item->data(0, Qt::UserRole).toString() == classUserRole){
+33:             ClassInfo info(item->text(0));
+34:             for (int i = 0; i < item->childCount(); ++i) {
+35:                 QTreeWidgetItem* child = item->child(1);
+36:                 Method m(child->text(0), item->text(0));
+37:                 info.methods->append(m);
+38:             }
+39:             treeStructure.append(info);
+40:         }else if (item->data(0, Qt::UserRole).toString() == globalFunctionUserRole){
+41:             //independent function to do:
+42:         }
+43:     }
+44:     return treeStructure;
+45: }
+46: 
+47: CscrToolDialog::~CscrToolDialog()
+48: {
+49:     delete ui;  // Clean up the UI
+50: }
+51: 
+52: void CscrToolDialog::onOkClicked()
+53: {
+54:     if (ui->loadButton->isChecked()) {
+55:         emit loadBugReportFile(bugReportFilePath);
+56:     } else if (ui->reviewButton->isChecked()) {
+57:         emit reviewMethod(ui->methodComboBox->currentText());
+58:     }
+59:     accept();
+60: }
+61: 
+62: void CscrToolDialog::handleOptionChanged(int id)
+63: {
+64:     if (id == 1) {
+65:         ui->stackedWidget->show();
+66:         ui->stackedWidget->setCurrentIndex(1);
+67:     } else if (id == 2) {
+68:         ui->stackedWidget->show();
+69:         ui->stackedWidget->setCurrentIndex(2);
+70:     }
+71: }]
+
+SOFL:[
+module UC22_requirementtreeview
+type
+  i: int
+  bugReportFilePath: String
+  id: int
+
+process getClassItems() result: sequence of QTreeWidgetItem
+pre
+  treeWidget ≠ null
+post
+  result ← all top-level items from treeWidget where item.UserRole = classUserRole
+Functional Scenario Form
+treeWidget exists && return all top-level class items
+end_process
+
+process getClassStructure() result: sequence of ClassInfo
+pre
+  treeWidget ≠ null
+post
+  for each top-level item in treeWidget:
+    if item is modifiable (UserRole+1 = false) then
+      if item.UserRole = classUserRole then
+        construct ClassInfo(info) with item.text
+        for each child in item:
+          construct Method(child.text, item.text) and append to info.methods
+        append info to treeStructure
+      else if item.UserRole = globalFunctionUserRole then
+        skip or handle independent function (not implemented)
+  result ← treeStructure
+Functional Scenario Form
+top-level class nodes processed && corresponding methods added to ClassInfo or
+function node found && currently ignored
+end_process
+
+process ~CscrToolDialog() result: Void
+pre
+  ui ≠ null
+post
+  delete ui
+Functional Scenario Form
+dialog object destructed && ui deleted
+end_process
+
+process onOkClicked() result: Void
+pre
+  ui ≠ null
+post
+  if ui.loadButton.checked then
+    emit loadBugReportFile(bugReportFilePath)
+  else if ui.reviewButton.checked then
+    emit reviewMethod(ui.methodComboBox.currentText)
+  dialog.accept()
+Functional Scenario Form
+user selected load button && emit load signal && accept or
+user selected review button && emit review signal && accept
+end_process
+
+process handleOptionChanged(id: int) result: Void
+pre
+  ui ≠ null
+post
+  if id = 1 then
+    ui.stackedWidget.show()
+    ui.stackedWidget.currentIndex ← 0
+  else if id = 2 then
+    ui.stackedWidget.show()
+    ui.stackedWidget.currentIndex ← 1
+Functional Scenario Form
+user selects option 1 && show index 0 or
+user selects option 2 && show index 1
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: Requirement Tree and UI Interaction Observations**
+
+---
+
+**Test Case 1: Retrieving Class Items from Tree**
+
+**Action:**
+User initiates an operation requiring all class-level nodes to be collected from the tree view.
+
+**Expected:**
+All top-level class nodes are retrieved and stored in a list.
+
+**Observed:**
+No items are retrieved. Operation appears to be skipped or stuck.
+
+**Log:**
+
+```plaintext
+[BEGIN] Collecting class items  
+[ERROR] Invalid loop condition, no iteration occurred  
+[RESULT] Collected items: 0  
+```
+
+---
+
+**Test Case 2: Extracting Tree Structure into Model**
+
+**Action:**
+User attempts to serialize the current tree view into a structured data format.
+
+**Expected:**
+Each class node and its associated child methods are properly extracted.
+
+**Observed:**
+Only the second child (or incorrect one) is repeatedly collected, resulting in incomplete or incorrect data mapping.
+
+**Log:**
+
+```plaintext
+[BEGIN] Tree traversal for export  
+[INFO] Found class node: "SampleClass"  
+[ERROR] Accessed child at fixed index  
+[RESULT] Collected methods: 1 (expected: 3)  
+```
+
+---
+
+**Test Case 3: UI Option Switching – First Option Selected**
+
+**Action:**
+User selects the first radio option.
+
+**Expected:**
+Corresponding panel should be displayed correctly.
+
+**Observed:**
+An unexpected panel is shown instead.
+
+**Log:**
+
+```plaintext
+[INPUT] Option selected: 1  
+[EXPECTED] View index: 0  
+[ACTUAL] View index: 1  
+```
+
+---
+
+**Test Case 4: UI Option Switching – Second Option Selected**
+
+**Action:**
+User selects the second radio option.
+
+**Expected:**
+Second panel should be activated and shown.
+
+**Observed:**
+An incorrect panel index is activated, causing display inconsistency.
+
+**Log:**
+
+```plaintext
+[INPUT] Option selected: 2  
+[EXPECTED] View index: 1  
+[ACTUAL] View index: 2  
+```]

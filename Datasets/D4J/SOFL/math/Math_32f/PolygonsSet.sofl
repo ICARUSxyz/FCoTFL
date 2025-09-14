@@ -1,0 +1,347 @@
+module PolygonsSet
+
+// Constructors
+process PolygonsSet() result: PolygonsSet
+post 
+  super() ∧
+  result.vertices = null
+Functional Scenario Form 
+emptyPolygonCreated
+end_process
+
+process PolygonsSet(tree: BSPTree<Euclidean2D>) result: PolygonsSet
+pre 
+  tree ≠ null
+post 
+  super(tree) ∧
+  result.vertices = null
+Functional Scenario Form 
+fromTreeConstructed || 
+nullTreeException
+end_process
+
+process PolygonsSet(boundary: Collection<SubHyperplane<Euclidean2D>>) result: PolygonsSet
+pre 
+  boundary ≠ null
+post 
+  super(boundary) ∧
+  result.vertices = null
+Functional Scenario Form 
+fromBoundaryConstructed || 
+nullBoundaryException
+end_process
+
+process PolygonsSet(xMin: real, xMax: real, yMin: real, yMax: real) result: PolygonsSet
+pre 
+  xMin < xMax ∧ yMin < yMax
+post 
+  boundary = [
+      new Line(new Vector2D(xMin, yMin), new Vector2D(xMax, yMin)),
+      new Line(new Vector2D(xMax, yMin), new Vector2D(xMax, yMax)),
+      new Line(new Vector2D(xMax, yMax), new Vector2D(xMin, yMax)),
+      new Line(new Vector2D(xMin, yMax), new Vector2D(xMin, yMin))
+  ] ∧
+  super(boundary) ∧
+  result.vertices = null
+Functional Scenario Form 
+boxPolygonCreated || 
+invalidBoundsException
+end_process
+
+// Builder method
+process buildNew(tree: BSPTree<Euclidean2D>) result: PolygonsSet
+pre 
+  tree ≠ null
+post 
+  result = new PolygonsSet(tree)
+Functional Scenario Form 
+newInstanceBuilt
+end_process
+
+// Geometrical properties computation
+process computeGeometricalProperties()
+post 
+  v = getVertices() ∧
+  
+  if v.length = 0 then
+      tree = getTree(false) ∧
+      if tree.getCut() = null ∧ (Boolean)tree.getAttribute() then
+          setSize(Double.POSITIVE_INFINITY) ∧
+          setBarycenter(Vector2D.NaN)
+      else
+          setSize(0) ∧
+          setBarycenter(new Vector2D(0, 0))
+  else if v[0][0] = null then
+      setSize(Double.POSITIVE_INFINITY) ∧
+      setBarycenter(Vector2D.NaN)
+  else
+      sum = 0 ∧ sumX = 0 ∧ sumY = 0 ∧
+      for each loop in v •
+          x1 = loop[loop.length - 1].getX() ∧
+          y1 = loop[loop.length - 1].getY() ∧
+          for each point in loop •
+              x0 = x1 ∧ y0 = y1 ∧
+              x1 = point.getX() ∧ y1 = point.getY() ∧
+              factor = x0*y1 - y0*x1 ∧
+              sum = sum + factor ∧
+              sumX = sumX + factor*(x0 + x1) ∧
+              sumY = sumY + factor*(y0 + y1)
+      if sum < 0 then
+          setSize(Double.POSITIVE_INFINITY) ∧
+          setBarycenter(Vector2D.NaN)
+      else
+          setSize(sum/2) ∧
+          setBarycenter(new Vector2D(sumX/(3*sum), sumY/(3*sum)))
+Functional Scenario Form 
+wholeSpaceInfinite && propertiesSet || 
+emptyRegion && zeroProperties || 
+openLoopInfinite && infiniteSet || 
+closedPolygonFinite && sizeAndBarycenterComputed || 
+negativeSumInfinite && infiniteSet
+end_process
+
+// Vertex extraction algorithm
+process getVertices() result: Vector2D[][]
+post 
+  (this.vertices ≠ null ⇒ result = this.vertices.clone()) ∧
+  (this.vertices = null ⇒ 
+      tree = getTree(false) ∧
+      (tree.getCut() = null ⇒ 
+          result = new Vector2D[0][]) ∧
+      (tree.getCut() ≠ null ⇒ 
+          visitor = new SegmentsBuilder() ∧
+          getTree(true).visit(visitor) ∧
+          sorted = visitor.getSorted() ∧
+          loops = new ArrayList<List<ComparableSegment>>() ∧
+          while ¬sorted.isEmpty() •
+              node = sorted.getSmallest() ∧
+              loop = followLoop(node, sorted) ∧
+              (loop ≠ null ⇒ loops.add(loop)) ∧
+          
+          result = new Vector2D[loops.size()][] ∧
+          i = 0 ∧
+          for each loop in loops •
+              (loop.size() < 2 ⇒ 
+                  line = loop.get(0).getLine() ∧
+                  result[i] = new Vector2D[] {
+                      null,
+                      line.toSpace(new Vector1D(-Float.MAX_VALUE)),
+                      line.toSpace(new Vector1D(+Float.MAX_VALUE))
+                  } ∧
+                  i = i + 1
+              ) ∨
+              (loop.size() ≥ 2 ∧ loop.get(0).getStart() = null ⇒ 
+                  array = new Vector2D[loop.size() + 2] ∧
+                  j = 0 ∧
+                  for each segment in loop •
+                      (j = 0 ⇒ 
+                          x = segment.getLine().toSubSpace(segment.getEnd()).getX() ∧
+                          x = x - FastMath.max(1.0, FastMath.abs(x / 2)) ∧
+                          array[j] = null ∧
+                          array[j+1] = segment.getLine().toSpace(new Vector1D(x)) ∧
+                          j = j + 2
+                      ) ∧
+                      (j < array.length - 1 ⇒ 
+                          array[j] = segment.getEnd() ∧
+                          j = j + 1
+                      ) ∧
+                      (j = array.length - 1 ⇒ 
+                          x = segment.getLine().toSubSpace(segment.getStart()).getX() ∧
+                          x = x + FastMath.max(1.0, FastMath.abs(x / 2)) ∧
+                          array[j] = segment.getLine().toSpace(new Vector1D(x)) ∧
+                          j = j + 1
+                      ) ∧
+                  result[i] = array ∧
+                  i = i + 1
+              ) ∨
+              (loop.size() ≥ 2 ∧ loop.get(0).getStart() ≠ null ⇒ 
+                  array = new Vector2D[loop.size()] ∧
+                  j = 0 ∧
+                  for each segment in loop •
+                      array[j] = segment.getStart() ∧
+                      j = j + 1 ∧
+                  result[i] = array ∧
+                  i = i + 1
+              )
+          ) ∧
+          this.vertices = result.clone()
+      )
+  )
+Functional Scenario Form 
+verticesCached && clonedReturned || 
+noCutTree && emptyArrayReturned || 
+singleInfiniteLine && nullTerminatedArray || 
+openLoopWithPoints && extendedArray || 
+closedLoop && compactArray
+end_process
+
+// Loop following algorithm
+process followLoop(node: AVLTree.Node, sorted: AVLTree) result: List<ComparableSegment>
+pre 
+  node ≠ null ∧ sorted ≠ null
+post 
+  loop = new ArrayList<ComparableSegment>() ∧
+  segment = node.getElement() ∧
+  loop.add(segment) ∧
+  globalStart = segment.getStart() ∧
+  end = segment.getEnd() ∧
+  node.delete() ∧
+  open = (segment.getStart() = null) ∧
+  
+  while (end ≠ null) ∧ (open ∨ globalStart.distance(end) > 1e-10) •
+      selectedNode = null ∧
+      selectedSegment = null ∧
+      selectedDistance = Double.POSITIVE_INFINITY ∧
+      lowerLeft = new ComparableSegment(end, -1e-10, -1e-10) ∧
+      upperRight = new ComparableSegment(end, +1e-10, +1e-10) ∧
+      n = sorted.getNotSmaller(lowerLeft) ∧
+      while n ≠ null ∧ n.getElement().compareTo(upperRight) ≤ 0 •
+          segment = n.getElement() ∧
+          distance = end.distance(segment.getStart()) ∧
+          (distance < selectedDistance ⇒ 
+              selectedNode = n ∧
+              selectedSegment = segment ∧
+              selectedDistance = distance) ∧
+          n = n.getNext() ∧
+      (selectedDistance > 1e-10 ⇒ 
+          result = null ∧
+          break) ∧
+      (selectedDistance ≤ 1e-10 ⇒ 
+          end = selectedSegment.getEnd() ∧
+          loop.add(selectedSegment) ∧
+          selectedNode.delete()) ∧
+  
+  (¬open ∧ loop.size() = 2 ⇒ result = null) ∧
+  (¬open ∧ end = null ⇒ throw MathInternalError) ∧
+  result = loop
+Functional Scenario Form 
+openLoopFollowed && loopReturned || 
+closedLoopFollowed && loopReturned || 
+degeneratedLoop && nullReturned || 
+connectionFailure && internalErrorThrown
+end_process
+
+// Comparable segment implementation
+process ComparableSegment(start: Vector2D, end: Vector2D, line: Line) result: ComparableSegment
+post 
+  super(start, end, line) ∧
+  (start ≠ null ⇒ 
+      sortingKey = new OrderedTuple(start.getX(), start.getY())) ∧
+  (start = null ⇒ 
+      sortingKey = new OrderedTuple(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY))
+Functional Scenario Form 
+normalSegmentCreated || 
+infiniteSegmentCreated
+end_process
+
+process ComparableSegment(start: Vector2D, dx: real, dy: real) result: ComparableSegment
+post 
+  super(null, null, null) ∧
+  sortingKey = new OrderedTuple(start.getX() + dx, start.getY() + dy)
+Functional Scenario Form 
+searchKeySegmentCreated
+end_process
+
+process compareTo(o: ComparableSegment) result: int
+post 
+  result = this.sortingKey.compareTo(o.sortingKey)
+Functional Scenario Form 
+comparisonPerformed
+end_process
+
+process equals(other: Object) result: bool
+post 
+  (this == other ⇒ result = true) ∧
+  (other instanceof ComparableSegment ⇒ 
+      result = this.compareTo((ComparableSegment)other) = 0) ∧
+  result = false
+Functional Scenario Form 
+sameReferenceTrue || 
+equalSegmentsTrue || 
+differentSegmentsFalse
+end_process
+
+process hashCode() result: int
+post 
+  startHash = this.getStart().hashCode() ∧
+  endHash = this.getEnd().hashCode() ∧
+  lineHash = this.getLine().hashCode() ∧
+  keyHash = this.sortingKey.hashCode() ∧
+  result = startHash ^ endHash ^ lineHash ^ keyHash
+Functional Scenario Form 
+hashCodeComputed
+end_process
+
+// Segments builder for BSP tree traversal
+process SegmentsBuilder() result: SegmentsBuilder
+post 
+  result.sorted = new AVLTree<ComparableSegment>()
+Functional Scenario Form 
+builderInitialized
+end_process
+
+process visitOrder(node: BSPTree<Euclidean2D>) result: Order
+post 
+  result = Order.MINUS_SUB_PLUS
+Functional Scenario Form 
+visitOrderReturned
+end_process
+
+process visitInternalNode(node: BSPTree<Euclidean2D>)
+pre 
+  node ≠ null
+post 
+  attribute = (BoundaryAttribute<Euclidean2D>)node.getAttribute() ∧
+  (attribute ≠ null ⇒ 
+      (attribute.getPlusOutside() ≠ null ⇒ 
+          addContribution(attribute.getPlusOutside(), false)) ∧
+      (attribute.getPlusInside() ≠ null ⇒ 
+          addContribution(attribute.getPlusInside(), true))
+  )
+Functional Scenario Form 
+internalNodeProcessed || 
+nullAttributeSkipped
+end_process
+
+process visitLeafNode(node: BSPTree<Euclidean2D>)
+post 
+  // No operation
+Functional Scenario Form 
+leafNodeSkipped
+end_process
+
+// Boundary facet processing
+process addContribution(sub: SubHyperplane<Euclidean2D>, reversed: bool)
+pre 
+  sub ≠ null
+post 
+  absSub = (AbstractSubHyperplane<Euclidean2D, Euclidean1D>)sub ∧
+  line = (Line)sub.getHyperplane() ∧
+  intervals = ((IntervalsSet)absSub.getRemainingRegion()).asList() ∧
+  for each interval in intervals •
+      lower = interval.getLower() ∧
+      upper = interval.getUpper() ∧
+      start = Double.isInfinite(lower) ? null : (Vector2D)line.toSpace(new Vector1D(lower)) ∧
+      end = Double.isInfinite(upper) ? null : (Vector2D)line.toSpace(new Vector1D(upper)) ∧
+      (reversed ⇒ 
+          segment = new ComparableSegment(end, start, line.getReverse()) ∧
+          sorted.insert(segment)
+      ) ∨
+      (¬reversed ⇒ 
+          segment = new ComparableSegment(start, end, line) ∧
+          sorted.insert(segment)
+      )
+Functional Scenario Form 
+facetAddedReversed || 
+facetAddedNormal || 
+infiniteIntervalHandled
+end_process
+
+process getSorted() result: AVLTree<ComparableSegment>
+post 
+  result = this.sorted
+Functional Scenario Form 
+sortedSegmentsReturned
+end_process
+
+end_module

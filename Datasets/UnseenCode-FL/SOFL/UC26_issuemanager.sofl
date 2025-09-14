@@ -1,0 +1,68 @@
+module UC26_issuemanager
+
+process IssueManager(parent: QObject, _proFileName: QString) result: IssueManager
+pre
+  true
+post
+  result.proFileName = _proFileName ∧
+  result.undefinedIssueList = <> ∧
+  result.unspecifiedIssueList = <>
+Functional Scenario Form
+(true) && (initialize project file name and create empty issue lists)
+end_process
+
+process appendUndefinedIssue(list: sequence of ClassUndefinedSyntaxIssue) result: void
+pre
+  true
+post
+  ∀i ∈ [0..|list|-1]: undefinedIssueList' = undefinedIssueList ⧺ <shared_ptr(list[i])>
+Functional Scenario Form
+(true) && (append shared_ptr copies of ClassUndefinedSyntaxIssue to undefinedIssueList)
+end_process
+
+process appendUnspecifiedIssue(list2: sequence of ClassMemberUnspecifiedIssue) result: void
+pre
+  true
+post
+  ∀i ∈ [0..|list2|-1]: unspecifiedIssueList' = unspecifiedIssueList ⧺ <shared_ptr(list2[i])>
+Functional Scenario Form
+(true) && (append shared_ptr copies of ClassMemberUnspecifiedIssue to unspecifiedIssueList)
+end_process
+
+process getUndefinedIssueList() result: sequence of shared_ptr(ClassUndefinedSyntaxIssue)
+pre
+  true
+post
+  result = undefinedIssueList
+Functional Scenario Form
+(true) && (return undefinedIssueList)
+end_process
+
+process getUnspecifiedIssueList() result: sequence of shared_ptr(ClassMemberUnspecifiedIssue)
+pre
+  true
+post
+  result = unspecifiedIssueList
+Functional Scenario Form
+(true) && (return unspecifiedIssueList)
+end_process
+
+process clearUndefinedIssueList() result: void
+pre
+  true
+post
+  undefinedIssueList' = <>
+Functional Scenario Form
+(true) && (clear undefinedIssueList)
+end_process
+
+process clearUnspecifiedIssueList() result: void
+pre
+  true
+post
+  unspecifiedIssueList' = <>
+Functional Scenario Form
+(true) && (clear unspecifiedIssueList)
+end_process
+
+end_module

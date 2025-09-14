@@ -1,0 +1,27 @@
+Bug Report: TemplateSelector – addTemplateBlock
+
+Test Input:
+
+```cpp
+TemplateSelector selector;
+selector.addTemplateBlock("Demo", "/* Comment */");
+selector.exec();
+```
+
+Observed Behavior:
+
+* Title text appears unformatted (not bold).
+* Button label shows typo: “Edit Templat”.
+* Compilation fails due to lambda capture issue.
+
+Expected Behavior:
+
+* Title is displayed in bold font.
+* Button labeled correctly as “Edit Template”.
+* Lambda captures required variables and compiles successfully.
+
+Actual Behavior:
+
+* QLabel displays raw text without bold formatting.
+* Button label has typo.
+* Error: `this` is not captured properly by lambda; compilation fails.

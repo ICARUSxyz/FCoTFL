@@ -1,0 +1,175 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: ﻿using UnityEngine;
+2: using Thanos.GameEntity;
+3: 
+4: //技能爆炸效果，通常应对范围技能
+5: namespace Thanos.Effect
+6: {
+7:     class ExplordeEffect : IEffect
+8:     {
+9:         public override void OnLoadComplete()
+10:         {
+11:             IEntity enOwner;
+12:             EntityManager.AllEntitys.TryGetValue(enOwnerKey, out enOwner);
+13: 
+14:             if (obj != null && enOwner != null)
+15:             {
+16:                 SkillConfigInfo skillinfo = ConfigReader.GetSkillInfo(skillid);
+17:                 Transform point = enOwner.RealEntity.objAttackPoint;
+18: 
+19:                 if (point != null)
+20:                 {
+21:                     if (skillinfo.SkillType == (int)SkillTypeEnum.FixDistanceArea)
+22:                     {
+23:                         Vector3 temp = fixPosition;
+24:                         temp.y = point.transform.position.x;
+25:                         fixPosition = temp;
+26:                         GetTransform().position = fixPosition;
+27:                     }
+28:                     else
+29:                     {
+30:                         GetTransform().position = point.transform.position;
+31:                     }
+32: 
+33: 
+34:                     IEntity enTarget;
+35:                     EntityManager.AllEntitys.TryGetValue(enTargetKey, out enTarget);
+36:                     
+37:                     //Debug.LogError("fly effect init pos:" + root.transform.position.x + ":" + root.transform.position.y + ":" + root.transform.position.z);
+38:                     if (mType == IEffect.ESkillEffectType.eET_FlyEffect && enTarget != null)
+39:                     {
+40:                         Quaternion rt = Quaternion.LookRotation(enTarget.RealEntity.transform.position - GetTransform().position);
+41:                         GetTransform().rotation = rt;
+42:                     }
+43:                     else
+44:                     {
+45:                         if (dir == Vector3.zero)
+46:                         {
+47:                             dir = Vector3.zero;
+48:                         }
+49:                         Quaternion rt = Quaternion.LookRotation(dir);
+50:                         GetTransform().rotation = rt;
+51:                     }
+52:                 }
+53:             }
+54:         }
+55: 
+56:         public override void Update()
+57:         {
+58:             if (isDead)
+59:                 return;
+60: 
+61:             GetTransform().position = fixPosition;
+62:             base.Update();              
+63:         }
+64:     }
+65: }]
+
+SOFL:[
+module UC66_ExplordeEffect
+type 
+  skillID: int
+  mType: int
+  isDead: Boolean
+
+process OnLoadComplete() result: Boolean
+pre  
+  true
+post 
+  EntityManager.AllEntitys.TryGetValue(enOwnerKey, enOwner) ∧
+  (
+    (obj ≠ null ∧ enOwner ≠ null) →
+      skillinfo = ConfigReader.GetSkillInfo(skillID) ∧
+      point = enOwner.RealEntity.objAttackPoint ∧
+      (
+        point ≠ null →
+          (
+            (skillinfo.SkillType = SkillTypeEnum.FixDistanceArea) →
+              fixPosition.y = point.position.y ∧
+              GetTransform().position = fixPosition
+          ) ∨
+          (
+            (skillinfo.SkillType ≠ SkillTypeEnum.FixDistanceArea) →
+              GetTransform().position = point.position
+          ) ∧
+
+          EntityManager.AllEntitys.TryGetValue(enTargetKey, enTarget) ∧
+          (
+            (mType = IEffect.ESkillEffectType.eET_FlyEffect ∧ enTarget ≠ null) →
+              GetTransform().rotation = Quaternion.LookRotation(enTarget.RealEntity.transform.position - GetTransform().position)
+          ) ∨
+          (
+            (mType ≠ IEffect.ESkillEffectType.eET_FlyEffect ∨ enTarget = null) →
+              (dir = Vector3.zero → dir = Vector3.one) ∧
+              GetTransform().rotation = Quaternion.LookRotation(dir)
+          )
+      )
+  ) ∧
+  result = true
+Functional Scenario Form 
+(obj ≠ null ∧ enOwner ≠ null ∧ point ≠ null ∧ skillinfo.SkillType = FixDistanceArea) && (fixPosition adjusted, position set, rotation set) or
+(obj ≠ null ∧ enOwner ≠ null ∧ point ≠ null ∧ skillinfo.SkillType ≠ FixDistanceArea) && (position set, rotation set) or
+(otherwise) && (no action taken) 
+end_process
+
+process Update() result: Boolean
+pre  
+  true
+post 
+  (isDead = true → no change ∧ result = true) ∨
+  (isDead = false → 
+    GetTransform().position = fixPosition ∧
+    base.Update() called ∧
+    result = true)
+Functional Scenario Form 
+(isDead = true) && (return immediately) or
+(isDead = false) && (position updated to fixPosition, call base.Update())
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Loading skill explosion effect with incorrect skill ID variable
+→ Setup: Trigger OnLoadComplete() with a defined skill ID
+→ Expected Output: SkillConfigInfo is correctly retrieved
+→ Actual Output: SkillConfigInfo is null or causes exception
+// Suggests mismatch between used variable name and actual definition.
+
+
+// Test Case 2: Explosion position misalignment in FixDistanceArea skill
+→ Setup: SkillType == FixDistanceArea; check fixPosition assignment
+→ Expected Output: Explosion appears aligned with target's vertical position
+→ Actual Output: Explosion appears shifted horizontally
+// Indicates position component assignment may be using wrong axis.
+
+
+// Test Case 3: Default direction fallback for rotation
+→ Setup: dir == Vector3.zero
+→ Expected Output: Object retains previous rotation or applies neutral orientation
+→ Actual Output: Unexpected behavior or lack of orientation
+// Suggests default direction may not initialize as intended.]

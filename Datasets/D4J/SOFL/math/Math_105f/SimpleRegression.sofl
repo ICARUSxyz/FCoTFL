@@ -1,0 +1,229 @@
+module SimpleRegression
+type
+sumX: Real
+sumXX: Real
+sumY: Real
+sumYY: Real
+sumXY: Real
+n: Integer
+xbar: Real
+ybar: Real
+
+process ctor() // default constructor
+pre
+true
+post
+sumX' = 0 ∧ sumXX' = 0 ∧ sumY' = 0 ∧ sumYY' = 0 ∧ sumXY' = 0 ∧ n' = 0
+∧ xbar' = 0 ∧ ybar' = 0
+Functional Scenario Form
+always && state initialized to zeros
+end_process
+
+process addData(x: Real, y: Real)
+pre
+true
+post
+if n = 0 then
+xbar' = x ∧ ybar' = y
+∧ sumXX' = 0 ∧ sumYY' = 0 ∧ sumXY' = 0
+else
+let dx = x − xbar, dy = y − ybar, nf = n, nf1 = n + 1 in
+sumXX' = sumXX + dxdx(nf / nf1)
+∧ sumYY' = sumYY + dydy(nf / nf1)
+∧ sumXY' = sumXY + dxdy(nf / nf1)
+∧ xbar' = xbar + dx / nf1
+∧ ybar' = ybar + dy / nf1
+fi
+∧ sumX' = sumX + x ∧ sumY' = sumY + y ∧ n' = n + 1
+Functional Scenario Form
+n=0 && xbar'=x ∧ ybar'=y ∧ sumXX'=0 ∧ sumYY'=0 ∧ sumXY'=0 ∧ sumX'=sumX+x ∧ sumY'=sumY+y ∧ n'=n+1
+n>0 && sumXX'=sumXX+dx^2*(n/(n+1)) ∧ sumYY'=sumYY+dy^2*(n/(n+1)) ∧ sumXY'=sumXY+dxdy(n/(n+1)) ∧ xbar'=xbar+dx/(n+1) ∧ ybar'=ybar+dy/(n+1) ∧ sumX'=sumX+x ∧ sumY'=sumY+y ∧ n'=n+1
+end_process
+
+process addDataBatch(data: Seq<Seq<Real>>) // each item is [x,y]
+pre
+∀p∈data • |p|=2
+post
+// sequential fold equivalent to applying addData to each pair in order
+state' = foldl(addData, state, data)
+Functional Scenario Form
+data=⟨⟩ && state' = state
+data≠⟨⟩ && state' = addData(..addData(addData(state,d0),d1)..,d_k)
+end_process
+
+process clear()
+pre
+true
+post
+sumX' = 0 ∧ sumXX' = 0 ∧ sumY' = 0 ∧ sumYY' = 0 ∧ sumXY' = 0 ∧ n' = 0
+∧ xbar' = 0 ∧ ybar' = 0
+Functional Scenario Form
+always && all sums reset to 0 and n'=0
+end_process
+
+process getN() result: Integer
+pre
+true
+post
+result = n
+Functional Scenario Form
+always && result=n
+end_process
+
+process getSlope() result: Real
+pre
+true
+post
+(n < 2 ∨ |sumXX| < MIN_VAR) ⇒ result = NaN
+∧ (n ≥ 2 ∧ |sumXX| ≥ MIN_VAR) ⇒ result = sumXY / sumXX
+Functional Scenario Form
+n<2 or |sumXX|<MIN_VAR && result=NaN
+n≥2 and |sumXX|≥MIN_VAR && result=sumXY/sumXX
+end_process
+
+process getIntercept() result: Real
+pre
+true
+post
+let b1 = (if n<2 ∨ |sumXX|<MIN_VAR then NaN else sumXY/sumXX) in
+result = (sumY − b1*sumX) / n
+Functional Scenario Form
+slope=NaN || n=0 && result=NaN
+slope finite && result=(sumY−slope·sumX)/n
+end_process
+
+process predict(x: Real) result: Real
+pre
+true
+post
+let b1 = (if n<2 ∨ |sumXX|<MIN_VAR then NaN else sumXY/sumXX),
+a = (sumY − b1sumX)/n
+in result = a + b1x
+Functional Scenario Form
+slope=NaN || n=0 && result=NaN
+slope finite && result=intercept + slope*x
+end_process
+
+process getSumSquaredErrors() result: Real
+pre
+true
+post
+result = max(0, sumYY − (sumXY*sumXY)/sumXX)
+Functional Scenario Form
+always && result=max(0, sumYY − (sumXY^2)/sumXX)
+end_process
+
+process getTotalSumSquares() result: Real
+pre
+true
+post
+(n < 2) ⇒ result = NaN
+∧ (n ≥ 2) ⇒ result = sumYY
+Functional Scenario Form
+n<2 && result=NaN
+n≥2 && result=sumYY
+end_process
+
+process getRegressionSumSquares() result: Real
+pre
+true
+post
+let b1 = (if n<2 ∨ |sumXX|<MIN_VAR then NaN else sumXY/sumXX) in
+result = b1b1sumXX
+Functional Scenario Form
+slope=NaN && result=NaN
+slope finite && result=slope^2 * sumXX
+end_process
+
+process getMeanSquareError() result: Real
+pre
+true
+post
+(n < 3) ⇒ result = NaN
+∧ (n ≥ 3) ⇒ result = getSumSquaredErrors() / (n − 2)
+Functional Scenario Form
+n<3 && result=NaN
+n≥3 && result=SSE/(n−2)
+end_process
+
+process getRSquare() result: Real
+pre
+true
+post
+let ssto = (if n<2 then NaN else sumYY),
+sse = max(0, sumYY − (sumXY*sumXY)/sumXX)
+in result = (ssto − sse) / ssto
+Functional Scenario Form
+n<2 && result=NaN
+n≥2 && result=(sumYY − SSE)/sumYY
+end_process
+
+process getR() result: Real
+pre
+true
+post
+let b1 = (if n<2 ∨ |sumXX|<MIN_VAR then NaN else sumXY/sumXX),
+r2 = getRSquare()
+in result = (if isNaN(b1) ∨ isNaN(r2) then NaN else (sign(b1) * sqrt(r2)))
+Functional Scenario Form
+slope=NaN or RSquare=NaN && result=NaN
+else && result=sign(slope)*sqrt(RSquare)
+end_process
+
+process getInterceptStdErr() result: Real
+pre
+true
+post
+let mse = getMeanSquareError() in
+result = sqrt( mse * ( (1.0/n) + (xbarxbar)/sumXX ) )
+Functional Scenario Form
+always && result=sqrt(MSE((1/n)+(xbar^2)/sumXX))
+end_process
+
+process getSlopeStdErr() result: Real
+pre
+true
+post
+let mse = getMeanSquareError() in
+result = sqrt( mse / sumXX )
+Functional Scenario Form
+always && result=sqrt(MSE/sumXX)
+end_process
+
+process getSlopeConfidenceInterval() result: Real throws MathException, IllegalArgumentException
+pre
+true
+post
+result = getSlopeConfidenceInterval(0.05)
+Functional Scenario Form
+always && result=getSlopeConfidenceInterval(0.05)
+end_process
+
+process getSlopeConfidenceInterval(alpha: Real) result: Real throws MathException, IllegalArgumentException
+pre
+true
+post
+(alpha ≤ 0 ∨ alpha ≥ 1) ⇒ throws IllegalArgumentException
+∧ (0 < alpha < 1 ⇒
+let se = getSlopeStdErr(),
+t = T_inv(df=n−2, p=1 − alpha/2)
+in result = se * t
+)
+Functional Scenario Form
+alpha≤0 or alpha≥1 && throw IllegalArgumentException
+0<alpha<1 && result=getSlopeStdErr()*T_inv(n−2,1−alpha/2)
+end_process
+
+process getSignificance() result: Real throws MathException
+pre
+true
+post
+let se = getSlopeStdErr(), b1 = getSlope(),
+t = |b1| / se,
+p = T_cdf(df=n−2, x=t)
+in result = 2 * (1 − p)
+Functional Scenario Form
+always && result=2*(1−T_cdf(n−2, |slope|/slopeSE))
+end_process
+
+end_module

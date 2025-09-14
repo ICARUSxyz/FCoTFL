@@ -1,0 +1,12 @@
+// Test Case 1: Platform Spawn Position
+→ Setup: Game running with spawner active
+→ Expected Output: Platforms appear along varying X-axis positions
+→ Actual Output: Platforms always spawn at the same X-axis, only Y-axis varies
+// Indicates the wrong coordinate was randomized (Y instead of X).
+
+
+// Test Case 2: Spike Platform Control
+→ Setup: Index randomly returns 4 multiple times in succession
+→ Expected Output: At most one spike platform appears, others are skipped
+→ Actual Output: Some spike platforms are still skipped even if only one is generated
+// The conditional check may be too aggressive, preventing valid spawns.

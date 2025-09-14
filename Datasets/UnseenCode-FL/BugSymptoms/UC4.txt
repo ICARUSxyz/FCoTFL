@@ -1,0 +1,27 @@
+Bug Report: CodeHistory
+
+Test Input:
+
+```cpp
+CodeHistory editor;
+editor.setPlainText("line 1\nline 2\nline 3");
+editor.show();
+```
+
+Observed Behavior:
+
+* Editor fails to compile due to missing `::` scope resolution in selection property.
+* During runtime, viewport margins are not correctly applied.
+* Editor does not dynamically adjust line number width on scrolling.
+
+Expected Behavior:
+
+* Code compiles and launches correctly.
+* Line number area adjusts to content width.
+* Current line highlighting appears across full width.
+
+Actual Behavior:
+
+* Compile-time error: unrecognized `QTextFormat:FullWidthSelection`.
+* Margins not applied properly; line number area overlaps with text content.
+* On scroll, line number width update is not triggered.

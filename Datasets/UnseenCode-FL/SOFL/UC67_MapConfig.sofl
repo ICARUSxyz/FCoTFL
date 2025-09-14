@@ -1,0 +1,73 @@
+module UC67_MapConfig
+type 
+  path: String
+  mapId: int
+  MapRowZ: int
+  MapRowX: int
+  MapIndex: int
+
+process ReadInfoFromFile(path: String) result: EanFile
+pre  
+  path ≠ null
+post 
+  (File.Exists(path) = false → 
+    Debug.LogError called ∧ result = null) ∨
+  (File.Exists(path) = true → 
+    fs = FileStream(path, Open) ∧
+    br = BinaryReader(fs) ∧
+    ean = new EanFile() ∧
+    ean.Load(br, fs) ∧
+    fs closed ∧
+    result = ean)
+Functional Scenario Form 
+(File.Exists(path) = false) && (log error, return null) or
+(File.Exists(path) = true) && (load file, return EanFile)
+end_process
+
+process GetMapDataById(mapId: int) result: EanFile
+pre  
+  true
+post 
+  (MapDataInfo contains mapId → result = MapDataInfo[mapId]) ∨
+  (MapDataInfo does not contain mapId →
+    path = mapId + ".map" ∧
+    ean = ReadInfoFromFile("Assets/Resources/Map/" + path) ∧
+    MapDataInfo.add(mapId, ean) ∧
+    result = ean)
+Functional Scenario Form 
+(MapDataInfo contains mapId) && (return cached EanFile) or
+(not contains) && (load from file, add to MapDataInfo, return result)
+end_process
+
+process IsMapBlock(mapId: int, pos: Vector3) result: Boolean
+pre  
+  true
+post 
+  MapRowZ = int(pos.z) * 2 ∧
+  MapRowX = int(pos.x) * 2 ∧
+  MapIndex = MapRowZ * 400 + MapRowX ∧
+  ean = GetMapDataById(mapId) ∧
+  (ean.MapData contains MapIndex → result = true) ∨
+  (ean.MapData does not contain MapIndex → result = false)
+Functional Scenario Form 
+(MapData contains MapIndex) && (return true) or
+(MapData does not contain MapIndex) && (return false)
+end_process
+
+process Load(br: BinaryReader, fs: FileStream) result: Boolean
+pre  
+  true
+post 
+  MapId = br.ReadInt32() ∧
+  MapWidth = br.ReadInt32() ∧
+  MapHeight = br.ReadInt32() ∧
+  MapLength = MapWidth * MapHeight ∧
+  ∀ i ∈ [0, MapLength):
+    info = br.ReadByte() ∧
+    (info = 1 → MapData[i] = 1) ∧
+  result = true
+Functional Scenario Form 
+(always) && (read all bytes, if info=1 then store into MapData)
+end_process
+
+end_module

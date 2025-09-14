@@ -1,0 +1,538 @@
+module DefaultBoxAndWhiskerCategoryDataset  
+type:  
+
+  data: KeyedObjects2D  
+  minimumRangeValue: double  
+  minimumRangeValueRow: int  
+  minimumRangeValueColumn: int  
+  maximumRangeValue: double  
+  maximumRangeValueRow: int  
+  maximumRangeValueColumn: int  
+  rangeBounds: Range  
+
+process constructor()  
+pre true  
+post  
+  data' = new KeyedObjects2D() ∧  
+  minimumRangeValue' = Double.NaN ∧  
+  minimumRangeValueRow' = -1 ∧  
+  minimumRangeValueColumn' = -1 ∧  
+  maximumRangeValue' = Double.NaN ∧  
+  maximumRangeValueRow' = -1 ∧  
+  maximumRangeValueColumn' = -1 ∧  
+  rangeBounds' = new Range(0.0, 0.0)  
+
+Functional Scenario Form  
+default initialization  
+    && empty data ∧ NaN min/max ∧ default range  
+end_process  
+
+process add(list: List, rowKey: Comparable, columnKey: Comparable)  
+pre true  
+post  
+  item = BoxAndWhiskerCalculator.calculateBoxAndWhiskerStatistics(list) ∧  
+  add(item, rowKey, columnKey)  
+
+Functional Scenario Form  
+list = [1,2,3,4,5]  
+    && calculates item ∧ adds to dataset  
+end_process  
+
+process add(item: BoxAndWhiskerItem, rowKey: Comparable, columnKey: Comparable)  
+pre true  
+post  
+  data.addObject(item, rowKey, columnKey) ∧  
+  r = data.getRowIndex(rowKey) ∧  
+  c = data.getColumnIndex(columnKey) ∧  
+  (  
+    (maximumRangeValueRow = r ∧ maximumRangeValueColumn = c) ∨  
+    (minimumRangeValueRow = r ∧ minimumRangeValueColumn = c)  
+      ⇒ updateBounds()  
+    else  
+      minval = (item.getMinOutlier() ≠ null) ? item.getMinOutlier().doubleValue() : Double.NaN ∧  
+      maxval = (item.getMaxOutlier() ≠ null) ? item.getMaxOutlier().doubleValue() : Double.NaN ∧  
+      (  
+        Double.isNaN(maximumRangeValue) ∨ maxval > maximumRangeValue  
+          ⇒ maximumRangeValue' = maxval ∧  
+            maximumRangeValueRow' = r ∧  
+            maximumRangeValueColumn' = c  
+      ) ∧  
+      (  
+        Double.isNaN(minimumRangeValue) ∨ minval < minimumRangeValue  
+          ⇒ minimumRangeValue' = minval ∧  
+            minimumRangeValueRow' = r ∧  
+            minimumRangeValueColumn' = c  
+      )  
+  ) ∧  
+  rangeBounds' = new Range(minimumRangeValue, maximumRangeValue) ∧  
+  fireDatasetChanged()  
+
+Functional Scenario Form  
+First item added  
+    && updates min/max values  
+Item added to min/max cell  
+    && triggers updateBounds  
+New outlier exceeds current range  
+    && updates min/max values  
+end_process  
+
+process getItem(row: int, column: int) result: BoxAndWhiskerItem  
+pre true  
+post  
+  result' = (BoxAndWhiskerItem) data.getObject(row, column)  
+
+Functional Scenario Form  
+row=0, column=0 with item present  
+    && returns item  
+end_process  
+
+process getValue(row: int, column: int) result: Number  
+pre true  
+post  
+  result' = getMedianValue(row, column)  
+
+Functional Scenario Form  
+same as getMedianValue  
+end_process  
+
+process getValue(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  result' = getMedianValue(rowKey, columnKey)  
+
+Functional Scenario Form  
+same as getMedianValue with keys  
+end_process  
+
+process getMeanValue(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMean()  
+  )  
+
+Functional Scenario Form  
+item present with mean=5.0  
+    && returns 5.0  
+item missing  
+    && returns null  
+end_process  
+
+process getMeanValue(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMean()  
+  )  
+
+Functional Scenario Form  
+keys valid ∧ item present  
+    && returns mean value  
+end_process  
+
+process getMedianValue(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMedian()  
+  )  
+
+Functional Scenario Form  
+item present with median=7.5  
+    && returns 7.5  
+end_process  
+
+process getMedianValue(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMedian()  
+  )  
+
+Functional Scenario Form  
+same as above with keys  
+end_process  
+
+process getQ1Value(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getQ1()  
+  )  
+
+Functional Scenario Form  
+item present with Q1=4.0  
+    && returns 4.0  
+end_process  
+
+process getQ1Value(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getQ1()  
+  )  
+
+Functional Scenario Form  
+item present && result = item.Q1  
+item absent && result = null  
+end_process  
+
+process getQ3Value(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getQ3()  
+  )  
+
+Functional Scenario Form  
+item present && result = item.Q3  
+item absent && result = null  
+end_process  
+
+process getQ3Value(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getQ3()  
+  )  
+
+Functional Scenario Form  
+item present && result = item.Q3  
+item absent && result = null  
+end_process  
+
+process getColumnIndex(key: Comparable) result: int  
+pre true  
+post  
+  result' = data.getColumnIndex(key)  
+
+Functional Scenario Form  
+key in columns && returns index  
+key not found && returns -1  
+end_process  
+
+process getColumnKey(column: int) result: Comparable  
+pre true  
+post  
+  result' = data.getColumnKey(column)  
+
+Functional Scenario Form  
+valid column && returns key  
+invalid column && throws IndexOutOfBoundsException  
+end_process  
+
+process getColumnKeys() result: List  
+pre true  
+post  
+  result' = data.getColumnKeys()  
+
+Functional Scenario Form  
+non-empty columns && returns key list  
+empty dataset && returns empty list  
+end_process  
+
+process getRowIndex(key: Comparable) result: int  
+pre true  
+post  
+  result' = data.getRowIndex(key)  
+
+Functional Scenario Form  
+key in rows && returns index  
+key not found && returns -1  
+end_process  
+
+process getRowKey(row: int) result: Comparable  
+pre true  
+post  
+  result' = data.getRowKey(row)  
+
+Functional Scenario Form  
+valid row && returns key  
+invalid row && throws IndexOutOfBoundsException  
+end_process  
+
+process getRowKeys() result: List  
+pre true  
+post  
+  result' = data.getRowKeys()  
+
+Functional Scenario Form  
+non-empty rows && returns key list  
+empty dataset && returns empty list  
+end_process  
+
+process getRowCount() result: int  
+pre true  
+post  
+  result' = data.getRowCount()  
+
+Functional Scenario Form  
+3 rows && returns 3  
+empty dataset && returns 0  
+end_process  
+
+process getColumnCount() result: int  
+pre true  
+post  
+  result' = data.getColumnCount()  
+
+Functional Scenario Form  
+5 columns && returns 5  
+empty dataset && returns 0  
+end_process  
+
+process getRangeLowerBound(includeInterval: boolean) result: double  
+pre true  
+post  
+  result' = minimumRangeValue  
+
+Functional Scenario Form  
+minimumRangeValue=2.5 && returns 2.5  
+minimumRangeValue=Double.NaN && returns NaN  
+end_process  
+
+process getRangeUpperBound(includeInterval: boolean) result: double  
+pre true  
+post  
+  result' = maximumRangeValue  
+
+Functional Scenario Form  
+maximumRangeValue=15.8 && returns 15.8  
+maximumRangeValue=Double.NaN && returns NaN  
+end_process  
+
+process getRangeBounds(includeInterval: boolean) result: Range  
+pre true  
+post  
+  result' = rangeBounds  
+
+Functional Scenario Form  
+rangeBounds=[3.0,8.0] && returns Range(3.0,8.0)  
+rangeBounds=invalid && returns default Range(0.0,0.0)  
+end_process  
+
+process getMinRegularValue(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMinRegularValue()  
+  )  
+
+Functional Scenario Form  
+item present && result = minRegularValue  
+item absent && result = null  
+end_process  
+
+process getMinRegularValue(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMinRegularValue()  
+  )  
+
+Functional Scenario Form  
+keys valid && item present && result = minRegularValue  
+keys invalid && result = null  
+end_process  
+
+process getMaxRegularValue(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMaxRegularValue()  
+  )  
+
+Functional Scenario Form  
+item present && result = maxRegularValue  
+item absent && result = null  
+end_process  
+
+process getMaxRegularValue(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMaxRegularValue()  
+  )  
+
+Functional Scenario Form  
+item present && result = maxRegularValue  
+item absent && result = null  
+end_process  
+
+process getMinOutlier(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMinOutlier()  
+  )  
+
+Functional Scenario Form  
+item present && result = minOutlier  
+item absent && result = null  
+end_process  
+
+process getMinOutlier(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMinOutlier()  
+  )  
+
+Functional Scenario Form  
+keys valid && item present && result = minOutlier  
+keys invalid && result = null  
+end_process  
+
+process getMaxOutlier(row: int, column: int) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMaxOutlier()  
+  )  
+
+Functional Scenario Form  
+item present && result = maxOutlier  
+item absent && result = null  
+end_process  
+
+process getMaxOutlier(rowKey: Comparable, columnKey: Comparable) result: Number  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getMaxOutlier()  
+  )  
+
+Functional Scenario Form  
+same as above with keys  
+end_process  
+
+process getOutliers(row: int, column: int) result: List  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(row, column) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getOutliers()  
+  )  
+
+Functional Scenario Form  
+item present && result = outlier list  
+item absent && result = null  
+end_process  
+
+process getOutliers(rowKey: Comparable, columnKey: Comparable) result: List  
+pre true  
+post  
+  item = (BoxAndWhiskerItem) data.getObject(rowKey, columnKey) ∧  
+  (  
+    item = null ⇒ result' = null  
+    item ≠ null ⇒ result' = item.getOutliers()  
+  )  
+
+Functional Scenario Form  
+keys valid && item present && result = outlier list  
+keys invalid && result = null  
+end_process  
+
+process updateBounds()  
+pre true  
+post  
+  minimumRangeValue' = Double.NaN ∧  
+  minimumRangeValueRow' = -1 ∧  
+  minimumRangeValueColumn' = -1 ∧  
+  maximumRangeValue' = Double.NaN ∧  
+  maximumRangeValueRow' = -1 ∧  
+  maximumRangeValueColumn' = -1 ∧  
+  ∀ r ∈ [0, getRowCount()-1], c ∈ [0, getColumnCount()-1]:  
+    item = getItem(r, c) ∧  
+    (  
+      item ≠ null  
+        ⇒ minOutlier = item.getMinOutlier() ∧  
+          maxOutlier = item.getMaxOutlier() ∧  
+          (  
+            minOutlier ≠ null ∧ minv = minOutlier.doubleValue() ∧ ¬Double.isNaN(minv)  
+              ⇒ (minv < minimumRangeValue ∨ Double.isNaN(minimumRangeValue))  
+                  ⇒ minimumRangeValue' = minv ∧  
+                    minimumRangeValueRow' = r ∧  
+                    minimumRangeValueColumn' = c  
+          ) ∧  
+          (  
+            maxOutlier ≠ null ∧ maxv = maxOutlier.doubleValue() ∧ ¬Double.isNaN(maxv)  
+              ⇒ (maxv > maximumRangeValue ∨ Double.isNaN(maximumRangeValue))  
+                  ⇒ maximumRangeValue' = maxv ∧  
+                    maximumRangeValueRow' = r ∧  
+                    maximumRangeValueColumn' = c  
+          )  
+    )  
+
+Functional Scenario Form  
+empty dataset && min/max remain NaN  
+single item with minOutlier=2.0, maxOutlier=8.0  
+    && min=2.0, max=8.0  
+multiple items && finds global min/max outliers  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    obj instanceof DefaultBoxAndWhiskerCategoryDataset  
+      ⇒ dataset = (DefaultBoxAndWhiskerCategoryDataset) obj ∧  
+        result' = ObjectUtilities.equal(this.data, dataset.data)  
+    else ⇒ result' = false  
+  )  
+
+Functional Scenario Form  
+obj = this && returns true  
+obj same data && returns true  
+obj different data && returns false  
+obj not dataset type && returns false  
+end_process  
+
+process clone() result: DefaultBoxAndWhiskerCategoryDataset  
+pre true  
+post  
+  result' = (DefaultBoxAndWhiskerCategoryDataset) super.clone() ∧  
+  result.data' = (KeyedObjects2D) this.data.clone()  
+
+Functional Scenario Form  
+original dataset  
+    && cloned dataset with same data structure  
+end_process  
+
+
+
+end_module  

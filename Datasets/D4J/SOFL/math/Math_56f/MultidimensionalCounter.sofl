@@ -1,0 +1,172 @@
+module MultidimensionalCounter
+type
+dimension: int
+uniCounterOffset: int[]
+size: int[]
+totalSize: int
+last: int
+MAX_INT: int
+
+process ctor(sizeIn: int[]) // MultidimensionalCounter(int ... size)
+pre
+sizeIn != null && sizeIn.length >= 1 && (∀i:0..sizeIn.length-1 • sizeIn[i] > 0) && (∏i:0..sizeIn.length-1 • sizeIn[i]) > 0
+post
+dimension = sizeIn.length &&
+size = MathUtils.copyOf(sizeIn) &&
+last = dimension - 1 &&
+uniCounterOffset[last] = 0 &&
+(∀i:0..last-1 • uniCounterOffset[i] = (∏j:i+1..last • size[j])) &&
+totalSize = (∏k:0..last • size[k])
+Functional Scenario Form
+(∃i:0..sizeIn.length-1 • sizeIn[i] <= 0) && (throws NotStrictlyPositiveException) or
+((∏i:0..sizeIn.length-1 • sizeIn[i]) <= 0) && (throws NotStrictlyPositiveException) or
+(sizeIn.length >= 1 && ∀i:0..sizeIn.length-1 • sizeIn[i] > 0 && (∏i:0..sizeIn.length-1 • sizeIn[i]) > 0) && (object initialized as post)
+
+end_process
+
+process iterator() result: Iterator
+pre
+true
+post
+result != null && result.count = -1 && result.counter.length = dimension && result.counter[last] = -1
+Functional Scenario Form
+true && (result constructed with counter[last] = -1 and count = -1)
+
+end_process
+
+process getDimension() result: int
+pre
+true
+post
+result = dimension
+Functional Scenario Form
+true && (result = dimension)
+
+end_process
+
+process getCounts(index: int) result: int[] // unidimensional -> multidimensional
+pre
+0 <= index && index < totalSize
+post
+result.length = dimension &&
+(∑i:0..last-1 • result[i] * uniCounterOffset[i]) + result[last] = index &&
+(∀i:0..last • 0 <= result[i] && result[i] < size[i])
+Functional Scenario Form
+(index < 0) && (throws OutOfRangeException) or
+(index >= totalSize) && (throws OutOfRangeException) or
+(0 <= index && index < totalSize) && (result satisfies mixed-radix decomposition)
+
+end_process
+
+process getCount(c: int[]) result: int // multidimensional -> unidimensional
+pre
+c != null && c.length = dimension && (∀i:0..last • 0 <= c[i] && c[i] < size[i])
+post
+result = (∑i:0..last-1 • uniCounterOffset[i] * c[i]) + c[last]
+Functional Scenario Form
+(c = null) && (throws DimensionMismatchException) or
+(c.length != dimension) && (throws DimensionMismatchException) or
+(∃i:0..last • c[i] < 0) && (throws OutOfRangeException) or
+(∃i:0..last • c[i] >= size[i]) && (throws OutOfRangeException) or
+(c.length = dimension && ∀i:0..last • 0 <= c[i] && c[i] < size[i]) && (result computed as post)
+
+end_process
+
+process getSize() result: int
+pre
+true
+post
+result = totalSize
+Functional Scenario Form
+true && (result = totalSize)
+
+end_process
+
+process getSizes() result: int[]
+pre
+true
+post
+result = MathUtils.copyOf(size) && result != size
+Functional Scenario Form
+true && (result is a copy of size)
+
+end_process
+
+process toString() result: String
+pre
+true
+post
+result = concat_{i=0..dimension-1} "[" + getCount(i) + "]"
+Functional Scenario Form
+true && (result equals bracketed per-dimension counts)
+
+end_process
+
+process Iterator.hasNext() result: boolean
+pre
+true
+post
+result = (∃i:0..dimension-1 • counter[i] != size[i] - 1)
+Functional Scenario Form
+(∃i • counter[i] != size[i]-1) && (result = true) or
+(∀i • counter[i] = size[i]-1) && (result = false)
+
+end_process
+
+process Iterator.next() result: Integer
+pre
+(∃i:0..last • counter[i] != size[i]-1) // at least one increment possible
+post
+let counter' be new state after mixed-radix +1 from least significant index last toward 0 in base size[] in
+counter = counter' &&
+result = count + 1 &&
+count = result
+Functional Scenario Form
+(¬∃i • counter[i] != size[i]-1) && (undefined behavior) or
+(∃i • counter[i] != size[i]-1) && (counter advanced by one and result = old(count)+1)
+
+end_process
+
+process Iterator.getCount() result: int
+pre
+true
+post
+result = count
+Functional Scenario Form
+true && (result = count)
+
+end_process
+
+process Iterator.getCounts() result: int[]
+pre
+true
+post
+result = MathUtils.copyOf(counter) && result != counter
+Functional Scenario Form
+true && (result is a copy of counter)
+
+end_process
+
+process Iterator.getCountAt(dim: int) result: int // maps to getCount(int dim)
+pre
+0 <= dim && dim < dimension
+post
+result = counter[dim]
+Functional Scenario Form
+(dim < 0) && (throws IndexOutOfBoundsException) or
+(dim >= dimension) && (throws IndexOutOfBoundsException) or
+(0 <= dim && dim < dimension) && (result = counter[dim])
+
+end_process
+
+process Iterator.remove()
+pre
+true
+post
+throws UnsupportedOperationException
+Functional Scenario Form
+true && (throws UnsupportedOperationException)
+
+end_process
+
+end_module

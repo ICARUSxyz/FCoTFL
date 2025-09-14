@@ -1,0 +1,30 @@
+module UC44_charge
+type
+  balance: int
+  filePath: string
+  viewHistoryButtonClicked: Boolean
+  currentPage: string
+  buttons: sequence of string
+
+var
+  MAX_BALANCE: int = 500000
+
+process chargeConstructor(filePath: string) result: Boolean
+pre
+  filePath ≠ "" ∧ file at filePath exists ∧ file content is numeric
+post
+  balance = read integer from filePath ∧
+  buttons = ⟨"wallet", "settlement", "charge", "coupon"⟩ ∧
+  currentPage = "charge" ∧
+  viewHistoryButtonClicked = false ∧
+  result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ valid file content) &&
+(balance = readInt(filePath) ∧
+ buttons = ⟨"wallet", "settlement", "charge", "coupon"⟩ ∧
+ currentPage = "charge" ∧
+ viewHistoryButtonClicked = false ∧
+ result = true)
+end_process
+
+end_module

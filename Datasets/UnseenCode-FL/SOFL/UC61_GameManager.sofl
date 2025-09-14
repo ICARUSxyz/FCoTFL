@@ -1,0 +1,56 @@
+module UC61_GameManager
+type 
+  timeScore: String
+  dead: Boolean
+  result: Boolean
+
+process Awake() result: Boolean
+pre  
+  true
+post 
+  (instance ≠ null ∧ gameObject destroyed ∧ instance = this ∧ result = true) ∨ 
+  (instance = null ∧ instance = this ∧ result = true)
+Functional Scenario Form 
+(instance ≠ null) && (gameObject destroyed ∧ instance = this ∧ result = true) or 
+(instance = null) && (instance = this ∧ result = true)
+end_process
+
+process Update() result: Boolean
+pre  
+  timeScore ≠ null
+post 
+  timeScore.text = formatted string of Time.timeSinceLevelLoad ∧ result = true
+Functional Scenario Form 
+(timeScore ≠ null) && (timeScore.text = formatted string of Time.timeSinceLevelLoad ∧ result = true)
+end_process
+
+process RestartGame() result: Boolean
+pre  
+  true
+post 
+  SceneManager loads current scene again ∧ Time.timeScale = 1 ∧ result = true
+Functional Scenario Form 
+(true) && (SceneManager loads current scene again ∧ Time.timeScale = 1 ∧ result = true)
+end_process
+
+process Quit() result: Boolean
+pre  
+  true
+post 
+  Application.Quit() is called ∧ result = true
+Functional Scenario Form 
+(true) && (Application.Quit() is called ∧ result = true)
+end_process
+
+process GameOver(dead: Boolean) result: Boolean
+pre  
+  instance ≠ null
+post 
+  (dead = true ∧ instance.gameOverUI.SetActive(true) ∧ Time.timeScale = 0 ∧ result = true) ∨ 
+  (dead = false ∧ no action taken ∧ result = true)
+Functional Scenario Form 
+(dead = true ∧ instance ≠ null) && (instance.gameOverUI.SetActive(true) ∧ Time.timeScale = 0 ∧ result = true) or 
+(dead = false ∧ instance ≠ null) && (no action taken ∧ result = true)
+end_process
+
+end_module

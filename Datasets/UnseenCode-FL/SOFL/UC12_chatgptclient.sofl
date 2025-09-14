@@ -1,0 +1,72 @@
+module UC12_chatgptclient
+type
+  chatGptReply, userInput, userQuestion, chatgptReply: String
+  configFilePath: String
+  apiKey: String
+  
+process UC12_chatgptclient(parent: QWidget) result: UC12_chatgptclient
+pre
+  true
+post
+  this.parent = parent
+  this.networkManager = new QNetworkAccessManager(this)
+  connect networkManager.finished to onReplyFinished
+Functional Scenario Form
+valid parent && network manager initialized and reply signal connected
+end_process
+
+process onReplyFinished(reply: QNetworkReply) result: Void
+pre
+  reply ≠ null
+post
+  if reply.error = NoError then
+    response_data = reply.readAll()
+    responseDoc = QJsonDocument::fromJson(response_data)
+    jsonObj = responseDoc.object()
+    choicesArray = jsonObj["choices"].toArray()
+    firstChoice = choicesArray[0].toObject()
+    chatGptReply = firstChoice["message"].toObject()["content"].toString()
+    chatgptReply = "ChatGPT: " + chatGptReply
+  else
+    chatgptReply = "Error: " + reply.errorString()
+    log warning and SSL info
+  emit replyIsReady(chatgptReply)
+  reply.deleteLater() executed
+Functional Scenario Form
+reply success && parsed ChatGPT response stored or
+reply error && error message assigned and logged
+end_process
+
+process sendUserMessage(value: String) result: Void
+pre
+  value ≠ null
+post
+  userInput = value
+  userQuestion = userInput
+  configFilePath = applicationDirPath/../config/OpenAIkey.json
+  file = open(configFilePath)
+  if open success:
+    doc = QJsonDocument::fromJson(file.readAll())
+    apiKey = doc["api_key"]
+    if apiKey ≠ "":
+      request = QNetworkRequest("https://api.openai.com/v1/chat/completions")
+      request.ContentType = "application/json"
+      request.Authorization = "Bearer " + apiKey
+      json["model"] = "gpt-4o-mini"
+      json["messages"] = [ { role: "user", content: userQuestion } ]
+      networkManager.post(request, QJsonDocument(json).toJson()) executed
+Functional Scenario Form
+valid input and API key found && request sent to OpenAI API or
+config file missing or key empty && no request sent
+end_process
+
+process getChatgptReply() result: String
+pre
+  true
+post
+  result' = chatgptReply
+Functional Scenario Form
+chatgptReply previously set && returned correctly
+end_process
+
+end_module

@@ -1,0 +1,26 @@
+Bug Report: SuggestionDialog
+
+Test Input:
+
+```cpp
+SuggestionDialog dialog;
+dialog.show();
+```
+
+Observed Behavior:
+
+* Application fails to compile due to signal-slot connection syntax error.
+* Clicking the "Generate" button on the "Annotation" tab causes no response.
+* Clicking the button in any tab opens a blank page in the default browser.
+
+Expected Behavior:
+
+* Code compiles successfully.
+* "Generate" button copies the correct tab content to clipboard and opens ChatGPT.
+* Each tab behaves consistently upon button click.
+
+Actual Behavior:
+
+* Compile-time error due to incorrect signal syntax.
+* Annotation tab content not processed due to missing break.
+* URL fails to open ChatGPT correctly because of missing scheme (`https://`).

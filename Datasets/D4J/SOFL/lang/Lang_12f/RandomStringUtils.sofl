@@ -1,0 +1,98 @@
+module RandomStringUtils
+type 
+  count: int
+  start: int
+  end: int
+  letters: Boolean
+  numbers: Boolean
+  chars: sequence of char
+  random: Random
+  result: String
+
+process random(count: int) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, false, false)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, false, false))
+end_process
+
+process randomAscii(count: int) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, 32, 127, false, false)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, 32, 127, false, false))
+end_process
+
+process randomAlphabetic(count: int) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, true, false)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, true, false))
+end_process
+
+process randomAlphanumeric(count: int) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, true, true)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, true, true))
+end_process
+
+process randomNumeric(count: int) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, false, true)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, false, true))
+end_process
+
+process random(count: int, letters: Boolean, numbers: Boolean) result: String
+pre 
+  count >= 0
+post 
+  result = random(count, 0, 0, letters, numbers)
+Functional Scenario Form 
+(count >= 0) && (result = random(count, 0, 0, letters, numbers))
+end_process
+
+process random(count: int, start: int, end: int, letters: Boolean, numbers: Boolean, chars: sequence of char) result: String
+pre 
+  count >= 0 ∧ end > start ∧ (chars = null ∨ chars ≠ []) 
+post 
+  result = random(count, start, end, letters, numbers, chars, RANDOM)
+Functional Scenario Form 
+(count >= 0 && end > start && (chars = null || chars ≠ [])) && (result = random(count, start, end, letters, numbers, chars, RANDOM))
+end_process
+
+process random(count: int, chars: String) result: String
+pre 
+  count >= 0 ∧ (chars ≠ null ⇒ chars ≠ "")
+post 
+  if chars = null then result = random(count, 0, 0, false, false, null, RANDOM)
+  else result = random(count, chars.toCharArray())
+Functional Scenario Form 
+(count >= 0 && chars = null) && (result = random(count, 0, 0, false, false, null, RANDOM)) or
+(count >= 0 && chars ≠ null && chars ≠ "") && (result = random(count, chars.toCharArray()))
+end_process
+
+process random(count: int, chars: sequence of char) result: String
+pre 
+  count >= 0
+post 
+  if chars = null then result = random(count, 0, 0, false, false, null, RANDOM)
+  else result = random(count, 0, |chars|, false, false, chars, RANDOM)
+Functional Scenario Form 
+(count >= 0 && chars = null) && (result = random(count, 0, 0, false, false, null, RANDOM)) or
+(count >= 0 && chars ≠ null) && (result = random(count, 0, |chars|, false, false, chars, RANDOM))
+
+end_process
+
+end_module

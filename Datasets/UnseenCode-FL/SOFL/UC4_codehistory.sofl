@@ -1,0 +1,65 @@
+module UC4_codehistory
+type
+  fontFamily: String
+  fontSize: int
+  newBlockCount: int
+  dy: int
+
+process UC4_codehistory(parent: QWidget) result: UC4_codehistory
+pre
+  true
+post
+  this.parent = parent
+  this.lineNumberArea = new HistoryLineNumberArea(this)
+  this.highlighter = new SyntaxHighlighter(this.document())
+  this.blockCountChanged connected to updateLineNumberAreaWidth
+  this.updateRequest connected to updateLineNumberArea
+  this.cursorPositionChanged connected to highlightCurrentLine
+  updateLineNumberAreaWidth(0) executed
+  highlightCurrentLine() executed
+  setEditorFont("Courier", 10) executed
+Functional Scenario Form
+parent is valid && editor initialized with proper line number area, highlighter, and font
+end_process
+
+process updateLineNumberAreaWidth(newBlockCount: int) result: Void
+pre
+  true
+post
+  setViewportMargins(lineNumberAreaWidth(), 0, 0, 0) executed
+Functional Scenario Form
+triggered by block count change && viewport margin updated based on line number width
+end_process
+
+process highlightCurrentLine() result: Void
+pre
+  true
+post
+  if isReadOnly() = false then
+    create ExtraSelection with yellow background (lighter 160)
+    set FullWidthSelection property
+    assign current cursor without selection
+    append to extraSelections
+    setExtraSelections(extraSelections) executed
+Functional Scenario Form
+editor is writable && current line is highlighted or
+editor is read-only && no highlight applied
+end_process
+
+process updateLineNumberArea(rect: QRect, dy: int) result: Void
+pre
+  rect ≠ null
+post
+  if dy ≠ 0 then
+    lineNumberArea.scroll(0, dy)
+  else
+    lineNumberArea.update(0, rect.y, lineNumberArea.width, rect.height)
+  if rect contains viewport().rect then
+    updateLineNumberAreaWidth(0) executed
+Functional Scenario Form
+dy ≠ 0 && lineNumberArea is scrolled vertically or
+dy = 0 && only specific rect area updated or
+rect contains full viewport && line number width recalculated
+end_process
+
+end_module

@@ -1,0 +1,475 @@
+module FastDateParser
+
+type
+  pattern: sequence of char,
+  timeZone: TimeZone,
+  locale: Locale,
+  source: sequence of char,
+  pos: ParsePosition,
+  result: Date,
+  cal: Calendar,
+  parsePattern: Pattern,
+  matcher: Matcher,
+  index: int,
+  regex: sequence of char,
+  value: sequence of char,
+  unquote: Boolean,
+  resultRegex: sequence of char,
+  key: sequence of char,
+  keyvalue: KeyValue
+  field: int,
+  value: String,
+  shortValues: sequence of String,
+  longValues: sequence of String,
+  fieldKeyValues: sequence of KeyValue,
+  count: int,
+  offset: int,
+  result: int,
+  regex: sequence of char,
+  calendar: Calendar,
+  parser: FastDateParser,
+  formatField: String,
+  matchValue: String,
+  matchedIdx: int,
+  strategy: Strategy
+  parser: FastDateParser,
+  cal: Calendar,
+  value: String,
+  regex: sequence of char,
+  iValue: int,
+  result: int,
+  tz: TimeZone
+
+process FastDateParserConstructor(pattern: sequence of char, timeZone: TimeZone, locale: Locale) result: FastDateParser
+pre
+  pattern ≠ null ∧ timeZone ≠ null ∧ locale ≠ null
+post
+  result.pattern = pattern ∧ result.timeZone = timeZone ∧ result.locale = locale ∧ result.parsePattern ≠ null
+Functional Scenario Form
+  (valid input) && result = parser object with initialized regex pattern
+end_process
+
+process init()
+pre
+  true
+post
+  thisYear = current year under timeZone+locale ∧
+  strategies derived from pattern ∧
+  parsePattern compiled with regex for matching input
+Functional Scenario Form
+  (pattern valid) && parsePattern = compiled regex from strategies
+end_process
+
+process parse(source: sequence of char) result: Date
+pre
+  source ≠ null
+post
+  if source matches parsePattern → result = parsed Date ∧ pos updated &&
+  if not → throws ParseException
+Functional Scenario Form
+  (source matches pattern) && result = calendar.getTime() or
+  (source mismatched) && throws ParseException
+end_process
+
+process parse(source: sequence of char, pos: ParsePosition) result: Date
+pre
+  source ≠ null ∧ pos ≠ null
+post
+  offset = pos.index ∧ matcher = pattern.matcher(source[offset..]) ∧
+  if matcher matches → fill calendar by applying strategies ∧ update pos.index ∧ result = calendar.time &&
+  if not → result = null
+Functional Scenario Form
+  (source matches) && result = parsed date ∧ pos updated or
+  (not match) && result = null
+end_process
+
+process parseObject(source: sequence of char) result: Object
+pre
+  true
+post
+  result = parse(source)
+Functional Scenario Form
+  (always true) && result = parsed date or exception
+end_process
+
+process parseObject(source: sequence of char, pos: ParsePosition) result: Object
+pre
+  true
+post
+  result = parse(source, pos)
+Functional Scenario Form
+  (always true) && result = date or null
+end_process
+
+process getPattern() result: sequence of char
+pre
+  true
+post
+  result = pattern
+Functional Scenario Form
+  (always true) && result = stored pattern
+end_process
+
+process getTimeZone() result: TimeZone
+pre
+  true
+post
+  result = timeZone
+Functional Scenario Form
+  (always true) && result = stored time zone
+end_process
+
+process getLocale() result: Locale
+pre
+  true
+post
+  result = locale
+Functional Scenario Form
+  (always true) && result = stored locale
+end_process
+
+process getParsePattern() result: Pattern
+pre
+  true
+post
+  result = parsePattern
+Functional Scenario Form
+  (always true) && result = compiled regex pattern
+end_process
+
+process equals(obj: Object) result: Boolean
+pre
+  true
+post
+  obj is FastDateParser →
+    result = (pattern = obj.pattern ∧ timeZone = obj.timeZone ∧ locale = obj.locale) ∧
+  otherwise → result = false
+Functional Scenario Form
+  (obj is FastDateParser ∧ fields match) && result = true or
+  (not equal) && result = false
+end_process
+
+process hashCode() result: int
+pre
+  true
+post
+  result = pattern.hashCode() + 13 * (timeZone.hashCode() + 13 * locale.hashCode())
+Functional Scenario Form
+  (always true) && result = composite hash
+end_process
+
+process toString() result: sequence of char
+pre
+  true
+post
+  result = "FastDateParser[" + pattern + "," + locale + "," + timeZone.getID() + "]"
+Functional Scenario Form
+  (always true) && result = debugging string
+end_process
+
+process readObject(in: ObjectInputStream)
+pre
+  in ≠ null
+post
+  object fields reloaded ∧ init() called
+Functional Scenario Form
+  (deserialization complete) && init executed
+end_process
+
+process escapeRegex(regex: sequence of char, value: sequence of char, unquote: Boolean) result: sequence of char
+pre
+  true
+post
+  result = value copied into regex, escaping special characters ∧
+  if unquote = true → '' replaced by '
+Functional Scenario Form
+  (unquote false) && all regex symbols escaped or
+  (unquote true) && '' becomes '
+end_process
+
+process KeyValueConstructor(key: sequence of char, value: int) result: KeyValue
+pre
+  key ≠ null
+post
+  result.key = key ∧ result.value = value
+Functional Scenario Form
+  (always true) && result = (key, value)
+end_process
+
+process IGNORE_CASE_COMPARATOR_compare(left: KeyValue, right: KeyValue) result: int
+pre
+  left ≠ null ∧ right ≠ null
+post
+  result = left.key.compareToIgnoreCase(right.key)
+Functional Scenario Form
+  (always true) && result = case-insensitive comparison of keys
+end_process
+
+process getDisplayNames(field: int) result: sequence of KeyValue
+pre
+  field ∈ {ERA, DAY_OF_WEEK, AM_PM, MONTH}
+post
+  if field not in cache →
+    get corresponding symbols (e.g., getEras, getMonths) ∧
+    result = createKeyValues(long, short) ∧
+    cache updated；
+  else result = cached[field]
+Functional Scenario Form
+  (field not cached) && create key/values then cache or
+  (field cached) && return cached result
+end_process
+
+process toArray(map: Map of (String → int)) result: sequence of String
+pre
+  map ≠ null ∧ keys are non-null
+post
+  result[i] = key where map[key] = i
+Functional Scenario Form
+  (valid map) && keys placed at indices of their mapped values
+end_process
+
+process createKeyValues(longValues: sequence of String, shortValues: sequence of String) result: sequence of KeyValue
+pre
+  true
+post
+  total = count(longValues) + count(shortValues) ∧
+  result = longValues ++ shortValues ∧ sorted
+Functional Scenario Form
+  (valid inputs) && merge long/short entries into sorted key-value list
+end_process
+
+process count(values: sequence of String) result: int
+pre
+  true
+post
+  result = #v ∈ values . length(v) > 0
+Functional Scenario Form
+  (always true) && count = number of non-empty strings
+end_process
+
+process copy(fieldKeyValues: sequence of KeyValue, offset: int, values: sequence of String) result: int
+pre
+  offset ≥ 0 ∧ fieldKeyValues is large enough
+post
+  for each non-empty value[i], fieldKeyValues[offset++] = KeyValue(value[i], i) ∧ return final offset
+Functional Scenario Form
+  (values valid) && write key/values into array starting at offset
+end_process
+
+process adjustYear(twoDigitYear: int) result: int
+pre
+  true
+post
+  base = thisYear - thisYear % 100 ∧
+  trial = base + twoDigitYear ∧
+  result = if trial < thisYear + 20 then trial else trial - 100
+Functional Scenario Form
+  (trial < thisYear + 20) && result = trial or
+  (trial ≥ thisYear + 20) && result = trial - 100
+end_process
+
+process isNextNumber() result: Boolean
+pre
+  true
+post
+  result = nextStrategy ≠ null ∧ nextStrategy.isNumber()
+Functional Scenario Form
+  (nextStrategy exists ∧ is number) && result = true or
+  (otherwise) && result = false
+end_process
+
+process getFieldWidth() result: int
+pre
+  currentFormatField ≠ null
+post
+  result = length(currentFormatField)
+Functional Scenario Form
+  (field assigned) && result = field width
+end_process
+
+process getStrategy(formatField: sequence of char) result: Strategy
+pre
+  formatField ≠ null
+post
+  match formatField by initial character：
+    - '\'' → CopyQuotedStrategy
+    - 'E' → DAY_OF_WEEK_STRATEGY
+    - 'M' → if length ≥ 3 then TEXT_MONTH_STRATEGY else NUMBER_MONTH_STRATEGY
+    - 'y' → if length > 2 then LITERAL_YEAR_STRATEGY else ABBREVIATED_YEAR_STRATEGY
+    - 'z' or 'Z' → return TimeZoneStrategy from tzsCache or create new
+    - others → match accordingly
+Functional Scenario Form
+  (quoted string) && CopyQuotedStrategy or
+  (known date format code) && corresponding strategy or
+  (timezone field) && return tzs from cache or new
+end_process
+
+process CopyQuotedStrategy_addRegex(parser: FastDateParser, regex: sequence of char) result: Boolean
+pre
+  parser ≠ null ∧ regex ≠ null
+post
+  regex ← regex + escaped quoted literal ∧ result = false
+Functional Scenario Form
+  (always true) && add quoted literal ∧ return false
+end_process
+
+process CopyQuotedStrategy_isNumber() result: Boolean
+pre
+  formatField ≠ null
+post
+  result = Character.isDigit(formatField[0] or formatField[1] if starts with ')
+Functional Scenario Form
+  (field starts with digit) && result = true or
+  (otherwise) && result = false
+end_process
+
+process CopyQuotedStrategy_setCalendar(parser: FastDateParser, cal: Calendar, value: String)
+pre
+  true
+post
+  no action (quoted text only)
+Functional Scenario Form
+  (always true) && calendar unchanged
+end_process
+
+process TextStrategy_addRegex(parser: FastDateParser, regex: sequence of char) result: Boolean
+pre
+  parser ≠ null ∧ regex ≠ null
+post
+  regex ← regex + (joined display names for field) ∧ result = true
+Functional Scenario Form
+  (valid field) && append regex group from display name list
+end_process
+
+process TextStrategy_isNumber() result: Boolean
+pre
+  true
+post
+  result = false
+Functional Scenario Form
+  (always) && result = false
+end_process
+
+process TextStrategy_setCalendar(parser: FastDateParser, cal: Calendar, value: String)
+pre
+  value in parser.getDisplayNames(field).key
+post
+  idx = binarySearch(value) ∧ cal.set(field, value at idx)
+Functional Scenario Form
+  (value matched) && calendar updated or
+  (value not matched) && throw IllegalArgumentException
+end_process
+
+process NumberStrategy_isNumber() result: Boolean
+pre
+  true
+post
+  result = true
+Functional Scenario Form
+  (always true) && result = true
+end_process
+
+process NumberStrategy_addRegex(parser: FastDateParser, regex: sequence of char) result: Boolean
+pre
+  parser ≠ null ∧ regex ≠ null
+post
+  if parser.isNextNumber() → append (\\p{IsNd}{w}+)
+  else → append (\\p{IsNd}++)
+  ∧ result = true
+Functional Scenario Form
+  (next is number) && use fixed width regex or
+  (not number) && use flexible regex
+end_process
+
+process NumberStrategy_setCalendar(parser: FastDateParser, cal: Calendar, value: String)
+pre
+  value ∈ sequence of digits
+post
+  cal.set(field, modify(parseInt(value)))
+Functional Scenario Form
+  (valid number string) && calendar updated using modified int
+end_process
+
+process NumberStrategy_modify(iValue: int) result: int
+pre
+  true
+post
+  result = iValue
+Functional Scenario Form
+  (default case) && result = iValue
+end_process
+
+process ABBREVIATED_YEAR_STRATEGY_setCalendar(parser: FastDateParser, cal: Calendar, value: String)
+pre
+  value is two-digit or four-digit string
+post
+  iValue = parseInt(value) ∧
+  if iValue < 100 → iValue = adjustYear(iValue)
+  ∧ cal.set(YEAR, iValue)
+Functional Scenario Form
+  (iValue < 100) && result adjusted using parser.adjustYear or
+  (iValue ≥ 100) && calendar set directly
+end_process
+
+process NUMBER_MONTH_STRATEGY_modify(iValue: int) result: int
+pre
+  iValue ≥ 1
+post
+  result = iValue - 1
+Functional Scenario Form
+  (month from 1-based to 0-based) && result = iValue - 1
+end_process
+
+process MODULO_HOUR_OF_DAY_STRATEGY_modify(iValue: int) result: int
+pre
+  true
+post
+  result = iValue mod 24
+Functional Scenario Form
+  (always) && result = iValue mod 24
+end_process
+
+process MODULO_HOUR_STRATEGY_modify(iValue: int) result: int
+pre
+  true
+post
+  result = iValue mod 12
+Functional Scenario Form
+  (always) && result = iValue mod 12
+end_process
+
+process TimeZoneStrategy_addRegex(parser: FastDateParser, regex: sequence of char) result: Boolean
+pre
+  true
+post
+  regex appended with validTimeZoneChars ∧ result = true
+Functional Scenario Form
+  (always) && append timezone pattern
+end_process
+
+process TimeZoneStrategy_isNumber() result: Boolean
+pre
+  true
+post
+  result = false
+Functional Scenario Form
+  (always true) && result = false
+end_process
+
+process TimeZoneStrategy_setCalendar(parser: FastDateParser, cal: Calendar, value: String)
+pre
+  value ≠ null
+post
+  if starts with '+' or '-' → tz = GMT+value
+  else if starts with "GMT" → tz = TimeZone.getTimeZone(value)
+  else → lookup tzNames[value]
+  ∧ if tz = null → throw exception
+  ∧ cal.setTimeZone(tz)
+Functional Scenario Form
+  (value is numeric offset) && set tz to GMT+value or
+  (value is GMT string) && use getTimeZone or
+  (value is named) && lookup in tzNames or
+  (not found) && throw exception
+end_process
+
+end_module

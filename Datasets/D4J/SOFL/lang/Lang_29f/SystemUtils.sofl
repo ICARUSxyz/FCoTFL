@@ -1,0 +1,120 @@
+module SystemUtils
+type
+    key: String
+    result: String
+    version: String
+    versionFloat: float
+    versionInt: int
+    limit: int
+    javaVersions: sequence of int
+
+process getSystemProperty(key: String) result: String
+pre  key ≠ null
+post try System.getProperty(key) as result,
+     if no security or property access issue then result ≠ null or result = null
+     else result = null
+Functional Scenario Form
+(key ≠ null ∧ property is accessible ∧ exists(key)) && (result = System.getProperty(key)) or
+(key ≠ null ∧ property not accessible or not exists) && (result = null)
+end_process
+
+process getJavaHome() dir: File
+pre  true
+post dir = File(System.getProperty("java.home"))
+Functional Scenario Form
+true && dir = File(System.getProperty("java.home"))
+end_process
+
+process getJavaIoTmpDir() dir: File
+pre  true
+post dir = File(System.getProperty("java.io.tmpdir"))
+Functional Scenario Form
+true && dir = File(System.getProperty("java.io.tmpdir"))
+end_process
+
+process getUserDir() dir: File
+pre  true
+post dir = File(System.getProperty("user.dir"))
+Functional Scenario Form
+true && dir = File(System.getProperty("user.dir"))
+end_process
+
+process getUserHome() dir: File
+pre  true
+post dir = File(System.getProperty("user.home"))
+Functional Scenario Form
+true && dir = File(System.getProperty("user.home"))
+end_process
+
+process isJavaAwtHeadless() result: Boolean
+pre  true
+post result = (JAVA_AWT_HEADLESS ≠ null ∧ JAVA_AWT_HEADLESS = "true")
+Functional Scenario Form
+(JAVA_AWT_HEADLESS = "true") && (result = true) or
+(JAVA_AWT_HEADLESS ≠ "true") && (result = false)
+end_process
+
+process isJavaVersionAtLeast(requiredVersion: float) result: Boolean
+pre  true
+post result = (JAVA_VERSION_FLOAT ≥ requiredVersion)
+Functional Scenario Form
+(JAVA_VERSION_FLOAT ≥ requiredVersion) && (result = true) or
+(JAVA_VERSION_FLOAT < requiredVersion) && (result = false)
+end_process
+
+process isJavaVersionAtLeast(requiredVersionInt: int) result: Boolean
+pre  true
+post result = (JAVA_VERSION_INT ≥ requiredVersionInt)
+Functional Scenario Form
+(JAVA_VERSION_INT ≥ requiredVersionInt) && (result = true) or
+(JAVA_VERSION_INT < requiredVersionInt) && (result = false)
+end_process
+
+process toJavaVersionFloat(version: String) versionFloat: float
+pre  version ≠ null
+post versionFloat = toVersionFloat(toJavaVersionIntArray(version, JAVA_VERSION_TRIM_SIZE))
+Functional Scenario Form
+(version ≠ null) && (versionFloat = toVersionFloat(toJavaVersionIntArray(version, JAVA_VERSION_TRIM_SIZE)))
+end_process
+
+process toJavaVersionInt(version: String) versionInt: int
+pre  version ≠ null
+post versionInt = toVersionInt(toJavaVersionIntArray(version, JAVA_VERSION_TRIM_SIZE))
+Functional Scenario Form
+(version ≠ null) && (versionInt = toVersionInt(toJavaVersionIntArray(version, JAVA_VERSION_TRIM_SIZE)))
+end_process
+
+process toJavaVersionIntArray(version: String) javaVersions: sequence of int
+pre  version ≠ null
+post javaVersions = toJavaVersionIntArray(version, Integer.MAX_VALUE)
+Functional Scenario Form
+(version ≠ null) && (javaVersions = toJavaVersionIntArray(version, Integer.MAX_VALUE))
+end_process
+
+process toJavaVersionIntArray(version: String, limit: int) javaVersions: sequence of int
+pre  version ≠ null ∧ limit > 0
+post javaVersions = extractInts(splitByNonDigit(version)) with length ≤ limit
+Functional Scenario Form
+(version ≠ null ∧ limit > 0) && (javaVersions = extractInts(splitByNonDigit(version)) with length ≤ limit)
+end_process
+
+process toVersionFloat(javaVersions: sequence of int) versionFloat: float
+pre  true
+post if javaVersions = ∅ then versionFloat = 0f
+     else versionFloat = Float.parseFloat(concat(javaVersions[0], ".", javaVersions[1], ..., javaVersions[n]))
+Functional Scenario Form
+(javaVersions = ∅) && (versionFloat = 0f) or
+(javaVersions ≠ ∅) && (versionFloat = Float.parseFloat(concat(javaVersions[0], ".", javaVersions[1], ..., javaVersions[n])))
+end_process
+
+process toVersionInt(javaVersions: sequence of int) versionInt: int
+pre  true
+post if javaVersions = ∅ then versionInt = 0
+     else versionInt = 100 * javaVersions[0] + 10 * javaVersions[1] + javaVersions[2] (if present)
+Functional Scenario Form
+(javaVersions = ∅) && (versionInt = 0) or
+(javaVersions ≠ ∅) && (versionInt = 100 * javaVersions[0] + 10 * javaVersions[1] + javaVersions[2] (if present))
+end_process
+
+
+end_module

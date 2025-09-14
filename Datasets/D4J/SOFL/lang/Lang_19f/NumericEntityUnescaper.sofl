@@ -1,0 +1,30 @@
+module NumericEntityUnescaper
+type 
+  input: CharSequence
+  index: int
+  out: Writer
+  seqEnd: int
+  start: int
+  end: int
+  entityValue: int
+  isHex: Boolean
+  semiNext: Boolean
+  consumed: int
+
+process translate(input: CharSequence, index: int, out: Writer) consumed: int
+pre  
+  input ≠ null ∧ out ≠ null ∧ 0 ≤ index < length(input)
+post 
+  (input[index] = '&' ∧ input[index+1] = '#' ∧ valid numeric entity exists from index)
+    implies 
+      (consumed = length of parsed entity including optional ';') ∧
+      (out contains the character(s) corresponding to parsed entity value)
+  ∧
+  (invalid or unmatched pattern) implies consumed = 0
+Functional Scenario Form 
+(input[index] = '&' ∧ input[index+1] = '#' ∧ valid decimal digits) && (entityValue written to out) or
+(input[index] = '&' ∧ input[index+1] = '#' ∧ input[index+2] = 'x' or 'X' ∧ valid hex digits) && (entityValue written to out) or
+(input does not contain valid numeric entity at index) && (consumed = 0)
+end_process
+
+end_module

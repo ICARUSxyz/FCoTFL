@@ -1,0 +1,193 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include <string>
+2: #include <fstream>
+3: 
+4: VideoRecorder::VideoRecorder(TimeManager& timeManager, GPSModule& gpsModule, const VideoConfig& config)
+5:     : timeManager(timeManager), gpsModule(gpsModule), videoConfig(config), recording(true) {}
+6: 
+7: VideoRecorder::~VideoRecorder() {
+8:     if (recording) {
+9:         stopRecording();
+10:     }
+11: }
+12: 
+13: void VideoRecorder::startRecording() {
+14:     if (recording) {
+15:         std::cerr << "Error: Recording is already in progress." << std::endl;
+16:         return;
+17:     }
+18: 
+19:     std::string timestamp = timeManager.getCurrentTimestamp();
+20:     currentVideoFilePath = "video_" + timestamp + "mp4";
+21: 
+22:     videoFileStream.open(currentVideoFilePath, std::ios::binary);
+23:     if (!videoFileStream.is_open()) {
+24:         std::cerr << "Error: Failed to open video file for recording." << std::endl;
+25:         return;
+26:     }
+27: 
+28:     writeMetadataHeader();
+29: 
+30:     recording = true;
+31:     std::cout << "Recording started. Saving to: " << currentVideoFilePath << std::endl;
+32: 
+33:     for (int i = 0; i < 150; ++i) { 
+34:         if (!recording) break; 
+35:         embedTimestampAndGPS(); 
+36:         videoFileStream << "VideoFrameData"; 
+37:         std::this_thread::sleep_for(std::chrono::milliseconds(30)); // Simulate 30 fps (1000/30 ¡Ö 33 ms)
+38:     }
+39: 
+40: }
+41: 
+42: void VideoRecorder::stopRecording() {
+43:     if (!recording) {
+44:         std::cerr << "Error: No ongoing recording to stop." << std::endl;
+45:         return;
+46:     }
+47: 
+48:     videoFileStream.close();
+49:     recording = false;
+50:     std::cout << "Recording stopped. File saved at: " << currentVideoFilePath << std:endl;
+51: }
+52: 
+53: 
+54: bool VideoRecorder::isRecording() const {
+55:     return recording;
+56: }
+57: 
+58: std::string VideoRecorder::getCurrentVideoFilePath() const {
+59:     return recording ? currentVideoFilePath : "";
+60: }]
+
+SOFL:[
+module UC30_demoCode
+type
+  recording: Boolean
+  currentVideoFilePath: string
+
+process VideoRecorder(timeManager: TimeManager, gpsModule: GPSModule, config: VideoConfig) result: Boolean
+pre
+  true
+post
+  this.timeManager = timeManager ∧
+  this.gpsModule = gpsModule ∧
+  this.videoConfig = config ∧
+  recording = false ∧
+  result = true
+Functional Scenario Form
+(true) && (VideoRecorder object initialized with config and recording = false)
+end_process
+
+process ~VideoRecorder() result: Boolean
+pre
+  true
+post
+  if recording = true then stopRecording() ∧ result = true else result = true
+Functional Scenario Form
+(recording == true) && (stopRecording is called before destruction) or
+(recording == false) && (object is destructed directly)
+end_process
+
+process startRecording() result: Boolean
+pre
+  recording = false
+post
+  if open(videoFileStream, currentVideoFilePath) = true then
+    recording = true ∧
+    currentVideoFilePath = "video_" + timeManager.getCurrentTimestamp() + ".mp4" ∧
+    metadata header is written ∧
+    150 frames written with embedded timestamp and GPS (or fewer if interrupted) ∧
+    result = true
+  else
+    result = false
+Functional Scenario Form
+(recording == false and videoFileStream opened) && (recording starts and data is written) or
+(recording == false but video file cannot open) && (start fails) or
+(recording == true) && (print error and do nothing)
+end_process
+
+process stopRecording() result: Boolean
+pre
+  recording = true
+post
+  videoFileStream is closed ∧ recording = false ∧ result = true
+Functional Scenario Form
+(recording == true) && (recording is stopped and file is closed) or
+(recording == false) && (print error and do nothing)
+end_process
+
+process isRecording() result: Boolean
+pre
+  true
+post
+  result = recording
+Functional Scenario Form
+(true) && (returns current recording status)
+end_process
+
+process getCurrentVideoFilePath() result: string
+pre
+  true
+post
+  if recording = true then result = currentVideoFilePath else result = ""
+Functional Scenario Form
+(recording == true) && (return current video path) or
+(recording == false) && (return "")
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report: CodeHistory
+
+Test Input:
+
+```cpp
+CodeHistory editor;
+editor.resize(400, 300);
+editor.show();
+```
+
+Observed Behavior:
+
+* Runtime crash on opening editor: null pointer dereference in paint routine.
+* Line numbers appear in reverse order (e.g., 10, 9, 8…).
+* Line number area height exceeds editor bounds, causing layout distortion.
+
+Expected Behavior:
+
+* Editor displays line numbers correctly in ascending order (1, 2, 3…).
+* No crashes or null pointer issues.
+* Line number area properly aligned within editor's vertical space.
+
+Actual Behavior:
+
+* Application crashes when rendering line numbers due to uninitialized paint device.
+* Visual bug: line numbers count down instead of up.
+* UI misalignment: line number area stretches horizontally instead of vertically.]

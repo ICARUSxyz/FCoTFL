@@ -1,0 +1,36 @@
+module StrBuilder
+type
+    buffer: sequence of char
+    size: int
+    ch: char
+    str: String
+    matcher: StrMatcher
+    startIndex: int
+    idx: int
+    result: Boolean
+
+process indexOfStringFrom(str: String, startIndex: int) result: idx: int
+pre
+    true
+post
+    let s = if startIndex < 0 then 0 else startIndex in
+    if str = null ∨ s ≥ size then idx = -1
+    else if str.length = 0 then idx = s
+    else if str.length = 1 then idx = indexOfCharFrom(str.charAt(0), s)
+    else if str.length > size then idx = -1
+    else
+        (∃i ∈ [s..(size - str.length)] •
+            ∀j ∈ [0..str.length-1] • buffer[i + j] = str.charAt(j) ∧
+            ∀k ∈ [s..i-1] • ¬∀j ∈ [0..str.length-1] • buffer[k + j] = str.charAt(j)
+        ⇒ idx = i) ∧
+        (¬∃i ∈ [s..(size - str.length)] • ∀j ∈ [0..str.length-1] • buffer[i + j] = str.charAt(j) ⇒ idx = -1)
+Functional Scenario Form
+(str = null ∨ startIndex ≥ size) && (idx = -1) or
+(str.length = 0) && (idx = max(startIndex, 0)) or
+(str.length = 1) && (idx = indexOfCharFrom(str.charAt(0), max(startIndex, 0))) or
+(str.length > size) && (idx = -1) or
+(buffer contains str at i ≥ max(startIndex, 0)) && (idx = first such i) or
+(buffer does not contain str after max(startIndex, 0)) && (idx = -1)
+end_process
+
+end_module

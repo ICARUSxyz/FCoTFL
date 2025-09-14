@@ -1,0 +1,300 @@
+module StatisticalBarRenderer  
+
+var:  
+  serialVersionUID: long = -4986038395414039117L  
+
+process constructor()  
+pre true  
+post  
+  super() ∧  
+  errorIndicatorPaint' = Color.gray ∧  
+  errorIndicatorStroke' = new BasicStroke(0.5f)  
+
+Functional Scenario Form  
+default initialization  
+    && sets gray error indicators with 0.5f stroke  
+end_process  
+
+process getErrorIndicatorPaint() result: Paint  
+pre true  
+post  
+  result' = errorIndicatorPaint  
+
+Functional Scenario Form  
+paint=red && returns red  
+end_process  
+
+process setErrorIndicatorPaint(paint: Paint)  
+pre true  
+post  
+  errorIndicatorPaint' = paint ∧  
+  notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+paint=blue valid  
+    && updates && fires event  
+end_process  
+
+process getErrorIndicatorStroke() result: Stroke  
+pre true  
+post  
+  result' = errorIndicatorStroke  
+
+Functional Scenario Form  
+stroke=dashed && returns stroke  
+end_process  
+
+process setErrorIndicatorStroke(stroke: Stroke)  
+pre true  
+post  
+  errorIndicatorStroke' = stroke ∧  
+  notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+stroke=bold valid  
+    && updates && fires event  
+end_process  
+
+process drawItem(g2: Graphics2D, state: CategoryItemRendererState, 
+                dataArea: Rectangle2D, plot: CategoryPlot, 
+                domainAxis: CategoryAxis, rangeAxis: ValueAxis, 
+                data: CategoryDataset, row: int, column: int, pass: int)  
+pre true  
+post  
+  ¬(data instanceof StatisticalCategoryDataset)  
+    ⇒ errorMsg = "Requires StatisticalCategoryDataset." ∧  
+      result = IllegalArgumentException  
+  else  
+    statData = (StatisticalCategoryDataset) data ∧  
+    orientation = plot.getOrientation() ∧  
+    (  
+      orientation = PlotOrientation.HORIZONTAL  
+        ⇒ drawHorizontalItem(g2, state, dataArea, plot, domainAxis, 
+                           rangeAxis, statData, row, column)  
+      orientation = PlotOrientation.VERTICAL  
+        ⇒ drawVerticalItem(g2, state, dataArea, plot, domainAxis, 
+                         rangeAxis, statData, row, column)  
+    )  
+
+Functional Scenario Form  
+non-statistical dataset && throws exception  
+horizontal orientation && calls drawHorizontalItem  
+vertical orientation && calls drawVerticalItem  
+end_process  
+
+process drawHorizontalItem(g2: Graphics2D, state: CategoryItemRendererState, 
+                          dataArea: Rectangle2D, plot: CategoryPlot, 
+                          domainAxis: CategoryAxis, rangeAxis: ValueAxis, 
+                          dataset: StatisticalCategoryDataset, 
+                          row: int, column: int)  
+pre true  
+post  
+  xAxisLocation = plot.getDomainAxisEdge() ∧  
+  rectY = domainAxis.getCategoryStart(column, getColumnCount(), dataArea, xAxisLocation) ∧  
+  seriesCount = getRowCount() ∧  
+  (  
+    seriesCount > 1  
+      ⇒ seriesGap = dataArea.getHeight() * getItemMargin() / (getColumnCount() * (seriesCount-1)) ∧  
+        rectY' = rectY + row * (state.getBarWidth() + seriesGap)  
+    else  
+      rectY' = rectY + row * state.getBarWidth()  
+  ) ∧  
+  meanValue = dataset.getMeanValue(row, column) ∧  
+  (  
+    meanValue = null ⇒ skip  
+    meanValue ≠ null  
+      ⇒ value = meanValue.doubleValue() ∧  
+        base = 0.0 ∧  
+        lclip = getLowerClip() ∧  
+        uclip = getUpperClip() ∧  
+        // Clip value based on boundaries  
+        (  
+          uclip ≤ 0.0  
+            ⇒ (value ≥ uclip ⇒ skip) ∧  
+              (value ≤ lclip ⇒ value' = lclip)  
+          lclip ≤ 0.0  
+            ⇒ (value ≥ uclip ⇒ value' = uclip) ∧  
+              (value ≤ lclip ⇒ value' = lclip)  
+          else  
+            (value ≤ lclip ⇒ skip) ∧  
+            (value ≥ uclip ⇒ value' = uclip)  
+        ) ∧  
+        yAxisLocation = plot.getRangeAxisEdge() ∧  
+        transY1 = rangeAxis.valueToJava2D(base, dataArea, yAxisLocation) ∧  
+        transY2 = rangeAxis.valueToJava2D(value, dataArea, yAxisLocation) ∧  
+        rectX = min(transY2, transY1) ∧  
+        rectHeight = state.getBarWidth() ∧  
+        rectWidth = abs(transY2 - transY1) ∧  
+        bar = new Rectangle2D.Double(rectX, rectY, rectWidth, rectHeight) ∧  
+        seriesPaint = getItemPaint(row, column) ∧  
+        g2.setPaint(seriesPaint) ∧  
+        g2.fill(bar) ∧  
+        (  
+          isDrawBarOutline() ∧ state.getBarWidth() > 3  
+            ⇒ g2.setStroke(getItemStroke(row, column)) ∧  
+              g2.setPaint(getItemOutlinePaint(row, column)) ∧  
+              g2.draw(bar)  
+        ) ∧  
+        // Standard deviation lines  
+        stdDev = dataset.getStdDevValue(row, column) ∧  
+        (  
+          stdDev ≠ null  
+            ⇒ valueDelta = stdDev.doubleValue() ∧  
+              highVal = rangeAxis.valueToJava2D(meanValue.doubleValue() + valueDelta, dataArea, yAxisLocation) ∧  
+              lowVal = rangeAxis.valueToJava2D(meanValue.doubleValue() - valueDelta, dataArea, yAxisLocation) ∧  
+              (  
+                errorIndicatorStroke ≠ null  
+                  ⇒ g2.setStroke(errorIndicatorStroke)  
+                else  
+                  g2.setStroke(getItemOutlineStroke(row, column))  
+              ) ∧  
+              (  
+                errorIndicatorPaint ≠ null  
+                  ⇒ g2.setPaint(errorIndicatorPaint)  
+                else  
+                  g2.setPaint(getItemOutlinePaint(row, column))  
+              ) ∧  
+              line1 = new Line2D.Double(lowVal, rectY + rectHeight/2.0, highVal, rectY + rectHeight/2.0) ∧  
+              g2.draw(line1) ∧  
+              line2 = new Line2D.Double(highVal, rectY + rectHeight*0.25, highVal, rectY + rectHeight*0.75) ∧  
+              g2.draw(line2)  
+        )  
+  )  entities = state.getEntityCollection() ∧  
+  (  
+    entities ≠ null  
+      ⇒ addItemEntity(entities, dataset, row, column, bar)  
+  )  
+
+Functional Scenario Form  
+meanValue null && no drawing  
+horizontal bar within bounds && draws filled bar  
+stdDev present && draws error lines  
+errorIndicatorStroke=null && uses item outline stroke  
+stdDev present  
+    && draws all three error lines (main, high, low)  
+item label visible  
+    && draws item label  
+entities collection present  
+    && adds item entity  
+end_process 
+end_process  
+
+process drawVerticalItem(g2: Graphics2D, state: CategoryItemRendererState, 
+                        dataArea: Rectangle2D, plot: CategoryPlot, 
+                        domainAxis: CategoryAxis, rangeAxis: ValueAxis, 
+                        dataset: StatisticalCategoryDataset, 
+                        row: int, column: int)  
+pre true  
+post  
+
+  stdDev = dataset.getStdDevValue(row, column) ∧  
+  (  
+    stdDev ≠ null  
+      ⇒ valueDelta = stdDev.doubleValue() ∧  
+        highVal = rangeAxis.valueToJava2D(meanValue.doubleValue() + valueDelta, 
+                                        dataArea, yAxisLocation) ∧  
+        lowVal = rangeAxis.valueToJava2D(meanValue.doubleValue() - valueDelta, 
+                                       dataArea, yAxisLocation) ∧  
+        centerX = rectX + rectWidth / 2.0d ∧  
+        
+
+        (  
+          errorIndicatorStroke ≠ null  
+            ⇒ g2.setStroke(errorIndicatorStroke)  
+          else  
+            g2.setStroke(getItemOutlineStroke(row, column))  
+        ) ∧  
+        (  
+          errorIndicatorPaint ≠ null  
+            ⇒ g2.setPaint(errorIndicatorPaint)  
+          else  
+            g2.setPaint(getItemOutlinePaint(row, column))  
+        ) ∧  
+                line1 = new Line2D.Double(centerX, lowVal, centerX, highVal) ∧  
+        g2.draw(line1) ∧  
+        
+
+        line2 = new Line2D.Double(centerX - 5.0d, highVal, 
+                                centerX + 5.0d, highVal) ∧  
+        g2.draw(line2) ∧  
+        
+
+        line3 = new Line2D.Double(centerX - 5.0d, lowVal, 
+                                centerX + 5.0d, lowVal) ∧  
+        g2.draw(line3)  
+  ) ∧  
+  
+
+  generator = getItemLabelGenerator(row, column) ∧  
+  (  
+    generator ≠ null ∧ isItemLabelVisible(row, column)  
+      ⇒ drawItemLabel(g2, dataset, row, column, plot, generator, bar, 
+                    (value < 0.0))  
+  ) ∧  
+  
+
+  entities = state.getEntityCollection() ∧  
+  (  
+    entities ≠ null  
+      ⇒ addItemEntity(entities, dataset, row, column, bar)  
+  )  
+
+Functional Scenario Form  
+stdDev present  
+    && draws all three error lines  
+item label visible  
+    && draws item label at correct position  
+entities collection present  
+    && adds interactive entity  
+end_process 
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof StatisticalBarRenderer) ⇒ result' = false  
+    else  
+      that = (StatisticalBarRenderer) obj ∧  
+      (  
+        ¬super.equals(obj) ∨  
+        ¬PaintUtilities.equal(this.errorIndicatorPaint, that.errorIndicatorPaint)  
+          ⇒ result' = false  
+        else  
+          result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+same object && returns true  
+different type && returns false  
+super not equal && returns false  
+different errorIndicatorPaint && returns false  
+all equal && returns true  
+end_process  
+
+process writeObject(stream: ObjectOutputStream)  
+pre true  
+post  
+  stream.defaultWriteObject() ∧  
+  SerialUtilities.writePaint(errorIndicatorPaint, stream) ∧  
+  SerialUtilities.writeStroke(errorIndicatorStroke, stream)  
+
+Functional Scenario Form  
+serialization  
+    && writes default fields + custom paint/stroke  
+end_process  
+
+process readObject(stream: ObjectInputStream)  
+pre true  
+post  
+  stream.defaultReadObject() ∧  
+  errorIndicatorPaint' = SerialUtilities.readPaint(stream) ∧  
+  errorIndicatorStroke' = SerialUtilities.readStroke(stream)  
+
+Functional Scenario Form  
+deserialization  
+    && restores paint and stroke properties  
+end_process  
+
+end_module  

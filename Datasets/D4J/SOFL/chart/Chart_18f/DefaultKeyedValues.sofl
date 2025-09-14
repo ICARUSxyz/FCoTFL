@@ -1,0 +1,388 @@
+module DefaultKeyedValues  
+type:  
+  keys: ArrayList
+  values: ArrayList
+
+var:  
+  serialVersionUID: long = 8468154364608194797L  
+
+process constructor()  
+pre true  
+post  
+  keys' = new ArrayList() ∧  
+  values' = new ArrayList() ∧  
+  indexMap' = new HashMap()  
+
+Functional Scenario Form  
+default initialization  
+    && empty collections created  
+end_process  
+
+process getItemCount() result: int  
+pre true  
+post  
+  result' = indexMap.size()  
+
+Functional Scenario Form  
+indexMap.size() = 5  
+    && returns 5  
+indexMap.size() = 0  
+    && returns 0  
+end_process  
+
+process getValue(item: int) result: Number  
+pre true  
+post  
+  (  
+    item < 0 ∨ item ≥ values.size()  
+      ⇒ errorMsg = "Index out of bounds" ∧ result = IndexOutOfBoundsException  
+    else ⇒ result' = (Number) values.get(item)  
+  )  
+
+Functional Scenario Form  
+values = [1,2,3] ∧ item = 1  
+    && returns 2  
+item = 5 with values.size()=3  
+    && throws IndexOutOfBoundsException  
+end_process  
+
+process getKey(index: int) result: Comparable  
+pre true  
+post  
+  (  
+    index < 0 ∨ index ≥ keys.size()  
+      ⇒ errorMsg = "Index out of bounds" ∧ result = IndexOutOfBoundsException  
+    else ⇒ result' = (Comparable) keys.get(index)  
+  )  
+
+Functional Scenario Form  
+keys = ["A","B"] ∧ index = 0  
+    && returns "A"  
+index = -1  
+    && throws IndexOutOfBoundsException  
+end_process  
+
+process getIndex(key: Comparable) result: int  
+pre true  
+post  
+  key = null  
+    ⇒ errorMsg = "Null 'key' argument." ∧ result = IllegalArgumentException  
+  key ≠ null  
+    ⇒ i = (Integer) indexMap.get(key) ∧  
+      (  
+        i = null ⇒ result' = -1  
+        i ≠ null ⇒ result' = i.intValue()  
+      )  
+
+Functional Scenario Form  
+key = null  
+    && throws IllegalArgumentException  
+key = "X" not in indexMap  
+    && returns -1  
+key = "Y" with indexMap{"Y"=2}  
+    && returns 2  
+end_process  
+
+process getKeys() result: List  
+pre true  
+post  
+  result' = (List) keys.clone()  
+
+Functional Scenario Form  
+keys = ["A","B"]  
+    && returns cloned list ["A","B"]  
+keys = []  
+    && returns empty list  
+end_process  
+
+process getValue(key: Comparable) result: Number  
+pre true  
+post  
+  index = getIndex(key) ∧  
+  (  
+    index < 0  
+      ⇒ errorMsg = "Key not found: " + key ∧ result = UnknownKeyException  
+    index ≥ 0  
+      ⇒ result' = getValue(index)  
+  )  
+
+Functional Scenario Form  
+key = "Z" not in indexMap  
+    && throws UnknownKeyException  
+key = "A" with indexMap{"A"=0} ∧ values[0]=10  
+    && returns 10  
+end_process  
+
+process addValue(key: Comparable, value: double)  
+pre true  
+post  
+  addValue(key, new Double(value))  
+
+Functional Scenario Form  
+key = "A" ∧ value = 5.0  
+    && delegates to addValue(key, new Double(5.0))  
+end_process  
+
+process addValue(key: Comparable, value: Number)  
+pre true  
+post  
+  setValue(key, value)  
+
+Functional Scenario Form  
+key = "B" ∧ value = 10  
+    && delegates to setValue("B", 10)  
+end_process  
+
+process setValue(key: Comparable, value: double)  
+pre true  
+post  
+  setValue(key, new Double(value))  
+
+Functional Scenario Form  
+key = "C" ∧ value = 7.5  
+    && delegates to setValue("C", new Double(7.5))  
+end_process  
+
+process setValue(key: Comparable, value: Number)  
+pre true  
+post  
+  key = null  
+    ⇒ errorMsg = "Null 'key' argument." ∧ result = IllegalArgumentException  
+  key ≠ null  
+    ⇒ keyIndex = getIndex(key) ∧  
+      (  
+        keyIndex ≥ 0  
+          ⇒ keys.set(keyIndex, key) ∧ values.set(keyIndex, value)  
+        keyIndex < 0  
+          ⇒ keys.add(key) ∧ values.add(value) ∧ indexMap.put(key, new Integer(keys.size() - 1))  
+      )  
+
+Functional Scenario Form  
+key = null  
+    && throws IllegalArgumentException  
+key = "X" not present  
+    && adds new entry: keys=["X"], values=[value], indexMap{"X"=0}  
+key = "Y" present at index 2  
+    && updates values[2] = value  
+end_process  
+
+process insertValue(position: int, key: Comparable, value: double)  
+pre true  
+post  
+  insertValue(position, key, new Double(value))  
+
+Functional Scenario Form  
+position=0, key="D", value=3.14  
+    && delegates to insertValue(0, "D", new Double(3.14))  
+end_process  
+
+process insertValue(position: int, key: Comparable, value: Number)  
+pre true  
+post  
+  position < 0 ∨ position > getItemCount()  
+    ⇒ errorMsg = "'position' out of bounds." ∧ result = IllegalArgumentException  
+  key = null  
+    ⇒ errorMsg = "Null 'key' argument." ∧ result = IllegalArgumentException  
+  else  
+    pos = getIndex(key) ∧  
+    (  
+      pos = position  
+        ⇒ keys.set(pos, key) ∧ values.set(pos, value)  
+      pos ≠ position  
+        ⇒ (  
+            pos ≥ 0  
+              ⇒ keys.remove(pos) ∧ values.remove(pos)  
+          ) ∧  
+          keys.add(position, key) ∧  
+          values.add(position, value) ∧  
+          rebuildIndex()  
+    )  
+
+Functional Scenario Form  
+position = -1  
+    && throws IllegalArgumentException  
+key = null  
+    && throws IllegalArgumentException  
+key = "Z" not present ∧ position=1  
+    && inserts at position 1: keys=[...,"Z",...], values=[...,value,...]  
+key = "W" present at index 3 ∧ position=0  
+    && removes from index 3, inserts at 0, rebuilds index  
+key = "V" present at index 2 ∧ position=2  
+    && updates existing entry  
+end_process  
+
+process rebuildIndex()  
+pre true  
+post  
+  indexMap'.clear() ∧  
+  ∀ i ∈ [0, keys.size()-1]:  
+    key = keys.get(i) ∧  
+    indexMap'.put(key, new Integer(i))  
+
+Functional Scenario Form  
+keys = ["A","B"]  
+    && indexMap becomes {"A"=0, "B"=1}  
+keys = []  
+    && indexMap becomes empty  
+after removal and insertion  
+    && rebuilds correct index mapping  
+end_process  
+
+process removeValue(index: int)  
+pre true  
+post  
+  keys.remove(index) ∧  
+  values.remove(index) ∧  
+  rebuildIndex()  
+
+Functional Scenario Form  
+index = 0 with keys=["A","B"]  
+    && becomes keys=["B"], indexMap updated  
+index = 5 with keys.size()=3  
+    && throws IndexOutOfBoundsException  
+end_process  
+
+process removeValue(key: Comparable)  
+pre true  
+post  
+  index = getIndex(key) ∧  
+  (  
+    index < 0  
+      ⇒ errorMsg = "The key (" + key + ") is not recognised." ∧ result = UnknownKeyException  
+    index ≥ 0  
+      ⇒ removeValue(index)  
+  )  
+
+Functional Scenario Form  
+key = "X" not present  
+    && throws UnknownKeyException  
+key = "Y" present at index 2  
+    && removes item at index 2  
+end_process  
+
+process clear()  
+pre true  
+post  
+  keys'.clear() ∧  
+  values'.clear() ∧  
+  indexMap'.clear()  
+
+Functional Scenario Form  
+non-empty collections  
+    && all cleared to empty  
+end_process  
+
+process sortByKeys(order: SortOrder)  
+pre order ≠ null  
+post  
+  size = keys.size() ∧  
+  data = new DefaultKeyedValue[size] ∧  
+  ∀ i ∈ [0, size-1]:  
+    data[i] = new DefaultKeyedValue((Comparable)keys.get(i), (Number)values.get(i)) ∧  
+  comparator = new KeyedValueComparator(KeyedValueComparatorType.BY_KEY, order) ∧  
+  Arrays.sort(data, comparator) ∧  
+  clear() ∧  
+  ∀ j ∈ [0, data.length-1]:  
+    value = data[j] ∧  
+    addValue(value.getKey(), value.getValue())  
+
+Functional Scenario Form  
+keys = ["B","A"] ∧ values = [2,1] ∧ order=ASCENDING  
+    && sorted to ["A":1, "B":2]  
+keys = ["C","B","A"] ∧ order=DESCENDING  
+    && sorted to ["C","B","A"]  
+end_process  
+
+process sortByValues(order: SortOrder)  
+pre order ≠ null  
+post  
+  size = keys.size() ∧  
+  data = new DefaultKeyedValue[size] ∧  
+  ∀ i ∈ [0, size-1]:  
+    data[i] = new DefaultKeyedValue((Comparable)keys.get(i), (Number)values.get(i)) ∧  
+  comparator = new KeyedValueComparator(KeyedValueComparatorType.BY_VALUE, order) ∧  
+  Arrays.sort(data, comparator) ∧  
+  clear() ∧  
+  ∀ j ∈ [0, data.length-1]:  
+    value = data[j] ∧  
+    addValue(value.getKey(), value.getValue())  
+
+Functional Scenario Form  
+values = [3,1,2] ∧ order=ASCENDING  
+    && sorted to [1,2,3]  
+values = [null,5,3] ∧ order=DESCENDING  
+    && sorted to [5,3,null]  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof KeyedValues) ⇒ result' = false  
+    else  
+      that = (KeyedValues) obj ∧  
+      (  
+        getItemCount() ≠ that.getItemCount() ⇒ result' = false  
+        else  
+          ∀ i ∈ [0, getItemCount()-1]:  
+            k1 = getKey(i) ∧  
+            k2 = that.getKey(i) ∧  
+            v1 = getValue(i) ∧  
+            v2 = that.getValue(i) ∧  
+            (  
+              ¬k1.equals(k2) ∨  
+              (v1 = null ∧ v2 ≠ null) ∨  
+              (v1 ≠ null ∧ ¬v1.equals(v2))  
+                ⇒ result' = false  
+            ) ∧  
+          result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+obj = this  
+    && returns true  
+obj not KeyedValues  
+    && returns false  
+different item count  
+    && returns false  
+same keys/values but different order  
+    && returns false (order-sensitive)  
+identical structure  
+    && returns true  
+end_process  
+
+process hashCode() result: int  
+pre true  
+post  
+  keys ≠ null  
+    ⇒ result' = keys.hashCode()  
+  keys = null  
+    ⇒ result' = 0  
+
+Functional Scenario Form  
+keys = ["A","B"]  
+    && returns non-zero hash  
+keys = null  
+    && returns 0  
+end_process  
+
+process clone() result: DefaultKeyedValues  
+pre true  
+post  
+  result' = (DefaultKeyedValues) super.clone() ∧  
+  result.keys' = (ArrayList) this.keys.clone() ∧  
+  result.values' = (ArrayList) this.values.clone() ∧  
+  result.indexMap' = (HashMap) this.indexMap.clone()  
+
+Functional Scenario Form  
+this.keys = ["A","B"]  
+    && cloned keys = ["A","B"]  
+this.values = [1,2]  
+    && cloned values = [1,2]  
+this.indexMap = {"A":0, "B":1}  
+    && cloned indexMap = {"A":0, "B":1}  
+end_process 
+
+end_module  

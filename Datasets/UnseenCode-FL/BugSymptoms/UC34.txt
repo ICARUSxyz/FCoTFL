@@ -1,0 +1,107 @@
+**Bug Report: Behavior and Output Issues in Genre-Based Manga Search UI**
+
+---
+
+**Test Case 1: Application Startup**
+
+**Action:**
+Run the application and open the genre selection screen.
+
+**Expected:**
+The genre checkboxes display correctly without crashing.
+
+**Observed:**
+Application throws an `ArrayIndexOutOfBoundsException` during launch.
+
+**Log Output:**
+
+```plaintext
+[INFO] Initializing genre checkboxes
+[ERROR] java.lang.ArrayIndexOutOfBoundsException: Index 18 out of bounds for length 18
+```
+
+---
+
+**Test Case 2: Clicking the Search Button**
+
+**Action:**
+Select some genres and click “検索” (Search).
+
+**Expected:**
+Application performs a genre-based search and displays results.
+
+**Observed:**
+App unexpectedly closes or navigates back to the previous screen.
+
+**Log Output:**
+
+```plaintext
+[INFO] Search button clicked
+[INFO] Executing: backAction()
+[INFO] Window disposed
+[WARN] Expected search, but back navigation occurred
+```
+
+---
+
+**Test Case 3: Processing Search Results**
+
+**Action:**
+Search for a genre expected to return results.
+
+**Expected:**
+Title of matched manga is printed.
+
+**Observed:**
+Console shows: "検索結果: 0"
+
+**Log Output:**
+
+```plaintext
+[INFO] Selected genre: バトル/アクション  
+[INFO] Manga match found: ドラゴンブレード  
+[ERROR] Cannot call getTitle() on primitive int  
+[EXCEPTION] java.lang.Error: Cannot resolve method 'getTitle'
+```
+
+---
+
+**Test Case 4: Excel Data Read**
+
+**Action:**
+Run a search after selecting any genre.
+
+**Expected:**
+Excel data is loaded and parsed.
+
+**Observed:**
+NullPointerException or empty results despite valid data.
+
+**Log Output:**
+
+```plaintext
+[INFO] Opening file: manga_data.xlsx  
+[ERROR] java.lang.NullPointerException: sheet is null  
+[WARN] Workbook initialization may have failed due to missing input stream
+```
+
+---
+
+**Test Case 5: No Matching Manga**
+
+**Action:**
+Search using an uncommon genre that likely has no matches.
+
+**Expected:**
+Display "該当する漫画が見つかりませんでした" (No results found).
+
+**Observed:**
+Application compiles but fails silently or crashes.
+
+**Log Output:**
+
+```plaintext
+[INFO] Finished iterating over rows  
+[ERROR] Incompatible return statement: no value returned from non-void method  
+[FAIL] Compilation error: missing return value
+```

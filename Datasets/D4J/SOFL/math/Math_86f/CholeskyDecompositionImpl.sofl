@@ -1,0 +1,105 @@
+module CholeskyDecompositionImpl
+type
+DEFAULT_RELATIVE_SYMMETRY_THRESHOLD: Real
+DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD: Real
+
+process ctor_default(matrix: RealMatrix) result: CholeskyDecompositionImpl
+pre
+isSquare(matrix) ∧ symmetricWithin(matrix, DEFAULT_RELATIVE_SYMMETRY_THRESHOLD) ∧ spdWithin(matrix, DEFAULT_RELATIVE_SYMMETRY_THRESHOLD, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+post
+∃L: RealMatrix • lowerTriangular(L) ∧ diagPos(L) ∧ approxEq(matmul(L, transpose(L)), matrix, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD) ∧ result.getLT() = transpose(L) ∧ result.getL() = L
+Functional Scenario Form
+isSquare(matrix) ∧ symmetricWithin(matrix, DEFAULT_RELATIVE_SYMMETRY_THRESHOLD) ∧ spdWithin(matrix, DEFAULT_RELATIVE_SYMMETRY_THRESHOLD, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD) && ∃L • lowerTriangular(L) ∧ diagPos(L) ∧ approxEq(matmul(L, transpose(L)), matrix, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+end_process
+
+process ctor_withThresholds(matrix: RealMatrix, relativeSymmetryThreshold: Real, absolutePositivityThreshold: Real) result: CholeskyDecompositionImpl
+pre
+isSquare(matrix) ∧ relativeSymmetryThreshold ≥ 0 ∧ absolutePositivityThreshold > 0 ∧ symmetricWithin(matrix, relativeSymmetryThreshold) ∧ spdWithin(matrix, relativeSymmetryThreshold, absolutePositivityThreshold)
+post
+∃L: RealMatrix • lowerTriangular(L) ∧ diagPos(L) ∧ approxEq(matmul(L, transpose(L)), matrix, absolutePositivityThreshold) ∧ result.getLT() = transpose(L) ∧ result.getL() = L
+Functional Scenario Form
+isSquare(matrix) ∧ relativeSymmetryThreshold ≥ 0 ∧ absolutePositivityThreshold > 0 ∧ symmetricWithin(matrix, relativeSymmetryThreshold) ∧ spdWithin(matrix, relativeSymmetryThreshold, absolutePositivityThreshold) && ∃L • lowerTriangular(L) ∧ diagPos(L) ∧ approxEq(matmul(L, transpose(L)), matrix, absolutePositivityThreshold)
+end_process
+
+process getL(self: CholeskyDecompositionImpl) result: RealMatrix
+pre
+true
+post
+lowerTriangular(result) ∧ diagPos(result) ∧ approxEq(matmul(result, transpose(result)), matmul(transpose(self.getLT()), self.getLT()), DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+true && lowerTriangular(result) ∧ diagPos(result)
+end_process
+
+process getLT(self: CholeskyDecompositionImpl) result: RealMatrix
+pre
+true
+post
+upperTriangular(result) ∧ diagPos(transpose(result)) ∧ approxEq(matmul(transpose(result), result), matmul(self.getL(), transpose(self.getL())), DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+true && upperTriangular(result)
+end_process
+
+process getDeterminant(self: CholeskyDecompositionImpl) result: Real
+pre
+true
+post
+let L = self.getL() in result = det(matmul(L, transpose(L))) ∧ result > 0
+Functional Scenario Form
+true && result > 0
+end_process
+
+process getSolver(self: CholeskyDecompositionImpl) result: DecompositionSolver
+pre
+true
+post
+result.isNonSingular() = true
+Functional Scenario Form
+true && result.isNonSingular() = true
+end_process
+
+process solver_isNonSingular(self: DecompositionSolver) result: bool
+pre
+true
+post
+result = true
+Functional Scenario Form
+true && result = true
+end_process
+
+process solver_solve_vec(self: DecompositionSolver, b: RealVector) result: RealVector
+pre
+rowDim(self.getInverse()) = b.getDimension()
+post
+matmul(self.getInverse(), matmul(self.getInverse()^(-1), result)) = result ∧ approxEq(matmul((self.getInverse())^(-1), result), b, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+rowDim(self.getInverse()) = b.getDimension() && approxEq(matmul((self.getInverse())^(-1), result), b, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+end_process
+
+process solver_solve_arr(self: DecompositionSolver, b: seq<Real>) result: seq<Real>
+pre
+|b| = rowDim(self.getInverse())
+post
+approxEq(matmul((self.getInverse())^(-1), result), b, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+|b| = rowDim(self.getInverse()) && approxEq(matmul((self.getInverse())^(-1), result), b, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+end_process
+
+process solver_solve_mat(self: DecompositionSolver, B: RealMatrix) result: RealMatrix
+pre
+rowDim(B) = rowDim(self.getInverse())
+post
+approxEq(matmul((self.getInverse())^(-1), result), B, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+rowDim(B) = rowDim(self.getInverse()) && approxEq(matmul((self.getInverse())^(-1), result), B, DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+end_process
+
+process solver_getInverse(self: DecompositionSolver) result: RealMatrix
+pre
+true
+post
+approxEq(matmul((self.getInverse())^(-1), result), identity(rowDim(result)), DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+Functional Scenario Form
+true && approxEq(matmul((self.getInverse())^(-1), result), identity(rowDim(result)), DEFAULT_ABSOLUTE_POSITIVITY_THRESHOLD)
+end_process
+
+end_module

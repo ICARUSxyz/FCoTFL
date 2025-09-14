@@ -1,0 +1,66 @@
+module BisectionSolver
+
+process ctor_withFunction(self: BisectionSolver, f: UnivariateRealFunction) result: BisectionSolver
+pre
+f ≠ null
+post
+self.f' = f ∧ self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+Functional Scenario Form
+called && self.f' = f ∧ self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+end_process
+
+process ctor_default(self: BisectionSolver) result: BisectionSolver
+pre
+true
+post
+self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+Functional Scenario Form
+called && self.maximalIterationCount' = 100 ∧ self.absoluteAccuracy' = 1E-6 ∧ result = self
+end_process
+
+process solve_deprecated_min_max_initial(self: BisectionSolver, min: double, max: double, initial: double) result: double
+pre
+true
+post
+result = solve(self, self.f, min, max)
+Functional Scenario Form
+called && result = solve(self, self.f, min, max)
+end_process
+
+process solve_deprecated_min_max(self: BisectionSolver, min: double, max: double) result: double
+pre
+true
+post
+result = solve(self, self.f, min, max)
+Functional Scenario Form
+called && result = solve(self, self.f, min, max)
+end_process
+
+process solve_withInitial(self: BisectionSolver, f: UnivariateRealFunction, min: double, max: double, initial: double) result: double
+pre
+f ≠ null
+post
+result = solve(self, f, min, max)
+Functional Scenario Form
+called && result = solve(self, f, min, max)
+end_process
+
+process solve(self: BisectionSolver, f: UnivariateRealFunction, min: double, max: double) result: double
+pre
+f ≠ null ∧ min ≤ max
+post
+(∃ i, a, b • 0 ≤ i ≤ self.maximalIterationCount ∧ a ≤ b ∧
+result = UnivariateRealSolverUtils.midpoint(a, b) ∧
+|b − a| ≤ self.absoluteAccuracy ∧
+a ≥ min ∧ b ≤ max )
+∨ raise(MaxIterationsExceededException)
+∨ raise(FunctionEvaluationException)
+∨ raise(IllegalArgumentException)
+Functional Scenario Form
+valid bracketing and convergence within max iterations && |b−a| ≤ absoluteAccuracy ∧ result = midpoint(a,b) or
+exceeded maximalIterationCount && raise(MaxIterationsExceededException) or
+f.value throws during evaluation && raise(FunctionEvaluationException) or
+verifyInterval fails (e.g., bad endpoints) && raise(IllegalArgumentException)
+end_process
+
+end_module

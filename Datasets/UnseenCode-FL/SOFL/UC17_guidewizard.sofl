@@ -1,0 +1,132 @@
+module UC17_guidewizard
+type
+  projectPath, projectNameStr, specPathStr, targetLangStr: String
+  filePath, directoryPath, fileName: String
+
+process GuideWizard(parent: QWidget) result: UC17_guidewizard
+pre
+  true
+post
+  setPage(Page_Intro, new IntroPage)
+  setPage(Page_CreateNewProject, new CreateProjectPage)
+  setPage(Page_OpenExistingProject, new OpenProjectPage)
+  setPage(Page_Conclusion, new ConclusionPage)
+  setStartId(Page_Intro)
+  if not macOS then setWizardStyle(ModernStyle)
+  setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"))
+  setWindowTitle("HMPP Tool Guide")
+Functional Scenario Form
+wizard initialized with all pages, style, and branding
+end_process
+
+process OpenProjectPage(parent: QWidget) result: OpenProjectPage
+pre
+  true
+post
+  setTitle("Open an existing project")
+  projectPathLabel and projectSpecPathLabel initialized
+  projectPathLineEdit and projectSpecPathEdit set to read-only
+  projectNameLineEdit and targetLanguageLineEdit initialized
+  openFileButton and openSpecButton configured with folder icon
+  targetLanguageLineEdit.setText("C++")
+  connect openFileButton.clicked to getProjectDirectory
+  connect openSpecButton.clicked to getSpecDirectory
+  layout constructed with widgets and assigned to page
+Functional Scenario Form
+open project page initialized with inputs, icons, layout, and signals
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  result' = Page_Conclusion
+Functional Scenario Form
+wizard proceeds from open project page to conclusion page
+end_process
+
+process validatePage() result: Boolean
+pre
+  true
+post
+  if projectPathLineEdit.text = "" then
+    show warning "Please select your project file"
+    result' = false
+  else
+    result' = true
+Functional Scenario Form
+project path set && allow navigation or
+project path missing && show warning, block navigation
+end_process
+
+process getProjectDirectory() result: Void
+pre
+  true
+post
+  filePath = QFileDialog.getOpenFileName(...)
+  if filePath ≠ "":
+    fileInfo = QFileInfo(filePath)
+    directoryPath = fileInfo.absolutePath()
+    fileName = fileInfo.fileName()
+    projectPathLineEdit.setText(directoryPath)
+    projectNameLineEdit.setText(fileName)
+    targetLanguageLineEdit.setText("C++")
+    setField("project name", fileName)
+    setField("project path", directoryPath)
+    setField("target language", "C++")
+Functional Scenario Form
+user selects project file && fields populated accordingly or
+dialog canceled && no field changed
+end_process
+
+process getSpecDirectory() result: Void
+pre
+  true
+post
+  filePath = QFileDialog.getOpenFileName(...)
+  if filePath ≠ "":
+    projectSpecPathEdit.setText(filePath)
+    setField("specification path", filePath)
+Functional Scenario Form
+user selects spec file && field updated or
+dialog canceled && field unchanged
+end_process
+
+process ConclusionPage(parent: QWidget) result: ConclusionPage
+pre
+  true
+post
+  setTitle("Welcome to HMPP tool")
+  setPixmap(QWizard::WatermarkPixmap, watermark image)
+  label and result labels initialized
+  layout constructed and assigned
+Functional Scenario Form
+conclusion page initialized with static and result display labels
+end_process
+
+process initializePage() result: Void
+pre
+  true
+post
+  projectNameStr = field("project name")
+  projectPath = field("project path")
+  targetLangStr = field("target language")
+  specPathStr = field("specification path")
+  projectName.setText("Project Name: " + projectNameStr)
+  projectPathOut.setText("Project Directory: " + projectPath)
+  targetLanguage.setText("Target Language: " + targetLangStr)
+  specPath.setText("Specification Directory: " + specPathStr)
+Functional Scenario Form
+page initialized && summary labels set from field values
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  result' = -1
+Functional Scenario Form
+conclusion page is last page && nextId = -1
+end_process
+
+end_module

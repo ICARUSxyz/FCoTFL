@@ -1,0 +1,216 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: import java.io.*;
+2: import java.time.LocalDateTime;
+3: import java.time.format.DateTimeFormatter;
+4: 
+5: public class file {
+6: 
+7:     public static String readFile(String filePath) throws IOException {
+8:         String data = null;
+9:         
+10:         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+11:             data = br.readLine();
+12:         } 
+13:         return null;
+14:     }
+15: 
+16:     public void writeFile(String charge, String filePath) {
+17:         
+18:         try {
+19:             // ファイルに書き込む。
+20:             BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+21:             writer.write(charge);
+22:             writer.close();
+23: 
+24:             System.out.println("ファイルに書き込みました: " + filePath);
+25:         } catch (IOException e) {
+26:             System.out.println("エラーが発生しました: " + e.getMessage());
+27:             e.printStackTrace();
+28:         }
+29:     }
+30: 
+31:     public void writeFile2(String charge, String filePath, String message) {
+32:         try {
+33:             // ファイルを追記モードで開く
+34:             BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+35:             
+36:             // 現在の日付と時間を取得
+37:             LocalDateTime now = LocalDateTime.now();
+38:             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+39:             String formattedDate = now.format(formatter);
+40: 
+41:             // 追記する前に改行を追加する
+42:             writer.newLine();
+43: 
+44:             // chargeと日付をファイルに書き込む
+45:             writer.write(formattedDate + ": " + charge + message);
+46:             writer.close();
+47: 
+48:             System.out.println("ファイルに書き込みました: " filePath);
+49:         } catch (IOException e) {
+50:             System.out.println("エラーが発生しました: " + e.getMessage());
+51:             e.printStackTrace();
+52:         }
+53:     }
+54: }]
+
+SOFL:[
+module UC41_file
+type
+  filePath: string
+  charge: string
+  message: string
+  data: string
+  formattedDate: string
+  result: Boolean
+
+process readFile(filePath: string) result: string
+pre
+  filePath ≠ ""
+  ∧ file at filePath exists and is readable
+post
+  result = first line of file at filePath
+Functional Scenario Form
+(filePath ≠ "" ∧ file is readable) &&
+(result = first line of the file)
+end_process
+
+process writeFile(charge: string, filePath: string) result: Boolean
+pre
+  filePath ≠ "" ∧ charge ≠ ""
+post
+  file at filePath is overwritten with charge
+  ∧ result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ charge ≠ "") &&
+(file at filePath is created or overwritten with charge ∧ result = true)
+end_process
+
+process writeFile2(charge: string, filePath: string, message: string) result: Boolean
+pre
+  filePath ≠ "" ∧ charge ≠ "" ∧ message ≠ ""
+post
+  current datetime is retrieved as formattedDate
+  ∧ file at filePath is appended with (formattedDate + ": " + charge + message), prefixed by newline
+  ∧ result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ charge ≠ "" ∧ message ≠ "") &&
+(current time is formatted
+ ∧ (formattedDate + ": " + charge + message) is appended to filePath with newline
+ ∧ result = true)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: File I/O Operations – Symptom Summary**
+
+---
+
+### **Test Case 1: Reading from File**
+
+**Input:**
+
+```java
+String result = file.readFile("test.txt");
+System.out.println(result);
+```
+
+**Expected Output:**
+
+```
+<Contents of the first line of test.txt>
+```
+
+**Observed Output:**
+
+```
+null
+```
+
+---
+
+### **Test Case 2: Writing to File (Overwriting Mode)**
+
+**Input:**
+
+```java
+file.writeFile("Charge: 1000", "log.txt");
+```
+
+**Expected Behavior:**
+File `log.txt` is created or overwritten with content `Charge: 1000`, and the console outputs a success message.
+
+**Observed Output:**
+
+```
+ファイルに書き込みました: log.txt
+```
+
+*(Works as expected)*
+
+---
+
+### **Test Case 3: Appending to File with Timestamp**
+
+**Input:**
+
+```java
+file.writeFile2("Charge: 1000", "log.txt", " Yen added");
+```
+
+**Expected Behavior:**
+Appends a new line in `log.txt` with a timestamped charge entry:
+
+```
+2025-08-08 13:45:12: Charge: 1000 Yen added
+```
+
+**Observed Output:**
+
+```
+[Compilation Error]
+>> error: ';' expected
+>> System.out.println("ファイルに書き込みました: " filePath);
+```
+
+**File Output:**
+File is overwritten rather than appended, losing previous contents.
+
+---
+
+### **Console Log (Simulated):**
+
+```
+[INFO] Reading file...
+[INFO] Finished reading: null
+[INFO] Writing file in overwrite mode...
+[INFO] Writing file in append mode...
+[ERROR] Syntax error on print statement
+[WARN] File contents replaced instead of appended
+```]

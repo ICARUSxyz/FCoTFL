@@ -1,0 +1,101 @@
+module UC16_guidewizard
+type
+  projectName, projectPath, specPath: String
+  filePath, proDir: String
+
+process GuideWizard(parent: QWidget) result: UC16_guidewizard
+pre
+  true
+post
+  setPage(Page_Intro, new IntroPage)
+  setPage(Page_CreateNewProject, new CreateProjectPage)
+  setPage(Page_OpenExistingProject, new OpenProjectPage)
+  setPage(Page_Conclusion, new ConclusionPage)
+  setStartId(Page_Intro)
+  if not macOS then setWizardStyle(ModernStyle)
+  setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"))
+  setWindowTitle("HMPP Tool Guide")
+Functional Scenario Form
+wizard initialized with all pages and platform-specific style
+end_process
+
+process CreateProjectPage(parent: QWidget) result: CreateProjectPage
+pre
+  true
+post
+  projectNameLabel, projectPathLabel, projectSpecPathLabel, targetLanguageLabel initialized
+  projectNameLineEdit, projectPathLineEdit, projectSpecPathEdit initialized
+  openDirectoryButton and openSpecButton initialized with folder icon
+  targetLanguageBox contains ["C++", "Java", "C#"]
+  connect openDirectoryButton.clicked to getProjectDirectory
+  connect openSpecButton.clicked to getSpecDirectory
+  registerField("project name*", projectNameLineEdit)
+  registerField("project path*", projectPathLineEdit)
+  registerField("specification path", projectSpecPathEdit)
+  registerField("target language*", targetLanguageBox, "currentText", currentIndexChanged)
+  layout contains all widgets, set as page layout
+Functional Scenario Form
+project creation page initialized with input fields, layout and signals
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  result' = Page_Conclusion
+Functional Scenario Form
+proceed from create project page to conclusion page
+end_process
+
+process validatePage() result: Boolean
+pre
+  true
+post
+  if projectNameLineEdit.text is empty then
+    show warning "Please enter your project name"
+    result' = false
+  else if projectPathLineEdit.text is empty then
+    show warning "Please select your project directory"
+    result' = false
+  else
+    result' = true
+Functional Scenario Form
+valid project name and path && allow proceed or
+missing input && show warning, prevent proceed
+end_process
+
+process isComplete() result: Boolean
+pre
+  true
+post
+  result' = (targetLanguageBox.currentIndex ≥ 0) ∧ (projectNameLineEdit.text ≠ "") ∧ (projectPathLineEdit.text ≠ "")
+Functional Scenario Form
+all required fields completed && isComplete = true or
+any field missing && isComplete = false
+end_process
+
+process getProjectDirectory() result: Void
+pre
+  true
+post
+  proDir = QFileDialog.getExistingDirectory(...)
+  if proDir ≠ "" then
+    projectPathLineEdit.setText(proDir)
+Functional Scenario Form
+user selects project directory && path set or
+user cancels dialog && no path set
+end_process
+
+process getSpecDirectory() result: Void
+pre
+  true
+post
+  filePath = QFileDialog.getOpenFileName(...)
+  if filePath ≠ "" then
+    projectSpecPathEdit.setText(filePath)
+Functional Scenario Form
+user selects specification file && path set or
+user cancels dialog && no path set
+end_process
+
+end_module

@@ -1,0 +1,90 @@
+**Bug Report: File View and Clear Operations – Symptom Summary**
+
+---
+
+### **Test Case 1: Emptying a File**
+
+**Input:**
+
+```java
+file.emptyFile("log.txt");
+```
+
+**Expected Behavior:**
+Clears the content of `log.txt`, leaving it truly blank or with a placeholder that doesn't affect interpretation of emptiness.
+
+**Observed Output:**
+
+```
+ファイルを白紙にしました。
+```
+
+**File Content After Execution:**
+
+```
+,
+```
+
+**Note:** File is not truly empty—contains a comma, which may be misinterpreted by downstream logic expecting blank or null content.
+
+---
+
+### **Test Case 2: Viewing a File with No Content**
+
+**Setup:**
+A file `log.txt` has been cleared using the above method.
+
+**Input:**
+
+```java
+file.viewFile("log.txt");
+```
+
+**Expected Output:**
+
+```
+ファイルの一行目は空です。
+```
+
+**Observed Output:**
+
+```
+[Compilation Error or Logical Fault]
+Unexpected behavior or no output.
+```
+
+**Console Log (Simulated):**
+
+```
+Exception in thread "main" java.lang.NullPointerException
+    at file.viewFile(file.java:...)
+```
+
+---
+
+### **Test Case 3: Viewing a File with Valid Content**
+
+**Setup:**
+File `log.txt` contains:
+
+```
+Sample entry
+```
+
+**Input:**
+
+```java
+file.viewFile("log.txt");
+```
+
+**Expected Output:**
+
+```
+ファイルの一行目には内容が含まれています。
+```
+
+**Observed Output:**
+
+```
+ファイルの一行目には内容が含まれています。
+```

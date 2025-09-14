@@ -1,0 +1,80 @@
+**Bug Report: Temperature Controller – Symptom Summary**
+
+---
+
+### **Test Case 1: Fuzzing Invocation Skips Temperature Input**
+
+**Input:**
+
+```java
+double a = 19.5
+```
+
+**Expected Behavior:**
+Fuzzed value used to update temperature setting.
+
+**Observed Output:**
+
+```
+Temperature is stable. No action required.
+```
+
+**Note:**
+Output message does not reflect the fuzzed input `a`, indicating it was not used.
+
+---
+
+### **Test Case 2: Incorrect Upper Bound Handling**
+
+**Input:**
+
+```java
+controller.setTemperature(23.0)
+```
+
+**Expected Output:**
+
+```
+Temperature is stable. No action required.
+```
+
+**Observed Output:**
+
+```
+Warning: Temperature too high! Activating cooling system...
+```
+
+---
+
+### **Test Case 3: Getter Returns Uninitialized Variable**
+
+**Call:**
+
+```java
+getTemperature()
+```
+
+**Expected Output:**
+Returns last set temperature.
+
+**Observed Output:**
+Compilation error or unexpected value due to unknown reference to `initialTemp`.
+
+---
+
+### **Test Case 4: Inconsistent Edge Case for Zero**
+
+**Input:**
+
+```java
+controller.setTemperature(0.0)
+```
+
+**Expected Output:**
+
+```
+Warning: Temperature too low! Activating heating system...
+```
+
+**Observed Output:**
+Behavior not tested or inconsistent; earlier test case with 0 replaced by 10.

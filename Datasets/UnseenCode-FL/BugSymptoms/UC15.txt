@@ -1,0 +1,59 @@
+#### Test Case 1 Completing the wizard
+
+Expected When the wizard is finished with OK, the application correctly records the selected operation.
+Observed Regardless of user selection, internal flags are not updated.
+
+```plaintext
+[USER ACTION] Wizard finished via OK  
+[DEBUG] createNewFlag remains unchanged  
+[WARN] Condition result check may be ineffective  
+```
+
+---
+
+#### Test Case 2 Help button functionality
+
+Expected Help messages update according to the current page.
+Observed After reaching the last page, the help dialog always shows the fallback message.
+
+```plaintext
+[HELP] Message = This help is likely not to be of any help.  
+[INFO] Repeated even on first request  
+```
+
+---
+
+#### Test Case 3 Help message tracking
+
+Expected System remembers previous help message and provides alternative if repeated.
+Observed No memory retained of last help message, alternative never triggered.
+
+```plaintext
+[TRACE] Help invoked  
+[DEBUG] lastHelpMessage comparison ineffective  
+[BEHAVIOR] Repeated messages not detected  
+```
+
+---
+
+#### Test Case 4 Intro page instruction text
+
+Expected Instructions appear as “...guide you to create your own new project...”
+Observed Displayed as “...guide you to create yourown new project...”
+
+```plaintext
+[UI TEXT] Misformatted instructional message  
+[NOTE] Missing space in concatenated label  
+```
+
+---
+
+#### Test Case 5 Intro page layout rendering
+
+Expected All widgets laid out in vertical layout correctly
+Observed Layout not applied; UI elements overlap or float
+
+```plaintext
+[ERROR] setLayout called with undefined variable  
+[RESULT] No layout set for IntroPage  
+```

@@ -1,0 +1,130 @@
+module ListPopulation_Module
+
+type
+  populationLimit: int
+
+process ctor_with_limit(limit: integer)
+pre
+  limit ≥ 1
+post
+  populationLimit' = limit ∧ chromosomes' = ⟨⟩
+Functional Scenario Form
+(limit ≥ 1) && (init empty list; set populationLimit = limit)
+end_process
+
+process ctor_with_list(initChroms: sequence of Chromosome, limit: integer)
+pre
+  initChroms ≠ null ∧ limit ≥ 1 ∧ |initChroms| ≤ limit
+post
+  populationLimit' = limit ∧ chromosomes' = initChroms
+Functional Scenario Form
+(valid list and limit) && (copy list; set populationLimit)
+end_process
+
+process setChromosomes(newChroms: sequence of Chromosome)
+pre
+  newChroms ≠ null ∧ |newChroms| ≤ populationLimit
+post
+  chromosomes' = newChroms ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(size ≤ limit) && (replace chromosomes with newChroms)
+end_process
+
+process addChromosomes(more: sequence of Chromosome)
+pre
+  more ≠ null ∧ |chromosomes| + |more| ≤ populationLimit
+post
+  chromosomes' = chromosomes ⧺ more ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(room available) && (append all)
+end_process
+
+process addChromosome(c: Chromosome)
+pre
+  |chromosomes| < populationLimit
+post
+  chromosomes' = chromosomes ⧺ ⟨c⟩ ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(has capacity) && (append one)
+end_process
+
+process setPopulationLimit(newLimit: integer)
+pre
+  newLimit ≥ 1 ∧ newLimit ≥ |chromosomes|
+post
+  populationLimit' = newLimit ∧ chromosomes' = chromosomes
+Functional Scenario Form
+(valid newLimit) && (update limit only)
+end_process
+
+---------------------------
+-- Getters / Observers
+---------------------------
+
+process getChromosomes() result: sequence of Chromosome
+pre
+  true
+post
+  result = chromosomes ∧ chromosomes' = chromosomes ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(always) && (return immutable view of chromosomes)
+end_process
+
+process getChromosomeList() result: sequence of Chromosome
+pre
+  true
+post
+  result = chromosomes ∧ chromosomes' = chromosomes ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(always) && (return internal list reference semantically)
+end_process
+
+process getFittestChromosome() result: Chromosome
+pre
+  |chromosomes| ≥ 1
+post
+  result ∈ set(chromosomes) ∧
+  (∀ ch ∈ set(chromosomes) : ch = result ∨ result.compareTo(ch) ≥ 0)
+  ∧ chromosomes' = chromosomes ∧ populationLimit' = populationLimit
+Functional Scenario Form
+(nonempty) && (return max by compareTo)
+end_process
+
+process getPopulationLimit() result: integer
+pre
+  true
+post
+  result = populationLimit ∧ state' = state
+Functional Scenario Form
+(always) && (return limit)
+end_process
+
+process getPopulationSize() result: integer
+pre
+  true
+post
+  result = |chromosomes| ∧ state' = state
+Functional Scenario Form
+(always) && (return size)
+end_process
+
+process toString() result: string
+pre
+  true
+post
+  -- abstractly: textual representation of chromosomes
+  result ≠ null ∧ state' = state
+Functional Scenario Form
+(always) && (render chromosomes as string)
+end_process
+
+process iterator() result: iterator of Chromosome
+pre
+  true
+post
+  result iterates over chromosomes in order ∧ iterator.remove is unsupported ∧ state' = state
+Functional Scenario Form
+(always) && (return unmodifiable iterator)
+end_process
+
+end_module

@@ -1,0 +1,240 @@
+module BaseSingleFieldPeriod  
+type:  
+   iPeriod: int 
+
+var:  
+  serialVersionUID: long = 9386874258972L  
+  START_1972: long = 63072000000L  // 2 years * 365 days * 86400 sec * 1000 ms  
+
+// Instant-based period calculation
+process between(start: ReadableInstant?, end: ReadableInstant?, field: DurationFieldType) result: int  
+pre start ≠ null ∧ end ≠ null  
+post  
+  chrono = DateTimeUtils.getInstantChronology(start)  
+  result' = field.getField(chrono).getDifference(end.getMillis(), start.getMillis())  
+
+Functional Scenario Form  
+start=InstantA end=InstantB field=DurationFieldType.hours() && returns hour difference  
+end before start && returns negative value  
+end=start && returns 0  
+end_process  
+
+// Partial-based period calculation
+process between(start: ReadablePartial?, end: ReadablePartial?, zeroInstance: ReadablePeriod) result: int  
+pre start ≠ null ∧ end ≠ null  
+  ∧ start.size() = end.size()  
+  ∧ ∀i (start.getFieldType(i) = end.getFieldType(i))  
+  ∧ DateTimeUtils.isContiguous(start)  
+post  
+  chrono = DateTimeUtils.getChronology(start.getChronology()).withUTC()  
+  startMillis = chrono.set(start, START_1972)  
+  endMillis = chrono.set(end, START_1972)  
+  values = chrono.get(zeroInstance, startMillis, endMillis)  
+  result' = values[0]  
+
+Functional Scenario Form  
+start=LocalDateA end=LocalDateB zeroInstance=Years.ZERO && returns year difference  
+different field types && throws IllegalArgumentException  
+non-contiguous partials && throws exception  
+end_process  
+
+// Period standardization
+process standardPeriodIn(period: ReadablePeriod?, millisPerUnit: long) result: int  
+pre true  
+post  
+  period = null  
+    ? result' = 0  
+    : iso = ISOChronology.getInstanceUTC()  
+      duration = 0L  
+      for i from 0 to period.size()-1  
+        value = period.getValue(i)  
+        (value ≠ 0  
+          ? field = period.getFieldType(i).getField(iso)  
+            (field.isPrecise() = false  
+              ? error = IllegalArgumentException  
+              : duration' = duration + field.getUnitMillis() * value  
+            )  
+          : skip  
+        )  
+      result' = FieldUtils.safeToInt(duration / millisPerUnit)  
+
+Functional Scenario Form  
+period=null millisPerUnit=1000 && returns 0  
+period=Period.hours(2) millisPerUnit=3600000 && returns 2  
+period with unprecise field && throws exception  
+overflow case && handles safely  
+end_process  
+
+// Constructor and value management
+process constructor(period: int)  
+pre true  
+post  
+  iPeriod' = period  
+
+Functional Scenario Form  
+period=5 && sets iPeriod=5  
+end_process  
+
+process getValue() result: int  
+pre true  
+post  
+  result' = iPeriod  
+
+Functional Scenario Form  
+iPeriod=10 && returns 10  
+end_process  
+
+process setValue(value: int)  
+pre true  
+post  
+  iPeriod' = value  
+
+Functional Scenario Form  
+value=7 && sets iPeriod=7  
+end_process  
+
+// Field type handling
+process getFieldType()  
+abstract: true  
+
+process getPeriodType()  
+abstract: true  
+
+// Size implementation
+process size() result: int  
+pre true  
+post  
+  result' = 1  
+
+Functional Scenario Form  
+always && returns 1  
+end_process  
+
+// Indexed access
+process getFieldType(index: int) result: DurationFieldType  
+pre true  
+post  
+  index ≠ 0  
+    ? error = IndexOutOfBoundsException  
+    : result' = getFieldType()  
+
+Functional Scenario Form  
+index=0 && returns field type  
+index=1 && throws exception  
+end_process  
+
+process getValue(index: int) result: int  
+pre true  
+post  
+  index ≠ 0  
+    ? error = IndexOutOfBoundsException  
+    : result' = getValue()  
+
+Functional Scenario Form  
+index=0 && returns iPeriod  
+index=-1 && throws exception  
+end_process  
+
+// Field-based access
+process get(type: DurationFieldType?) result: int  
+pre true  
+post  
+  type = getFieldType()  
+    ? result' = getValue()  
+    : result' = 0  
+
+Functional Scenario Form  
+type=matching field type && returns value  
+type=unrelated field type && returns 0  
+type=null && returns 0  
+end_process  
+
+process isSupported(type: DurationFieldType?) result: boolean  
+pre true  
+post  
+  result' = (type = getFieldType())  
+
+Functional Scenario Form  
+type=matching field type && true  
+type=other field type && false  
+type=null && false  
+end_process  
+
+// Period conversion
+process toPeriod() result: Period  
+pre true  
+post  
+  result' = Period.ZERO.withFields(this)  
+
+Functional Scenario Form  
+iPeriod=3 fieldType=Days && returns P3D  
+end_process  
+
+// Mutable period conversion
+process toMutablePeriod() result: MutablePeriod  
+pre true  
+post  
+  period = new MutablePeriod()  
+  period.add(this)  
+  result' = period  
+
+Functional Scenario Form  
+iPeriod=3 fieldType=Days && returns MutablePeriod with P3D  
+end_process  
+
+// Equality check
+process equals(period: Object?) result: boolean  
+pre true  
+post  
+  period = this  
+    ? result' = true  
+    : period instanceof ReadablePeriod = false  
+      ? result' = false  
+      : other = (ReadablePeriod) period  
+        result' = (other.getPeriodType() = getPeriodType() ∧ other.getValue(0) = getValue())  
+
+Functional Scenario Form  
+same object && true  
+different type && false  
+same period type and value && true  
+different period value && false  
+end_process  
+
+// Hash code calculation
+process hashCode() result: int  
+pre true  
+post  
+  total = 17  
+  total = 27 * total + getValue()  
+  total = 27 * total + getFieldType().hashCode()  
+  result' = total  
+
+Functional Scenario Form  
+value=5 fieldType=Months && returns calculated hash  
+value=0 fieldType=Years && returns non-zero hash  
+end_process  
+
+// Period comparison
+process compareTo(other: BaseSingleFieldPeriod?) result: int  
+pre other ≠ null  
+post  
+  other.getClass() ≠ getClass()  
+    ? error = ClassCastException  
+    : thisValue = getValue()  
+      otherValue = other.getValue()  
+      (thisValue > otherValue  
+        ? result' = 1  
+        : thisValue < otherValue  
+          ? result' = -1  
+          : result' = 0  
+      )  
+
+Functional Scenario Form  
+same class value=5 vs value=3 && returns 1  
+same class value=2 vs value=4 && returns -1  
+same class value=3 vs value=3 && returns 0  
+different class && throws ClassCastException  
+end_process  
+
+
+end_module  

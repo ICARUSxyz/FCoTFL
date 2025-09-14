@@ -1,0 +1,794 @@
+module OpenMapRealVector
+type
+  virtualSize: int
+  epsilon: double
+var
+  DEFAULT_ZERO_TOLERANCE: real = 1.0e-12
+  serialVersionUID: long = 8772222695580707260L
+
+
+process OpenMapRealVector() result: OpenMapRealVector
+post 
+  result.virtualSize = 0 ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = DEFAULT_ZERO_TOLERANCE
+Functional Scenario Form 
+zeroLengthVectorCreated
+end_process
+
+process OpenMapRealVector(dimension: int) result: OpenMapRealVector
+pre 
+  dimension ≥ 0
+post 
+  result = OpenMapRealVector(dimension, DEFAULT_ZERO_TOLERANCE)
+Functional Scenario Form 
+validDimension&&vectorCreated || 
+negativeDimension&&exceptionThrown
+end_process
+
+process OpenMapRealVector(dimension: int, epsilon: real) result: OpenMapRealVector
+pre 
+  dimension ≥ 0 ∧ epsilon > 0
+post 
+  result.virtualSize = dimension ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = epsilon
+Functional Scenario Form 
+validParameters&&vectorCreated || 
+negativeDimension&&exceptionThrown || 
+nonPositiveEpsilon&&exceptionThrown
+end_process
+
+process OpenMapRealVector(v: OpenMapRealVector, resize: int) result: OpenMapRealVector
+pre 
+  v ≠ null ∧ resize ≥ 0
+post 
+  result.virtualSize = v.getDimension() + resize ∧
+  result.entries = new OpenIntToDoubleHashMap(v.entries)  
+  result.epsilon = v.epsilon
+Functional Scenario Form 
+validResize&&resizedVector || 
+negativeResize&&exceptionThrown
+end_process
+
+process OpenMapRealVector(dimension: int, expectedSize: int) result: OpenMapRealVector
+pre 
+  dimension ≥ 0 ∧ expectedSize ≥ 0
+post 
+  result = OpenMapRealVector(dimension, expectedSize, DEFAULT_ZERO_TOLERANCE)
+Functional Scenario Form 
+validSparsity&&vectorCreated || 
+negativeExpectedSize&&exceptionThrown
+end_process
+
+process OpenMapRealVector(dimension: int, expectedSize: int, epsilon: real) 
+  result: OpenMapRealVector
+pre 
+  dimension ≥ 0 ∧ expectedSize ≥ 0 ∧ epsilon > 0
+post 
+  result.virtualSize = dimension ∧
+  result.entries = new OpenIntToDoubleHashMap(expectedSize, 0.0) ∧
+  result.epsilon = epsilon
+Functional Scenario Form 
+fullParameters&&vectorCreated || 
+invalidSparsity&&defaultUsed
+end_process
+
+process OpenMapRealVector(values: double[]) result: OpenMapRealVector
+pre 
+  values ≠ null
+post 
+  result = OpenMapRealVector(values, DEFAULT_ZERO_TOLERANCE)
+Functional Scenario Form 
+validArray&&vectorCreated || 
+nullArray&&exceptionThrown
+end_process
+
+process OpenMapRealVector(values: double[], epsilon: real) result: OpenMapRealVector
+pre 
+  values ≠ null ∧ epsilon > 0
+post 
+  result.virtualSize = values.length ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = epsilon ∧
+  for key = 0 to values.length - 1 •
+      value = values[key] ∧
+      ¬isDefaultValue(value, epsilon) ⇒ 
+          result.entries.put(key, value)
+Functional Scenario Form 
+denseArray&&sparseVectorCreated || 
+sparseArray&&efficientStorage
+end_process
+
+process OpenMapRealVector(values: Double[]) result: OpenMapRealVector
+pre 
+  values ≠ null
+post 
+  result = OpenMapRealVector(values, DEFAULT_ZERO_TOLERANCE)
+Functional Scenario Form 
+validBoxedArray&&vectorCreated
+end_process
+
+process OpenMapRealVector(values: Double[], epsilon: real) result: OpenMapRealVector
+pre 
+  values ≠ null ∧ epsilon > 0
+post 
+  result.virtualSize = values.length ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = epsilon ∧
+  for key = 0 to values.length - 1 •
+      value = values[key].doubleValue() ∧
+      ¬isDefaultValue(value, epsilon) ⇒ 
+          result.entries.put(key, value)
+Functional Scenario Form 
+boxedArrayProcessed || 
+nullElement&&defaultHandled
+end_process
+
+process OpenMapRealVector(values: Double[]) result: OpenMapRealVector
+pre 
+  values ≠ null
+post 
+  result = OpenMapRealVector(values, DEFAULT_ZERO_TOLERANCE)
+Functional Scenario Form 
+validInputCreated
+end_process
+
+process OpenMapRealVector(values: Double[], epsilon: real) result: OpenMapRealVector
+pre 
+  values ≠ null ∧ epsilon > 0
+post 
+  result.virtualSize = values.length ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = epsilon ∧
+  for key = 0 to values.length - 1 •
+      value = values[key].doubleValue() ∧
+      ¬isDefaultValue(value, epsilon) ⇒ 
+          result.entries.put(key, value)
+Functional Scenario Form 
+nonZeroValuesStored || 
+zeroValuesSkipped
+end_process
+
+// Copy constructors
+process OpenMapRealVector(v: OpenMapRealVector) result: OpenMapRealVector
+pre 
+  v ≠ null
+post 
+  result.virtualSize = v.getDimension() ∧
+  result.entries = new OpenIntToDoubleHashMap(v.entries) ∧
+  result.epsilon = v.epsilon
+Functional Scenario Form 
+openMapCopyCreated
+end_process
+
+process OpenMapRealVector(v: RealVector) result: OpenMapRealVector
+pre 
+  v ≠ null
+post 
+  result.virtualSize = v.getDimension() ∧
+  result.entries = new OpenIntToDoubleHashMap(0.0) ∧
+  result.epsilon = DEFAULT_ZERO_TOLERANCE ∧
+  for key = 0 to v.getDimension() - 1 •
+      value = v.getEntry(key) ∧
+      ¬isDefaultValue(value, DEFAULT_ZERO_TOLERANCE) ⇒ 
+          result.entries.put(key, value)
+Functional Scenario Form 
+denseVectorCopied || 
+sparseVectorCopied
+end_process
+
+// Core methods
+process getEntries() result: OpenIntToDoubleHashMap
+post 
+  result = this.entries
+Functional Scenario Form 
+entriesReturned
+end_process
+
+process isDefaultValue(value: real) result: bool
+post 
+  result = (|value| < this.epsilon)
+Functional Scenario Form 
+belowThresholdTrue || 
+aboveThresholdFalse
+end_process
+
+// Vector operations
+process add(v: RealVector) result: RealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = add((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.add(v))
+Functional Scenario Form 
+openMapAdded || 
+genericAdded
+end_process
+
+process add(v: OpenMapRealVector) result: OpenMapRealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  copyThis = (this.entries.size() > v.entries.size()) ∧
+  res = copyThis ? this.copy() : v.copy() ∧
+  iter = copyThis ? v.entries.iterator() : this.entries.iterator() ∧
+  randomAccess = copyThis ? this.entries : v.entries ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      value = iter.value() ∧
+      (randomAccess.containsKey(key) ⇒ 
+          newValue = randomAccess.get(key) + value ∧
+          res.setEntry(key, newValue)
+      ) ∨
+      (¬randomAccess.containsKey(key) ⇒ 
+          res.setEntry(key, value)
+      )
+  result = res
+Functional Scenario Form 
+sparseAddition || 
+asymmetricAddition || 
+emptyAddition
+end_process
+
+// Vector expansion
+process append(v: OpenMapRealVector) result: OpenMapRealVector
+pre 
+  v ≠ null
+post 
+  res = new OpenMapRealVector(this, v.getDimension()) ∧
+  iter = v.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() + this.virtualSize ∧
+      res.setEntry(key, iter.value())
+  result = res
+Functional Scenario Form 
+nonEmptyAppended || 
+emptyAppended
+end_process
+
+// Vector expansion methods
+process append(v: RealVector) result: OpenMapRealVector
+pre 
+  v ≠ null
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = append((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      res = new OpenMapRealVector(this, v.getDimension()) ∧
+      for i = 0 to v.getDimension() - 1 •
+          res.setEntry(i + this.virtualSize, v.getEntry(i)) ∧
+      result = res)
+Functional Scenario Form 
+openMapVectorAppended && resultIsOpenMap || 
+genericVectorAppended && resultContainsAllElements
+end_process
+
+process append(d: real) result: OpenMapRealVector
+post 
+  res = new OpenMapRealVector(this, 1) ∧
+  res.setEntry(this.virtualSize, d) ∧
+  result = res
+Functional Scenario Form 
+singleValueAppended && vectorSizeIncreasedByOne
+end_process
+
+// Dot product operations
+process dotProduct(v: OpenMapRealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  thisIsSmaller = (this.entries.size() < v.entries.size()) ∧
+  iter = thisIsSmaller ? this.entries.iterator() : v.entries.iterator() ∧
+  larger = thisIsSmaller ? v.entries : this.entries ∧
+  d = 0 ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      value = iter.value() ∧
+      d = d + value * larger.get(key)
+  result = d
+Functional Scenario Form 
+sparseVectorDotProduct && computedWithSmallerIterator || 
+asymmetricSizeDotProduct && computedWithSmallerIterator || 
+emptyVectorDotProduct && resultIsZero
+end_process
+
+process dotProduct(v: RealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = dotProduct((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.dotProduct(v))
+Functional Scenario Form 
+openMapVectorDotProduct && optimizedComputation || 
+genericVectorDotProduct && superMethodCalled
+end_process
+
+// Element-wise operations
+process ebeDivide(v: RealVector) result: OpenMapRealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  res = new OpenMapRealVector(this) ∧
+  for i = 0 to this.getDimension() - 1 •
+      thisValue = this.getEntry(i) ∧
+      vValue = v.getEntry(i) ∧
+      res.setEntry(i, thisValue / vValue)
+  result = res
+Functional Scenario Form 
+validElementDivision && resultComputed || 
+divisionByZeroHandled && nanOrInfiniteProduced
+end_process
+
+process ebeMultiply(v: RealVector) result: OpenMapRealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  res = new OpenMapRealVector(this) ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      value = iter.value() ∧
+      res.setEntry(key, value * v.getEntry(key))
+  
+  (v.isNaN() ∨ v.isInfinite() ⇒ 
+      for i = 0 to this.getDimension() - 1 •
+          y = v.getEntry(i) ∧
+          (Double.isNaN(y) ⇒ res.setEntry(i, Double.NaN)) ∨
+          (Double.isInfinite(y) ⇒ 
+              x = this.getEntry(i) ∧
+              res.setEntry(i, x * y))
+  )
+  result = res
+Functional Scenario Form 
+sparseElementMultiplication && nonZeroElementsComputed || 
+infiniteValueHandling && specialValuesSet || 
+nanValueHandling && nanValuesSet
+end_process
+
+// Subvector extraction
+process getSubVector(index: int, n: int) result: OpenMapRealVector
+pre 
+  0 ≤ index < this.getDimension() ∧ 
+  n > 0 ∧ 
+  index + n ≤ this.getDimension()
+post 
+  res = new OpenMapRealVector(n) ∧
+  end = index + n ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      value = iter.value() ∧
+      (index ≤ key < end ⇒ 
+          res.setEntry(key - index, value))
+  result = res
+Functional Scenario Form 
+validSubvectorExtracted && correctElementsIncluded || 
+negativeSizeException && exceptionThrown || 
+invalidIndexException && exceptionThrown
+end_process
+
+// Special value checks
+process v.isNaN() result: bool
+post 
+  result = ∃i • Double.isNaN(v.getEntry(i))
+Functional Scenario Form 
+containsNaNTrue && returnsTrue || 
+noNaNFalse && returnsFalse
+end_process
+
+process v.isInfinite() result: bool
+post 
+  result = ∃i • Double.isInfinite(v.getEntry(i))
+Functional Scenario Form 
+containsInfiniteTrue && returnsTrue || 
+noInfiniteFalse && returnsFalse
+end_process
+
+// Dimension and distance operations
+process getDimension() result: int
+post 
+  result = this.virtualSize
+Functional Scenario Form 
+dimensionReturned
+end_process
+
+process getDistance(v: OpenMapRealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  res = 0 ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      delta = iter.value() - v.getEntry(key) ∧
+      res = res + delta * delta ∧
+  
+  iter = v.getEntries().iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      (¬this.entries.containsKey(key) ⇒ 
+          value = iter.value() ∧
+          res = res + value * value)
+  
+  result = FastMath.sqrt(res)
+Functional Scenario Form 
+validDimensions && distanceComputed || 
+dimensionMismatch && exceptionThrown
+end_process
+
+process getDistance(v: RealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = getDistance((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.getDistance(v))
+Functional Scenario Form 
+openMapVector && optimizedDistanceComputed || 
+genericVector && superMethodDistanceComputed
+end_process
+
+process getEntry(index: int) result: real
+pre 
+  0 ≤ index < this.getDimension()
+post 
+  this.entries.containsKey(index) ⇒ 
+      result = this.entries.get(index) ∧
+  ¬this.entries.containsKey(index) ⇒ 
+      result = 0.0
+Functional Scenario Form 
+validIndexExisting && valueReturned || 
+validIndexMissing && zeroReturned || 
+invalidIndex && exceptionThrown
+end_process
+
+// L1 Distance operations
+process getL1Distance(v: OpenMapRealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  max = 0 ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      delta = FastMath.abs(iter.value() - v.getEntry(key)) ∧
+      max = max + delta ∧
+  
+  iter = v.getEntries().iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      (¬this.entries.containsKey(key) ⇒ 
+          value = iter.value() ∧
+          max = max + FastMath.abs(value))
+  
+  result = max
+Functional Scenario Form 
+validDimensions && l1DistanceComputed || 
+dimensionMismatch && exceptionThrown
+end_process
+
+process getL1Distance(v: RealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = getL1Distance((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.getL1Distance(v))
+Functional Scenario Form 
+openMapVector && optimizedL1Computed || 
+genericVector && superL1Computed
+end_process
+
+// LInf Distance operations
+process getLInfDistance(v: OpenMapRealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  max = 0 ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      delta = FastMath.abs(iter.value() - v.getEntry(key)) ∧
+      (delta > max ⇒ max = delta) ∧
+  
+  iter = v.getEntries().iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      (¬this.entries.containsKey(key) ⇒ 
+          value = FastMath.abs(iter.value()) ∧
+          (value > max ⇒ max = value))
+  
+  result = max
+Functional Scenario Form 
+validDimensions && lInfDistanceComputed || 
+dimensionMismatch && exceptionThrown
+end_process
+
+process getLInfDistance(v: RealVector) result: real
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = getLInfDistance((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.getLInfDistance(v))
+Functional Scenario Form 
+openMapVector && optimizedLInfComputed || 
+genericVector && superLInfComputed
+end_process
+
+// Infinite value check
+process isInfinite() result: bool
+post 
+  infiniteFound = false ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      value = iter.value() ∧
+      (Double.isNaN(value) ⇒ 
+          result = false ∧
+          break) ∧
+      (Double.isInfinite(value) ⇒ 
+          infiniteFound = true) ∧
+  result = infiniteFound
+Functional Scenario Form 
+containsInfinite && returnsTrue || 
+containsNaN && returnsFalse || 
+noSpecialValues && returnsFalse
+end_process
+
+// Mapping and arithmetic operations
+process mapAdd(d: real) result: OpenMapRealVector
+post 
+  result = this.copy().mapAddToSelf(d)
+Functional Scenario Form 
+scalarAdditionApplied
+end_process
+
+process mapAddToSelf(d: real) result: OpenMapRealVector
+post 
+  for i = 0 to this.virtualSize - 1 •
+      this.setEntry(i, this.getEntry(i) + d)
+  result = this
+Functional Scenario Form 
+allElementsIncremented
+end_process
+
+// Vector projection
+process projection(v: RealVector) result: RealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  scale = this.dotProduct(v) / v.dotProduct(v) ∧
+  result = v.mapMultiply(scale)
+Functional Scenario Form 
+validVectorProjection && projectionComputed || 
+zeroNormCondition && exceptionThrown
+end_process
+
+// Entry modification
+process setEntry(index: int, value: real)
+pre 
+  0 ≤ index < this.virtualSize
+post 
+  ¬isDefaultValue(value) ⇒ 
+      this.entries.put(index, value) ∧
+  isDefaultValue(value) ∧ this.entries.containsKey(index) ⇒ 
+      this.entries.remove(index)
+Functional Scenario Form 
+nonDefaultValueSet && entryUpdated || 
+defaultValuePresent && entryRemoved || 
+indexOutOfRange && exceptionThrown
+end_process
+
+process setSubVector(index: int, v: RealVector)
+pre 
+  0 ≤ index < this.virtualSize ∧ 
+  v ≠ null ∧ 
+  index + v.getDimension() ≤ this.virtualSize
+post 
+  for i = 0 to v.getDimension() - 1 •
+      this.setEntry(index + i, v.getEntry(i))
+Functional Scenario Form 
+validSubvectorSet && subvectorUpdated || 
+invalidIndex && exceptionThrown
+end_process
+
+process set(value: real)
+post 
+  for i = 0 to this.virtualSize - 1 •
+      this.setEntry(i, value)
+Functional Scenario Form 
+allEntriesSetToValue
+end_process
+
+// Vector subtraction
+process subtract(v: OpenMapRealVector) result: OpenMapRealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  res = this.copy() ∧
+  iter = v.getEntries().iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      value = iter.value() ∧
+      (this.entries.containsKey(key) ⇒ 
+          res.setEntry(key, this.entries.get(key) - value) ∨
+      ¬this.entries.containsKey(key) ⇒ 
+          res.setEntry(key, -value))
+  result = res
+Functional Scenario Form 
+validSubtraction && resultComputed || 
+dimensionMismatch && exceptionThrown
+end_process
+
+process subtract(v: RealVector) result: RealVector
+pre 
+  v ≠ null ∧ this.getDimension() = v.getDimension()
+post 
+  (v instanceof OpenMapRealVector ⇒ 
+      result = subtract((OpenMapRealVector)v)) ∧
+  (¬(v instanceof OpenMapRealVector) ⇒ 
+      result = super.subtract(v))
+Functional Scenario Form 
+openMapVector && optimizedSubtraction || 
+genericVector && superSubtraction
+end_process
+
+// Vector normalization
+process unitVector() result: OpenMapRealVector
+post 
+  res = this.copy() ∧
+  res.unitize() ∧
+  result = res
+Functional Scenario Form 
+normalizedVectorCreated || 
+zeroNormExceptionThrown
+end_process
+
+process unitize()
+post 
+  norm = this.getNorm() ∧
+  (isDefaultValue(norm) ⇒ throw MathArithmeticException) ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      this.entries.put(key, iter.value() / norm)
+Functional Scenario Form 
+normalizationSuccessful && vectorUpdated || 
+zeroNormCondition && exceptionThrown
+end_process
+
+// Data conversion
+process toArray() result: double[]
+post 
+  res = new double[this.virtualSize] ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      key = iter.key() ∧
+      res[key] = iter.value()
+  result = res
+Functional Scenario Form 
+arrayRepresentationCreated
+end_process
+
+// Hashing
+process hashCode() result: int
+post 
+  result = 1 ∧
+  temp = Double.doubleToLongBits(this.epsilon) ∧
+  result = 31 * result + (int)(temp ^ (temp >>> 32)) ∧
+  result = 31 * result + this.virtualSize ∧
+  iter = this.entries.iterator() ∧
+  while iter.hasNext() •
+      value = iter.value() ∧
+      temp = Double.doubleToLongBits(value) ∧
+      result = 31 * result + (int)(temp ^ (temp >>> 32))
+Functional Scenario Form 
+hashCodeComputed
+end_process
+// Equality check
+process equals(obj: Object) result: bool
+post 
+  (this == obj ⇒ result = true) ∧
+  (¬(obj instanceof OpenMapRealVector) ⇒ result = false) ∧
+  (obj instanceof OpenMapRealVector ⇒ 
+      other = (OpenMapRealVector)obj ∧
+      (this.virtualSize ≠ other.virtualSize ⇒ result = false) ∧
+      (Double.doubleToLongBits(this.epsilon) ≠ Double.doubleToLongBits(other.epsilon) ⇒ result = false) ∧
+      
+      // Check this.entries in other
+      iter = this.entries.iterator() ∧
+      while iter.hasNext() ∧ result ≠ false •
+          key = iter.key() ∧
+          test = other.getEntry(key) ∧
+          (Double.doubleToLongBits(test) ≠ Double.doubleToLongBits(iter.value()) ⇒ result = false) ∧
+      
+      // Check other.entries in this
+      iter = other.getEntries().iterator() ∧
+      while iter.hasNext() ∧ result ≠ false •
+          key = iter.key() ∧
+          test = this.getEntry(key) ∧
+          (Double.doubleToLongBits(test) ≠ Double.doubleToLongBits(iter.value()) ⇒ result = false) ∧
+      
+      result = true)
+Functional Scenario Form 
+sameReference && returnsTrue || 
+notOpenMapVector && returnsFalse || 
+differentDimensions && returnsFalse || 
+differentEpsilon && returnsFalse || 
+valueMismatch && returnsFalse || 
+allEqual && returnsTrue
+end_process
+
+// Sparsity calculation
+process getSparsity() result: real
+post 
+  result = this.entries.size() / this.virtualSize
+Functional Scenario Form 
+sparsityComputed
+end_process
+
+// Sparse iterator
+process sparseIterator() result: Iterator<Entry>
+post 
+  result = new OpenMapSparseIterator()
+Functional Scenario Form 
+iteratorCreated
+end_process
+
+// OpenMapEntry methods
+process OpenMapEntry.getValue() result: real
+post 
+  result = this.iter.value()
+Functional Scenario Form 
+valueReturned
+end_process
+
+process OpenMapEntry.setValue(value: real)
+post 
+  entries.put(this.iter.key(), value)
+Functional Scenario Form 
+valueUpdated
+end_process
+
+process OpenMapEntry.getIndex() result: int
+post 
+  result = this.iter.key()
+Functional Scenario Form 
+indexReturned
+end_process
+
+// OpenMapSparseIterator methods
+process OpenMapSparseIterator.hasNext() result: bool
+post 
+  result = this.iter.hasNext()
+Functional Scenario Form 
+hasNextChecked
+end_process
+
+process OpenMapSparseIterator.next() result: Entry
+pre 
+  this.iter.hasNext()
+post 
+  this.iter.advance() ∧
+  result = this.current
+Functional Scenario Form 
+nextEntryReturned
+end_process
+
+process OpenMapSparseIterator.remove()
+post 
+  throw UnsupportedOperationException
+Functional Scenario Form 
+unsupportedOperationExceptionThrown
+end_process
+
+
+end_module

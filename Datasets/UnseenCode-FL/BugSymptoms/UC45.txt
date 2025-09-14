@@ -1,0 +1,86 @@
+**Bug Report: Charge Functionality – Symptom Summary**
+
+---
+
+### **Test Case 1: Upper Limit Charge Accepted Incorrectly**
+
+**Steps:**
+
+1. Set current balance to 490000 yen.
+2. Attempt to charge 10000 yen.
+
+**Expected:**
+Input should be rejected as exceeding the maximum limit.
+
+**Observed:**
+Charge is accepted.
+
+**Simulated Output Log:**
+
+```
+[Validation] Input: 10000 → Passed
+[Charge] New balance: 500000
+```
+
+---
+
+### **Test Case 2: Remaining Charge Limit Displayed Incorrectly**
+
+**Steps:**
+
+1. Set current balance to 300000 yen.
+2. Successfully charge 50000 yen.
+
+**Expected:**
+Display max charge as `500000 - current_balance`, i.e., 150000 yen.
+
+**Observed:**
+Max value displayed is far beyond expected range.
+
+**Simulated Output Log:**
+
+```
+[Display Update] max: 550000 yen
+```
+
+---
+
+### **Test Case 3: Error Handling Fails to Display Message**
+
+**Steps:**
+
+1. Enter a non-numeric value in the charge field.
+2. Trigger the charge process.
+
+**Expected:**
+Console/log displays specific error message.
+
+**Observed:**
+Application throws exception due to invalid method usage.
+
+**Simulated Output Log:**
+
+```
+Exception in thread "AWT-EventQueue-0" java.lang.Error: method setMessage() not found
+```
+
+---
+
+### **Test Case 4: Navigation Behavior Unexpected**
+
+**Steps:**
+
+1. Click on the “wallet” button.
+
+**Expected:**
+Current page should disappear, and new page opens.
+
+**Observed:**
+Old page remains visible while new window appears on top.
+
+**Simulated Output Log:**
+
+```
+[Navigation] frame visibility: true
+[Navigation] New window: wallet()
+```

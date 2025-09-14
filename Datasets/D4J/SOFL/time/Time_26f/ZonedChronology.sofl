@@ -1,0 +1,719 @@
+module ZonedChronology  
+var:  
+  serialVersionUID: long = -1079258847191166848L  
+
+// Factory method
+process getInstance(base: Chronology, zone: DateTimeZone) result: ZonedChronology  
+pre true  
+post  
+  base = null  
+    ? throw IllegalArgumentException("Must supply a chronology")  
+  baseUTC = base.withUTC()  
+  baseUTC = null  
+    ? throw IllegalArgumentException("UTC chronology must not be null")  
+  zone = null  
+    ? throw IllegalArgumentException("DateTimeZone must not be null")  
+  result' = new ZonedChronology(baseUTC, zone)  
+Functional Scenario Form  
+base=null && throws exception  
+base=ISOChronology zone=null && throws exception  
+base=ISOChronology zone=UTC && returns ZonedChronology  
+end_process  
+
+// Duration field utility
+process useTimeArithmetic(field: DurationField) result: boolean  
+pre true  
+post  
+  field ≠ null ∧ field.getUnitMillis() < 43200000  // 12 hours in ms  
+    ? result' = true  
+    : result' = false  
+Functional Scenario Form  
+field unit=minute (60000ms) && returns true  
+field unit=day (86400000ms) && returns false  
+field=null && returns false  
+end_process  
+
+// Private constructor
+process constructor(base: Chronology, zone: DateTimeZone)  
+pre true  
+post  
+  // Invokes super(base, zone)  
+  // No explicit state change beyond initialization  
+Functional Scenario Form  
+base=ISOChronology zone=EST && initializes  
+end_process  
+
+// Zone getter
+process getZone() result: DateTimeZone  
+pre true  
+post  
+  result' = (DateTimeZone) getParam()  
+Functional Scenario Form  
+param=UTC && returns UTC  
+end_process  
+
+// UTC conversion
+process withUTC() result: Chronology  
+pre true  
+post  
+  result' = getBase()  
+Functional Scenario Form  
+base=ISOChronology && returns ISOChronology  
+end_process  
+
+// Zone conversion
+process withZone(zone: DateTimeZone) result: Chronology  
+pre true  
+post  
+  zone = null  
+    ? zone' = DateTimeZone.getDefault()  
+  zone = getParam()  
+    ? result' = this  
+  zone = DateTimeZone.UTC  
+    ? result' = getBase()  
+    : result' = new ZonedChronology(getBase(), zone)  
+Functional Scenario Form  
+zone=null && uses default zone  
+zone=same_as_current && returns this  
+zone=UTC && returns base chronology  
+zone=EST && returns new ZonedChronology  
+end_process  
+
+// DateTime millis (date only)
+process getDateTimeMillis(year: int, month: int, day: int, millisOfDay: int) result: long  
+pre true  
+post  
+  localMillis = getBase().getDateTimeMillis(year, month, day, millisOfDay)  
+  result' = localToUTC(localMillis)  
+Functional Scenario Form  
+year=2025 month=8 day=2 millisOfDay=0 && returns UTC instant  
+end_process  
+
+// DateTime millis (full datetime)
+process getDateTimeMillis(year: int, month: int, day: int, hour: int, minute: int, second: int, millis: int) result: long  
+pre true  
+post  
+  localMillis = getBase().getDateTimeMillis(year, month, day, hour, minute, second, millis)  
+  result' = localToUTC(localMillis)  
+Functional Scenario Form  
+year=2025 month=8 day=2 hour=12 minute=0 second=0 millis=0 && returns UTC instant  
+end_process  
+
+// DateTime millis (from instant + time)
+process getDateTimeMillis(instant: long, hour: int, minute: int, second: int, millis: int) result: long  
+pre true  
+post  
+  adjustedInstant = instant + getZone().getOffset(instant)  
+  localMillis = getBase().getDateTimeMillis(adjustedInstant, hour, minute, second, millis)  
+  result' = localToUTC(localMillis)  
+Functional Scenario Form  
+instant=0L hour=12 minute=0 second=0 millis=0 && returns noon UTC instant  
+end_process  
+
+// Local to UTC conversion
+process localToUTC(instant: long) result: long  
+pre true  
+post  
+  zone = getZone()  
+  offset = zone.getOffsetFromLocal(instant)  
+  instant' = instant - offset  
+  zone.getOffset(instant') ≠ offset  
+    ? throw IllegalArgumentException("Illegal instant due to time zone transition")  
+    : result' = instant'  
+Functional Scenario Form  
+zone=EST instant=local_noon && returns UTC instant  
+zone_transition_at_instant && throws exception  
+end_process  
+
+// Chronology assembly
+process assemble(fields: Fields)  
+pre true  
+post  
+  converted = new HashMap  
+  // Convert duration fields  
+  fields.eras' = convertField(fields.eras, converted)  
+  fields.centuries' = convertField(fields.centuries, converted)  
+  ... // all listed fields  
+  // Convert datetime fields  
+  fields.year' = convertField(fields.year, converted)  
+  fields.yearOfEra' = convertField(fields.yearOfEra, converted)  
+  ... // all listed fields  
+Functional Scenario Form  
+fields contains unsupported field && returns same field  
+converted contains field && returns cached version  
+new field && creates ZonedDurationField/ZonedDateTimeField  
+end_process  
+
+// Duration field conversion
+process convertDurationField(field: DurationField, converted: HashMap) result: DurationField  
+pre true  
+post  
+  field = null ∨ ¬field.isSupported()  
+    ? result' = field  
+  converted.containsKey(field)  
+    ? result' = (DurationField) converted.get(field)  
+  else  
+    zonedField = new ZonedDurationField(field, getZone())  
+    converted.put(field, zonedField)  
+    result' = zonedField  
+Functional Scenario Form  
+field=null && returns null  
+field=unsupportedField && returns same  
+field=cachedField && returns cached  
+field=newField && creates and caches zoned field  
+end_process  
+
+// Datetime field conversion
+process convertDateTimeField(field: DateTimeField, converted: HashMap) result: DateTimeField  
+pre true  
+post  
+  field = null ∨ ¬field.isSupported()  
+    ? result' = field  
+  converted.containsKey(field)  
+    ? result' = (DateTimeField) converted.get(field)  
+  else  
+    durationField = convertField(field.getDurationField(), converted)  
+    rangeField = convertField(field.getRangeDurationField(), converted)  
+    leapField = convertField(field.getLeapDurationField(), converted)  
+    zonedField = new ZonedDateTimeField(field, getZone(), durationField, rangeField, leapField)  
+    converted.put(field, zonedField)  
+    result' = zonedField  
+Functional Scenario Form  
+field=null && returns null  
+field=cachedField && returns cached  
+field=newField && converts dependencies and creates zoned field  
+end_process  
+
+// Equality check
+process equals(obj: Object) result: boolean  
+pre true  
+post  
+  obj = this  
+    ? result' = true  
+  obj instanceof ZonedChronology = false  
+    ? result' = false  
+  else  
+    chrono = (ZonedChronology) obj  
+    getBase().equals(chrono.getBase()) ∧ getZone().equals(chrono.getZone())  
+        ? result' = true  
+        : result' = false  
+Functional Scenario Form  
+obj=this && returns true  
+obj=String && returns false  
+obj=differentZoneChronology && returns false  
+obj=sameBaseSameZoneChronology && returns true  
+end_process  
+
+end_module  
+
+module ZonedDurationField  
+type:
+  iTimeField: boolean  
+
+var:  
+  serialVersionUID: long = -485345310999208286L  
+
+// Constructor
+process constructor(field: DurationField, zone: DateTimeZone)  
+pre true  
+post  
+  ¬field.isSupported()  
+    ? throw IllegalArgumentException  
+  iField' = field  
+  iTimeField' = useTimeArithmetic(field)  
+  iZone' = zone  
+Functional Scenario Form  
+field=unsupportedDuration && throws exception  
+field=minuteDuration zone=EST && sets timeField=true  
+end_process  
+
+// Precision check
+process isPrecise() result: boolean  
+pre true  
+post  
+  iTimeField  
+    ? result' = iField.isPrecise()  
+    : result' = iField.isPrecise() ∧ iZone.isFixed()  
+Functional Scenario Form  
+iTimeField=true iField=precise && returns true  
+iTimeField=false iZone=fixed && returns iField precision  
+end_process  
+
+// Unit millis accessor
+process getUnitMillis() result: long  
+pre true  
+post  
+  result' = iField.getUnitMillis()  
+Functional Scenario Form  
+iField=minuteDuration && returns 60000  
+end_process  
+
+// Value calculation
+process getValue(duration: long, instant: long) result: int  
+pre true  
+post  
+  result' = iField.getValue(duration, addOffset(instant))  
+Functional Scenario Form  
+duration=60000 instant=0L && returns 1 (if minute field)  
+end_process  
+
+// Long value calculation
+process getValueAsLong(duration: long, instant: long) result: long  
+pre true  
+post  
+  result' = iField.getValueAsLong(duration, addOffset(instant))  
+Functional Scenario Form  
+duration=120000 instant=0L && returns 2 (if minute field)  
+end_process  
+
+// Millis calculation (int value)
+process getMillis(value: int, instant: long) result: long  
+pre true  
+post  
+  result' = iField.getMillis(value, addOffset(instant))  
+Functional Scenario Form  
+value=1 instant=0L && returns 60000 (if minute field)  
+end_process  
+
+// Millis calculation (long value)
+process getMillis(value: long, instant: long) result: long  
+pre true  
+post  
+  result' = iField.getMillis(value, addOffset(instant))  
+Functional Scenario Form  
+value=2 instant=0L && returns 120000 (if minute field)  
+end_process  
+
+// Addition (int value)
+process add(instant: long, value: int) result: long  
+pre true  
+post  
+  offset = getOffsetToAdd(instant)  
+  instant' = iField.add(instant + offset, value)  
+  iTimeField  
+    ? result' = instant' - offset  
+    : result' = instant' - getOffsetFromLocalToSubtract(instant')  
+Functional Scenario Form  
+iTimeField=true instant=0L value=60 && returns adjusted time  
+iTimeField=false instant=transition_point value=1 && handles DST shift  
+end_process  
+
+// Addition (long value)
+process add(instant: long, value: long) result: long  
+pre true  
+post  
+  offset = getOffsetToAdd(instant)  
+  instant' = iField.add(instant + offset, value)  
+  iTimeField  
+    ? result' = instant' - offset  
+    : result' = instant' - getOffsetFromLocalToSubtract(instant')  
+Functional Scenario Form  
+value=1000L instant=0L && returns adjusted time  
+end_process  
+
+// Difference calculation
+process getDifference(minuend: long, subtrahend: long) result: int  
+pre true  
+post  
+  offset = getOffsetToAdd(subtrahend)  
+  minuendAdj = minuend + (iTimeField ? offset : getOffsetToAdd(minuend))  
+  subtrahendAdj = subtrahend + offset  
+  result' = iField.getDifference(minuendAdj, subtrahendAdj)  
+Functional Scenario Form  
+iTimeField=true minuend=3600000 subtrahend=0L && returns 60 (minutes)  
+end_process  
+
+// Long difference calculation
+process getDifferenceAsLong(minuend: long, subtrahend: long) result: long  
+pre true  
+post  
+  offset = getOffsetToAdd(subtrahend)  
+  minuendAdj = minuend + (iTimeField ? offset : getOffsetToAdd(minuend))  
+  subtrahendAdj = subtrahend + offset  
+  result' = iField.getDifferenceAsLong(minuendAdj, subtrahendAdj)  
+Functional Scenario Form  
+minuend=7200000 subtrahend=0L && returns 120 (minutes)  
+end_process  
+
+// Offset adder with overflow check
+process getOffsetToAdd(instant: long) result: int  
+pre true  
+post  
+  offset = iZone.getOffset(instant)  
+  sum = instant + offset  
+  (instant ^ sum) < 0 ∧ (instant ^ offset) ≥ 0  
+    ? throw ArithmeticException("Offset addition overflow")  
+    : result' = offset  
+Functional Scenario Form  
+instant=Long.MAX_VALUE offset=3600000 && throws overflow  
+instant=0L offset=0 && returns 0  
+end_process  
+
+// Local offset subtractor with overflow check
+process getOffsetFromLocalToSubtract(instant: long) result: int  
+pre true  
+post  
+  offset = iZone.getOffsetFromLocal(instant)  
+  diff = instant - offset  
+  (instant ^ diff) < 0 ∧ (instant ^ offset) < 0  
+    ? throw ArithmeticException("Offset subtraction overflow")  
+    : result' = offset  
+Functional Scenario Form  
+instant=Long.MIN_VALUE offset=3600000 && throws overflow  
+instant=43200000 offset=-18000000 && returns offset  
+end_process  
+
+// UTC to local conversion
+process addOffset(instant: long) result: long  
+pre true  
+post  
+  result' = iZone.convertUTCToLocal(instant)  
+Functional Scenario Form  
+instant=0L zone=EST && returns -18000000  
+end_process  
+
+end_module  
+
+module ZonedDateTimeField  
+var:  
+  serialVersionUID: long = -3968986277775529794L  
+
+// Constructor
+process constructor(field: DateTimeField, zone: DateTimeZone, durationField: DurationField, rangeField: DurationField, leapField: DurationField)  
+pre true  
+post  
+  ¬field.isSupported()  
+    ? throw IllegalArgumentException  
+  iField' = field  
+  iZone' = zone  
+  iDurationField' = durationField  
+  iTimeField' = useTimeArithmetic(durationField)  
+  iRangeDurationField' = rangeField  
+  iLeapDurationField' = leapField  
+Functional Scenario Form  
+field=hourField durationField=minuteDuration && sets timeField=true  
+field=unsupportedField && throws exception  
+end_process  
+
+// Leniency check
+process isLenient() result: boolean  
+pre true  
+post  
+  result' = iField.isLenient()  
+Functional Scenario Form  
+iField=lenientField && returns true  
+end_process  
+
+// Value retrieval
+process get(instant: long) result: int  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.get(localInstant)  
+Functional Scenario Form  
+instant=0L zone=EST && returns 19 (for EST hour)  
+end_process  
+
+// Text representation
+process getAsText(instant: long, locale: Locale) result: String  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.getAsText(localInstant, locale)  
+Functional Scenario Form  
+instant=0L locale=Locale.US && returns "7 PM"  
+end_process  
+
+// Short text representation
+process getAsShortText(instant: long, locale: Locale) result: String  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.getAsShortText(localInstant, locale)  
+Functional Scenario Form  
+instant=0L locale=Locale.US && returns "7p"  
+end_process  
+
+// Value-based text representation
+process getAsText_value(value: int, locale: Locale) result: String  
+pre true  
+post  
+  result' = iField.getAsText(value, locale)  
+Functional Scenario Form  
+value=12 locale=Locale.US && returns "12 PM"  
+end_process  
+
+// Value-based short text
+process getAsShortText_value(value: int, locale: Locale) result: String  
+pre true  
+post  
+  result' = iField.getAsShortText(value, locale)  
+Functional Scenario Form  
+value=0 locale=Locale.US && returns "12a"  
+end_process  
+
+// Addition (int value)
+process add_int(instant: long, value: int) result: long  
+pre true  
+post  
+  iTimeField  
+    ? offset = getOffsetToAdd(instant)  
+      localInstant = iField.add(instant + offset, value)  
+      result' = localInstant - offset  
+    : localInstant = iZone.convertUTCToLocal(instant)  
+      adjustedLocal = iField.add(localInstant, value)  
+      result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+iTimeField=true instant=0L value=1 && returns adjusted UTC  
+iTimeField=false instant=transition value=1 && handles DST  
+end_process  
+
+// Addition (long value)
+process add_long(instant: long, value: long) result: long  
+pre true  
+post  
+  iTimeField  
+    ? offset = getOffsetToAdd(instant)  
+      localInstant = iField.add(instant + offset, value)  
+      result' = localInstant - offset  
+    : localInstant = iZone.convertUTCToLocal(instant)  
+      adjustedLocal = iField.add(localInstant, value)  
+      result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+value=60*60000 instant=0L && returns after 60 minutes  
+end_process  
+
+// Wrap field addition
+process addWrapField(instant: long, value: int) result: long  
+pre true  
+post  
+  iTimeField  
+    ? offset = getOffsetToAdd(instant)  
+      localInstant = iField.addWrapField(instant + offset, value)  
+      result' = localInstant - offset  
+    : localInstant = iZone.convertUTCToLocal(instant)  
+      adjustedLocal = iField.addWrapField(localInstant, value)  
+      result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+iTimeField=true value=25 instant=0L && wraps within field range  
+end_process  
+
+// Field setter with validation
+process set(instant: long, value: int) result: long  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  adjustedLocal = iField.set(localInstant, value)  
+  result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+  get(result') ≠ value  
+    ? throw IllegalFieldValueException("Zone transition conflict")  
+Functional Scenario Form  
+value=2 instant=transition_point && throws exception  
+value=3 instant=safe_time && returns UTC instant  
+end_process  
+
+// Text-based setter
+process set_text(instant: long, text: String, locale: Locale) result: long  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  adjustedLocal = iField.set(localInstant, text, locale)  
+  result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+text="2025" locale=Locale.US instant=0L && returns UTC instant  
+end_process  
+
+// Difference calculation
+process getDifference(minuend: long, subtrahend: long) result: int  
+pre true  
+post  
+  offset = getOffsetToAdd(subtrahend)  
+  minuendAdj = minuend + (iTimeField ? offset : getOffsetToAdd(minuend))  
+  subtrahendAdj = subtrahend + offset  
+  result' = iField.getDifference(minuendAdj, subtrahendAdj)  
+Functional Scenario Form  
+iTimeField=true minuend=3600000 subtrahend=0L && returns 60  
+end_process  
+
+// Long difference calculation
+process getDifferenceAsLong(minuend: long, subtrahend: long) result: long  
+pre true  
+post  
+  offset = getOffsetToAdd(subtrahend)  
+  minuendAdj = minuend + (iTimeField ? offset : getOffsetToAdd(minuend))  
+  subtrahendAdj = subtrahend + offset  
+  result' = iField.getDifferenceAsLong(minuendAdj, subtrahendAdj)  
+Functional Scenario Form  
+minuend=7200000 subtrahend=0L && returns 120  
+end_process  
+
+// Duration field accessor
+process getDurationField() result: DurationField  
+pre true  
+post  
+  result' = iDurationField  
+Functional Scenario Form  
+iDurationField=minuteField && returns minuteField  
+end_process  
+
+// Range duration field accessor
+process getRangeDurationField() result: DurationField  
+pre true  
+post  
+  result' = iRangeDurationField  
+Functional Scenario Form  
+iRangeDurationField=yearField && returns yearField  
+end_process  
+
+// Leap check
+process isLeap(instant: long) result: boolean  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.isLeap(localInstant)  
+Functional Scenario Form  
+instant=leap_year && returns true  
+end_process  
+
+// Leap amount
+process getLeapAmount(instant: long) result: int  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.getLeapAmount(localInstant)  
+Functional Scenario Form  
+instant=leap_year && returns 1  
+end_process  
+
+// Leap duration field accessor
+process getLeapDurationField() result: DurationField  
+pre true  
+post  
+  result' = iLeapDurationField  
+Functional Scenario Form  
+iLeapDurationField=dayField && returns dayField  
+end_process  
+
+// Floor rounding
+process roundFloor(instant: long) result: long  
+pre true  
+post  
+  iTimeField  
+    ? offset = getOffsetToAdd(instant)  
+      adjusted = iField.roundFloor(instant + offset)  
+      result' = adjusted - offset  
+    : localInstant = iZone.convertUTCToLocal(instant)  
+      adjustedLocal = iField.roundFloor(localInstant)  
+      result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+iTimeField=true instant=123456 && returns floored time  
+end_process  
+
+// Ceiling rounding
+process roundCeiling(instant: long) result: long  
+pre true  
+post  
+  iTimeField  
+    ? offset = getOffsetToAdd(instant)  
+      adjusted = iField.roundCeiling(instant + offset)  
+      result' = adjusted - offset  
+    : localInstant = iZone.convertUTCToLocal(instant)  
+      adjustedLocal = iField.roundCeiling(localInstant)  
+      result' = iZone.convertLocalToUTC(adjustedLocal, false, instant)  
+Functional Scenario Form  
+iTimeField=false instant=123456 && returns ceiling value  
+end_process  
+
+// Remainder calculation
+process remainder(instant: long) result: long  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.remainder(localInstant)  
+Functional Scenario Form  
+instant=123456789 && returns remainder  
+end_process  
+
+// Minimum value accessors
+process getMinimumValue() result: int  
+pre true  
+post  
+  result' = iField.getMinimumValue()  
+Functional Scenario Form  
+iField=monthField && returns 1  
+end_process  
+
+process getMinimumValue_instant(instant: long) result: int  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.getMinimumValue(localInstant)  
+Functional Scenario Form  
+instant=0L && returns field minimum  
+end_process  
+
+process getMinimumValue_partial(partial: ReadablePartial) result: int  
+pre true  
+post  
+  result' = iField.getMinimumValue(partial)  
+Functional Scenario Form  
+partial=date && returns 1  
+end_process  
+
+process getMinimumValue_partialValues(partial: ReadablePartial, values: int[]) result: int  
+pre true  
+post  
+  result' = iField.getMinimumValue(partial, values)  
+Functional Scenario Form  
+values=[2025,8] && returns 1 (for day field)  
+end_process  
+
+// Maximum value accessors
+process getMaximumValue() result: int  
+pre true  
+post  
+  result' = iField.getMaximumValue()  
+Functional Scenario Form  
+iField=dayField && returns 31  
+end_process  
+
+process getMaximumValue_instant(instant: long) result: int  
+pre true  
+post  
+  localInstant = iZone.convertUTCToLocal(instant)  
+  result' = iField.getMaximumValue(localInstant)  
+Functional Scenario Form  
+instant=leap_year && returns 366  
+end_process  
+
+process getMaximumValue_partial(partial: ReadablePartial) result: int  
+pre true  
+post  
+  result' = iField.getMaximumValue(partial)  
+Functional Scenario Form  
+partial=date && returns 31  
+end_process  
+
+process getMaximumValue_partialValues(partial: ReadablePartial, values: int[]) result: int  
+pre true  
+post  
+  result' = iField.getMaximumValue(partial, values)  
+Functional Scenario Form  
+values=[2025,2] && returns 28 (non-leap February)  
+end_process  
+
+// Offset adder with overflow check (private)
+process getOffsetToAdd(instant: long) result: int  
+pre true  
+post  
+  offset = iZone.getOffset(instant)  
+  sum = instant + offset  
+  (instant ^ sum) < 0 ∧ (instant ^ offset) ≥ 0  
+    ? throw ArithmeticException("Offset addition overflow")  
+    : result' = offset  
+Functional Scenario Form  
+instant=Long.MAX_VALUE offset=3600000 && throws overflow  
+instant=0L offset=0 && returns 0  
+end_process  
+
+end_module  

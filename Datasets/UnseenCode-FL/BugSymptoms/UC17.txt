@@ -1,0 +1,46 @@
+#### Test Case 1: File selection dialog behavior
+
+**Expected:** File dialog opens with the wizard as parent, enabling modal interaction.
+**Observed:** Dialog appears without parent context, occasionally behind the main window.
+
+```plaintext
+[EVENT] File dialog opened without parent  
+[UI] Dialog not modal, appears behind wizard window  
+```
+
+---
+
+#### Test Case 2: Button rendering and layout
+
+**Expected:** Buttons display icons correctly with consistent dimensions.
+**Observed:** One button appears compressed or icon misaligned.
+
+```plaintext
+[UI] openSpecButton rendered with incorrect size  
+[LOG] resize called with single argument  
+```
+
+---
+
+#### Test Case 3: Field label consistency
+
+**Expected:** Label for "Project Path" is correctly displayed without keyboard shortcut indicator.
+**Observed:** Unexpected shortcut marker (“&”) appears in label text.
+
+```plaintext
+[UI] Displayed label: "Project &Path"  
+[NOTE] '&' visible in UI  
+```
+
+---
+
+#### Test Case 4: Final page not exiting as expected
+
+**Expected:** Wizard completes upon reaching conclusion page.
+**Observed:** User is redirected back to the intro page after clicking "Finish".
+
+```plaintext
+[STATE] Conclusion page reached  
+[ACTION] Clicked "Finish"  
+[RESULT] Wizard loops back to introduction  
+```

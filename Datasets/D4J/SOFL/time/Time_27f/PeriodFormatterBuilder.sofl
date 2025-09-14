@@ -1,0 +1,1425 @@
+module PeriodFormatterBuilder  
+var:  
+  PRINT_ZERO_RARELY_FIRST: int = 1  
+  PRINT_ZERO_RARELY_LAST: int = 2  
+  PRINT_ZERO_IF_SUPPORTED: int = 3  
+  PRINT_ZERO_ALWAYS: int = 4  
+  PRINT_ZERO_NEVER: int = 5  
+
+  YEARS: int = 0  
+  MONTHS: int = 1  
+  WEEKS: int = 2  
+  DAYS: int = 3  
+  HOURS: int = 4  
+  MINUTES: int = 5  
+  SECONDS: int = 6  
+  MILLIS: int = 7  
+  SECONDS_MILLIS: int = 8  
+  SECONDS_OPTIONAL_MILLIS: int = 9  
+  MAX_FIELD: int = SECONDS_OPTIONAL_MILLIS  = 9
+
+type:  
+  iMinPrintedDigits: int  
+  iPrintZeroSetting: int  
+  iMaxParsedDigits: int  
+  iRejectSignedValues: boolean  
+  iNotPrinter: boolean  
+  iNotParser: boolean  
+
+
+// Constructor
+process constructor()  
+pre true  
+post  
+  clear()  
+Functional Scenario Form  
+initializes builder state  
+end_process  
+
+// Formatter creation
+process toFormatter() result: PeriodFormatter  
+pre true  
+post  
+  formatter = toFormatter(iElementPairs, iNotPrinter, iNotParser)  
+  iFieldFormatters' = iFieldFormatters.clone()  
+  result' = formatter  
+Functional Scenario Form  
+valid configuration && creates formatter  
+end_process  
+
+// Printer creation
+process toPrinter() result: PeriodPrinter  
+pre true  
+post  
+  iNotPrinter  
+    ? result' = null  
+    : formatter = toFormatter()  
+      result' = formatter.getPrinter()  
+Functional Scenario Form  
+iNotPrinter=true && returns null  
+iNotPrinter=false && returns printer  
+end_process  
+
+// Parser creation
+process toParser() result: PeriodParser  
+pre true  
+post  
+  iNotParser  
+    ? result' = null  
+    : formatter = toFormatter()  
+      result' = formatter.getParser()  
+Functional Scenario Form  
+iNotParser=true && returns null  
+iNotParser=false && returns parser  
+end_process  
+
+// Reset builder state
+process clear()  
+pre true  
+post  
+  iMinPrintedDigits' = 1  
+  iPrintZeroSetting' = PRINT_ZERO_RARELY_LAST  
+  iMaxParsedDigits' = 10  
+  iRejectSignedValues' = false  
+  iPrefix' = null  
+  iElementPairs = null  
+    ? iElementPairs' = new ArrayList<Object>()  
+    : iElementPairs'.clear()  
+  iNotPrinter' = false  
+  iNotParser' = false  
+  iFieldFormatters' = new FieldFormatter[10]  
+Functional Scenario Form  
+resets all builder parameters  
+end_process  
+
+
+// Formatter appending
+process append(formatter: PeriodFormatter?)  
+pre formatter ≠ null  
+post  
+  clearPrefix()  
+  printer = formatter.getPrinter()  
+  parser = formatter.getParser()  
+  append0(printer, parser)  
+Functional Scenario Form  
+formatter with printer and parser && appends both  
+end_process  
+
+// Printer/Parser appending
+process append(printer: PeriodPrinter?, parser: PeriodParser?)  
+pre printer ≠ null ∨ parser ≠ null  
+post  
+  clearPrefix()  
+  append0(printer, parser)  
+Functional Scenario Form  
+printer non-null parser null && appends printer only  
+printer null parser non-null && appends parser only  
+both non-null && appends both  
+end_process  
+
+// Literal appending
+process appendLiteral(text: String?)  
+pre text ≠ null  
+post  
+  clearPrefix()  
+  literal = new Literal(text)  
+  append0(literal, literal)  
+Functional Scenario Form  
+text="-" && appends dash literal  
+end_process  
+
+// Digit settings
+process minimumPrintedDigits(minDigits: int)  
+pre true  
+post  
+  iMinPrintedDigits' = minDigits  
+Functional Scenario Form  
+minDigits=2 && sets min digits to 2  
+minDigits=4 && sets min digits to 4  
+end_process  
+
+process maximumParsedDigits(maxDigits: int)  
+pre true  
+post  
+  iMaxParsedDigits' = maxDigits  
+Functional Scenario Form  
+maxDigits=5 && sets max parsed digits to 5  
+maxDigits=8 && sets max parsed digits to 8  
+end_process  
+
+// Sign handling
+process rejectSignedValues(v: boolean)  
+pre true  
+post  
+  iRejectSignedValues' = v  
+Functional Scenario Form  
+v=true && rejects signed values  
+v=false && allows signed values  
+end_process  
+
+// Zero printing policy
+process printZeroNever()  
+pre true  
+post  
+  iPrintZeroSetting' = PRINT_ZERO_NEVER  
+Functional Scenario Form  
+true && sets PRINT_ZERO_NEVER policy  
+end_process  
+
+// Prefix appending
+process appendPrefix(text: String?)  
+pre text ≠ null  
+post  
+  appendPrefix(new SimpleAffix(text))  
+Functional Scenario Form  
+text="Year: " && creates SimpleAffix prefix  
+end_process  
+
+process appendPrefix(singular: String?, plural: String?)  
+pre singular ≠ null ∧ plural ≠ null  
+post  
+  appendPrefix(new PluralAffix(singular, plural))  
+Functional Scenario Form  
+singular="month" plural="months" && creates PluralAffix prefix  
+end_process  
+
+private process appendPrefix(prefix: PeriodFieldAffix?)  
+pre prefix ≠ null  
+post  
+  iPrefix ≠ null  
+    ? iPrefix' = new CompositeAffix(iPrefix, prefix)  
+    : iPrefix' = prefix  
+Functional Scenario Form  
+iPrefix ≠ null && combines prefixes  
+iPrefix = null && sets new prefix  
+end_process  
+
+// Field appending methods
+process appendYears()  
+pre true  
+post  
+  appendField(YEARS)  
+Functional Scenario Form  
+true && appends years field  
+end_process  
+
+process appendMonths()  
+pre true  
+post  
+  appendField(MONTHS)  
+Functional Scenario Form  
+true && appends months field  
+end_process  
+
+process appendWeeks()  
+pre true  
+post  
+  appendField(WEEKS)  
+Functional Scenario Form  
+true && appends weeks field  
+end_process  
+
+process appendDays()  
+pre true  
+post  
+  appendField(DAYS)  
+Functional Scenario Form  
+true && appends days field  
+end_process  
+
+process appendHours()  
+pre true  
+post  
+  appendField(HOURS)  
+Functional Scenario Form  
+true && appends hours field  
+end_process  
+
+process appendMinutes()  
+pre true  
+post  
+  appendField(MINUTES)  
+Functional Scenario Form  
+true && appends minutes field  
+end_process  
+
+process appendSeconds()  
+pre true  
+post  
+  appendField(SECONDS)  
+Functional Scenario Form  
+true && appends seconds field  
+end_process  
+
+process appendMillis3Digit()  
+pre true  
+post  
+  appendField(MILLIS, 3)  
+Functional Scenario Form  
+true && appends 3-digit millis field  
+end_process  
+
+// Field formatter creation
+private process appendField(type: int)  
+pre true  
+post  
+  appendField(type, iMinPrintedDigits)  
+Functional Scenario Form  
+true && calls with current min digits  
+end_process  
+
+private process appendField(type: int, minPrinted: int)  
+pre true  
+post  
+  field = new FieldFormatter(minPrinted, iPrintZeroSetting,  
+        iMaxParsedDigits, iRejectSignedValues, type,  
+        iFieldFormatters, iPrefix, null)  
+  append0(field, field)  
+  iFieldFormatters[type]' = field  
+  iPrefix' = null  
+Functional Scenario Form  
+true && creates FieldFormatter and appends  
+true && resets prefix  
+end_process  
+
+// Suffix appending
+process appendSuffix(text: String?)  
+pre text ≠ null  
+post  
+  appendSuffix(new SimpleAffix(text))  
+Functional Scenario Form  
+text="s" && appends simple suffix  
+end_process  
+
+process appendSuffix(singular: String?, plural: String?)  
+pre singular ≠ null ∧ plural ≠ null  
+post  
+  appendSuffix(new PluralAffix(singular, plural))  
+Functional Scenario Form  
+singular="minute" plural="minutes" && appends plural suffix  
+end_process  
+
+private process appendSuffix(suffix: PeriodFieldAffix?)  
+pre iElementPairs.size() > 0  
+  lastPrinter = iElementPairs.get(iElementPairs.size() - 2)  
+  lastParser = iElementPairs.get(iElementPairs.size() - 1)  
+  lastPrinter = lastParser  
+  lastPrinter instanceof FieldFormatter  
+post  
+  clearPrefix()  
+  newField = new FieldFormatter((FieldFormatter)lastPrinter, suffix)  
+  iElementPairs.set(iElementPairs.size() - 2, newField)  
+  iElementPairs.set(iElementPairs.size() - 1, newField)  
+  iFieldFormatters[newField.getFieldType()]' = newField  
+Functional Scenario Form  
+valid last field formatter && wraps with suffix  
+end_process  
+
+// Separator appending
+process appendSeparator(text: String?, finalText: String?, variants: String[]?)  
+pre text ≠ null ∧ finalText ≠ null  
+post  
+  appendSeparator(text, finalText, variants, true, true)  
+Functional Scenario Form  
+text="," finalText=" and " && appends standard separator  
+end_process  
+
+private process appendSeparator(text: String?, finalText: String?, variants: String[]?,  
+                              useBefore: boolean, useAfter: boolean)  
+pre text ≠ null ∧ finalText ≠ null  
+post  
+  clearPrefix()  
+  iElementPairs.size() = 0 ∧ useAfter ∧ ¬useBefore  
+    ? separator = new Separator(text, finalText, variants, Literal.EMPTY, Literal.EMPTY, useBefore, useAfter)  
+      append0(separator, separator)  
+  else  
+    lastSeparator = null  
+    i = iElementPairs.size()  
+    while i ≥ 0  
+      element = iElementPairs.get(i)  
+      element instanceof Separator  
+        ? lastSeparator = (Separator)element  
+          pairs = iElementPairs.subList(i + 1, iElementPairs.size())  
+          break  
+      i = i - 2  
+    pairs.size() = 0  
+      ? throw IllegalStateException  
+      : comp = createComposite(pairs)  
+        pairs.clear()  
+        separator = new Separator(text, finalText, variants, (PeriodPrinter)comp[0], (PeriodParser)comp[1], useBefore, useAfter)  
+        iElementPairs.add(separator)  
+        iElementPairs.add(separator)  
+Functional Scenario Form  
+empty builder && useAfter only && appends separator  
+last separator exists && replaces subsequent elements  
+end_process  
+
+
+// Prefix validation and reset
+process clearPrefix()  
+pre iPrefix ≠ null  
+post  
+  iPrefix' = null  
+Functional Scenario Form  
+iPrefix ≠ null && throws IllegalStateException  
+end_process  
+
+// Element appending
+private process append0(printer: PeriodPrinter?, parser: PeriodParser?)  
+pre true  
+post  
+  iElementPairs.add(printer)  
+  iElementPairs.add(parser)  
+  printer = null  
+    ? iNotPrinter' = true  
+    : iNotPrinter' = iNotPrinter  
+  parser = null  
+    ? iNotParser' = true  
+    : iNotParser' = iNotParser  
+Functional Scenario Form  
+printer null parser null && sets notPrinter/notParser flags  
+printer non-null && maintains notPrinter flag  
+end_process  
+
+// Formatter compilation
+private process toFormatter(elementPairs: List<Object>?, notPrinter: boolean, notParser: boolean) result: PeriodFormatter  
+pre elementPairs ≠ null  
+  notPrinter ∧ notParser  
+    ? throw IllegalStateException  
+post  
+  size = elementPairs.size()  
+  size ≥ 2 ∧ elementPairs.get(0) instanceof Separator  
+    ? sep = (Separator) elementPairs.get(0)  
+      sep.iAfterParser = null ∧ sep.iAfterPrinter = null  
+        ? f = toFormatter(elementPairs.subList(2, size), notPrinter, notParser)  
+          sep' = sep.finish(f.getPrinter(), f.getParser())  
+          result' = new PeriodFormatter(sep', sep')  
+  else  
+    comp = createComposite(elementPairs)  
+    notPrinter  
+      ? result' = new PeriodFormatter(null, (PeriodParser)comp[1])  
+    notParser  
+      ? result' = new PeriodFormatter((PeriodPrinter)comp[0], null)  
+    else  
+      result' = new PeriodFormatter((PeriodPrinter)comp[0], (PeriodParser)comp[1])  
+Functional Scenario Form  
+both printer/parser disabled && throws exception  
+leading empty separator && wraps subsequent formatter  
+notPrinter=true && creates parser-only formatter  
+standard case && creates composite formatter  
+end_process  
+
+// Composite creation
+private process createComposite(elementPairs: List<Object>?) result: Object[]  
+pre elementPairs ≠ null  
+post  
+  size = elementPairs.size()  
+  size = 0  
+    ? result' = [Literal.EMPTY, Literal.EMPTY]  
+  size = 1  
+    ? result' = [elementPairs.get(0), elementPairs.get(1)]  
+  else  
+    comp = new Composite(elementPairs)  
+    result' = [comp, comp]  
+Functional Scenario Form  
+empty list && returns empty literals  
+single element pair && returns direct pair  
+multiple elements && creates Composite  
+end_process  
+
+//-----------------------------------------------------------------------
+// PeriodFieldAffix Interface
+interface PeriodFieldAffix  
+  calculatePrintedLength(value: int) result: int  
+  printTo(buf: StringBuffer, value: int)  
+  printTo(out: Writer, value: int) throws IOException  
+  parse(periodStr: String, position: int) result: int  
+  scan(periodStr: String, position: int) result: int  
+end_interface  
+
+// SimpleAffix Implementation
+class SimpleAffix implements PeriodFieldAffix  
+var:  
+  iText: String  
+
+// Constructor
+process constructor(text: String)  
+pre true  
+post  
+  iText' = text  
+Functional Scenario Form  
+text="hr" && stores "hr"  
+end_process  
+
+// Length calculation
+process calculatePrintedLength(value: int) result: int  
+pre true  
+post  
+  result' = iText.length()  
+Functional Scenario Form  
+text="days" && returns 4  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, value: int)  
+pre true  
+post  
+  buf.append(iText)  
+Functional Scenario Form  
+text="min" && appends "min" to buffer  
+end_process  
+
+// Writer printing
+process printTo(out: Writer, value: int)  
+pre true  
+post  
+  out.write(iText)  
+Functional Scenario Form  
+text="sec" && writes "sec" to writer  
+end_process  
+
+// Parsing
+process parse(periodStr: String, position: int) result: int  
+pre true  
+post  
+  periodStr.regionMatches(true, position, iText, 0, iText.length())  
+    ? result' = position + iText.length()  
+    : result' = ~position  
+Functional Scenario Form  
+text="yr" at position 5 && returns 7  
+text mismatch && returns negative position  
+end_process
+
+process scan(periodStr: String, position: int) result: int  
+pre true  
+post  
+  sourceLength = periodStr.length()  
+  found = false  
+  pos = position  
+  while pos < sourceLength ∧ ¬found  
+    periodStr.regionMatches(true, pos, iText, 0, iText.length())  
+      ? found = true  
+        result' = pos  
+      : char = periodStr.charAt(pos)  
+        char ∈ ['0','1','2','3','4','5','6','7','8','9','.',',','+','-']  
+          ? pos' = pos + 1  
+          : break  
+  ¬found  
+    ? result' = ~position  
+Functional Scenario Form  
+text="hr" at position 3 && returns 3  
+text="yr" with digits before && skips digits  
+no match found && returns ~position  
+end_process  
+end_class  
+
+// PluralAffix Implementation
+class PluralAffix implements PeriodFieldAffix  
+var:  
+  iSingularText: String  
+  iPluralText: String  
+
+// Constructor
+process constructor(singular: String, plural: String)  
+pre true  
+post  
+  iSingularText' = singular  
+  iPluralText' = plural  
+Functional Scenario Form  
+singular="year" plural="years" && stores both  
+end_class  
+
+// PluralAffix Length Calculation
+class PluralAffix  
+process calculatePrintedLength(value: int) result: int  
+pre true  
+post  
+  value = 1  
+    ? result' = iSingularText.length()  
+    : result' = iPluralText.length()  
+Functional Scenario Form  
+value=1 && returns singular length  
+value=5 && returns plural length  
+end_process  
+
+// StringBuffer Printing
+process printTo(buf: StringBuffer, value: int)  
+pre true  
+post  
+  value = 1  
+    ? buf.append(iSingularText)  
+    : buf.append(iPluralText)  
+Functional Scenario Form  
+value=1 && appends singular text  
+value=10 && appends plural text  
+end_process  
+
+// Writer Printing
+process printTo(out: Writer, value: int)  
+pre true  
+post  
+  value = 1  
+    ? out.write(iSingularText)  
+    : out.write(iPluralText)  
+Functional Scenario Form  
+value=1 && writes singular text  
+value=3 && writes plural text  
+end_process  
+
+// Parsing
+process parse(periodStr: String, position: int) result: int  
+pre true  
+post  
+  text1 = iPluralText  
+  text2 = iSingularText  
+  text1.length() < text2.length()  
+    ? temp = text1  
+      text1' = text2  
+      text2' = temp  
+  periodStr.regionMatches(true, position, text1, 0, text1.length())  
+    ? result' = position + text1.length()  
+  periodStr.regionMatches(true, position, text2, 0, text2.length())  
+    ? result' = position + text2.length()  
+  else  
+    result' = ~position  
+Functional Scenario Form  
+plural match first && returns end position  
+singular match first && returns end position  
+no match && returns ~position  
+end_process  
+
+// Scanning
+process scan(periodStr: String, position: int) result: int  
+pre true  
+post  
+  text1 = iPluralText  
+  text2 = iSingularText  
+  text1.length() < text2.length()  
+    ? temp = text1  
+      text1' = text2  
+      text2' = temp  
+  len1 = text1.length()  
+  len2 = text2.length()  
+  sourceLength = periodStr.length()  
+  found = false  
+  pos = position  
+  while pos < sourceLength ∧ ¬found  
+    periodStr.regionMatches(true, pos, text1, 0, len1)  
+      ? found = true  
+        result' = pos  
+    periodStr.regionMatches(true, pos, text2, 0, len2)  
+      ? found = true  
+        result' = pos  
+    pos' = pos + 1  
+  ¬found  
+    ? result' = ~position  
+Functional Scenario Form  
+plural text found first && returns start position  
+singular text found first && returns start position  
+no match found && returns ~position  
+end_process  
+
+process constructor(left: PeriodFieldAffix, right: PeriodFieldAffix)  
+pre true  
+post  
+  iLeft' = left  
+  iRight' = right  
+Functional Scenario Form  
+left=SimpleAffix("(") right=SimpleAffix(")") && creates composite  
+end_process  
+
+// Length calculation
+process calculatePrintedLength(value: int) result: int  
+pre true  
+post  
+  result' = iLeft.calculatePrintedLength(value) + iRight.calculatePrintedLength(value)  
+Functional Scenario Form  
+value=5 && sums left and right lengths  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, value: int)  
+pre true  
+post  
+  iLeft.printTo(buf, value)  
+  iRight.printTo(buf, value)  
+Functional Scenario Form  
+value=10 && appends left then right  
+end_process  
+
+// Writer printing
+process printTo(out: Writer, value: int)  
+pre true  
+post  
+  iLeft.printTo(out, value)  
+  iRight.printTo(out, value)  
+Functional Scenario Form  
+value=3 && writes left then right  
+end_process  
+
+// Parsing
+process parse(periodStr: String, position: int) result: int  
+pre true  
+post  
+  pos1 = iLeft.parse(periodStr, position)  
+  pos1 ≥ 0  
+    ? result' = iRight.parse(periodStr, pos1)  
+    : result' = pos1  
+Functional Scenario Form  
+left parses successfully && parses right  
+left fails && returns error  
+end_process  
+
+// Scanning
+process scan(periodStr: String, position: int) result: int  
+pre true  
+post  
+  pos1 = iLeft.scan(periodStr, position)  
+  pos1 ≥ 0  
+    ? result' = iRight.scan(periodStr, pos1)  
+    : result' = ~position  
+Functional Scenario Form  
+left scans successfully && scans right  
+left fails && returns ~position  
+end_process  
+end_class  
+
+//-----------------------------------------------------------------------
+// FieldFormatter Class
+class FieldFormatter implements PeriodPrinter, PeriodParser  
+var:  
+  iMinPrintedDigits: int  
+  iPrintZeroSetting: int  
+  iMaxParsedDigits: int  
+  iRejectSignedValues: boolean  
+  iFieldType: int  
+  iFieldFormatters: FieldFormatter[]  
+  iPrefix: PeriodFieldAffix  
+  iSuffix: PeriodFieldAffix  
+
+// Primary Constructor
+process constructor(minDigits: int, zeroSetting: int, maxDigits: int, rejectSigned: boolean,  
+                    fieldType: int, fieldFormatters: FieldFormatter[], prefix: PeriodFieldAffix?, suffix: PeriodFieldAffix?)  
+pre true  
+post  
+  iMinPrintedDigits' = minDigits  
+  iPrintZeroSetting' = zeroSetting  
+  iMaxParsedDigits' = maxDigits  
+  iRejectSignedValues' = rejectSigned  
+  iFieldType' = fieldType  
+  iFieldFormatters' = fieldFormatters  
+  iPrefix' = prefix  
+  iSuffix' = suffix  
+Functional Scenario Form  
+minDigits=2 fieldType=YEARS && creates years formatter  
+end_process  
+
+// Suffix-appending Constructor
+process constructor(field: FieldFormatter, suffix: PeriodFieldAffix?)  
+pre true  
+post  
+  iMinPrintedDigits' = field.iMinPrintedDigits  
+  iPrintZeroSetting' = field.iPrintZeroSetting  
+  iMaxParsedDigits' = field.iMaxParsedDigits  
+  iRejectSignedValues' = field.iRejectSignedValues  
+  iFieldType' = field.iFieldType  
+  iFieldFormatters' = field.iFieldFormatters  
+  iPrefix' = field.iPrefix  
+  field.iSuffix ≠ null  
+    ? iSuffix' = new CompositeAffix(field.iSuffix, suffix)  
+    : iSuffix' = suffix  
+Functional Scenario Form  
+existing suffix && creates composite suffix  
+no existing suffix && sets new suffix  
+end_process  
+
+// Field counting
+process countFieldsToPrint(period: ReadablePeriod, stopAt: int, locale: Locale) result: int  
+pre stopAt > 0  
+post  
+  value = getFieldValue(period)  
+  iPrintZeroSetting = PRINT_ZERO_ALWAYS ∨ value ≠ Long.MAX_VALUE  
+    ? result' = 1  
+    : result' = 0  
+Functional Scenario Form  
+PRINT_ZERO_ALWAYS policy && returns 1  
+valid field value && returns 1  
+invalid field value && returns 0  
+end_process  
+
+// Printed length calculation
+process calculatePrintedLength(period: ReadablePeriod, locale: Locale) result: int  
+pre true  
+post  
+  valueLong = getFieldValue(period)  
+  valueLong = Long.MAX_VALUE  
+    ? result' = 0  
+  else  
+    sum = max(FormatUtils.calculateDigitCount(valueLong), iMinPrintedDigits)  
+    iFieldType ≥ SECONDS_MILLIS  
+      ? sum' = valueLong < 0 ? max(sum, 5) : max(sum, 4)  
+        sum'' = sum' + 1  // decimal point  
+        iFieldType = SECONDS_OPTIONAL_MILLIS ∧ (abs(valueLong) % DateTimeConstants.MILLIS_PER_SECOND) = 0  
+          ? sum''' = sum'' - 4  
+        valueLong' = valueLong / DateTimeConstants.MILLIS_PER_SECOND  
+    value = (int)valueLong  
+    iPrefix ≠ null  
+      ? sum += iPrefix.calculatePrintedLength(value)  
+    iSuffix ≠ null  
+      ? sum += iSuffix.calculatePrintedLength(value)  
+    result' = sum  
+Functional Scenario Form  
+SECONDS_MILLIS field && includes decimal in length  
+SECONDS_OPTIONAL_MILLIS with whole seconds && excludes millis digits  
+valueLong=Long.MAX_VALUE && returns 0  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  valueLong = getFieldValue(period)  
+  valueLong = Long.MAX_VALUE  
+    ? return  
+  value = (int)valueLong  
+  iFieldType ≥ SECONDS_MILLIS  
+    ? value' = (int)(valueLong / DateTimeConstants.MILLIS_PER_SECOND)  
+  iPrefix ≠ null  
+    ? iPrefix.printTo(buf, value)  
+  bufLen = buf.length()  
+  iMinPrintedDigits ≤ 1  
+    ? FormatUtils.appendUnpaddedInteger(buf, value)  
+    : FormatUtils.appendPaddedInteger(buf, value, iMinPrintedDigits)  
+  iFieldType ≥ SECONDS_MILLIS  
+    ? dp = (int)(abs(valueLong) % DateTimeConstants.MILLIS_PER_SECOND)  
+      (iFieldType = SECONDS_MILLIS ∨ dp > 0)  
+        ? valueLong < 0 ∧ valueLong > -DateTimeConstants.MILLIS_PER_SECOND  
+            ? buf.insert(bufLen, '-')  
+          buf.append('.')  
+          FormatUtils.appendPaddedInteger(buf, dp, 3)  
+  iSuffix ≠ null  
+    ? iSuffix.printTo(buf, value)  
+Functional Scenario Form  
+SECONDS_MILLIS field=1500 && prints "1.500"  
+negative fractional seconds && inserts early minus sign  
+end_process  
+
+// Writer printing
+process printTo(out: Writer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  valueLong = getFieldValue(period)  
+  valueLong = Long.MAX_VALUE  
+    ? return  
+  value = (int)valueLong  
+  iFieldType ≥ SECONDS_MILLIS  
+    ? value' = (int)(valueLong / DateTimeConstants.MILLIS_PER_SECOND)  
+  iPrefix ≠ null  
+    ? iPrefix.printTo(out, value)  
+  iMinPrintedDigits ≤ 1  
+    ? FormatUtils.writeUnpaddedInteger(out, value)  
+    : FormatUtils.writePaddedInteger(out, value, iMinPrintedDigits)  
+  iFieldType ≥ SECONDS_MILLIS  
+    ? dp = (int)(abs(valueLong) % DateTimeConstants.MILLIS_PER_SECOND)  
+      (iFieldType = SECONDS_MILLIS ∨ dp > 0)  
+        ? out.write('.')  
+          FormatUtils.writePaddedInteger(out, dp, 3)  
+  iSuffix ≠ null  
+    ? iSuffix.printTo(out, value)  
+Functional Scenario Form  
+SECONDS_OPTIONAL_MILLIS with whole seconds && omits decimal  
+iSuffix exists && writes suffix after value  
+end_process  
+
+process parseInto(period: ReadWritablePeriod, text: String, position: int, locale: Locale) result: int  
+pre position ≥ 0  
+post  
+  mustParse = (iPrintZeroSetting = PRINT_ZERO_ALWAYS)  
+  position ≥ text.length()  
+    ? mustParse  
+        ? result' = ~position  
+        : result' = position  
+  else  
+    // Handle prefix  
+    iPrefix ≠ null  
+      ? prefixParse = iPrefix.parse(text, position)  
+        prefixParse ≥ 0  
+          ? position' = prefixParse  
+            mustParse' = true  
+          : mustParse  
+              ? result' = prefixParse  
+              : result' = ~prefixParse  
+    // Pre-scan suffix  
+    suffixPos = -1  
+    iSuffix ≠ null ∧ ¬mustParse  
+      ? suffixScan = iSuffix.scan(text, position)  
+        suffixScan ≥ 0  
+          ? mustParse' = true  
+            suffixPos' = suffixScan  
+          : mustParse  
+              ? result' = suffixScan  
+              : result' = ~suffixScan  
+    // Check field support  
+    ¬mustParse ∧ ¬isSupported(period.getPeriodType(), iFieldType)  
+      ? result' = position  
+    else  
+      // Digit scanning  
+      suffixPos > 0  
+        ? limit = min(iMaxParsedDigits, suffixPos - position)  
+        : limit = min(iMaxParsedDigits, text.length() - position)  
+      length = 0  
+      fractPos = -1  
+      hasDigits = false  
+      while length < limit  
+        c = text.charAt(position + length)  
+        length = 0 ∧ (c = '-' ∨ c = '+') ∧ ¬iRejectSignedValues  
+          ? nextPos = position + length + 1  
+            nextPos < text.length()  
+              ? nextChar = text.charAt(nextPos)  
+                nextChar ≥ '0' ∧ nextChar ≤ '9'  
+                  ? c = '-'  
+                      ? length' = length + 1  // Consume '-'  
+                      : position' = position + 1  // Skip '+'  
+                    limit' = min(limit + 1, text.length() - position')  
+              : break  
+        c ≥ '0' ∧ c ≤ '9'  
+          ? hasDigits' = true  
+        (c = '.' ∨ c = ',') ∧ (iFieldType = SECONDS_MILLIS ∨ iFieldType = SECONDS_OPTIONAL_MILLIS) ∧ fractPos = -1  
+          ? fractPos' = position + length + 1  
+            limit' = min(limit + 1, text.length() - position)  
+        : ¬(c ≥ '0' ∧ c ≤ '9')  
+          ? break  
+        length' = length + 1  
+      // Validate  
+      ¬hasDigits  
+        ? result' = ~position  
+      suffixPos ≥ 0 ∧ position + length ≠ suffixPos  
+        ? result' = position  
+      else  
+        // Set field value  
+        iFieldType ≠ SECONDS_MILLIS ∧ iFieldType ≠ SECONDS_OPTIONAL_MILLIS  
+          ? value = parseInt(text, position, length)  
+            setFieldValue(period, iFieldType, value)  
+        fractPos < 0  
+          ? setFieldValue(period, SECONDS, parseInt(text, position, length))  
+            setFieldValue(period, MILLIS, 0)  
+        else  
+          wholeLen = fractPos - position - 1  
+          wholeValue = parseInt(text, position, wholeLen)  
+          setFieldValue(period, SECONDS, wholeValue)  
+          fractLen = length - wholeLen - 1  
+          fractValue =  
+            fractLen ≤ 0  
+              ? 0  
+            fractLen ≥ 3  
+              ? parseInt(text, fractPos, 3)  
+            fractLen = 1  
+              ? parseInt(text, fractPos, 1) * 100  
+            fractLen = 2  
+              ? parseInt(text, fractPos, 2) * 10  
+          wholeValue < 0  
+            ? fractValue' = -fractValue  
+          setFieldValue(period, MILLIS, fractValue)  
+      // Final position  
+      position' = position + length  
+      iSuffix ≠ null  
+        ? suffixParse = iSuffix.parse(text, position')  
+          result' = suffixParse  
+        : result' = position'  
+Functional Scenario Form  
+position ≥ text.length() ∧ mustParse=true && result = ~position  
+iPrefix ≠ null ∧ prefixParse < 0 ∧ mustParse=false && result = ~prefixParse  
+suffixScan < 0 ∧ mustParse=false && result = ~suffixScan  
+¬mustParse ∧ ¬isSupported(period.getPeriodType(), iFieldType) && result = position  
+¬hasDigits && result = ~position  
+suffixPos ≥ 0 ∧ position + length ≠ suffixPos && result = position  
+iFieldType = MONTHS ∧ fractPos < 0 && sets MONTHS value  
+iFieldType = SECONDS ∧ fractPos < 0 && sets SECONDS value  
+iFieldType = SECONDS_MILLIS ∧ fractPos > 0 ∧ fractLen=1 && converts 0.5 to 500ms  
+wholeValue < 0 ∧ fractValue=500 && sets MILLIS=-500  
+end_process  
+
+// Integer parsing
+private process parseInt(text: String, position: int, length: int) result: int  
+pre position ≥ 0 ∧ length ≥ 0  
+post  
+  length ≥ 10  
+    ? result' = Integer.parseInt(text.substring(position, position + length))  
+  length ≤ 0  
+    ? result' = 0  
+  else  
+    value = text.charAt(position)  
+    value = '-'  
+      ? length' = length - 1  
+        length' < 0  
+          ? result' = 0  
+        position' = position + 1  
+        negative' = true  
+        value' = text.charAt(position')  
+      : negative' = false  
+        value' = value  
+    intVal = value' - '0'  
+    count = length'  
+    while count > 0  
+      nextChar = text.charAt(position')  
+      intVal' = (intVal * 10) + (nextChar - '0')  
+      position'' = position' + 1  
+      count' = count - 1  
+    negative  
+      ? result' = -intVal  
+      : result' = intVal  
+Functional Scenario Form  
+length=0 && returns 0  
+text="123" position=0 length=3 && returns 123  
+text="-42" position=0 length=3 && returns -42  
+text="12345678901" position=0 length=11 && uses Integer.parseInt  
+end_process  
+
+// Field value retrieval
+process getFieldValue(period: ReadablePeriod) result: long  
+pre true  
+post  
+  iPrintZeroSetting = PRINT_ZERO_ALWAYS  
+    ? type = null  
+    : type = period.getPeriodType()  
+  type ≠ null ∧ ¬isSupported(type, iFieldType)  
+    ? result' = Long.MAX_VALUE  
+  else  
+    // Get raw value  
+    iFieldType = YEARS  
+      ? value = period.get(DurationFieldType.years())  
+    iFieldType = MONTHS  
+      ? value = period.get(DurationFieldType.months())  
+    // ... similar for other field types ...  
+    iFieldType = SECONDS_MILLIS ∨ iFieldType = SECONDS_OPTIONAL_MILLIS  
+      ? seconds = period.get(DurationFieldType.seconds())  
+        millis = period.get(DurationFieldType.millis())  
+        value' = (seconds * DateTimeConstants.MILLIS_PER_SECOND) + millis  
+    // Handle zero values  
+    value = 0  
+      ? iPrintZeroSetting = PRINT_ZERO_NEVER  
+          ? result' = Long.MAX_VALUE  
+        iPrintZeroSetting = PRINT_ZERO_RARELY_LAST  
+          ? isZero(period) ∧ iFieldFormatters[iFieldType] = this  
+              ? lastField = true  
+                i = iFieldType + 1  
+                while i ≤ MAX_FIELD  
+                  isSupported(type, i) ∧ iFieldFormatters[i] ≠ null  
+                    ? lastField' = false  
+                  i' = i + 1  
+                lastField  
+                  ? result' = 0  
+                  : result' = Long.MAX_VALUE  
+              : result' = Long.MAX_VALUE  
+        iPrintZeroSetting = PRINT_ZERO_RARELY_FIRST  
+          ? isZero(period) ∧ iFieldFormatters[iFieldType] = this  
+              ? firstField = true  
+                i = min(iFieldType, 8) - 1  
+                while i ≥ 0  
+                  isSupported(type, i) ∧ iFieldFormatters[i] ≠ null  
+                    ? firstField' = false  
+                  i' = i - 1  
+                firstField  
+                  ? result' = 0  
+                  : result' = Long.MAX_VALUE  
+              : result' = Long.MAX_VALUE  
+        else  
+          result' = 0  
+      : result' = value  
+Functional Scenario Form  
+iPrintZeroSetting=PRINT_ZERO_ALWAYS && returns actual value  
+unsupported field type && returns Long.MAX_VALUE  
+YEARS field=0 ∧ PRINT_ZERO_NEVER && returns Long.MAX_VALUE  
+last field ∧ zero period ∧ PRINT_ZERO_RARELY_LAST && returns 0  
+non-last field ∧ zero value ∧ PRINT_ZERO_RARELY_LAST && returns Long.MAX_VALUE  
+SECONDS_MILLIS field: seconds=5 millis=250 && returns 5250  
+end_process  
+
+process isZero(period: ReadablePeriod) result: boolean  
+pre true  
+post  
+  i = 0  
+  zero = true  
+  while i < period.size()  
+    period.getValue(i) ≠ 0  
+      ? zero' = false  
+        break  
+    i' = i + 1  
+  result' = zero  
+Functional Scenario Form  
+all values zero && returns true  
+one value non-zero && returns false  
+end_process  
+
+// Field support check
+process isSupported(type: PeriodType, field: int) result: boolean  
+pre true  
+post  
+  field = YEARS  
+    ? result' = type.isSupported(DurationFieldType.years())  
+  field = MONTHS  
+    ? result' = type.isSupported(DurationFieldType.months())  
+  // ... similar for other field types ...  
+  field = SECONDS_MILLIS ∨ field = SECONDS_OPTIONAL_MILLIS  
+    ? result' = type.isSupported(DurationFieldType.seconds()) ∨  
+               type.isSupported(DurationFieldType.millis())  
+  else  
+    result' = false  
+Functional Scenario Form  
+field=YEARS && returns years support status  
+field=SECONDS_OPTIONAL_MILLIS && returns seconds or millis support  
+end_process  
+
+// Field value setting
+process setFieldValue(period: ReadWritablePeriod, field: int, value: int)  
+pre true  
+post  
+  field = YEARS  
+    ? period.setYears(value)  
+  field = MONTHS  
+    ? period.setMonths(value)  
+  // ... similar for other field types ...  
+  field = MILLIS  
+    ? period.setMillis(value)  
+Functional Scenario Form  
+field=HOURS value=5 && sets hours to 5  
+field=SECONDS value=30 && sets seconds to 30  
+end_process  
+
+// Field type accessor
+process getFieldType() result: int  
+pre true  
+post  
+  result' = iFieldType  
+Functional Scenario Form  
+always returns field type  
+end_process  
+end_class  
+
+//-----------------------------------------------------------------------
+// Literal Class
+class Literal implements PeriodPrinter, PeriodParser  
+var:  
+  iText: String  
+
+// Constructor
+process constructor(text: String)  
+pre true  
+post  
+  iText' = text  
+Functional Scenario Form  
+text=", " && stores comma space  
+end_process  
+
+// Field counting
+process countFieldsToPrint(period: ReadablePeriod, stopAt: int, locale: Locale) result: int  
+pre true  
+post  
+  result' = 0  
+Functional Scenario Form  
+always returns 0  
+end_process  
+
+// Length calculation
+process calculatePrintedLength(period: ReadablePeriod, locale: Locale) result: int  
+pre true  
+post  
+  result' = iText.length()  
+Functional Scenario Form  
+text="days" && returns 4  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  buf.append(iText)  
+Functional Scenario Form  
+text=" and " && appends " and "  
+end_process  
+
+// Writer printing
+process printTo(out: Writer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  out.write(iText)  
+Functional Scenario Form  
+text=":" && writes colon  
+end_process  
+
+// Parsing
+process parseInto(period: ReadWritablePeriod, text: String, position: int, locale: Locale) result: int  
+pre true  
+post  
+  periodStr.regionMatches(true, position, iText, 0, iText.length())  
+    ? result' = position + iText.length()  
+    : result' = ~position  
+Functional Scenario Form  
+text="T" at position 10 && returns 11  
+mismatch && returns ~position  
+end_process  
+
+process constructor(text: String, finalText: String, variants: String[],  
+                   beforePrinter: PeriodPrinter, beforeParser: PeriodParser,  
+                   useBefore: boolean, useAfter: boolean)  
+pre text ≠ null  
+post  
+  iText' = text  
+  iFinalText' = finalText  
+  (finalText = null ∨ text = finalText) ∧ (variants = null ∨ variants.length = 0)  
+    ? iParsedForms' = [text]  
+  else  
+    parsedSet = new TreeSet(String.CASE_INSENSITIVE_ORDER)  
+    parsedSet.add(text)  
+    parsedSet.add(finalText)  
+    variants ≠ null  
+      ? for i=0 to variants.length-1  
+          parsedSet.add(variants[i])  
+    parsedList = new ArrayList(parsedSet)  
+    Collections.reverse(parsedList)  
+    iParsedForms' = parsedList.toArray(new String[parsedList.size()])  
+  iBeforePrinter' = beforePrinter  
+  iAfterPrinter' = null  
+  iBeforeParser' = beforeParser  
+  iAfterParser' = null  
+  iUseBefore' = useBefore  
+  iUseAfter' = useAfter  
+Functional Scenario Form  
+variants=null && creates [text]  
+multiple variants && creates sorted, reversed array  
+end_process  
+
+// Field counting
+process countFieldsToPrint(period: ReadablePeriod, stopAt: int, locale: Locale) result: int  
+pre true  
+post  
+  beforeCount = iBeforePrinter.countFieldsToPrint(period, stopAt, locale)  
+  beforeCount < stopAt  
+    ? afterCount = iAfterPrinter.countFieldsToPrint(period, stopAt - beforeCount, locale)  
+      result' = beforeCount + afterCount  
+    : result' = beforeCount  
+Functional Scenario Form  
+beforeCount=1 stopAt=3 && adds afterCount  
+beforeCount=3 stopAt=3 && returns 3  
+end_process  
+
+// Length calculation
+process calculatePrintedLength(period: ReadablePeriod, locale: Locale) result: int  
+pre true  
+post  
+  before = iBeforePrinter  
+  after = iAfterPrinter  
+  sum = before.calculatePrintedLength(period, locale) + after.calculatePrintedLength(period, locale)  
+  iUseBefore  
+    ? beforeFields = before.countFieldsToPrint(period, 1, locale) > 0  
+      beforeFields  
+        ? iUseAfter  
+            ? afterFields = after.countFieldsToPrint(period, 2, locale)  
+              afterFields > 0  
+                ? separatorLen = (afterFields > 1 ? iText : iFinalText).length()  
+                  sum' = sum + separatorLen  
+            : sum' = sum + iText.length()  
+  iUseAfter ∧ ¬iUseBefore  
+    ? afterFields = after.countFieldsToPrint(period, 1, locale) > 0  
+      afterFields  
+        ? sum' = sum + iText.length()  
+  result' = sum  
+Functional Scenario Form  
+iUseBefore=true ∧ beforeFields>0 ∧ afterFields=0 && adds text length  
+iUseAfter=true ∧ afterFields>1 && adds iText length  
+iUseAfter=true ∧ afterFields=1 && adds iFinalText length  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  before = iBeforePrinter  
+  after = iAfterPrinter  
+  before.printTo(buf, period, locale)  
+  iUseBefore  
+    ? beforeFields = before.countFieldsToPrint(period, 1, locale) > 0  
+      beforeFields  
+        ? iUseAfter  
+            ? afterFields = after.countFieldsToPrint(period, 2, locale)  
+              afterFields > 0  
+                ? separator = (afterFields > 1 ? iText : iFinalText)  
+                  buf.append(separator)  
+            : buf.append(iText)  
+  iUseAfter ∧ ¬iUseBefore  
+    ? afterFields = after.countFieldsToPrint(period, 1, locale) > 0  
+      afterFields  
+        ? buf.append(iText)  
+  after.printTo(buf, period, locale)  
+Functional Scenario Form  
+iUseBefore=true ∧ beforeFields>0 ∧ afterFields>1 && appends iText  
+iUseBefore=true ∧ beforeFields>0 ∧ afterFields=1 && appends iFinalText  
+iUseAfter=true ∧ no before usage ∧ afterFields>0 && appends iText  
+end_process  
+
+process printTo(out: Writer, period: ReadablePeriod, locale: Locale)  
+pre true  
+post  
+  before = iBeforePrinter  
+  after = iAfterPrinter  
+  before.printTo(out, period, locale)  
+  iUseBefore  
+    ? beforeFields = before.countFieldsToPrint(period, 1, locale) > 0  
+      beforeFields  
+        ? iUseAfter  
+            ? afterFields = after.countFieldsToPrint(period, 2, locale)  
+              afterFields > 0  
+                ? separator = (afterFields > 1 ? iText : iFinalText)  
+                  out.write(separator)  
+            : out.write(iText)  
+  iUseAfter ∧ ¬iUseBefore  
+    ? afterFields = after.countFieldsToPrint(period, 1, locale) > 0  
+      afterFields  
+        ? out.write(iText)  
+  after.printTo(out, period, locale)  
+Functional Scenario Form  
+iUseBefore=true ∧ afterFields>1 && writes iText  
+iUseAfter=true ∧ no before usage && writes iText when fields present  
+end_process  
+
+// Parsing
+process parseInto(period: ReadWritablePeriod, text: String, position: int, locale: Locale) result: int  
+pre true  
+post  
+  oldPos = position  
+  position' = iBeforeParser.parseInto(period, text, position, locale)  
+  position' < 0  
+    ? result' = position'  
+  else  
+    found = false  
+    position' > oldPos  
+      ? forms = iParsedForms  
+        i = 0  
+        while i < forms.length ∧ ¬found  
+          form = forms[i]  
+          (form = null ∨ form.length() = 0) ∨ text.regionMatches(true, position', form, 0, form.length())  
+            ? position'' = position' + (form ≠ null ? form.length() : 0)  
+              found' = true  
+          i' = i + 1  
+    oldPos' = position'  
+    position''' = iAfterParser.parseInto(period, text, position'', locale)  
+    position''' < 0  
+      ? result' = position'''  
+    found ∧ position''' = oldPos'  
+      ? result' = ~oldPos'  
+    position''' > oldPos' ∧ ¬found ∧ ¬iUseBefore  
+      ? result' = ~oldPos'  
+    else  
+      result' = position'''  
+Functional Scenario Form  
+before parser fails && returns negative  
+form matched && consumes separator  
+found but no after parsing && returns error  
+separator required but not found && returns error  
+end_process  
+
+end_module  
+
+module PeriodFormatterBuilder  
+
+// Constructor
+process constructor(elementPairs: List<Object>)  
+pre elementPairs ≠ null  
+post  
+  printerList = new ArrayList<Object>()  
+  parserList = new ArrayList<Object>()  
+  decompose(elementPairs, printerList, parserList)  
+  printerList.size() > 0  
+    ? iPrinters' = printerList.toArray(new PeriodPrinter[printerList.size()])  
+    : iPrinters' = null  
+  parserList.size() > 0  
+    ? iParsers' = parserList.toArray(new PeriodParser[parserList.size()])  
+    : iParsers' = null  
+Functional Scenario Form  
+elementPairs with 2 printers && creates iPrinters array  
+elementPairs with null parser && sets iParsers=null  
+end_process  
+
+// Field counting
+process countFieldsToPrint(period: ReadablePeriod, stopAt: int, locale: Locale) result: int  
+pre iPrinters ≠ null  
+post  
+  sum = 0  
+  i = iPrinters.length - 1  
+  while i ≥ 0 ∧ sum < stopAt  
+    sum' = sum + iPrinters[i].countFieldsToPrint(period, Integer.MAX_VALUE, locale)  
+    i' = i - 1  
+  result' = sum  
+Functional Scenario Form  
+stopAt=3 ∧ printers return [1,2] && returns 3  
+end_process  
+
+// Length calculation
+process calculatePrintedLength(period: ReadablePeriod, locale: Locale) result: int  
+pre iPrinters ≠ null  
+post  
+  sum = 0  
+  i = iPrinters.length - 1  
+  while i ≥ 0  
+    sum' = sum + iPrinters[i].calculatePrintedLength(period, locale)  
+    i' = i - 1  
+  result' = sum  
+Functional Scenario Form  
+two printers returning 5 each && returns 10  
+end_process  
+
+// StringBuffer printing
+process printTo(buf: StringBuffer, period: ReadablePeriod, locale: Locale)  
+pre iPrinters ≠ null  
+post  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(buf, period, locale)  
+Functional Scenario Form  
+two printers && appends both outputs  
+end_process  
+
+// Writer printing
+process printTo(out: Writer, period: ReadablePeriod, locale: Locale)  
+pre iPrinters ≠ null  
+post  
+  for i=0 to iPrinters.length-1  
+    iPrinters[i].printTo(out, period, locale)  
+Functional Scenario Form  
+three printers && writes all outputs  
+end_process  
+
+// Parsing
+process parseInto(period: ReadWritablePeriod, text: String, position: int, locale: Locale) result: int  
+pre iParsers ≠ null  
+post  
+  pos = position  
+  for i=0 to iParsers.length-1 ∧ pos ≥ 0  
+    pos' = iParsers[i].parseInto(period, text, pos, locale)  
+  result' = pos  
+Functional Scenario Form  
+all parsers succeed && returns final position  
+first parser fails && returns negative  
+end_process  
+
+// List decomposition
+private process decompose(elementPairs: List<Object>, printerList: List<Object>, parserList: List<Object>)  
+pre true  
+post  
+  size = elementPairs.size()  
+  for i=0 to size-1 step 2  
+    element = elementPairs.get(i)  
+    element instanceof PeriodPrinter  
+      ? element instanceof Composite  
+          ? addArrayToList(printerList, ((Composite)element).iPrinters)  
+          : printerList.add(element)  
+    element = elementPairs.get(i + 1)  
+    element instanceof PeriodParser  
+      ? element instanceof Composite  
+          ? addArrayToList(parserList, ((Composite)element).iParsers)  
+          : parserList.add(element)  
+Functional Scenario Form  
+element=Composite printer && decomposes its printers  
+element=Literal parser && adds directly to parserList  
+end_process  
+
+end_module  

@@ -1,0 +1,51 @@
+module UC11_allruledescriptdialog
+type
+  column: int
+
+process UC11_allruledescriptdialog(parent: QWidget) result: UC11_allruledescriptdialog
+pre
+  true
+post
+  this.parent = parent
+  ui = new Ui::AllRuleDescriptDialog
+  ui.setupUi(this) executed
+  connect(ui.tableWidget.itemDoubleClicked, this.showRuleDescript(QTableWidgetItem*)) established
+  connect(ui.treeWidget.itemDoubleClicked, this.showRuleDescript(QTreeWidgetItem*, int)) established
+Functional Scenario Form
+valid parent && dialog initialized with connected double-click slots for both table and tree widgets
+end_process
+
+process ~AllRuleDescriptDialog() result: Void
+pre
+  true
+post
+  delete ui executed
+Functional Scenario Form
+destructor invoked && ui deleted
+end_process
+
+process showRuleDescript(item: QTreeWidgetItem, column: int) result: Void
+pre
+  item ≠ null
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  factor = new ScreenFactor()
+  ruleDescript.resize(factor.getScreenFactor() * ruleDescript.width(), factor.getScreenFactor() * ruleDescript.height()) executed
+  ruleDescript.show() executed
+Functional Scenario Form
+tree item double-clicked && ruleDescript dialog resized and shown
+end_process
+
+process showRuleDescript(tableItem: QTableWidgetItem) result: Void
+pre
+  tableItem ≠ null
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  factor = new ScreenFactor()
+  ruleDescript.resize(factor.getScreenFactor() * ruleDescript.width(), factor.getScreenFactor() * ruleDescript.height()) executed
+  ruleDescript.show() executed
+Functional Scenario Form
+table item double-clicked && ruleDescript dialog resized and shown
+end_process
+
+end_module

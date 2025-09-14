@@ -1,0 +1,86 @@
+**Bug Report: File I/O Operations – Symptom Summary**
+
+---
+
+### **Test Case 1: Reading from File**
+
+**Input:**
+
+```java
+String result = file.readFile("test.txt");
+System.out.println(result);
+```
+
+**Expected Output:**
+
+```
+<Contents of the first line of test.txt>
+```
+
+**Observed Output:**
+
+```
+null
+```
+
+---
+
+### **Test Case 2: Writing to File (Overwriting Mode)**
+
+**Input:**
+
+```java
+file.writeFile("Charge: 1000", "log.txt");
+```
+
+**Expected Behavior:**
+File `log.txt` is created or overwritten with content `Charge: 1000`, and the console outputs a success message.
+
+**Observed Output:**
+
+```
+ファイルに書き込みました: log.txt
+```
+
+*(Works as expected)*
+
+---
+
+### **Test Case 3: Appending to File with Timestamp**
+
+**Input:**
+
+```java
+file.writeFile2("Charge: 1000", "log.txt", " Yen added");
+```
+
+**Expected Behavior:**
+Appends a new line in `log.txt` with a timestamped charge entry:
+
+```
+2025-08-08 13:45:12: Charge: 1000 Yen added
+```
+
+**Observed Output:**
+
+```
+[Compilation Error]
+>> error: ';' expected
+>> System.out.println("ファイルに書き込みました: " filePath);
+```
+
+**File Output:**
+File is overwritten rather than appended, losing previous contents.
+
+---
+
+### **Console Log (Simulated):**
+
+```
+[INFO] Reading file...
+[INFO] Finished reading: null
+[INFO] Writing file in overwrite mode...
+[INFO] Writing file in append mode...
+[ERROR] Syntax error on print statement
+[WARN] File contents replaced instead of appended
+```

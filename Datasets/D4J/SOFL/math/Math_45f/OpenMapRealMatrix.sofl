@@ -1,0 +1,193 @@
+module OpenMapRealMatrix
+type
+  rows: int
+  columns: int
+
+process ctor_dims(rowDimension: int, columnDimension: int) result: OpenMapRealMatrix
+pre
+  rowDimension ≥ 0 and columnDimension ≥ 0 and (long(rowDimension) * long(columnDimension)) < Integer.MAX_VALUE
+post
+  rows' = rowDimension and
+  columns' = columnDimension and
+  entries' = OpenIntToDoubleHashMap(0.0) and
+  result' = this
+Functional Scenario Form
+  rowDimension, columnDimension valid && result' = this or
+  (long(rowDimension) * long(columnDimension)) ≥ Integer.MAX_VALUE && raises NumberIsTooLargeException
+end_process
+
+process ctor_copy(matrix: OpenMapRealMatrix) result: OpenMapRealMatrix
+pre
+  matrix ≠ null
+post
+  rows' = matrix.rows and
+  columns' = matrix.columns and
+  entries' = OpenIntToDoubleHashMap(matrix.entries) and
+  result' = this
+Functional Scenario Form
+  matrix ≠ null && result' = this
+end_process
+
+process copy() result: OpenMapRealMatrix
+pre
+  true
+post
+  result' = OpenMapRealMatrix(this)
+Functional Scenario Form
+  true && result' = OpenMapRealMatrix(this)
+end_process
+
+process createMatrix(rowDimension: int, columnDimension: int) result: OpenMapRealMatrix
+pre
+  rowDimension ≥ 0 and columnDimension ≥ 0 and (long(rowDimension) * long(columnDimension)) < Integer.MAX_VALUE
+post
+  result' = OpenMapRealMatrix(rowDimension, columnDimension)
+Functional Scenario Form
+  valid dims && result' = new sparse matrix
+end_process
+
+process getColumnDimension() result: int
+pre
+  true
+post
+  result' = columns
+Functional Scenario Form
+  true && result' = columns
+end_process
+
+process getRowDimension() result: int
+pre
+  true
+post
+  result' = rows
+Functional Scenario Form
+  true && result' = rows
+end_process
+
+process add(m: OpenMapRealMatrix) result: OpenMapRealMatrix
+pre
+  MatrixUtils.checkAdditionCompatible(this, m)
+post
+  // out = this + m (sparse semantics; zeros not stored)
+  let out = OpenMapRealMatrix(this) in
+    (∀ (r,c) • 0 ≤ r < rows ∧ 0 ≤ c < columns ⇒
+       out.getEntry(r,c) = this.getEntry(r,c) + m.getEntry(r,c)) and
+    result' = out
+Functional Scenario Form
+  size compatible && result' = elementwise sum
+end_process
+
+process subtract_m(m: RealMatrix) result: OpenMapRealMatrix
+pre
+  MatrixUtils.checkAdditionCompatible(this, m)
+post
+  // dispatch semantic: if m is OpenMapRealMatrix use sparse-specific, otherwise fallback to super
+  (m instanceof OpenMapRealMatrix →
+     result' = subtract_omm((OpenMapRealMatrix) m))
+  or
+  (¬(m instanceof OpenMapRealMatrix) →
+     result' = (OpenMapRealMatrix) super_subtract(m))
+Functional Scenario Form
+  m is sparse && result' = subtract_omm(m) or
+  m is dense && result' = (OpenMapRealMatrix) super_subtract(m)
+end_process
+
+process subtract_omm(m: OpenMapRealMatrix) result: OpenMapRealMatrix
+pre
+  MatrixUtils.checkAdditionCompatible(this, m)
+post
+  let out = OpenMapRealMatrix(this) in
+    (∀ (r,c) • 0 ≤ r < rows ∧ 0 ≤ c < columns ⇒
+       out.getEntry(r,c) = this.getEntry(r,c) - m.getEntry(r,c)) and
+    result' = out
+Functional Scenario Form
+  size compatible && result' = elementwise difference
+end_process
+
+process multiply(m: RealMatrix) result: RealMatrix
+pre
+  MatrixUtils.checkMultiplicationCompatible(this, m)
+post
+  (m instanceof OpenMapRealMatrix →
+     result' = multiply_sparse((OpenMapRealMatrix) m))
+  or
+  (¬(m instanceof OpenMapRealMatrix) →
+     let out = BlockRealMatrix(rows, m.getColumnDimension()) in
+       (∀ i ∈ 0..rows-1 • ∀ j ∈ 0..m.getColumnDimension()-1 •
+          out.getEntry(i,j) = Σ k∈0..columns-1 • this.getEntry(i,k) * m.getEntry(k,j)) and
+       result' = out)
+Functional Scenario Form
+  size compatible && result' = matrix product (sparse or dense path)
+end_process
+
+process multiply_sparse(m: OpenMapRealMatrix) result: OpenMapRealMatrix
+pre
+  MatrixUtils.checkMultiplicationCompatible(this, m)
+post
+  let out = OpenMapRealMatrix(rows, m.getColumnDimension()) in
+    (∀ i ∈ 0..rows-1 • ∀ j ∈ 0..m.getColumnDimension()-1 •
+       out.getEntry(i,j) = Σ k∈0..columns-1 • this.getEntry(i,k) * m.getEntry(k,j)) and
+    // zero-sum entries are not stored in entries map
+    result' = out
+Functional Scenario Form
+  size compatible && result' = sparse product
+end_process
+
+process getEntry(row: int, column: int) result: double
+pre
+  0 ≤ row < rows and 0 ≤ column < columns
+post
+  result' = entries.get(computeKey(row, column))  // default 0.0 if absent
+Functional Scenario Form
+  valid index && result' = stored value or 0.0
+end_process
+
+process setEntry(row: int, column: int, value: double) result: Void
+pre
+  0 ≤ row < rows and 0 ≤ column < columns
+post
+  (value = 0.0 →
+     entries'.remove(computeKey(row, column)))
+  or
+  (value ≠ 0.0 →
+     entries'.put(computeKey(row, column), value))
+Functional Scenario Form
+  value = 0.0 && entry removed or
+  value ≠ 0.0 && entry stored
+end_process
+
+process addToEntry(row: int, column: int, increment: double) result: Void
+pre
+  0 ≤ row < rows and 0 ≤ column < columns
+post
+  let key = computeKey(row, column),
+      newVal = entries.get(key) + increment in
+    (newVal = 0.0 → entries'.remove(key)) or
+    (newVal ≠ 0.0 → entries'.put(key, newVal))
+Functional Scenario Form
+  valid index && entry updated then removed-if-zero
+end_process
+
+process multiplyEntry(row: int, column: int, factor: double) result: Void
+pre
+  0 ≤ row < rows and 0 ≤ column < columns
+post
+  let key = computeKey(row, column),
+      newVal = entries.get(key) * factor in
+    (newVal = 0.0 → entries'.remove(key)) or
+    (newVal ≠ 0.0 → entries'.put(key, newVal))
+Functional Scenario Form
+  valid index && entry scaled then removed-if-zero
+end_process
+
+process computeKey(row: int, column: int) result: int
+pre
+  // may be used internally; row/column not strictly checked here
+  true
+post
+  result' = row * columns + column
+Functional Scenario Form
+  true && result' = row * columns + column
+end_process
+
+end_module

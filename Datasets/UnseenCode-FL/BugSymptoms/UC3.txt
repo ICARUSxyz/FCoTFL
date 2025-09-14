@@ -1,0 +1,27 @@
+Bug Report: CodeHistory
+
+Test Input:
+
+```cpp
+CodeHistory editor;
+editor.resize(400, 300);
+editor.show();
+```
+
+Observed Behavior:
+
+* Runtime crash on opening editor: null pointer dereference in paint routine.
+* Line numbers appear in reverse order (e.g., 10, 9, 8…).
+* Line number area height exceeds editor bounds, causing layout distortion.
+
+Expected Behavior:
+
+* Editor displays line numbers correctly in ascending order (1, 2, 3…).
+* No crashes or null pointer issues.
+* Line number area properly aligned within editor's vertical space.
+
+Actual Behavior:
+
+* Application crashes when rendering line numbers due to uninitialized paint device.
+* Visual bug: line numbers count down instead of up.
+* UI misalignment: line number area stretches horizontally instead of vertically.

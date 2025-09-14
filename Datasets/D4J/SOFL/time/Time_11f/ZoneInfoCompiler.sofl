@@ -1,0 +1,775 @@
+module ZoneInfoCompiler  
+
+var:
+  DEFAULT_MONTH: int = 1  
+  DEFAULT_DAY: int = 1  
+  DEFAULT_DAY_OF_WEEK: int = 0  
+  DEFAULT_ADVANCE: boolean = false  
+  DEFAULT_MILLIS: int = 0  
+  DEFAULT_ZONE_CHAR: char = 'w' 
+
+// Verbosity flag access
+process verbose() result: boolean  
+pre true  
+post  
+  result' = cVerbose.get()  
+
+Functional Scenario Form  
+cVerbose=false && returns false  
+cVerbose=true && returns true  
+end_process  
+
+// Main compiler entry
+process main(args: String[])  
+pre args ≠ null  
+post  
+  args.length = 0  
+    ? printUsage()  
+    : processArguments(args)  
+      (sources defined  
+        ? setVerbosity(verbose)  
+          zic = new ZoneInfoCompiler()  
+          zic.compile(outputDir, sources)  
+        : printUsage()  
+      )  
+
+Functional Scenario Form  
+args=[] && calls printUsage  
+args=["-verbose","file.txt"] && compiles with verbosity  
+args=["-?"] && prints usage  
+end_process  
+
+// Argument processing
+process processArguments(args: String[])  
+pre true  
+post  
+  inputDir = null  
+  outputDir = null  
+  verbose = false  
+  i = 0  
+  while i < args.length  
+    match args[i]  
+      "-src" : inputDir = new File(args[++i])  
+      "-dst" : outputDir = new File(args[++i])  
+      "-verbose" : verbose = true  
+      "-?" : printUsage() return  
+      else : break  
+    i++  
+  sources = new File[args.length - i]  
+  for j from 0 to sources.length-1  
+    sources[j] = (inputDir ≠ null ? new File(inputDir, args[i+j]) : new File(args[i+j]))  
+
+Functional Scenario Form  
+args=["-src","/input","file.txt"] && sets inputDir and sources  
+args=["-dst","/output"] && sets outputDir  
+args with invalid option && breaks processing  
+end_process  
+
+// Helper methods
+process printUsage()  
+pre true  
+post  
+  prints usage message  
+
+Functional Scenario Form  
+always && outputs usage text  
+end_process  
+
+process getStartOfYear() result: DateTimeOfYear  
+pre true  
+post  
+  cStartOfYear = null  
+    ? cStartOfYear' = new DateTimeOfYear()  
+    : skip  
+  result' = cStartOfYear  
+
+Functional Scenario Form  
+first call && creates new instance  
+subsequent calls && returns existing  
+end_process  
+
+process getLenientISOChronology() result: Chronology  
+pre true  
+post  
+  cLenientISO = null  
+    ? cLenientISO' = LenientChronology.getInstance(ISOChronology.getInstanceUTC())  
+    : skip  
+  result' = cLenientISO  
+
+Functional Scenario Form  
+first call && creates lenient ISO  
+subsequent calls && returns existing  
+end_process  
+
+// Zone info map serialization
+process writeZoneInfoMap(dout: DataOutputStream, zimap: Map<String, DateTimeZone>)  
+pre dout ≠ null ∧ zimap ≠ null  
+post  
+  idToIndex = new HashMap<String, Short>()  
+  indexToId = new TreeMap<Short, String>()  
+  count = 0  
+  for entry in zimap.entrySet()  
+    id = entry.getKey()  
+    (¬idToIndex.containsKey(id)  
+      ? index = Short.valueOf(count)  
+        idToIndex.put(id, index)  
+        indexToId.put(index, id)  
+        count = count + 1  
+        (count = 0 ? error = InternalError)  
+      : skip  
+    )  
+    zone = entry.getValue()  
+    zoneId = zone.getID()  
+    (¬idToIndex.containsKey(zoneId)  
+      ? index = Short.valueOf(count)  
+        idToIndex.put(zoneId, index)  
+        indexToId.put(index, zoneId)  
+        count = count + 1  
+        (count = 0 ? error = InternalError)  
+      : skip  
+    )  
+  dout.writeShort(indexToId.size())  
+  for id in indexToId.values()  
+    dout.writeUTF(id)  
+  dout.writeShort(zimap.size())  
+  for entry in zimap.entrySet()  
+    dout.writeShort(idToIndex.get(entry.getKey()))  
+    dout.writeShort(idToIndex.get(entry.getValue().getID()))  
+
+Functional Scenario Form  
+zimap={"A":"ZoneA","B":"ZoneB"} && writes index and mappings  
+empty zimap && writes size 0  
+id overflow && throws InternalError  
+end_process  
+
+// Year parsing
+process parseYear(str: String, def: int) result: int  
+pre true  
+post  
+  str = str.toLowerCase()  
+  str = "minimum" ∨ str = "min"  
+    ? result' = Integer.MIN_VALUE  
+  str = "maximum" ∨ str = "max"  
+    ? result' = Integer.MAX_VALUE  
+  str = "only"  
+    ? result' = def  
+  else  
+    result' = Integer.parseInt(str)  
+
+Functional Scenario Form  
+str="min" def=2023 && returns MIN_VALUE  
+str="ONLY" def=1999 && returns 1999  
+str="2050" def=0 && returns 2050  
+end_process  
+
+// Month parsing
+process parseMonth(str: String) result: int  
+pre true  
+post  
+  field = ISOChronology.getInstanceUTC().monthOfYear()  
+  millis = field.set(0, str, Locale.ENGLISH)  
+  result' = field.get(millis)  
+
+Functional Scenario Form  
+str="March" && returns 3  
+str="DECEMBER" && returns 12  
+end_process  
+
+// Day of week parsing
+process parseDayOfWeek(str: String) result: int  
+pre true  
+post  
+  field = ISOChronology.getInstanceUTC().dayOfWeek()  
+  millis = field.set(0, str, Locale.ENGLISH)  
+  result' = field.get(millis)  
+
+Functional Scenario Form  
+str="Monday" && returns 1  
+str="Sun" && returns 7  
+end_process  
+
+// Optional string parsing
+process parseOptional(str: String) result: String?  
+pre true  
+post  
+  str = "-"  
+    ? result' = null  
+    : result' = str  
+
+Functional Scenario Form  
+str="-" && returns null  
+str="value" && returns "value"  
+end_process  
+
+// Time string parsing
+process parseTime(str: String) result: int  
+pre true  
+post  
+  p = ISODateTimeFormat.hourMinuteSecondFraction()  
+  mdt = new MutableDateTime(0, getLenientISOChronology())  
+  pos = 0  
+  str.startsWith("-")  
+    ? pos = 1  
+    : skip  
+  newPos = p.parseInto(mdt, str, pos)  
+  newPos < 0  
+    ? error = IllegalArgumentException  
+    : millis = (int)mdt.getMillis()  
+      pos = 1  
+        ? result' = -millis  
+        : result' = millis  
+
+Functional Scenario Form  
+str="10:30:45.123" && returns 37845123  
+str="-08:00" && returns -28800000  
+invalid format && throws exception  
+end_process  
+
+// Zone char parsing
+process parseZoneChar(c: char) result: char  
+pre true  
+post  
+  c in ['s','S']  
+    ? result' = 's'  
+  c in ['u','U','g','G','z','Z']  
+    ? result' = 'u'  
+  else  
+    result' = 'w'  
+
+Functional Scenario Form  
+c='s' && returns 's'  
+c='Z' && returns 'u'  
+c='x' && returns 'w'  
+end_process  
+
+// Time zone validation
+process test(id: String, tz: DateTimeZone) result: boolean  
+pre tz ≠ null  
+post  
+  id ≠ tz.getID()  
+    ? result' = true  
+    : millis = ISOChronology.getInstanceUTC().year().set(0, 1850)  
+      end = ISOChronology.getInstanceUTC().year().set(0, 2050)  
+      offset = tz.getOffset(millis)  
+      key = tz.getNameKey(millis)  
+      transitions = new ArrayList<Long>()  
+      loop  
+        next = tz.nextTransition(millis)  
+        (next = millis ∨ next > end  
+          ? break  
+          : millis' = next  
+            nextOffset = tz.getOffset(millis')  
+            nextKey = tz.getNameKey(millis')  
+            (offset = nextOffset ∧ key = nextKey  
+              ? print error and return false  
+            )  
+            (nextKey = null ∨ (nextKey.length() < 3 ∧ nextKey ≠ "??")  
+              ? print error and return false  
+            )  
+            transitions.add(millis')  
+            offset' = nextOffset  
+            key' = nextKey  
+        )  
+      // Reverse transition validation  
+      millis = ISOChronology.getInstanceUTC().year().set(0, 2050)  
+      end = ISOChronology.getInstanceUTC().year().set(0, 1850)  
+      for i from transitions.size()-1 downto 0  
+        prev = tz.previousTransition(millis)  
+        (prev = millis ∨ prev < end  
+          ? break  
+          : millis' = prev  
+            trans = transitions.get(i)  
+            trans - 1 ≠ millis'  
+              ? print error and return false  
+            )  
+      result' = true  
+
+Functional Scenario Form  
+tz with ID mismatch && returns true  
+tz with duplicate transitions && returns false  
+tz with invalid name key && returns false  
+tz with reverse transition mismatch && returns false  
+valid tz && returns true  
+end_process  
+
+// Constructor initialization
+process constructor()  
+pre true  
+post  
+  iRuleSets' = new HashMap<String, RuleSet>()  
+  iZones' = new ArrayList<Zone>()  
+  iLinks' = new ArrayList<String>()  
+
+Functional Scenario Form  
+new instance && initializes empty collections  
+end_process  
+
+// Main compilation process
+process compile(outputDir: File?, sources: File[]?) result: Map<String, DateTimeZone>  
+pre true  
+post  
+  // 1. Parse source files
+  sources ≠ null  
+    ? for i from 0 to sources.length-1  
+        in = new BufferedReader(new FileReader(sources[i]))  
+        parseDataFile(in)  
+        in.close()  
+    : skip  
+  // 2. Validate output directory
+  outputDir ≠ null  
+    ? (¬outputDir.exists()  
+        ? outputDir.mkdirs() = false  
+          ? error = IOException  
+          : skip  
+      )  
+      (¬outputDir.isDirectory()  
+        ? error = IOException  
+        : skip  
+      )  
+    : skip  
+  // 3. Build zones
+  map = new TreeMap<String, DateTimeZone>()  
+  for i from 0 to iZones.size()-1  
+    zone = iZones.get(i)  
+    builder = new DateTimeZoneBuilder()  
+    zone.addToBuilder(builder, iRuleSets)  
+    original = builder.toDateTimeZone(zone.iName, true)  
+    tz = original  
+    test(tz.getID(), tz)  
+      ? map.put(tz.getID(), tz)  
+        (outputDir ≠ null  
+          ? (verbose() ? println("Writing " + tz.getID()) : skip)  
+            file = new File(outputDir, tz.getID())  
+            ¬file.getParentFile().exists()  
+              ? file.getParentFile().mkdirs()  
+              : skip  
+            out = new FileOutputStream(file)  
+            try builder.writeTo(zone.iName, out) finally out.close()  
+            // Verify written file
+            in = new FileInputStream(file)  
+            tz2 = DateTimeZoneBuilder.readFrom(in, tz.getID())  
+            in.close()  
+            ¬original.equals(tz2)  
+              ? println("*e* Error in " + tz.getID())  
+              : skip  
+          : skip  
+        )  
+      : skip  
+  // 4. Process links
+  for pass from 0 to 1  
+    for i from 0 to iLinks.size()-1 step 2  
+      id = iLinks.get(i)  
+      alias = iLinks.get(i+1)  
+      tz = map.get(id)  
+      tz = null  
+        ? (pass > 0 ? println("Cannot find time zone '" + id + "'") : skip)  
+        : map.put(alias, tz)  
+  // 5. Write ZoneInfoMap
+  outputDir ≠ null  
+    ? println("Writing ZoneInfoMap")  
+      file = new File(outputDir, "ZoneInfoMap")  
+      ¬file.getParentFile().exists()  
+        ? file.getParentFile().mkdirs()  
+        : skip  
+      out = new FileOutputStream(file)  
+      dout = new DataOutputStream(out)  
+      try  
+        zimap = new TreeMap<String, DateTimeZone>(String.CASE_INSENSITIVE_ORDER)  
+        zimap.putAll(map)  
+        writeZoneInfoMap(dout, zimap)  
+      finally dout.close()  
+    : skip  
+  result' = map  
+
+Functional Scenario Form  
+sources=[file1,file2] outputDir=valid && compiles and writes files  
+outputDir=invalid path && throws IOException  
+zone fails test && skips writing  
+link resolution pass=0 && adds successful links  
+link resolution pass=1 && reports missing links  
+end_process  
+
+// Time zone data file parsing
+process parseDataFile(in: BufferedReader)  
+pre in ≠ null  
+post  
+  zone: Zone? = null  
+  while (line = in.readLine()) ≠ null  
+    trimmed = line.trim()  
+    (trimmed.length() = 0 ∨ trimmed.charAt(0) = '#'  
+      ? skip  // Skip empty/commented lines  
+      : index = line.indexOf('#')  
+        (index ≥ 0 ? line' = line.substring(0, index) : skip)  
+        st = new StringTokenizer(line, " \t")  
+        (line.charAt(0) is whitespace ∧ st.hasMoreTokens()  
+          ? zone ≠ null  
+              ? zone.chain(st)  // Zone continuation  
+          : (zone ≠ null  
+              ? iZones.add(zone)  
+              : skip  
+            zone' = null  
+            st.hasMoreTokens()  
+              ? token = st.nextToken().toLowerCase()  
+                (token = "rule"  
+                  ? r = new Rule(st)  
+                    rs = iRuleSets.get(r.iName)  
+                    (rs = null  
+                      ? rs' = new RuleSet(r)  
+                        iRuleSets.put(r.iName, rs')  
+                      : rs.addRule(r)  
+                    )  
+                token = "zone"  
+                  ? zone' = new Zone(st)  
+                token = "link"  
+                  ? iLinks.add(st.nextToken())  
+                    iLinks.add(st.nextToken())  
+                else  
+                  ? println("Unknown line: " + line)  
+                )  
+          )  
+        )  
+    )  
+  (zone ≠ null ? iZones.add(zone) : skip)  
+
+Functional Scenario Form  
+line="# comment" && skipped  
+line="Zone America/New_York ..." && creates new Zone  
+line=" Link US/Eastern America/New_York" && adds two links  
+line with leading whitespace && chains to current zone  
+line="Rule US ..." && creates RuleSet  
+invalid command line && prints warning  
+end_process  
+
+// Default constructor
+process constructor()  
+pre true  
+post  
+  iMonthOfYear' = DEFAULT_MONTH  
+  iDayOfMonth' = DEFAULT_DAY  
+  iDayOfWeek' = DEFAULT_DAY_OF_WEEK  
+  iAdvanceDayOfWeek' = DEFAULT_ADVANCE  
+  iMillisOfDay' = DEFAULT_MILLIS  
+  iZoneChar' = DEFAULT_ZONE_CHAR  
+
+Functional Scenario Form  
+always && sets all default values  
+end_process  
+
+// Tokenized constructor
+process constructor(st: StringTokenizer)  
+pre st ≠ null  
+post  
+  month = DEFAULT_MONTH  
+  day = DEFAULT_DAY  
+  dayOfWeek = DEFAULT_DAY_OF_WEEK  
+  advance = DEFAULT_ADVANCE  
+  millis = DEFAULT_MILLIS  
+  zoneChar = DEFAULT_ZONE_CHAR  
+  (st.hasMoreTokens()  
+    ? month' = parseMonth(st.nextToken())  
+      (st.hasMoreTokens()  
+        ? str = st.nextToken()  
+          (str.startsWith("last")  
+            ? day' = -1  
+              dayOfWeek' = parseDayOfWeek(str.substring(4))  
+              advance' = false  
+            : try day' = Integer.parseInt(str) catch  
+                index = str.indexOf(">=")  
+                (index > 0  
+                  ? day' = Integer.parseInt(str.substring(index+2))  
+                    dayOfWeek' = parseDayOfWeek(str.substring(0, index))  
+                    advance' = true  
+                  : index = str.indexOf("<=")  
+                    (index > 0  
+                      ? day' = Integer.parseInt(str.substring(index+2))  
+                        dayOfWeek' = parseDayOfWeek(str.substring(0, index))  
+                        advance' = false  
+                      : error = IllegalArgumentException  
+                    )  
+                )  
+          )  
+          (st.hasMoreTokens()  
+            ? str2 = st.nextToken()  
+              zoneChar' = parseZoneChar(str2.charAt(str2.length()-1))  
+              (str2 = "24:00"  
+                ? date = (day' = -1  
+                    ? new LocalDate(2001, month', 1).plusMonths(1)  
+                    : new LocalDate(2001, month', day').plusDays(1)  
+                  )  
+                  advance' = (day' ≠ -1)  
+                  month' = date.getMonthOfYear()  
+                  day' = date.getDayOfMonth()  
+                  dayOfWeek' = ((dayOfWeek' - 1 + 1) % 7) + 1  
+                : millis' = parseTime(str2)  
+              )  
+          )  
+      )  
+  )  
+  // Set final fields
+  iMonthOfYear' = month  
+  iDayOfMonth' = day  
+  iDayOfWeek' = dayOfWeek  
+  iAdvanceDayOfWeek' = advance  
+  iMillisOfDay' = millis  
+  iZoneChar' = zoneChar  
+
+Functional Scenario Form  
+st=["Jan","15"] && sets month=1, day=15  
+st=["Mar","lastSun","02:00"] && sets day=-1, dayOfWeek=7  
+st=["Oct","Sun>=1","24:00"] && adjusts to next day 00:00  
+st=["Jun","15","-"] && uses default zoneChar 'w'  
+end_process  
+
+// Recurring rule addition
+process addRecurring(builder: DateTimeZoneBuilder, nameKey: String, saveMillis: int, fromYear: int, toYear: int)  
+pre builder ≠ null  
+post  
+  builder.addRecurringSavings(nameKey, saveMillis, fromYear, toYear,  
+                             iZoneChar, iMonthOfYear, iDayOfMonth,  
+                             iDayOfWeek, iAdvanceDayOfWeek, iMillisOfDay)  
+
+Functional Scenario Form  
+valid inputs && adds recurring rule to builder  
+end_process  
+
+// Cutover addition
+process addCutover(builder: DateTimeZoneBuilder, year: int)  
+pre builder ≠ null  
+post  
+  builder.addCutover(year, iZoneChar, iMonthOfYear, iDayOfMonth,  
+                    iDayOfWeek, iAdvanceDayOfWeek, iMillisOfDay)  
+
+Functional Scenario Form  
+year=2023 && adds cutover to builder  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  result' = "MonthOfYear: " + iMonthOfYear + "\n" +  
+             "DayOfMonth: " + iDayOfMonth + "\n" +  
+             "DayOfWeek: " + iDayOfWeek + "\n" +  
+             "AdvanceDayOfWeek: " + iAdvanceDayOfWeek + "\n" +  
+             "MillisOfDay: " + iMillisOfDay + "\n" +  
+             "ZoneChar: " + iZoneChar + "\n"  
+
+Functional Scenario Form  
+always && returns formatted string  
+end_process  
+
+// Constructor
+process constructor(st: StringTokenizer)  
+pre st ≠ null  
+post  
+  iName = st.nextToken().intern()  
+  iFromYear = parseYear(st.nextToken(), 0)  
+  iToYear = parseYear(st.nextToken(), iFromYear)  
+  (iToYear < iFromYear ? error = IllegalArgumentException : skip)  
+  iType = parseOptional(st.nextToken())  
+  iDateTimeOfYear = new DateTimeOfYear(st)  
+  iSaveMillis = parseTime(st.nextToken())  
+  iLetterS = parseOptional(st.nextToken())  
+
+Functional Scenario Form  
+st=["US","1918","1919","-","Mar","lastSun","02:00","1:00","D"]  
+  && creates rule with from=1918, to=1919, save=3600000  
+invalid year range && throws exception  
+end_process  
+
+// Recurring rule addition
+process addRecurring(builder: DateTimeZoneBuilder, nameFormat: String)  
+pre builder ≠ null  
+post  
+  nameKey = formatName(nameFormat)  
+  iDateTimeOfYear.addRecurring(builder, nameKey, iSaveMillis, iFromYear, iToYear)  
+
+Functional Scenario Form  
+nameFormat="EST/EDT" iSaveMillis=0 && uses "EST"  
+nameFormat="%sT" iLetterS="D" && uses "DT"  
+end_process  
+
+// Name formatting
+process formatName(nameFormat: String) result: String  
+pre true  
+post  
+  index = nameFormat.indexOf('/')  
+  index > 0  
+    ? iSaveMillis = 0  
+        ? result' = nameFormat.substring(0, index).intern()  
+        : result' = nameFormat.substring(index+1).intern()  
+    : index = nameFormat.indexOf("%s")  
+      (index < 0  
+        ? result' = nameFormat  
+        : left = nameFormat.substring(0, index)  
+          right = nameFormat.substring(index+2)  
+          (iLetterS = null  
+            ? result' = (left + right).intern()  
+            : result' = (left + iLetterS + right).intern()  
+          )  
+      )  
+
+Functional Scenario Form  
+nameFormat="EST/EDT" iSaveMillis=3600000 && returns "EDT"  
+nameFormat="C%sT" iLetterS="D" && returns "CDT"  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  result' = "[Rule]\nName: " + iName + "\n" +  
+            "FromYear: " + iFromYear + "\n" +  
+            "ToYear: " + iToYear + "\n" +  
+            "Type: " + iType + "\n" +  
+            iDateTimeOfYear.toString() +  
+            "SaveMillis: " + iSaveMillis + "\n" +  
+            "LetterS: " + iLetterS + "\n"  
+
+Functional Scenario Form  
+always && returns formatted rule description  
+end_process  
+
+// Constructor
+process constructor(rule: Rule)  
+pre rule ≠ null  
+post  
+  iRules = new ArrayList<Rule>()  
+  iRules.add(rule)  
+
+Functional Scenario Form  
+new RuleSet with initial rule  
+end_process  
+
+// Rule addition
+process addRule(rule: Rule)  
+pre rule ≠ null  
+post  
+  ¬rule.iName.equals(iRules.get(0).iName)  
+    ? error = IllegalArgumentException  
+    : iRules.add(rule)  
+
+Functional Scenario Form  
+rule with same name && adds to set  
+rule with different name && throws exception  
+end_process  
+
+// Recurring rules addition
+process addRecurring(builder: DateTimeZoneBuilder, nameFormat: String)  
+pre builder ≠ null  
+post  
+  for i from 0 to iRules.size()-1  
+    iRules.get(i).addRecurring(builder, nameFormat)  
+
+Functional Scenario Form  
+multiple rules && adds all to builder  
+end_process  
+
+// Single zone construction
+process constructor(st: StringTokenizer)  
+pre st ≠ null  
+post  
+  name = st.nextToken().intern()  
+  this(name, st)  
+
+Functional Scenario Form  
+st=["America/New_York","-5:00","US","E%sT"]  
+  && creates zone with offset=-18000000, rules="US", format="E%sT"  
+end_process  
+
+// Chained zone construction
+process constructor(name: String, st: StringTokenizer)  
+pre name ≠ null ∧ st ≠ null  
+post  
+  iName' = name.intern()  
+  iOffsetMillis' = parseTime(st.nextToken())  
+  iRules' = parseOptional(st.nextToken())  
+  iFormat' = st.nextToken().intern()  
+  (st.hasMoreTokens()  
+    ? year = Integer.parseInt(st.nextToken())  
+      (st.hasMoreTokens()  
+        ? dtOfYear' = new DateTimeOfYear(st)  
+        : dtOfYear' = getStartOfYear()  
+      )  
+    : year' = Integer.MAX_VALUE  
+      dtOfYear' = getStartOfYear()  
+  )  
+  iUntilYear' = year  
+  iUntilDateTimeOfYear' = dtOfYear  
+  iNext' = null  
+
+Functional Scenario Form  
+name="Australia/Sydney" st=["10:00","AN","AE%sT","1986"]  
+  && sets untilYear=1986  
+no until year && sets untilYear=MAX_VALUE  
+end_process  
+
+// Zone chaining
+process chain(st: StringTokenizer)  
+pre st ≠ null  
+post  
+  iNext ≠ null  
+    ? iNext.chain(st)  
+    : iNext' = new Zone(iName, st)  
+
+Functional Scenario Form  
+current zone has next && chains to next  
+current zone no next && creates new chained zone  
+end_process  
+
+// Builder population
+process addToBuilder(builder: DateTimeZoneBuilder, ruleSets: Map<String, RuleSet>)  
+pre builder ≠ null ∧ ruleSets ≠ null  
+post  
+  addToBuilder(this, builder, ruleSets)  
+
+// Recursive builder population
+process addToBuilder(zone: Zone?, builder: DateTimeZoneBuilder, ruleSets: Map<String, RuleSet>)  
+pre builder ≠ null ∧ ruleSets ≠ null  
+post  
+  zone ≠ null  
+    ? builder.setStandardOffset(zone.iOffsetMillis)  
+      (zone.iRules = null  
+        ? builder.setFixedSavings(zone.iFormat, 0)  
+        : try saveMillis = parseTime(zone.iRules)  
+            builder.setFixedSavings(zone.iFormat, saveMillis)  
+          catch Exception  
+            rs = ruleSets.get(zone.iRules)  
+            rs = null  
+              ? error = IllegalArgumentException  
+              : rs.addRecurring(builder, zone.iFormat)  
+      )  
+      (zone.iUntilYear ≠ Integer.MAX_VALUE  
+        ? zone.iUntilDateTimeOfYear.addCutover(builder, zone.iUntilYear)  
+          addToBuilder(zone.iNext, builder, ruleSets)  
+        : skip  
+      )  
+    : skip  
+
+Functional Scenario Form  
+fixed offset zone && sets fixed savings  
+rule-based zone && adds recurring rules  
+zone with until year && adds cutover  
+chained zones && processes sequentially  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  str = "[Zone]\nName: " + iName + "\n" +  
+        "OffsetMillis: " + iOffsetMillis + "\n" +  
+        "Rules: " + iRules + "\n" +  
+        "Format: " + iFormat + "\n" +  
+        "UntilYear: " + iUntilYear + "\n" +  
+        iUntilDateTimeOfYear.toString()  
+  iNext ≠ null  
+    ? result' = str + "...\n" + iNext.toString()  
+    : result' = str  
+
+Functional Scenario Form  
+single zone && returns basic info  
+chained zones && returns full chain  
+end_process  
+
+end_module  

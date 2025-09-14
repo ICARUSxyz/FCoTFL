@@ -1,0 +1,64 @@
+**Bug Report: ATM Withdrawal Validation – Symptom Summary**
+
+---
+
+### **Test Case 1: Output Missing Expected Result**
+
+**Input:**
+
+```java
+isValidWithdrawal(1015.07, 4908.75)
+```
+
+**Expected Output:**
+
+```
+isValidWithdrawal(1015.1, 4908.8) = true
+```
+
+**Observed Output:**
+
+```
+isValidWithdrawal(1015.1, 4908.8)
+```
+
+---
+
+### **Test Case 2: Fuzzed Method Invocation Fails**
+
+**Input:**
+
+```java
+fuzzerTestOneInput(consumeDouble() → a, b)
+```
+
+**Expected Behavior:**
+Call method with two arguments.
+
+**Observed Behavior:**
+
+```
+Error: isValidWithdrawal(double) in c02_ATMValidation cannot be applied to (double, double)
+```
+
+---
+
+### **Test Case 3: Validation Fails for Boundary Amounts**
+
+**Input:**
+
+```java
+isValidWithdrawal(1784.78, 1784.78)
+```
+
+**Expected Output:**
+
+```
+true
+```
+
+**Observed Output:**
+
+```
+false
+```

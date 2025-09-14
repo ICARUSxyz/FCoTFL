@@ -1,0 +1,44 @@
+module UC70_SmoothFollow
+type
+  distance: float
+  height: float
+  heightDamping: float
+  rotationDamping: float
+  curFrame: int
+  useOptimizeDynamicBuild: Boolean
+  CameraMoving: Boolean
+  Time.deltaTime: float
+  Time.frameCount: int
+
+process FixedUpdatePosition()
+pre
+  true
+post
+  (target = null ∨ CameraMoving = true) →
+    (no change to camera position or rotation ∧ RefreshFrustumPlanes() not called) ∧
+
+  (target ≠ null ∧ CameraMoving = false) →
+    let
+      targetPos := (target.position.x, 60, target.position.z);
+      wantedRotationAngle := target.eulerAngles.y;
+      wantedHeight := targetPos.y + height;
+      currentRotationAngle := transform.eulerAngles.y;
+      currentHeight := transform.position.y;
+      updatedRotation := Mathf.LerpAngle(currentRotationAngle, wantedRotationAngle, rotationDamping * Time.deltaTime);
+      updatedHeight := Mathf.Lerp(currentHeight, wantedHeight, heightDamping * Time.deltaTime);
+      wantRotation := Quaternion.Euler(0, updatedRotation, 0);
+      wantPos := targetPos - (wantRotation × Vector3.forward × distance);
+      wantPos.y := updatedHeight;
+      dir := normalize(targetPos - wantPos)
+    in
+      GetTransform().position = wantPos ∧
+      GetTransform().rotation = Quaternion.LookRotation(dir) ∧
+      RefreshFrustumPlanes() executed (if useOptimizeDynamicBuild = true and mainCamera ≠ null) ∧
+      (curFrame = Time.frameCount → log error) ∧
+      curFrame := Time.frameCount
+Functional Scenario Form
+(target = null ∨ CameraMoving) && (do nothing) or
+(target ≠ null ∧ not CameraMoving) && (calculate target position, interpolate camera height/rotation, set camera transform, refresh frustum if needed, check for duplicate update)
+end_process
+
+end_module

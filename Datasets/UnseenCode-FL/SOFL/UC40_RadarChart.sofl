@@ -1,0 +1,40 @@
+module UC40_RadarChart
+type
+  values: sequence of int
+  labels: sequence of string
+  numPoints: int
+  angleStep: real
+  angle: real
+  radius: real
+  centerX, centerY: int
+  xPoints, yPoints: sequence of int
+  maxValue: int
+  labelX, labelY: int
+  label: string
+  labelWidth, labelHeight: int
+
+var
+  maxValue = 80
+
+process paintRadarChart(values: sequence of int, labels: sequence of string) result: Boolean
+pre
+  |values| = |labels| ∧ |values| ≥ 3 ∧ ∀v ∈ values • 0 ≤ v ≤ maxValue
+post
+  result = true
+  ∧ numPoints = |values|
+  ∧ angleStep = 2 * PI / numPoints
+  ∧ centerX = panel.width / 2 ∧ centerY = panel.height / 2
+  ∧ xPoints = [centerX + int(cos(i * angleStep - PI/2) * (values[i] / maxValue * centerX)) | i ∈ [0 .. numPoints-1]]
+  ∧ yPoints = [centerY + int(sin(i * angleStep - PI/2) * (values[i] / maxValue * centerY)) | i ∈ [0 .. numPoints-1]]
+  ∧ polygon drawn connecting (xPoints[i], yPoints[i])
+  ∧ each label[i] displayed at position aligned with direction of angle i
+Functional Scenario Form
+(|values| = |labels| ∧ |values| ≥ 3 ∧ ∀v ∈ values • 0 ≤ v ≤ maxValue) &&
+  (polar coordinates computed for each point based on value/maxValue ratio
+   ∧ polygon filled with blue
+   ∧ red lines from center to each vertex
+   ∧ black circular outline
+   ∧ labels centered at extended radius positions)
+end_process
+
+end_module

@@ -1,0 +1,25 @@
+module CodeAnalysis
+type
+  code: String
+  AnalysisResult: composed type of {
+    counts: Map<String, Integer>,
+    details: Map<String, sequence of String>
+  }
+  className, methodName, variableName: String
+
+process analyzeCode(code: String) result: AnalysisResult
+pre
+  code ≠ null
+post
+  result'.counts["Classes"] = number of matches for regex "\\bclass\\s+(\\w+)"
+  result'.counts["Methods"] = number of matches for regex "\\b\\w+\\s+(\\w+)\\s*\\(.*\\)"
+  result'.counts["Variables"] = number of matches for regex "\\b(\\w+)\\s+(\\w+)\\s*=\\s*.*"
+  result'.details["Classes"] = all class names captured by regex "\\bclass\\s+(\\w+)"
+  result'.details["Methods"] = all method names captured by regex "\\b\\w+\\s+(\\w+)\\s*\\(.*\\)"
+  result'.details["Variables"] = all variable names captured by regex "\\b(\\w+)\\s+(\\w+)\\s*=\\s*.*"
+Functional Scenario Form
+code contains multiple class/method/variable declarations && result reflects accurate counts and name sequences or
+code is empty or does not match any regex && result.counts[...] = 0 and result.details[...] = empty
+end_process
+
+end_module

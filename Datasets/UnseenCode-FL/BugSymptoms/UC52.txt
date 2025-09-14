@@ -1,0 +1,30 @@
+// Test Case 1: recordScore("Alice", -1.53)
+→ Output:
+Invalid score! Must be between 0 and 10.  ← (unexpected upper bound message)
+
+// Test Case 2: recordScore("Bob", 2.78)
+→ Output:
+Score recorded: Bob - 2.8
+
+// Test Case 3: recordScore("Charlie", 92.64)
+→ Output:
+Score recorded: Charlie - 92.6
+
+// Test Case 4: recordScore("Alice", 104.22)
+→ Output:
+Invalid score! Must be between 0 and 10.  ← (unexpected upper bound message)
+
+// Test Case 5: rankStudents()
+→ Output:
+Exam Rankings:
+1. Charlie - 92.6 (Distinction)
+2. Bob - 2.8 
+   ← missing output for Alice due to invalid score
+
+// Observation 1: Message for invalid input states "between 0 and 10", which may be inconsistent with actual accepted range
+
+// Observation 2: Distinction tag logic is applied, but absence of fallback string causes syntax issue or blank trailing output
+
+// Observation 3: Ranking history heading appears without expected newline, making output formatting inconsistent
+
+// Observation 4: Name reuse in test case potentially causes confusion in result tracing

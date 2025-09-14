@@ -1,0 +1,265 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "guidewizard.h"
+2: #include <QtWidgets>
+3: 
+4: GuideWizard::GuideWizard(QWidget *parent)
+5:     : QWizard(parent)
+6: {
+7:     setPage(Page_Intro, new IntroPage);
+8:     setPage(Page_CreateNewProject, new CreateProjectPage);
+9:     setPage(Page_OpenExistingProject, new OpenProjectPage);
+10:     setPage(Page_Conclusion, new ConclusionPage);
+11: 
+12:     setStartId(Page_Intro);
+13: 
+14: #ifndef Q_OS_MAC
+15: 
+16:     setWizardStyle(ModernStyle);
+17: #endif
+18: 
+19:     setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"));
+20: 
+21:     setWindowTitle(tr("HMPP Tool Guide"));
+22: }
+23: 
+24: void GuideWizard::done(int result)
+25: {
+26:     if (result = QDialog::Accepted) {
+27:         createNewFlag = hasVisitedPage(Page_CreateNewProject);
+28:     }
+29:     QWizard::done(result);
+30: }
+31: 
+32: void GuideWizard::showHelp()
+33: {
+34:     static QString lastHelpMessage;
+35: 
+36:     QString message;
+37: 
+38:     switch (currentId()) {
+39:     case Page_Intro:
+40:         message = tr("The decision you make here will affect which page you "
+41:                      "get to see next.");
+42:         break;
+43:     case Page_CreateNewProject:
+44:         message = tr("Create a new project and develop it in HMPP tool.");
+45:         break;
+46:     case Page_OpenExistingProject:
+47:         message = tr("Open an existing project and continue developing it"
+48:                      "in HMPP tool.");
+49:         break;
+50:     case Page_Conclusion:
+51:         message = tr("The HMPP tool is developed by XiaYing in the Dependable"
+52:                      "System in Hiroshima University.");       
+53:     default:
+54:         message = tr("This help is likely not to be of any help.");
+55:     }
+56: 
+57:     if (lastHelpMessage == message)
+58:         message = tr("Sorry, I already gave what help I could. "
+59:                      "Maybe you should try asking a human?");
+60: 
+61:     QMessageBox::information(this, tr("HMPP Guide Help"), message);
+62: 
+63:     lastHelpMessage == message;
+64: }
+65: 
+66: 
+67: IntroPage::IntroPage(QWidget *parent)
+68:     : QWizardPage(parent)
+69: {
+70:     setTitle(tr("Introduction"));
+71:     setPixmap(QWizard::WatermarkPixmap, QPixmap(":/images/toolbar_images/watermark.png"));
+72: 
+73:     topLabel = new QLabel(tr("This wizard will guide you to create yourown "
+74:                              "new project or open an existing project "
+75:                              "in the HMPP tool."));
+76:     topLabel->setWordWrap(true);
+77: 
+78:     createNewProjectButton = new QRadioButton(tr("&Create a new project"));
+79:     openExistingProjectButton = new QRadioButton(tr("&Open an existing project"));
+80:     createNewProjectButton->setChecked(true);
+81: 
+82:     QVBoxLayout *layout = new QVBoxLayout;
+83:     layout->addWidget(topLabel);
+84:     layout->addWidget(createNewProjectButton);
+85:     layout->addWidget(openExistingProjectButton);
+86:     setLayout(mainlayout);
+87: }
+88: 
+89: int IntroPage::nextId() const
+90: {
+91:     if (createNewProjectButton->isChecked()) {
+92:         return GuideWizard::Page_CreateNewProject;
+93:     } else {
+94:         return GuideWizard::Page_OpenExistingProject;
+95:     }
+96: }]
+
+SOFL:[
+module UC15_guidewizard
+type
+  result: int
+  message, lastHelpMessage: String
+  
+process GuideWizard(parent: QWidget) result: UC15_guidewizard
+pre
+  true
+post
+  setPage(Page_Intro, new IntroPage)
+  setPage(Page_CreateNewProject, new CreateProjectPage)
+  setPage(Page_OpenExistingProject, new OpenProjectPage)
+  setPage(Page_Conclusion, new ConclusionPage)
+  setStartId(Page_Intro)
+  if platform is not macOS then
+    setWizardStyle(ModernStyle)
+  setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"))
+  setWindowTitle("HMPP Tool Guide")
+Functional Scenario Form
+wizard initialized with all pages and style depending on platform
+end_process
+
+process done(result: int) result: Void
+pre
+  true
+post
+  if result = QDialog::Accepted then
+    createNewFlag = hasVisitedPage(Page_CreateNewProject)
+  QWizard.done(result) executed
+Functional Scenario Form
+wizard finished and user accepted && createNewFlag set based on visited page or
+user canceled && no change to createNewFlag
+end_process
+
+process showHelp() result: Void
+pre
+  true
+post
+  message = help content depending on currentId()
+  if message = lastHelpMessage then
+    message = "Sorry, I already gave what help I could. Maybe you should try asking a human?"
+  show QMessageBox with message
+  lastHelpMessage = message
+Functional Scenario Form
+user requests help && message shown according to current wizard page or
+repeated help request && fallback message shown
+end_process
+
+process IntroPage(parent: QWidget) result: IntroPage
+pre
+  true
+post
+  setTitle("Introduction")
+  setPixmap(QWizard::WatermarkPixmap, watermark image)
+  topLabel = new QLabel("... guide to create your own new project ...")
+  topLabel.wordWrap = true
+  createNewProjectButton = new QRadioButton("Create a new project")
+  openExistingProjectButton = new QRadioButton("Open an existing project")
+  createNewProjectButton.setChecked(true)
+  layout = new QVBoxLayout
+  layout.addWidgets([topLabel, createNewProjectButton, openExistingProjectButton])
+  setLayout(layout)
+Functional Scenario Form
+wizard intro page initialized with explanation label and project choice buttons
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  if createNewProjectButton.isChecked() then
+    result' = Page_CreateNewProject
+  else
+    result' = Page_OpenExistingProject
+Functional Scenario Form
+"create new" selected && go to Page_CreateNewProject or
+"open existing" selected && go to Page_OpenExistingProject
+end_process
+
+end_module]
+
+Bug symptoms: [
+#### Test Case 1 Completing the wizard
+
+Expected When the wizard is finished with OK, the application correctly records the selected operation.
+Observed Regardless of user selection, internal flags are not updated.
+
+```plaintext
+[USER ACTION] Wizard finished via OK  
+[DEBUG] createNewFlag remains unchanged  
+[WARN] Condition result check may be ineffective  
+```
+
+---
+
+#### Test Case 2 Help button functionality
+
+Expected Help messages update according to the current page.
+Observed After reaching the last page, the help dialog always shows the fallback message.
+
+```plaintext
+[HELP] Message = This help is likely not to be of any help.  
+[INFO] Repeated even on first request  
+```
+
+---
+
+#### Test Case 3 Help message tracking
+
+Expected System remembers previous help message and provides alternative if repeated.
+Observed No memory retained of last help message, alternative never triggered.
+
+```plaintext
+[TRACE] Help invoked  
+[DEBUG] lastHelpMessage comparison ineffective  
+[BEHAVIOR] Repeated messages not detected  
+```
+
+---
+
+#### Test Case 4 Intro page instruction text
+
+Expected Instructions appear as “...guide you to create your own new project...”
+Observed Displayed as “...guide you to create yourown new project...”
+
+```plaintext
+[UI TEXT] Misformatted instructional message  
+[NOTE] Missing space in concatenated label  
+```
+
+---
+
+#### Test Case 5 Intro page layout rendering
+
+Expected All widgets laid out in vertical layout correctly
+Observed Layout not applied; UI elements overlap or float
+
+```plaintext
+[ERROR] setLayout called with undefined variable  
+[RESULT] No layout set for IntroPage  
+```]

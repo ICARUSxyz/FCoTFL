@@ -1,0 +1,600 @@
+module BigMatrixImpl
+type
+
+var
+serialVersionUID: long = -1011428905656140431L
+parity: int = 1
+scale: int = 64
+
+process ctor_empty() result: BigMatrix
+pre
+true
+post
+rows(result)=0 ∧ cols(result)=0 ∧ hasLU(result)=false
+Functional Scenario Form
+true && rows(result)=0 ∧ cols(result)=0 ∧ hasLU(result)=false
+end_process
+
+process ctor_dims(rowDimension: Nat, columnDimension: Nat) result: BigMatrix
+pre
+rowDimension>0 ∧ columnDimension>0
+post
+rows(result)=rowDimension ∧ cols(result)=columnDimension ∧ hasLU(result)=false
+Functional Scenario Form
+rowDimension>0 ∧ columnDimension>0 && rows(result)=rowDimension ∧ cols(result)=columnDimension ∧ hasLU(result)=false
+end_process
+
+process ctor_fromBigDecimal2D(d: BigArray) result: BigMatrix
+pre
+isRectangularBD(d)
+post
+rows(result)=|d| ∧ cols(result)=|d[0]| ∧ (∀i,j • 0≤i<|d| ∧ 0≤j<|d[0]| ⇒ get(result,i,j)=d[i][j]) ∧ hasLU(result)=false
+Functional Scenario Form
+isRectangularBD(d) && ∀i,j • get(result,i,j)=d[i][j]
+end_process
+
+process ctor_fromBigDecimal2D_copy(d: BigArray, copyArray: bool) result: BigMatrix
+pre
+isRectangularBD(d)
+post
+rows(result)=|d| ∧ cols(result)=|d[0]| ∧ (∀i,j • 0≤i<|d| ∧ 0≤j<|d[0]| ⇒ get(result,i,j)=d[i][j]) ∧ hasLU(result)=false
+Functional Scenario Form
+isRectangularBD(d) && ∀i,j • get(result,i,j)=d[i][j]
+end_process
+
+process ctor_fromDouble2D(d: RealArray) result: BigMatrix
+pre
+isRectangularReal(d)
+post
+let b = fromReal(d) in rows(result)=|b| ∧ cols(result)=|b[0]| ∧ (∀i,j • 0≤i<|b| ∧ 0≤j<|b[0]| ⇒ get(result,i,j)=b[i][j]) ∧ hasLU(result)=false
+Functional Scenario Form
+isRectangularReal(d) && ∀i,j • get(result,i,j)=toBD(d[i][j])
+end_process
+
+process ctor_fromString2D(d: StrArray) result: BigMatrix
+pre
+isRectangularStr(d)
+post
+let b = fromStr(d) in rows(result)=|b| ∧ cols(result)=|b[0]| ∧ (∀i,j • 0≤i<|b| ∧ 0≤j<|b[0]| ⇒ get(result,i,j)=b[i][j]) ∧ hasLU(result)=false
+Functional Scenario Form
+isRectangularStr(d) && ∀i,j • get(result,i,j)=parseBD(d[i][j])
+end_process
+
+process ctor_fromBigDecimalVector(v: seq<BigDec>) result: BigMatrix
+pre
+|v|≥0
+post
+rows(result)=|v| ∧ cols(result)=1 ∧ (∀i • 0≤i<|v| ⇒ get(result,i,0)=v[i]) ∧ hasLU(result)=false
+Functional Scenario Form
+|v|≥0 && rows(result)=|v| ∧ cols(result)=1
+end_process
+
+process copy(self: BigMatrix) result: BigMatrix
+pre
+true
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)) ∧ hasLU(result)=false
+Functional Scenario Form
+true && sameDims(result,self) ∧ ∀i,j • get(result,i,j)=get(self,i,j)
+end_process
+
+process add_generic(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+sameDims(self,m)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)+get(m,i,j)) ∧ hasLU(result)=false
+Functional Scenario Form
+sameDims(self,m) && ∀i,j • get(result,i,j)=get(self,i,j)+get(m,i,j)
+end_process
+
+process add_specific(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+sameDims(self,m)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)+get(m,i,j)) ∧ hasLU(result)=false
+Functional Scenario Form
+sameDims(self,m) && ∀i,j • get(result,i,j)=get(self,i,j)+get(m,i,j)
+end_process
+
+process subtract_generic(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+sameDims(self,m)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)-get(m,i,j)) ∧ hasLU(result)=false
+Functional Scenario Form
+sameDims(self,m) && ∀i,j • get(result,i,j)=get(self,i,j)-get(m,i,j)
+end_process
+
+process subtract_specific(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+sameDims(self,m)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧ (∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)-get(m,i,j)) ∧ hasLU(result)=false
+Functional Scenario Form
+sameDims(self,m) && ∀i,j • get(result,i,j)=get(self,i,j)-get(m,i,j)
+end_process
+
+process scalarAdd(self: BigMatrix, d: BigDec) result: BigMatrix
+pre
+rows(self)>0 ∧ cols(self)>0
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)+d) ∧
+hasLU(result)=false
+Functional Scenario Form
+rows(self)>0 ∧ cols(self)>0 && ∀i,j • get(result,i,j)=get(self,i,j)+d
+end_process
+
+process scalarMultiply(self: BigMatrix, d: BigDec) result: BigMatrix
+pre
+rows(self)>0 ∧ cols(self)>0
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ get(result,i,j)=get(self,i,j)*d) ∧
+hasLU(result)=false
+Functional Scenario Form
+rows(self)>0 ∧ cols(self)>0 && ∀i,j • get(result,i,j)=get(self,i,j)*d
+end_process
+
+process multiply(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+cols(self)=rows(m)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(m) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(m) ⇒
+get(result,i,j)=Σ k:Nat • 0≤k<cols(self) • get(self,i,k)*get(m,k,j)) ∧
+hasLU(result)=false
+Functional Scenario Form
+cols(self)=rows(m) && ∀i,j • get(result,i,j)=Σk get(self,i,k)*get(m,k,j)
+end_process
+
+process preMultiply(self: BigMatrix, m: BigMatrix) result: BigMatrix
+pre
+cols(m)=rows(self)
+post
+rows(result)=rows(m) ∧ cols(result)=cols(self) ∧
+(∀i,j • 0≤i<rows(m) ∧ 0≤j<cols(self) ⇒
+get(result,i,j)=Σ k:Nat • 0≤k<cols(m) • get(m,i,k)*get(self,k,j)) ∧
+hasLU(result)=false
+Functional Scenario Form
+cols(m)=rows(self) && ∀i,j • get(result,i,j)=Σk get(m,i,k)*get(self,k,j)
+end_process
+
+process getData(self: BigMatrix) result: BigArray
+pre
+true
+post
+|result|=rows(self) ∧ |result[0]|=cols(self) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ result[i][j]=get(self,i,j))
+Functional Scenario Form
+true && ∀i,j • result[i][j]=get(self,i,j)
+end_process
+
+process getDataAsDoubleArray(self: BigMatrix) result: RealArray
+pre
+true
+post
+|result|=rows(self) ∧ |result[0]|=cols(self) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ result[i][j]=toReal(get(self,i,j)))
+Functional Scenario Form
+true && ∀i,j • result[i][j]=toReal(get(self,i,j))
+end_process
+
+process getDataRef(self: BigMatrix) result: BigArray
+pre
+true
+post
+|result|=rows(self) ∧ |result[0]|=cols(self) ∧
+(∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒ result[i][j]=get(self,i,j)) ∧
+// result denotes the underlying storage (no defensive copy)
+true
+Functional Scenario Form
+true && ∀i,j • result[i][j]=get(self,i,j)
+end_process
+
+process getRoundingMode(self: BigMatrix) result: integer
+pre
+true
+post
+result = roundingModeOf(self)
+Functional Scenario Form
+true && result=roundingModeOf(self)
+end_process
+
+process setRoundingMode(self: BigMatrix, mode: integer) result: BigMatrix
+pre
+true
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+(∀i,j • get(result,i,j)=get(self,i,j)) ∧
+roundingModeOf(result)=mode ∧ hasLU(result)=hasLU(self)
+Functional Scenario Form
+true && roundingModeOf(result)=mode
+end_process
+
+process getScale(self: BigMatrix) result: integer
+pre
+true
+post
+result = scaleOf(self)
+Functional Scenario Form
+true && result=scaleOf(self)
+end_process
+
+process setScale(self: BigMatrix, sc: integer) result: BigMatrix
+pre
+true
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+(∀i,j • get(result,i,j)=get(self,i,j)) ∧
+scaleOf(result)=sc ∧ hasLU(result)=hasLU(self)
+Functional Scenario Form
+true && scaleOf(result)=sc
+end_process
+
+process getNorm(self: BigMatrix) result: BigDec
+pre
+rows(self)>0 ∧ cols(self)>0
+post
+result = max_{c:Nat • 0≤c<cols(self)} (Σ r:Nat • 0≤r<rows(self) • absBD(get(self,r,c)))
+Functional Scenario Form
+rows(self)>0 ∧ cols(self)>0 && result = max_c Σ_r absBD(get(self,r,c))
+end_process
+
+process getSubMatrix_range(self: BigMatrix,
+startRow: Nat, endRow: Nat,
+startCol: Nat, endCol: Nat) result: BigMatrix
+pre
+startRow≤endRow ∧ startCol≤endCol ∧
+0≤startRow ∧ endRow<rows(self) ∧ 0≤startCol ∧ endCol<cols(self)
+post
+rows(result)=endRow-startRow+1 ∧ cols(result)=endCol-startCol+1 ∧
+(∀i,j • 0≤i<rows(result) ∧ 0≤j<cols(result) ⇒
+get(result,i,j)=get(self,startRow+i,startCol+j)) ∧
+hasLU(result)=false
+Functional Scenario Form
+indices valid && ∀i,j • get(result,i,j)=get(self,startRow+i,startCol+j)
+end_process
+
+process getSubMatrix_indexed(self: BigMatrix,
+selectedRows: seq<Nat>, selectedCols: seq<Nat>) result: BigMatrix
+pre
+|selectedRows|>0 ∧ |selectedCols|>0 ∧
+(∀i • 0≤i<|selectedRows| ⇒ selectedRows[i]<rows(self)) ∧
+(∀j • 0≤j<|selectedCols| ⇒ selectedCols[j]<cols(self))
+post
+rows(result)=|selectedRows| ∧ cols(result)=|selectedCols| ∧
+(∀i,j • 0≤i<|selectedRows| ∧ 0≤j<|selectedCols| ⇒
+get(result,i,j)=get(self, selectedRows[i], selectedCols[j])) ∧
+hasLU(result)=false
+Functional Scenario Form
+valid indices && ∀i,j • get(result,i,j)=get(self,selectedRows[i],selectedCols[j])
+end_process
+
+process setSubMatrix(self: BigMatrix,
+sub: BigArray, row: Nat, col: Nat) result: BigMatrix
+pre
+row≥0 ∧ col≥0 ∧ |sub|>0 ∧ |sub[0]|>0 ∧
+(∀r • 0≤r<|sub| ⇒ |sub[r]|=|sub[0]|) ∧
+(initialized(self) ⇒ row+|sub|≤rows(self) ∧ col+|sub[0]|≤cols(self)) ∧
+(¬initialized(self) ⇒ row=0 ∧ col=0)
+post
+(¬initialized(self) ⇒ rows(result)=|sub| ∧ cols(result)=|sub[0]| ∧
+∀i,j • 0≤i<|sub| ∧ 0≤j<|sub[0]| ⇒ get(result,i,j)=sub[i][j]) ∧
+(initialized(self) ⇒ rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+∀i,j • 0≤i<rows(self) ∧ 0≤j<cols(self) ⇒
+( (row≤i<row+|sub| ∧ col≤j<col+|sub[0]|)
+⇒ get(result,i,j)=sub[i-row][j-col]
+| get(result,i,j)=get(self,i,j))) ∧
+hasLU(result)=false
+Functional Scenario Form
+valid rectangle && in-bounds write && block replaced with sub && LU invalidated
+end_process
+
+process getRowMatrix(self: BigMatrix, row: Nat) result: BigMatrix
+pre
+0≤row<rows(self)
+post
+rows(result)=1 ∧ cols(result)=cols(self) ∧
+(∀j • 0≤j<cols(self) ⇒ get(result,0,j)=get(self,row,j))
+Functional Scenario Form
+valid row && result is 1×n row copy
+end_process
+
+process getColumnMatrix(self: BigMatrix, col: Nat) result: BigMatrix
+pre
+0≤col<cols(self)
+post
+rows(result)=rows(self) ∧ cols(result)=1 ∧
+(∀i • 0≤i<rows(self) ⇒ get(result,i,0)=get(self,i,col))
+Functional Scenario Form
+valid col && result is m×1 column copy
+end_process
+
+process getRow(self: BigMatrix, row: Nat) result: BigArray1D
+pre
+0≤row<rows(self)
+post
+|result|=cols(self) ∧ (∀j • 0≤j<cols(self) ⇒ result[j]=get(self,row,j))
+Functional Scenario Form
+valid row && result[j]=self[row,j]
+end_process
+
+process getRowAsDoubleArray(self: BigMatrix, row: Nat) result: RealArray1D
+pre
+0≤row<rows(self)
+post
+|result|=cols(self) ∧ (∀j • 0≤j<cols(self) ⇒ result[j]=toReal(get(self,row,j)))
+Functional Scenario Form
+valid row && result[j]=toReal(self[row,j])
+end_process
+
+process getColumn(self: BigMatrix, col: Nat) result: BigArray1D
+pre
+0≤col<cols(self)
+post
+|result|=rows(self) ∧ (∀i • 0≤i<rows(self) ⇒ result[i]=get(self,i,col))
+Functional Scenario Form
+valid col && result[i]=self[i,col]
+end_process
+
+process getColumnAsDoubleArray(self: BigMatrix, col: Nat) result: RealArray1D
+pre
+0≤col<cols(self)
+post
+|result|=rows(self) ∧ (∀i • 0≤i<rows(self) ⇒ result[i]=toReal(get(self,i,col)))
+Functional Scenario Form
+valid col && result[i]=toReal(self[i,col])
+end_process
+
+process getEntry(self: BigMatrix, row: Nat, col: Nat) result: BigDec
+pre
+0≤row<rows(self) ∧ 0≤col<cols(self)
+post
+result = get(self,row,col)
+Functional Scenario Form
+valid indices && exact element returned
+end_process
+
+process getEntryAsDouble(self: BigMatrix, row: Nat, col: Nat) result: Real
+pre
+0≤row<rows(self) ∧ 0≤col<cols(self)
+post
+result = toReal(get(self,row,col))
+Functional Scenario Form
+valid indices && double(element)
+end_process
+
+process transpose(self: BigMatrix) result: BigMatrix
+pre
+true
+post
+rows(result)=cols(self) ∧ cols(result)=rows(self) ∧
+(∀i,j • 0≤i<rows(result) ∧ 0≤j<cols(result) ⇒ get(result,i,j)=get(self,j,i)) ∧
+hasLU(result)=false
+Functional Scenario Form
+result = selfᵀ && LU invalidated
+end_process
+
+process inverse(self: BigMatrix) result: BigMatrix
+pre
+isSquare(self) ∧ ¬isSingular(self)
+post
+rows(result)=rows(self) ∧ cols(result)=cols(self) ∧
+self.multiply(result)=I(rows(self)) ∧ result.multiply(self)=I(rows(self)) ∧
+hasLU(result)=false
+Functional Scenario Form
+square & nonsingular && result is true inverse
+end_process
+
+process getDeterminant(self: BigMatrix) result: BigDec
+pre
+isSquare(self)
+post
+result = det(self)
+Functional Scenario Form
+square && result=determinant(self)
+end_process
+
+process isSquare(self: BigMatrix) result: Bool
+pre
+true
+post
+result ⇔ (rows(self)=cols(self))
+Functional Scenario Form
+true && result ↔ rows=cols
+end_process
+
+process isSingular(self: BigMatrix) result: Bool
+pre
+true
+post
+result ⇔ ¬∃X:BigMatrix • rows(X)=rows(self) ∧ cols(X)=cols(self) ∧ self.multiply(X)=I(rows(self))
+Functional Scenario Form
+true && result ↔ non-invertible
+end_process
+
+process getRowDimension(self: BigMatrix) result: Nat
+pre
+true
+post
+result = rows(self)
+Functional Scenario Form
+true && result=rows(self)
+end_process
+
+process getColumnDimension(self: BigMatrix) result: Nat
+pre
+true
+post
+result = cols(self)
+Functional Scenario Form
+true && result=cols(self)
+end_process
+
+process getTrace(self: BigMatrix) result: BigDec
+pre
+isSquare(self)
+post
+result = Σ_{i=0..rows(self)-1} get(self,i,i)
+Functional Scenario Form
+isSquare(self) && result = Σ_{i=0..rows(self)-1} get(self,i,i)
+end_process
+
+process operate(self: BigMatrix, v: BigArray1D) result: BigArray1D
+pre
+|v| = cols(self)
+post
+|result| = rows(self) ∧ (∀r • 0≤r<rows(self) ⇒ result[r] = Σ_{c=0..cols(self)-1} get(self,r,c)·v[c])
+Functional Scenario Form
+|v|=cols(self) && (∀r • result[r] = Σ_{c=0..cols(self)-1} get(self,r,c)·v[c])
+end_process
+
+process operate(self: BigMatrix, v: RealArray1D) result: BigArray1D
+pre
+|v| = cols(self)
+post
+result = operate(self, toBig(v))
+Functional Scenario Form
+|v|=cols(self) && result = operate(self, toBig(v))
+end_process
+
+process preMultiply(self: BigMatrix, v: BigArray1D) result: BigArray1D
+pre
+|v| = rows(self)
+post
+|result| = cols(self) ∧ (∀c • 0≤c<cols(self) ⇒ result[c] = Σ_{r=0..rows(self)-1} v[r]·get(self,r,c))
+Functional Scenario Form
+|v|=rows(self) && (∀c • result[c] = Σ_{r=0..rows(self)-1} v[r]·get(self,r,c))
+end_process
+
+process solve(self: BigMatrix, b: BigArray1D) result: BigArray1D
+pre
+isSquare(self) ∧ ¬isSingular(self) ∧ |b| = rows(self)
+post
+|result| = cols(self) ∧ operate(self, result) = b
+Functional Scenario Form
+isSquare(self) ∧ ¬isSingular(self) ∧ |b|=rows(self) && operate(self, result)=b
+end_process
+
+process solve(self: BigMatrix, b: RealArray1D) result: BigArray1D
+pre
+isSquare(self) ∧ ¬isSingular(self) ∧ |b| = rows(self)
+post
+result = solve(self, toBig(b))
+Functional Scenario Form
+isSquare(self) ∧ ¬isSingular(self) ∧ |b|=rows(self) && result = solve(self, toBig(b))
+end_process
+
+process solve(self: BigMatrix, B: BigMatrix) result: BigMatrix
+pre
+isSquare(self) ∧ ¬isSingular(self) ∧ rows(B) = rows(self)
+post
+rows(result) = cols(self) ∧ cols(result) = cols(B) ∧ multiply(self, result) = B
+Functional Scenario Form
+isSquare(self) ∧ ¬isSingular(self) ∧ rows(B)=rows(self) && multiply(self, result)=B
+end_process
+
+process luDecompose(self: BigMatrix) result: Unit
+pre
+isSquare(self)
+post
+(¬isSingular(self) ⇒ ∃L,U,P • lowerUnitTriangular(L) ∧ upperTriangular(U) ∧ permutationMatrix(P, permutation(self)) ∧ P·self = L·U ∧ lu(self) stores factors ∧ parity(self)∈{−1,1}) ∧ (isSingular(self) ⇒ exception InvalidMatrixException)
+Functional Scenario Form
+isSquare(self) && (stores LU factors with partial pivoting and permutation/parity when nonsingular)
+end_process
+
+process toString(self: BigMatrix) result: String
+pre
+true
+post
+hasPrefix(result,"BigMatrixImpl{") ∧ hasSuffix(result,"}") ∧ encodes entries row-major with braces and commas
+Functional Scenario Form
+true && result encodes matrix in row-major with braces/commas
+end_process
+
+process equals(self: BigMatrix, object: Any) result: Bool
+pre
+true
+post
+result =
+(object = self) ∨
+(object ∈ BigMatrix ∧ rows(object)=rows(self) ∧ cols(object)=cols(self) ∧ (∀r,c • 0≤r<rows(self) ∧ 0≤c<cols(self) ⇒ get(self,r,c)=get(object,r,c)))
+Functional Scenario Form
+object=self && result=true or (object ∉ BigMatrixImpl) && result=false or (object ∈ BigMatrix ∧ (rows(object)≠rows(self) ∨ cols(object)≠cols(self))) && result=false or (object ∈ BigMatrix ∧ rows(object)=rows(self) ∧ cols(object)=cols(self) ∧ (∀r,c • get(self,r,c)=get(object,r,c))) && result=true
+end_process
+
+process hashCode(self: BigMatrix) result: Int
+pre
+true
+post
+let r = rows(self), c = cols(self) in
+let base = (731 + r)31 + c in
+result = fold_{row=0..r-1} fold_{col=0..c-1} (acc31 + (11(row+1)+17*(col+1))hash(get(self,row,col))) starting from base
+Functional Scenario Form
+true && result = ((731 + rows(self))31 + cols(self)) aggregated by row-major folds: acc:=acc31 + (11*(row+1)+17*(col+1))*hash(get(self,row,col))
+end_process
+
+process getLUMatrix(self: BigMatrix) result: BigMatrix
+pre
+isSquare(self) ∧ ¬isSingular(self)
+post
+∃L,U,P • lowerUnitTriangular(L) ∧ upperTriangular(U) ∧ permutationMatrix(P, getPermutation(self)) ∧ P·self = L·U ∧ result is the compact LU matrix where below-diagonal entries are L (without ones) and on/above-diagonal entries are U
+Functional Scenario Form
+isSquare(self) ∧ ¬isSingular(self) && result is compact LU with P·self = L·U and L unit-lower, U upper
+end_process
+
+process getPermutation(self: BigMatrix) result: IntArray1D
+pre
+permutationDefined(self)
+post
+|result| = rows(self) ∧ result = copy(permutation(self))
+Functional Scenario Form
+permutationDefined(self) && result = copy(permutation(self))
+end_process
+
+process copyOut(self: BigMatrix) result: BigArray2D
+pre
+true
+post
+sameShape(result,self) ∧ (∀r,c • get(result,r,c)=get(self,r,c)) ∧ notSameReference(result, data(self))
+Functional Scenario Form
+true && result is a deep copy of data(self) with identical values and shape
+end_process
+
+process copyIn(self: BigMatrix, in: BigArray2D) result: Unit
+pre
+rectangular(in) ∧ |in|>0
+post
+data'(self) = deepCopy(in) ∧ lu'(self) = null
+Functional Scenario Form
+rectangular(in) ∧ |in|>0 && data'(self)=deepCopy(in) ∧ lu'(self)=null
+end_process
+
+process copyIn(self: BigMatrix, in: RealArray2D) result: Unit
+pre
+rectangular(in) ∧ |in|>0
+post
+data'(self) = map(in, toBigDecimal) ∧ lu'(self) = null
+Functional Scenario Form
+rectangular(in) ∧ |in|>0 && data'(self)=map(in,toBigDecimal) ∧ lu'(self)=null
+end_process
+
+process copyIn(self: BigMatrix, in: StringArray2D) result: Unit
+pre
+rectangular(in) ∧ |in|>0
+post
+data'(self) = map(in, parseBigDecimal) ∧ lu'(self) = null
+Functional Scenario Form
+rectangular(in) ∧ |in|>0 && data'(self)=map(in,parseBigDecimal) ∧ lu'(self)=null
+end_process
+
+process isValidCoordinate(self: BigMatrix, row: Int, col: Int) result: Bool
+pre
+true
+post
+result = (0 ≤ row ∧ row < rows(self) ∧ 0 ≤ col ∧ col < cols(self))
+Functional Scenario Form
+(0≤row<rows(self) ∧ 0≤col<cols(self)) && result=true or (row<0 ∨ row≥rows(self) ∨ col<0 ∨ col≥cols(self)) && result=false
+end_process
+end_module

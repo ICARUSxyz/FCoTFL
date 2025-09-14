@@ -1,0 +1,72 @@
+module ContinuedFraction
+var
+  DEFAULT_EPSILON: real = 1e-8
+
+// Abstract methods (declarations only)
+process getA(n: int, x: real) result: real
+end_process
+
+process getB(n: int, x: real) result: real
+end_process
+
+// Evaluation methods
+process evaluate(x: real) result: real
+post 
+  result = evaluate(x, DEFAULT_EPSILON, Integer.MAX_VALUE)
+Functional Scenario Form 
+defaultEvaluationComputed
+end_process
+
+process evaluate(x: real, epsilon: real) result: real
+post 
+  result = evaluate(x, epsilon, Integer.MAX_VALUE)
+Functional Scenario Form 
+customEpsilonEvaluationComputed
+end_process
+
+process evaluate(x: real, maxIterations: int) result: real
+post 
+  result = evaluate(x, DEFAULT_EPSILON, maxIterations)
+Functional Scenario Form 
+customMaxIterationsEvaluationComputed
+end_process
+
+// Main evaluation algorithm
+process evaluate(x: real, epsilon: real, maxIterations: int) result: real
+pre 
+  epsilon > 0 ∧ maxIterations > 0
+post 
+  small = 1e-50 ∧
+  hPrev = getA(0, x) ∧
+  (Precision.equals(hPrev, 0.0, small) ⇒ hPrev = small) ∧
+  n = 1 ∧
+  dPrev = 0.0 ∧
+  cPrev = hPrev ∧
+  hN = hPrev ∧
+  while n < maxIterations ∧ deltaNNotConverged •
+      a = getA(n, x) ∧
+      b = getB(n, x) ∧
+      dN = a + b * dPrev ∧
+      (Precision.equals(dN, 0.0, small) ⇒ dN = small) ∧
+      cN = a + b / cPrev ∧
+      (Precision.equals(cN, 0.0, small) ⇒ cN = small) ∧
+      dN = 1 / dN ∧
+      deltaN = cN * dN ∧
+      hN = hPrev * deltaN ∧
+      (Double.isInfinite(hN) ⇒ throw ConvergenceException) ∧
+      (Double.isNaN(hN) ⇒ throw ConvergenceException) ∧
+      (FastMath.abs(deltaN - 1.0) < epsilon ⇒ break) ∧
+      dPrev = dN ∧
+      cPrev = cN ∧
+      hPrev = hN ∧
+      n = n + 1 ∧
+  (n >= maxIterations ⇒ throw MaxCountExceededException) ∧
+  result = hN
+Functional Scenario Form 
+convergenceAchieved && resultReturned || 
+infiniteValue && convergenceException || 
+nanValue && convergenceException || 
+maxIterationsExceeded && maxCountException
+end_process
+
+end_module

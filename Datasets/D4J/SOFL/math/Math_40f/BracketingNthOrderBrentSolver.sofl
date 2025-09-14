@@ -1,0 +1,228 @@
+module BracketingNthOrderBrentSolver
+type
+  maximalOrder: int
+
+var
+  // constants
+  DEFAULT_ABSOLUTE_ACCURACY: double = 1e-6
+  DEFAULT_MAXIMAL_ORDER: int = 5
+  MAXIMAL_AGING: int = 2
+  REDUCTION_FACTOR: double = 1.0 / 16.0
+
+process ctor_default() result: BracketingNthOrderBrentSolver
+pre
+  true
+post
+  maximalOrder' = DEFAULT_MAXIMAL_ORDER and
+  allowed' = AllowedSolution.ANY_SIDE and
+  // super(absoluteAccuracy) with default
+  getAbsoluteAccuracy() = DEFAULT_ABSOLUTE_ACCURACY and
+  result' = this
+Functional Scenario Form
+  true && result' = this
+end_process
+
+process ctor_abs_order(absoluteAccuracy_in: double, maximalOrder_in: int) result: BracketingNthOrderBrentSolver
+pre
+  maximalOrder_in ≥ 2
+post
+  getAbsoluteAccuracy() = absoluteAccuracy_in and
+  maximalOrder' = maximalOrder_in and
+  allowed' = AllowedSolution.ANY_SIDE and
+  result' = this
+Functional Scenario Form
+  maximalOrder_in ≥ 2 && result' = this
+  or
+  maximalOrder_in < 2 && raises NumberIsTooSmallException
+end_process
+
+process ctor_rel_abs_order(relativeAccuracy_in: double, absoluteAccuracy_in: double, maximalOrder_in: int) result: BracketingNthOrderBrentSolver
+pre
+  maximalOrder_in ≥ 2
+post
+  getRelativeAccuracy() = relativeAccuracy_in and
+  getAbsoluteAccuracy() = absoluteAccuracy_in and
+  maximalOrder' = maximalOrder_in and
+  allowed' = AllowedSolution.ANY_SIDE and
+  result' = this
+Functional Scenario Form
+  maximalOrder_in ≥ 2 && result' = this
+  or
+  maximalOrder_in < 2 && raises NumberIsTooSmallException
+end_process
+
+process ctor_rel_abs_fva_order(relativeAccuracy_in: double, absoluteAccuracy_in: double, functionValueAccuracy_in: double, maximalOrder_in: int) result: BracketingNthOrderBrentSolver
+pre
+  maximalOrder_in ≥ 2
+post
+  getRelativeAccuracy() = relativeAccuracy_in and
+  getAbsoluteAccuracy() = absoluteAccuracy_in and
+  getFunctionValueAccuracy() = functionValueAccuracy_in and
+  maximalOrder' = maximalOrder_in and
+  allowed' = AllowedSolution.ANY_SIDE and
+  result' = this
+Functional Scenario Form
+  maximalOrder_in ≥ 2 && result' = this
+  or
+  maximalOrder_in < 2 && raises NumberIsTooSmallException
+end_process
+
+process getMaximalOrder() result: int
+pre
+  true
+post
+  result' = maximalOrder
+Functional Scenario Form
+  true && result' = maximalOrder
+end_process
+
+process doSolve() result: double
+pre
+  // super layer provides min, max, startValue, function, and tolerance getters
+  getMin() < getMax() and
+  getRelativeAccuracy() ≥ 0 and
+  getAbsoluteAccuracy() > 0 and
+  getFunctionValueAccuracy() ≥ 0
+post
+  // initialization of sample points x[0]=min, x[1]=start, x[2]=max, with verified sequence
+  let x0 = getMin(), xs = getStartValue(), x2 = getMax() in
+    verifySequence(x0, xs, x2) and
+  // early roots at endpoints or start
+  let ys = computeObjectiveValue(xs) in
+    (
+      Precision_equals(ys, 0.0, 1) → result' = xs
+      or
+      let y0 = computeObjectiveValue(x0) in
+        (
+          Precision_equals(y0, 0.0, 1) → result' = x0
+          or
+          // choose initial bracket
+          (
+            (y0 * ys < 0.0 →
+               // bracket [xA,xB] = [x0,xs]
+               result' = iterateBracket(x0, y0, xs, ys)
+            )
+            or
+            // need to evaluate x2
+            let y2 = computeObjectiveValue(x2) in
+              (
+                Precision_equals(y2, 0.0, 1) → result' = x2
+                or
+                (ys * y2 < 0.0 → result' = iterateBracket(xs, ys, x2, y2))
+                or
+                raises NoBracketingException
+              )
+          )
+        )
+    )
+Functional Scenario Form
+  Precision_equals(computeObjectiveValue(getStartValue()), 0.0, 1) && result' = getStartValue() or
+  Precision_equals(computeObjectiveValue(getMin()), 0.0, 1) && result' = getMin() or
+  (computeObjectiveValue(getMin()) * computeObjectiveValue(getStartValue()) < 0.0) && result' = iterateBracket(getMin(), computeObjectiveValue(getMin()), getStartValue(), computeObjectiveValue(getStartValue())) or
+  (computeObjectiveValue(getStartValue()) * computeObjectiveValue(getMax()) < 0.0) && result' = iterateBracket(getStartValue(), computeObjectiveValue(getStartValue()), getMax(), computeObjectiveValue(getMax())) or
+  otherwise && raises NoBracketingException
+end_process
+
+process iterateBracket(xA_in: double, yA_in: double, xB_in: double, yB_in: double) result: double
+pre
+  xA_in < xB_in and yA_in * yB_in ≤ 0.0
+post
+  // loop maintains a strict bracket [xA,xB] with sign change or a zero at bound
+  ∃ xA, yA, xB, yB, absYA, absYB, agingA, agingB •
+    xA = xA_in and yA = yA_in and xB = xB_in and yB = yB_in and
+    absYA = abs(yA) and absYB = abs(yB) and
+    agingA = 0 and agingB = 0 and
+    (
+      // termination on interval tolerance or function tolerance
+      ( (xB - xA) ≤ getAbsoluteAccuracy() + getRelativeAccuracy() * max(abs(xA), abs(xB))
+        or max(absYA, absYB) < getFunctionValueAccuracy()
+      ) →
+        result' =
+          if allowed = AllowedSolution.ANY_SIDE then (if absYA < absYB then xA else xB)
+          else if allowed = AllowedSolution.LEFT_SIDE then xA
+          else if allowed = AllowedSolution.RIGHT_SIDE then xB
+          else if allowed = AllowedSolution.BELOW_SIDE then (if yA ≤ 0.0 then xA else xB)
+          else (if yA < 0.0 then xB else xA)
+      or
+      // otherwise do inverse interpolation (or bisection fallback), insert nextX, update bracket and ages, and repeat
+      (
+        let targetY =
+              (agingA ≥ MAXIMAL_AGING →
+                  let p = agingA - MAXIMAL_AGING in
+                    (( (2^p) - 1) * yA - (p + 1) * REDUCTION_FACTOR * yB) / ( ((2^p) - 1) + (p + 1)))
+            else if (agingB ≥ MAXIMAL_AGING →
+                  let p = agingB - MAXIMAL_AGING in
+                    (( (2^p) - 1) * yB - (p + 1) * REDUCTION_FACTOR * yA) / ( ((2^p) - 1) + (p + 1)))
+            else 0.0 in
+        let nextX = inversePolyGuess(targetY, xA, yA, xB, yB) in
+        let xG = (isNaN(nextX) or ¬(xA < nextX < xB)) ? (xA + 0.5*(xB - xA)) : nextX in
+        let yG = computeObjectiveValue(xG) in
+          (
+            Precision_equals(yG, 0.0, 1) → result' = xG
+            or
+            // update bracket and aging
+            (
+              yG * yA ≤ 0.0 →
+                 xB' = xG and yB' = yG and absYB' = abs(yG) and agingA' = agingA + 1 and agingB' = 0 and
+                 result' = iterateBracket(xA, yA, xB', yB')
+              or
+                 xA' = xG and yA' = yG and absYA' = abs(yG) and agingA' = 0 and agingB' = agingB + 1 and
+                 result' = iterateBracket(xA', yA', xB, yB)
+            )
+          )
+      )
+    )
+Functional Scenario Form
+  // interval or function tolerance reached
+  (xB_in - xA_in) ≤ getAbsoluteAccuracy() + getRelativeAccuracy() * max(abs(xA_in), abs(xB_in)) && result' in {xA_in, xB_in} or
+  max(abs(yA_in), abs(yB_in)) < getFunctionValueAccuracy() && result' in {xA_in, xB_in} or
+  // exact root encountered during iteration
+  ∃ ξ • xA_in < ξ < xB_in and Precision_equals(computeObjectiveValue(ξ), 0.0, 1) && result' = ξ
+end_process
+
+process inversePolyGuess(targetY: double, xA: double, yA: double, xB: double, yB: double) result: double
+pre
+  xA < xB
+post
+  // abstraction of nth-order inverse interpolation over the maintained stencil
+  // returns NaN if divided differences would be singular (same y values)
+  (yA ≠ yB → result' = newtonInverse(targetY, ⟨xA,xB⟩, ⟨yA,yB⟩)) or
+  (yA = yB → isNaN(result'))
+Functional Scenario Form
+  yA ≠ yB && result' = newtonInverse(targetY, ⟨xA,xB⟩, ⟨yA,yB⟩) or
+  yA = yB && isNaN(result')
+end_process
+
+process guessX(targetY_in: double, x_inout: sequence of double, y_in: sequence of double, start_in: int, end_in: int) result: double
+pre
+  0 ≤ start_in < end_in ≤ |x_inout| and |y_in| ≥ end_in and (∀ j ∈ start_in+1..end_in-1 • y_in[j] ≠ y_in[j-1])
+post
+  // divided differences (Newton form) in-place on x_inout[start..end)
+  // then Horner evaluation at targetY_in
+  result' = hornerNewton(targetY_in, x_inout[start_in..end_in-1], y_in[start_in..end_in-1])
+Functional Scenario Form
+  valid divided differences && result' = hornerNewton(targetY_in, x_inout[start..end-1], y_in[start..end-1]) or
+  singular divided differences && isNaN(result')
+end_process
+
+process solve_max_min_allowed(maxEval_in: int, f_in: UnivariateFunction, min_in: double, max_in: double, allowed_in: AllowedSolution) result: double
+pre
+  maxEval_in > 0 and f_in ≠ null and min_in < max_in
+post
+  allowed' = allowed_in and
+  result' = super_solve(maxEval_in, f_in, min_in, max_in)
+Functional Scenario Form
+  valid inputs && result' = super_solve(maxEval_in, f_in, min_in, max_in)
+end_process
+
+process solve_max_min_start_allowed(maxEval_in: int, f_in: UnivariateFunction, min_in: double, max_in: double, start_in: double, allowed_in: AllowedSolution) result: double
+pre
+  maxEval_in > 0 and f_in ≠ null and min_in < max_in and min_in ≤ start_in ≤ max_in
+post
+  allowed' = allowed_in and
+  result' = super_solve_with_start(maxEval_in, f_in, min_in, max_in, start_in)
+Functional Scenario Form
+  valid inputs && result' = super_solve_with_start(maxEval_in, f_in, min_in, max_in, start_in)
+end_process
+
+end_module

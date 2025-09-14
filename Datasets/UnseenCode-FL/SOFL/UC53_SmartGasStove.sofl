@@ -1,0 +1,39 @@
+module UC53_SmartGasStove
+type
+  newFlameIntensity: real
+  minFlameIntensity: real
+  maxFlameIntensity: real
+  currentFlameIntensity: real
+  gasFlowRate: real
+
+var
+  gasFlowRate: real
+  currentFlameIntensity: real
+
+process updateFlameIntensity(newFlameIntensity: real)
+  result: Boolean
+pre
+  true
+post
+  currentFlameIntensity = newFlameIntensity ∧
+  (
+    (newFlameIntensity < minFlameIntensity) →
+      gasFlowRate = gasFlowRate@entry * 1.2 ∧ result = true
+  ) ∨
+  (
+    (newFlameIntensity > maxFlameIntensity) →
+      gasFlowRate = gasFlowRate@entry * 0.8 ∧ result = true
+  ) ∨
+  (
+    (minFlameIntensity ≤ newFlameIntensity ∧ newFlameIntensity ≤ maxFlameIntensity) →
+      gasFlowRate = gasFlowRate@entry ∧ result = true
+  )
+Functional Scenario Form
+  (currentFlameIntensity < minFlameIntensity) && gasFlowRate = gasFlowRate * 1.2, output "ALERT: Flame intensity (" + currentFlameIntensity + ") is too low. Increasing gas flow to " + gasFlowRate + " L/min.", Gas flow increased by 20%.
+        OR
+        (currentFlameIntensity > maxFlameIntensity) && gasFlowRate = gasFlowRate * 0.8, output "ALERT: Flame intensity (" + currentFlameIntensity + ") is too high. Decreasing gas flow to " + gasFlowRate + " L/min.", Gas flow decreased by 20%.
+        OR
+        (currentFlameIntensity ≥ minFlameIntensity ∧ currentFlameIntensity ≤ maxFlameIntensity) && output "Flame intensity (" + currentFlameIntensity + ") is optimal. Gas flow remains at " + gasFlowRate + " L/min.", No adjustment to gas flow.
+end_process
+
+end_module

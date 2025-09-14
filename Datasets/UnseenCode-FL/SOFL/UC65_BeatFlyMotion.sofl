@@ -1,0 +1,69 @@
+module UC65_BeatFlyMotion
+type 
+  mDefaultHeigt: float
+  mUpSpeed: float
+  mUpAccerate: float
+  mDownSpeed: float
+  mDownAccerate: float
+  mStayTime: float
+  mCurrentHeight: float
+  mLastSpeed: float
+  mCurrentSpeed: float
+  mEnable: Boolean
+  mTotalStatyTime: float
+  bDir: Boolean
+  mCanBeRecover: int
+  action: String
+  upSpeed: float
+  upAccerate: float
+  downSpeed: float
+  downAccerate: float
+  stayTime: float
+  canRecover: int
+
+process GetAnimation() result: Animation
+pre  
+  true
+post 
+  (mAnimation = null → mAnimation = gameObject.GetComponent(Animation)) ∧
+  result = mAnimation
+Functional Scenario Form 
+(mAnimation = null) && (mAnimation = gameObject.GetComponent(Animation) ∧ result = mAnimation) or
+(mAnimation ≠ null) && (result = mAnimation)
+end_process
+
+process BeatFly(buffId: uint, action: String, upSpeed: float, upAccerate: float, downSpeed: float, downAccerate: float, stayTime: float, canRecover: int)
+result: Boolean
+pre  
+  true
+post 
+  (
+    mEnable = true →
+      (mCanBeRecover = 1 → Reset() ∧ continue) ∨ (mCanBeRecover ≠ 1 → result = false)
+  ) ∨
+  (
+    mEnable = false ∨ (mCanBeRecover = 1 ∧ Reset() called) →
+      mBuffId = buffId ∧
+      mCanBeRecover = canRecover ∧
+      mDefaultHeigt = gameObject.transform.position.y ∧
+      mCurrentHeight = mDefaultHeigt ∧
+      mTransform = gameObject.transform ∧
+      (downAccerate < 0 → log error) ∧
+      (stayTime = 0 → mStayTime = 0.0001 ∨ mStayTime = stayTime) ∧
+      mUpSpeed = upSpeed ∧
+      mUpAccerate = upAccerate ∧
+      mDownSpeed = downSpeed ∧
+      mDownAccerate = downAccerate ∧
+      mEnable = true ∧
+      mLastSpeed = upSpeed ∧
+      mCurrentSpeed = upSpeed ∧
+      (action ≠ "0" → GetAnimation().Play(action)) ∧
+      result = true
+  )
+Functional Scenario Form 
+(mEnable = true ∧ mCanBeRecover ≠ 1) && (result = false) or
+(mEnable = true ∧ mCanBeRecover = 1) && (Reset() called ∧ initialize all fields ∧ result = true) or
+(mEnable = false) && (initialize all fields ∧ result = true)
+end_process
+
+end_module

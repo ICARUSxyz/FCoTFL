@@ -1,0 +1,57 @@
+module CodeHistory
+type
+  fontFamily: String
+  fontSize, digits, max, space: int
+
+process CodeHistory(parent: QWidget) result: CodeHistory
+pre
+  true
+post
+  this.parent = parent
+  this.lineNumberArea = new HistoryLineNumberArea(this)
+  this.highlighter = new SyntaxHighlighter(this.document())
+  this.blockCountChanged connected to updateLineNumberAreaWidth
+  this.updateRequest connected to updateLineNumberArea
+  this.cursorPositionChanged connected to highlightCurrentLine
+  updateLineNumberAreaWidth(0) executed
+  highlightCurrentLine() executed
+  setEditorFont("Courier", 10) executed
+Functional Scenario Form
+valid parent && editor initialized with line number area, highlighting, and font or
+null parent && same initialization executed with no dependency on parent
+end_process
+
+process setEditorFont(fontFamily: String, fontSize: int) result: Void
+pre
+  fontFamily ≠ null ∧ fontSize > 0
+post
+  this.font = new QFont(fontFamily, fontSize)
+  this.setFont(this.font)
+Functional Scenario Form
+valid font name and size && editor font is set accordingly or
+invalid font size (≤ 0) && pre violated
+end_process
+
+process paintEvent(event: QPaintEvent) result: Void
+pre
+  event ≠ null
+post
+  QPlainTextEdit.paintEvent(event) executed
+  lineNumberAreaPaintEvent(event) executed
+Functional Scenario Form
+valid paint event && both main editor and line number area painted
+end_process
+
+process lineNumberAreaWidth() result: int
+pre
+  true
+post
+  digits' = number of digits in blockCount()
+  space' = 3 + fontMetrics().horizontalAdvance('9') * digits'
+  result' = space'
+Functional Scenario Form
+blockCount < 10 && result = width for 1-digit numbers or
+blockCount ≥ 10 && result = width for corresponding digit count
+end_process
+
+end_module

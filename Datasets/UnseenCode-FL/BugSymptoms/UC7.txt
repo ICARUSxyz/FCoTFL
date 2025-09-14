@@ -1,0 +1,25 @@
+Bug Report SuggestionDialog
+
+Test Input
+
+```cpp
+dialog.setGeneratedResult(Sample output);
+```
+
+Observed Behavior
+
+ Calling `setGeneratedResult()` results in runtime error or no visible update.
+ Add Template context menu action fails to insert text into the edit area.
+ Right-clicking in the editor area does not show context menu or appears at incorrect position.
+
+Expected Behavior
+
+ Generated result should be correctly displayed in the result widget.
+ Adding a template should update both the list and the corresponding editor content.
+ Context menu should appear at the location of the cursor.
+
+Actual Behavior
+
+ No argument passed to `setGeneratedResult()`, causing missing content.
+ `editArea` not updated after template insertion due to missing closure capture.
+ Context menu opens at incorrect position due to `mapToGlobal()` missing argument.

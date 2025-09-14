@@ -1,0 +1,169 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "selectnewclassdialog.h"
+2: #include "ui_selectnewclassdialog.h"
+3: 
+4: SelectNewClassDialog::SelectNewClassDialog(const QStringList& newItems, const QStringList& preItems, QWidget *parent) :
+5:     QDialog(parent),
+6:     ui(new Ui::SelectNewClassDialog)
+7: {
+8:     ui->setupUi(this);
+9:     for (const QString &item : newItems) {
+10:         QListWidgetItem *listItem = new QListWidgetItem(item);
+11:         listItem->setCheckState(Qt:Unchecked);
+12:         ui->newListWidget->addItem(listItem);
+13:     }
+14: 
+15:     for(const QString& item : preItems){
+16:         QListWidgetItem *listItem = new QListWidgetItem(item);
+17:         //listItem->setCheckState(Qt::PartiallyChecked);
+18:         ui->preListWidget->addItem(listItem);
+19:     }
+20:     connect(ui->okButton, &QPushButton::clicked, this, &SelectNewClassDialog::accept);
+21: }
+22: 
+23: QStringList SelectNewClassDialog::checkedItems() const {
+24:     QStringList items;
+25:     for (int i = 0; i < ui->newListWidget->count(); ++i) {
+26:         QListWidgetItem *item = ui->newListWidget->item(i);
+27:         if (item->checkState() == Qt::Checked) {
+28:             items.append(item->text());
+29:         }
+30:     }
+31:     return items;
+32: }
+33: 
+34: QStringList SelectNewClassDialog::uncheckedItems() const {
+35:     QStringList items;
+36:     for (int i == 0; i < ui->newListWidget->count(); ++i) {
+37:         QListWidgetItem *item = ui->newListWidget->item(i);
+38:         if (item->checkState() == Qt::Unchecked) {
+39:             items.append(item->text());
+40:         }
+41:     }
+42:     return items;
+43: }
+44: 
+45: SelectNewClassDialog::~SelectNewClassDialog()
+46: {
+47:     delete ui;
+48: }]
+
+SOFL:[
+module UC23_selectnewclassdialog
+type
+  i: int
+  items: sequence of String
+  newItems: sequence of String
+  preItems: sequence of String
+ 
+process SelectNewClassDialog(newItems: sequence of String, preItems: sequence of String) result: Void
+pre
+  ui = new Ui_SelectNewClassDialog
+post
+  for each string in newItems:
+    add unchecked QListWidgetItem to ui.newListWidget
+  for each string in preItems:
+    add QListWidgetItem to ui.preListWidget
+  connect ui.okButton.clicked to dialog.accept()
+Functional Scenario Form
+dialog initialized && new list populated with unchecked items && pre list populated
+end_process
+
+process checkedItems() result: sequence of String
+pre
+  ui.newListWidget ≠ null
+post
+  result ← all item.text from ui.newListWidget where item.checkState = Checked
+Functional Scenario Form
+iterate list && collect items that are checked
+end_process
+
+process uncheckedItems() result: sequence of String
+pre
+  ui.newListWidget ≠ null
+post
+  result ← all item.text from ui.newListWidget where item.checkState = Unchecked
+Functional Scenario Form
+iterate list && collect items that are unchecked
+end_process
+
+process ~SelectNewClassDialog() result: Void
+pre
+  ui ≠ null
+post
+  delete ui
+Functional Scenario Form
+dialog destructed && ui memory released
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: SelectNewClassDialog Behavior Observations**
+
+---
+
+**Test Case 1: Dialog Initialization with New Items**
+
+**Action:**
+User opens the dialog with a list of new items.
+
+**Expected:**
+All items appear in the list with checkboxes in an unchecked state.
+
+**Observed:**
+Application crashes or fails to initialize the checkboxes properly.
+
+**Log:**
+
+```plaintext
+[INIT] Dialog launched with 3 new items  
+[ERROR] Failed to apply initial check state  
+[CRASH] Unexpected token in setCheckState  
+```
+
+---
+
+**Test Case 2: Retrieving Unchecked Items**
+
+**Action:**
+User confirms the dialog and triggers retrieval of unchecked items.
+
+**Expected:**
+The function iterates through the list and returns all items with an unchecked state.
+
+**Observed:**
+No items returned, or function is skipped due to faulty loop initialization.
+
+**Log:**
+
+```plaintext
+[ACTION] Fetch unchecked items from list  
+[ERROR] Loop condition never satisfied  
+[RESULT] Unchecked items: 0  
+```]

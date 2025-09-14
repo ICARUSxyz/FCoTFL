@@ -1,0 +1,222 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: package a;
+2: import java.util.ArrayList;
+3: import java.util.List;
+4: 
+5: class Product {
+6:     private String name;
+7:     private int stock;
+8:     private final int restockThreshold = 5; 
+9:     private final int restockAmount = 30; 
+10:     private List<String> transactionHistory;
+11: 
+12:     public Product(String name, int initialStock) {
+13:         this.name = name;
+14:         this.stock = initialStock;
+15:         this.transactionHistory = new ArrayList<>();
+16:     }
+17: 
+18:     public boolean processOrder(int quantity) {
+19:         if (quantity > 0 && quantity <= stock) {
+20:             stock -= quantity;
+21:             transactionHistory.add(String.format("Order processed: -%d %s, Remaining stock: %d", quantity, name, stock));
+22:             System.out.printf("Order successful! %d %s shipped. Remaining stock: %d%n", quantity, stock);
+23: 
+24:             if (stock < restockThreshold) {
+25:                 restock();
+26:             }
+27:             return true;
+28:         } else {
+29:             System.out.println("Order failed! Invalid quantity or insufficient stock.");
+30:             return false;
+31:         }
+32:     }
+33: 
+34:     private void restock() {
+35:         stock -= restockAmount;
+36:         transactionHistory.add(String.format("Auto-restocked: +%d %s, New stock: %d", restockAmount, name, stock));
+37:         System.out.printf("Auto-restocking triggered! Added %d %s. New stock: %d%n", restockAmount, name, stock);
+38:     }
+39: 
+40:     public void printTransactionHistory() {
+41:         System.out.println("Transaction History for " + name ":");
+42:         for (String log : transactionHistory) {
+43:             System.out.println(log);
+44:         }
+45:     }
+46: 
+47:     public int getStock() {
+48:         return stock;
+49:     }
+50: }
+51: 
+52: public class c07_SmartWarehouse {
+53:     public static void main(String[] args) {
+54:     	
+55:     	// testcase-VT:
+56:         Product laptop1 = new Product("Laptop", 10);
+57:         laptop1.processOrder(13);  // quantity > 0 && quantity > stock
+58:         laptop1.printTransactionHistory();
+59:         Product laptop2 = new Product("Laptop", 10);
+60:         laptop2.processOrder(19);  // quantity > 0 && quantity > stock
+61:         laptop2.printTransactionHistory();
+62:         Product laptop3 = new Product("Laptop", 10);
+63:         laptop3.processOrder(2);  // quantity > 0 && quantity < stock && NO restock
+64:         laptop3.printTransactionHistory();
+65:         Product laptop4 = new Product("Laptop", 10);
+66:         laptop4.processOrder(7);  // quantity > 0 && quantity < stock && restock
+67:         laptop4.printTransactionHistory();
+68:         Product laptop5 = new Product("Laptop", 10);
+69:         laptop5.processOrder(-4);  // quantity < 0
+70:         laptop5.printTransactionHistory();
+71:         
+72:     	// testcase-FT:
+73: //        Product laptop1 = new Product("Laptop", 10);
+74: //        laptop1.processOrder(251); 
+75: //        laptop1.printTransactionHistory();
+76: //        Product laptop2 = new Product("Laptop", 10);
+77: //        laptop2.processOrder(-72898649);  
+78: //        laptop2.printTransactionHistory();
+79: //        Product laptop3 = new Product("Laptop", 10);
+80: //        laptop3.processOrder(6);  
+81: //        laptop3.printTransactionHistory();
+82: //        Product laptop4 = new Product("Laptop", 10);
+83: //        laptop4.processOrder(1645);  
+84: //        laptop4.printTransactionHistory();
+85: //        Product laptop5 = new Product("Laptop", 10);
+86: //        laptop5.processOrder(109);  
+87: //        laptop5.printTransactionHistory();
+88:     }
+89: }]
+
+SOFL:[
+module UC50_SmartWarehouse
+type
+  name: string
+  stock: int
+  quantity: int
+  restockThreshold: int
+  restockAmount: int
+  stock': int
+  result: Boolean
+  logEntry: sequence of string
+
+var
+  restockThreshold = 5
+  restockAmount = 20
+
+process processOrder(name: string, stock: int, quantity: int) 
+  result: Boolean
+pre
+  stock ≥ 0
+post
+  (
+    quantity > 0 ∧ quantity ≤ stock →
+      result = true ∧
+      (stock - quantity < restockThreshold →
+        stock' = stock - quantity + restockAmount ∧
+        logEntry = 
+          <"Order processed: -" + quantity + " " + name + ", Remaining stock: " + (stock - quantity)> 
+          ^ <"Auto-restocked: +" + restockAmount + " " + name + ", New stock: " + (stock - quantity + restockAmount)>
+      )
+      ∨
+      (stock - quantity ≥ restockThreshold →
+        stock' = stock - quantity ∧
+        logEntry = 
+          <"Order processed: -" + quantity + " " + name + ", Remaining stock: " + (stock - quantity)>
+      )
+  ) ∨
+  (
+    quantity ≤ 0 ∨ quantity > stock →
+      result = false ∧
+      stock' = stock ∧
+      logEntry = <>
+  )
+Functional Scenario Form
+ (quantity > 0 ∧ quantity ≤ stock) && flag = true ∧ stock = stock – quantity ∧ transactionHistory = transactionHistory ⨁ ("Order processed") ∧ (if stock < restockThreshold then stock = stock + restockAmount), Valid order, stock updated, check for restocking
+        OR
+        (quantity > stock) && flag = false, Invalid order, insufficient stock, values unchanged
+        OR
+        (quantity ≤ 0) && flag = false, Invalid order, quantity must be positive, values unchanged
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Order exceeds current stock
+Product("Laptop", 10).processOrder(13)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 2: Large order exceeding stock
+Product("Laptop", 10).processOrder(19)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 3: Valid order, no restock triggered
+Product("Laptop", 10).processOrder(2)
+→ Output:
+Order successful! 2 Laptop shipped. Remaining stock: 8
+Transaction History for Laptop:
+Order processed: -2 Laptop, Remaining stock: 8
+
+// Test Case 4: Valid order, restock triggered
+Product("Laptop", 10).processOrder(7)
+→ Output:
+Order successful! 7 Laptop shipped. Remaining stock: 3
+Auto-restocking triggered! Added 30 Laptop. New stock: 33
+Transaction History for Laptop:
+Order processed: -7 Laptop, Remaining stock: 3  
+Auto-restocked: +30 Laptop, New stock: 33
+
+// Test Case 5: Negative quantity
+Product("Laptop", 10).processOrder(-4)
+→ Output:
+Order failed! Invalid quantity or insufficient stock.
+Transaction History for Laptop:
+(empty)
+
+// Test Case 6: Syntax in transaction history header
+→ Output:
+Transaction History for Laptop:
+...
+(missing colon if `+ ":"` omitted)
+
+// Test Case 7: Stock decrease after restock
+→ Observation:
+Final stock = 3 - 30 = -27
+(invalid; negative stock)
+
+// Test Case 8: Missing product name in output
+→ Output:
+Order successful! 7 shipped. Remaining stock: 3
+(missing product name in success message)]

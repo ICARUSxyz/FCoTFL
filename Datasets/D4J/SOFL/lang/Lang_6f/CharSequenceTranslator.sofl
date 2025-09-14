@@ -1,0 +1,72 @@
+module CharSequenceTranslator
+
+type
+  input: sequence of char,
+  index: int,
+  out: Writer,
+  resultString: sequence of char,
+  translators: sequence of CharSequenceTranslator,
+  mergedTranslator: CharSequenceTranslator,
+  codepoint: int,
+  hexStr: sequence of char
+
+process translate(input: sequence of char, index: int, out: Writer) result: int
+pre
+  0 ≤ index < |input| ∧ out ≠ null
+post
+  (∃ len: int. len > 0 ∧ input[index .. index+len-1] matched and translated) → result = len &&
+  (¬∃ such len) → out.write(input[index]) ∧ result = 0
+Functional Scenario Form
+  (∃ len ≥ 1. input[index..index+len−1] matched) &&
+    (result = len ∧ output is translation) or
+  (no match at input[index]) &&
+    (result = 0 ∧ output = input[index])
+end_process
+
+process translate(input: sequence of char) result: sequence of char
+pre
+  true
+post
+  (input = null) → result = null &&
+  (input ≠ null) → result = fully translated string (same logic as translate to Writer)
+Functional Scenario Form
+  (input = null) &&
+    (result = null) or
+  (input ≠ null) &&
+    (result = translation of input)
+end_process
+
+process translate(input: sequence of char, out: Writer)
+pre
+  out ≠ null
+post
+  (input = null) → true &&
+  (input ≠ null) → ∀ i ∈ 0..|input|-1: input[i] translated using abstract translate(input, i, out)
+Functional Scenario Form
+  (input = null) &&
+    (no output written) or
+  (input ≠ null) &&
+    (each character or sequence translated according to translate(input, index, out))
+end_process
+
+process with(translators: sequence of CharSequenceTranslator) result: CharSequenceTranslator
+pre
+  true
+post
+  result = AggregateTranslator(this ∪ translators)
+Functional Scenario Form
+  (always true) &&
+    (result = AggregateTranslator of this and translators)
+end_process
+
+process hex(codepoint: int) result: sequence of char
+pre
+  codepoint ≥ 0
+post
+  result = uppercase hexadecimal representation of codepoint (in ENGLISH locale)
+Functional Scenario Form
+  (codepoint ≥ 0) &&
+    (result = Integer.toHexString(codepoint).toUpperCase(Locale.ENGLISH))
+end_process
+
+end_module

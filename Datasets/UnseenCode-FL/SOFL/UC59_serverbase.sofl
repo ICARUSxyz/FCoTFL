@@ -1,0 +1,36 @@
+module UC59_serverbase
+
+process initialize(serverConfig: record(serverInfo: record(host: string, port: int), logger: Object)) result: Boolean
+pre  
+  serverConfig ≠ null
+post 
+  ((_host = serverConfig.serverInfo.host ∧ _port = serverConfig.serverInfo.port ∧ mylogger_1.myLogger.initialized = true ∧ result = true)
+    ∨ (result = true ∧ mylogger_1.myLogger.initialized = false ∧ serverConfig.serverInfo = undefined))
+end_process
+
+process dispose() 
+pre  
+  true
+post 
+  (¬_server.listening ∧ mylogger_1.myLogger.logged = true)
+end_process
+
+process initProtoBuf(pbFile: string) result: Object
+pre  
+  pbFile ≠ ""
+post 
+  (result = ProtoBuf.load(pbFile))
+Functional Scenario Form 
+(pbFile ≠ "") && (result = ProtoBuf.load(pbFile))
+end_process
+
+process listen(cb: function)
+pre  
+  cb ≠ null
+post 
+  (_server ≠ null ∧ _server.on(const_1.ServerEvent.ERROR, ...) ∧ _server.listen(_port, _host, cb) ∧ mylogger_1.myLogger.logged = true)
+Functional Scenario Form 
+(cb ≠ null) && (_server.on(const_1.ServerEvent.ERROR, ...) ∧ _server.listen(_port, _host, cb) ∧ mylogger_1.myLogger.logged = true)
+end_process
+
+end_module

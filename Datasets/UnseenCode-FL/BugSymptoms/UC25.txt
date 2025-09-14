@@ -1,0 +1,66 @@
+**Bug Report: AllRuleDescriptDialog Runtime Behavior**
+
+---
+
+**Test Case 1: Dialog Initialization**
+
+**Action:**
+Dialog is launched and attempts to initialize its UI components.
+
+**Expected:**
+All UI elements are correctly linked and displayed in the dialog.
+
+**Observed:**
+Application crashes on launch or UI elements do not render properly.
+
+**Log:**
+
+```plaintext
+[INIT] Creating AllRuleDescriptDialog...
+[ERROR] setupUi: expected argument not provided
+[CRASH] QWidget pointer required for UI setup
+```
+
+---
+
+**Test Case 2: Dialog Destruction**
+
+**Action:**
+Dialog is closed and destructor is invoked.
+
+**Expected:**
+All allocated resources, including UI components, are released without issue.
+
+**Observed:**
+Crash or memory management warning appears during dialog destruction.
+
+**Log:**
+
+```plaintext
+[DESTROY] Releasing dialog resources...
+[ERROR] delete: expression is incomplete or null
+[CRASH] Segmentation fault on dialog deletion
+```
+
+---
+
+**Test Case 3: Table Item Double-Click**
+
+**Action:**
+User double-clicks a table item to view rule description.
+
+**Expected:**
+A new RuleDescriptDialog appears.
+
+**Observed:**
+Nothing happens or application reports signal/slot mismatch.
+
+**Log:**
+
+```plaintext
+[USER] Double-click on table row
+[WARNING] showRuleDescript(QTableWidgetItem*) not found
+[INFO] Signal-slot connection failed: parameter mismatch
+```
+
+---

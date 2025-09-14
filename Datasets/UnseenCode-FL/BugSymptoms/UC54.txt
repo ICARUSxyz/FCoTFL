@@ -1,0 +1,33 @@
+// Test Case 1: updateTemperature(2.0)
+→ Output:
+Current Temperature: 3.0°C | ALERT: Freezing Risk! Possible Product Damage.  
+// Expected a normal range, but outputs low temperature warning due to reversed update logic.
+
+// Test Case 2: updateTemperature(-4.0)
+→ Output:
+Current Temperature: 7.0°C  
+// Should have decreased, but temperature increases unexpectedly.
+
+// Test Case 3: updateTemperature(-2.0)
+→ Output:
+Current Temperature: 9.0°C | WARNING: Over-temperature Detected! Risk of Spoilage.  
+// Unintended over-temperature due to cumulative miscalculation.
+
+// Test Case 4: updateTemperature(4.0)
+→ Output:
+Current Temperature: 5.0°C  
+// Appears normal, but actual temperature path is inconsistent.
+
+// Test Case 5: updateTemperature(5.0)
+→ Output:
+Current Temperature: 0.0°C | ALERT: Freezing Risk! Possible Product Damage.  
+// Sudden drop to freezing, potentially unexpected.
+
+// Observation 1:
+Temperature updates behave oppositely to intended direction, leading to incorrect log entries.
+
+// Observation 2:
+Temperature log header is not separated by a blank line, affecting readability.
+
+// Observation 3:
+Initial temperature uses an integer instead of a floating-point literal, potentially inconsistent with expected type formatting.

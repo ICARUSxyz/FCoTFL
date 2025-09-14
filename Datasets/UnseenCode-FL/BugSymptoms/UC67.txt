@@ -1,0 +1,19 @@
+// Test Case 1: File path logging when EAN file is missing
+→ Setup: Provide a nonexistent file path to ReadInfoFromFile()
+→ Expected Output: Debug.LogError displays the full path string
+→ Actual Output: Compilation error or log formatting issue
+// String concatenation missing '+' in logging statement
+
+
+// Test Case 2: Map data loading using constructed path string
+→ Setup: Call GetMapDataById() with a map ID
+→ Expected Output: Path is constructed as "Assets/Resources/Map/1.map"
+→ Actual Output: File not found or incorrect file path
+// File extension or path format mismatch prevents file loading
+
+
+// Test Case 3: Reading map data entries
+→ Setup: Load map data from binary file with width * height entries
+→ Expected Output: Loop reads all entries and populates MapData accordingly
+→ Actual Output: Exception or extra byte read beyond expected size
+// Iteration bounds include one excess read, possibly causing overflow

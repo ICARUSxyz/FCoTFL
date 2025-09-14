@@ -1,0 +1,898 @@
+module MathUtils
+
+var
+EPSILON: double = 0x1.0p-53
+SAFE_MIN: double = 0x1.0p-1022
+NB: byte = -1
+NS: short = -1
+PB: byte = 1
+PS: short = 1
+ZB: byte = 0
+ZS: short = 0
+NAN_GAP: int = 4 * 1024 * 1024
+SGN_MASK: long = 0x8000000000000000L
+FACTORIALS: sequence of long = <1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880,
+3628800, 39916800, 479001600, 6227020800, 87178291200,
+1307674368000, 20922789888000, 355687428096000,
+6402373705728000, 121645100408832000, 2432902008176640000>
+
+process addAndCheck_int(x: int, y: int) result: int
+pre
+true
+post
+let s == (long)x + (long)y in
+if s < Integer_MIN ∨ s > Integer_MAX then
+raise(ArithmeticException)
+else
+result = (int)s
+Functional Scenario Form
+x+y within int range && result = x+y or
+x+y outside int range && raise(ArithmeticException)
+end_process
+
+process addAndCheck_long(a: long, b: long) result: long
+pre
+true
+post
+result = addAndCheck_pattern(a, b, LocalizedFormats.OVERFLOW_IN_ADDITION)
+Functional Scenario Form
+called && result = addAndCheck_pattern(a, b, LocalizedFormats.OVERFLOW_IN_ADDITION)
+end_process
+
+process addAndCheck_pattern(a: long, b: long, pattern: Localizable) result: long
+pre
+true
+post
+if a > b then
+result = addAndCheck_pattern(b, a, pattern)
+else if a < 0 then
+if b < 0 then
+if Long_MIN - b ≤ a then result = a + b else raise(ArithmeticException)
+else result = a + b
+else
+if a ≤ Long_MAX - b then result = a + b else raise(ArithmeticException)
+Functional Scenario Form
+a ≤ b ∧ both negative ∧ safe && result = a+b or
+a ≤ b ∧ both negative ∧ overflow && raise(ArithmeticException) or
+a ≤ b ∧ both positive ∧ safe && result = a+b or
+a ≤ b ∧ both positive ∧ overflow && raise(ArithmeticException) or
+a ≤ b ∧ opposite signs && result = a+b
+end_process
+
+process binomialCoefficient(n: int, k: int) result: long
+pre
+checkBinomial(n, k)
+post
+if n = k ∨ k = 0 then result = 1
+else if k = 1 ∨ k = n - 1 then result = n
+else if k > n / 2 then result = binomialCoefficient(n, n-k)
+else if n ≤ 61 then
+result = product_division_sequence(n-k+1, k)
+else if n ≤ 66 then
+result = product_division_sequence_with_gcd(n-k+1, k)
+else
+result = product_division_with_overflow_check(n-k+1, k)
+Functional Scenario Form
+n=k or k=0 && result=1 or
+k=1 or k=n-1 && result=n or
+k>n/2 && result=binomialCoefficient(n, n-k) or
+n≤61 && result=∏_{j=1..k}(n-k+j)/j or
+n∈[62,66] && gcd approach to avoid overflow or
+n>66 && gcd + mulAndCheck approach
+end_process
+
+process binomialCoefficientDouble(n: int, k: int) result: double
+pre
+checkBinomial(n, k)
+post
+if n = k ∨ k = 0 then result = 1.0
+else if k = 1 ∨ k = n - 1 then result = n
+else if k > n/2 then result = binomialCoefficientDouble(n, n-k)
+else if n < 67 then result = binomialCoefficient(n, k)
+else
+result = floor( ∏_{i=1..k} ((n-k+i)/i) + 0.5 )
+Functional Scenario Form
+n=k or k=0 && result=1.0 or
+k=1 or k=n-1 && result=n or
+k>n/2 && result=binomialCoefficientDouble(n, n-k) or
+n<67 && result=binomialCoefficient(n, k) or
+otherwise && result=rounded_product_ratio
+end_process
+
+process binomialCoefficientLog(n: int, k: int) result: double
+pre
+checkBinomial(n, k)
+post
+if n = k ∨ k = 0 then result = 0
+else if k = 1 ∨ k = n-1 then result = log(n)
+else if n < 67 then result = log(binomialCoefficient(n, k))
+else if n < 1030 then result = log(binomialCoefficientDouble(n, k))
+else if k > n/2 then result = binomialCoefficientLog(n, n-k)
+else
+result = Σ_{i=n-k+1..n} log(i) - Σ_{i=2..k} log(i)
+Functional Scenario Form
+n=k or k=0 && result=0 or
+k=1 or k=n-1 && result=log(n) or
+n<67 && result=log(exact) or
+n<1030 && result=log(doubleExact) or
+k>n/2 && result=binomialCoefficientLog(n, n-k) or
+otherwise && result=sum_of_logs
+end_process
+
+process checkBinomial(n: int, k: int) result: void
+pre
+true
+post
+if n < k then raise(IllegalArgumentException)
+else if n < 0 then raise(IllegalArgumentException)
+Functional Scenario Form
+n<k && raise(IllegalArgumentException) or
+n<0 && raise(IllegalArgumentException) or
+valid && continue
+end_process
+
+process compareTo(x: double, y: double, eps: double) result: int
+pre
+true
+post
+if equals_eps(x, y, eps) then result = 0
+else if x < y then result = -1 else result = 1
+Functional Scenario Form
+equals_eps(x,y,eps) && result=0 or
+x<y && result=-1 or
+x>y && result=1
+end_process
+
+process cosh(x: double) result: double
+pre
+true
+post
+result = (exp(x) + exp(-x)) / 2.0
+Functional Scenario Form
+called && result = (exp(x)+exp(-x))/2
+end_process
+
+process equals_basic(x: double, y: double) result: Boolean
+pre
+true
+post
+result = equals_ulps(x, y, 1)
+Functional Scenario Form
+called && result = equals_ulps(x, y, 1)
+end_process
+
+process equalsIncludingNaN_basic(x: double, y: double) result: Boolean
+pre
+true
+post
+result = (isNaN(x) ∧ isNaN(y)) ∨ equals_ulps(x, y, 1)
+Functional Scenario Form
+bothNaN && result=true or
+equals_ulps(x, y, 1) && result=true or
+otherwise && result=false
+end_process
+
+process equals_eps(x: double, y: double, eps: double) result: Boolean
+pre
+true
+post
+result = equals_ulps(x, y, 1) ∨ abs(y-x) ≤ eps
+Functional Scenario Form
+within_ulps1 or abs_diff≤eps && result=true or
+otherwise && result=false
+end_process
+
+process equalsIncludingNaN_eps(x: double, y: double, eps: double) result: Boolean
+pre
+true
+post
+result = equalsIncludingNaN_basic(x, y) ∨ abs(y-x) ≤ eps
+Functional Scenario Form
+bothNaN or equals_ulps1 or abs_diff≤eps && result=true
+end_process
+
+process equals_ulps(x: double, y: double, maxUlps: int) result: Boolean
+pre
+maxUlps > 0 ∧ maxUlps < NAN_GAP
+post
+let xi == Double_toRawLongBits(x),
+yi == Double_toRawLongBits(y),
+xiAdj == (xi < 0 ? SGN_MASK - xi : xi),
+yiAdj == (yi < 0 ? SGN_MASK - yi : yi) in
+result = (abs(xiAdj - yiAdj) ≤ maxUlps) ∧ ¬isNaN(x) ∧ ¬isNaN(y)
+Functional Scenario Form
+within_maxUlps && notNaN && result=true or
+otherwise && result=false
+end_process
+
+process equalsIncludingNaN_ulps(x: double, y: double, maxUlps: int) result: Boolean
+pre
+true
+post
+result = (isNaN(x) ∧ isNaN(y)) ∨ equals_ulps(x, y, maxUlps)
+Functional Scenario Form
+bothNaN && result=true or
+equals_ulps(x, y, maxUlps) && result=true or
+otherwise && result=false
+end_process
+
+process equals_array(x: sequence of double, y: sequence of double) result: Boolean
+pre
+true
+post
+if x=null ∨ y=null then result = (x=null ∧ y=null)
+else if length(x) ≠ length(y) then result = false
+else result = ∀ i • equals_basic(x[i], y[i])
+Functional Scenario Form
+bothNull && result=true or
+oneNull && result=false or
+lengthMismatch && result=false or
+all_elements_equal && result=true
+end_process
+
+process equalsIncludingNaN_array(x: sequence of double, y: sequence of double) result: Boolean
+pre
+true
+post
+if x=null ∨ y=null then result = (x=null ∧ y=null)
+else if length(x) ≠ length(y) then result = false
+else result = ∀ i • equalsIncludingNaN_basic(x[i], y[i])
+Functional Scenario Form
+bothNull && result=true or
+oneNull && result=false or
+lengthMismatch && result=false or
+all_elements_equal_includingNaN && result=true
+end_process
+
+process factorial(n: int) result: long
+pre
+n ≥ 0
+post
+if n > 20 then raise(ArithmeticException)
+else result = FACTORIALS[n]
+Functional Scenario Form
+n < 0 && raise(IllegalArgumentException) or
+0 ≤ n ≤ 20 && result = FACTORIALS[n] or
+n > 20 && raise(ArithmeticException)
+end_process
+
+process factorialDouble(n: int) result: double
+pre
+n ≥ 0
+post
+if n < 21 then result = factorial(n)
+else result = floor(exp(factorialLog(n)) + 0.5)
+Functional Scenario Form
+n < 0 && raise(IllegalArgumentException) or
+n < 21 && result = factorial(n) or
+n ≥ 21 && result = floor(exp(factorialLog(n)) + 0.5)
+end_process
+
+process factorialLog(n: int) result: double
+pre
+n ≥ 0
+post
+if n < 21 then result = log(factorial(n))
+else
+result = Σ_{i=2..n} log(i)
+Functional Scenario Form
+n < 0 && raise(IllegalArgumentException) or
+n < 21 && result = log(factorial(n)) or
+n ≥ 21 && result = sum_of_logs(2..n)
+end_process
+
+process gcd_int(p: int, q: int) result: int
+pre
+true
+post
+if (p = Integer_MIN ∧ q = Integer_MIN) ∨
+(p = Integer_MIN ∧ q = 0) ∨
+(p = 0 ∧ q = Integer_MIN) then
+raise(ArithmeticException)
+else if p = 0 ∨ q = 0 then
+result = abs(p) + abs(q)
+else
+// Binary GCD algorithm (negative form to avoid overflow)
+result = binary_gcd_int(p, q)
+Functional Scenario Form
+special_overflow_case && raise(ArithmeticException) or
+one_zero && result = abs(p)+abs(q) or
+otherwise && result = binary_gcd_int(p,q)
+end_process
+
+process gcd_long(p: long, q: long) result: long
+pre
+true
+post
+if (p = Long_MIN ∧ q = Long_MIN) ∨
+(p = Long_MIN ∧ q = 0) ∨
+(p = 0 ∧ q = Long_MIN) then
+raise(ArithmeticException)
+else if p = 0 ∨ q = 0 then
+result = abs(p) + abs(q)
+else
+result = binary_gcd_long(p, q)
+Functional Scenario Form
+special_overflow_case && raise(ArithmeticException) or
+one_zero && result = abs(p)+abs(q) or
+otherwise && result = binary_gcd_long(p,q)
+end_process
+
+process hash_double(value: double) result: int
+pre
+true
+post
+result = Double(value).hashCode()
+Functional Scenario Form
+called && result = Double(value).hashCode()
+end_process
+
+process hash_double_array(value: sequence of double) result: int
+pre
+true
+post
+result = Arrays.hashCode(value)
+Functional Scenario Form
+called && result = Arrays.hashCode(value)
+end_process
+
+process indicator_byte(x: byte) result: byte
+pre
+true
+post
+result = (x ≥ ZB) ? PB : NB
+Functional Scenario Form
+x ≥ 0 && result = PB or
+x < 0 && result = NB
+end_process
+
+process indicator_double(x: double) result: double
+pre
+true
+post
+if isNaN(x) then result = NaN
+else result = (x ≥ 0.0) ? 1.0 : -1.0
+Functional Scenario Form
+isNaN(x) && result = NaN or
+x ≥ 0 && result = 1.0 or
+x < 0 && result = -1.0
+end_process
+
+process indicator_float(x: float) result: float
+pre
+true
+post
+if isNaN(x) then result = NaN
+else result = (x ≥ 0.0F) ? 1.0F : -1.0F
+Functional Scenario Form
+isNaN(x) && result = NaN or
+x ≥ 0 && result = 1.0F or
+x < 0 && result = -1.0F
+end_process
+
+process indicator_int(x: int) result: int
+pre
+true
+post
+result = (x ≥ 0) ? 1 : -1
+Functional Scenario Form
+x ≥ 0 && result = 1 or
+x < 0 && result = -1
+end_process
+
+process indicator_long(x: long) result: long
+pre
+true
+post
+result = (x ≥ 0L) ? 1L : -1L
+Functional Scenario Form
+x ≥ 0 && result = 1L or
+x < 0 && result = -1L
+end_process
+
+process indicator_short(x: short) result: short
+pre
+true
+post
+result = (x ≥ ZS) ? PS : NS
+Functional Scenario Form
+x ≥ 0 && result = PS or
+x < 0 && result = NS
+end_process
+
+process lcm_int(a: int, b: int) result: int
+pre
+true
+post
+if a = 0 ∨ b = 0 then result = 0
+else
+let l == abs(mulAndCheck(a / gcd(a, b), b)) in
+if l = Integer_MIN then raise(ArithmeticException) else result = l
+Functional Scenario Form
+a=0 or b=0 && result=0 or
+abs(mulAndCheck(a/gcd(a,b), b))=Integer_MIN && raise(ArithmeticException) or
+otherwise && result=abs(mulAndCheck(a/gcd(a,b), b))
+end_process
+
+process lcm_long(a: long, b: long) result: long
+pre
+true
+post
+if a = 0 ∨ b = 0 then result = 0
+else
+let l == abs(mulAndCheck(a / gcd(a, b), b)) in
+if l = Long_MIN then raise(ArithmeticException) else result = l
+Functional Scenario Form
+a=0 or b=0 && result=0 or
+abs(mulAndCheck(a/gcd(a,b), b))=Long_MIN && raise(ArithmeticException) or
+otherwise && result=abs(mulAndCheck(a/gcd(a,b), b))
+end_process
+
+process log(base: double, x: double) result: double
+pre
+base > 0 ∧ x > 0
+post
+result = log(x) / log(base)
+Functional Scenario Form
+base>0 and x>0 && result=log(x)/log(base)
+end_process
+
+process mulAndCheck_int(x: int, y: int) result: int
+pre
+true
+post
+let m == (long)x * (long)y in
+if m < Integer_MIN ∨ m > Integer_MAX then raise(ArithmeticException)
+else result = (int)m
+Functional Scenario Form
+within_int_range && result = x*y or
+outside_int_range && raise(ArithmeticException)
+end_process
+
+process mulAndCheck_long(a: long, b: long) result: long
+pre
+true
+post
+if a > b then result = mulAndCheck_long(b, a)
+else if a < 0 then
+if b < 0 then
+if a ≥ Long_MAX / b then result = a * b else raise(ArithmeticException)
+else if b > 0 then
+if Long_MIN / b ≤ a then result = a * b else raise(ArithmeticException)
+else result = 0
+else if a > 0 then
+if a ≤ Long_MAX / b then result = a * b else raise(ArithmeticException)
+else result = 0
+Functional Scenario Form
+safe_case && result = a*b or
+overflow_case && raise(ArithmeticException)
+end_process
+
+process scalb(d: double, scaleFactor: int) result: double
+pre
+true
+post
+if d = 0 ∨ isNaN(d) ∨ isInfinite(d) then result = d
+else
+let bits == doubleToLongBits(d),
+exponent == bits & 0x7ff0000000000000L,
+rest == bits & 0x800fffffffffffffL,
+newBits == rest | (exponent + ((long)scaleFactor << 52)) in
+result = longBitsToDouble(newBits)
+Functional Scenario Form
+d=0 or NaN or Infinite && result=d or
+otherwise && result = scale_by_power_of_two(d, scaleFactor)
+end_process
+
+process normalizeAngle(a: double, center: double) result: double
+pre
+true
+post
+result = a - TWO_PI * floor((a + PI - center) / TWO_PI)
+Functional Scenario Form
+called && result = a - TWO_PI * floor((a + PI - center)/TWO_PI)
+end_process
+
+process normalizeArray(values: sequence of double, normalizedSum: double) result: sequence of double
+pre
+¬isInfinite(normalizedSum) ∧ ¬isNaN(normalizedSum)
+post
+if ∃i ∈ [0..|values|-1] • isInfinite(values(i)) then raise(ArithmeticException)
+else
+let sum == Σ { values(i) | i ∈ [0..|values|-1] ∧ ¬isNaN(values(i)) } in
+if sum = 0 then raise(ArithmeticException)
+else
+result = [ if isNaN(values(i)) then NaN else values(i) * normalizedSum / sum | i ∈ [0..|values|-1] ]
+Functional Scenario Form
+isInfinite(normalizedSum) && raise(IllegalArgumentException) or
+isNaN(normalizedSum) && raise(IllegalArgumentException) or
+∃i • isInfinite(values(i)) && raise(ArithmeticException) or
+sum=0 && raise(ArithmeticException) or
+otherwise && result[i] = NaN if isNaN(values(i)) else values(i)*normalizedSum/sum
+end_process
+
+process round_double_scale(x: double, scale: int) result: double
+pre
+true
+post
+result = round_double_scale_method(x, scale, ROUND_HALF_UP)
+Functional Scenario Form
+called && result = round(x, scale, ROUND_HALF_UP)
+end_process
+
+process round_double_scale_method(x: double, scale: int, roundingMethod: int) result: double
+pre
+true
+post
+try
+result = toBigDecimal(x).setScale(scale, roundingMethod).doubleValue()
+catch NumberFormatException =>
+if isInfinite(x) then result = x else result = NaN
+Functional Scenario Form
+valid_number && result = BigDecimal(Double.toString(x)).setScale(scale,roundingMethod).doubleValue() or
+NumberFormatException and isInfinite(x) && result=x or
+NumberFormatException and ¬isInfinite(x) && result=NaN
+end_process
+
+process round_float_scale(x: float, scale: int) result: float
+pre
+true
+post
+result = round_float_scale_method(x, scale, ROUND_HALF_UP)
+Functional Scenario Form
+called && result = round(x, scale, ROUND_HALF_UP)
+end_process
+
+process round_float_scale_method(x: float, scale: int, roundingMethod: int) result: float
+pre
+true
+post
+let sign == indicator(x),
+factor == pow(10.0F, scale) * sign in
+result = (float)(roundUnscaled(x * factor, sign, roundingMethod) / factor)
+Functional Scenario Form
+called && result = roundUnscaled(x*factor, sign, roundingMethod)/factor
+end_process
+
+process roundUnscaled(unscaled: double, sign: double, roundingMethod: int) result: double
+pre
+true
+post
+case roundingMethod of
+ROUND_CEILING => if sign = -1 then result = floor(nextAfter(unscaled, -∞))
+else result = ceil(nextAfter(unscaled, +∞))
+ROUND_DOWN => result = floor(nextAfter(unscaled, -∞))
+ROUND_FLOOR => if sign = -1 then result = ceil(nextAfter(unscaled, +∞))
+else result = floor(nextAfter(unscaled, -∞))
+ROUND_HALF_DOWN => let u == nextAfter(unscaled, -∞), f == u - floor(u) in
+result = if f > 0.5 then ceil(u) else floor(u)
+ROUND_HALF_EVEN => let f == unscaled - floor(unscaled) in
+if f > 0.5 then result = ceil(unscaled)
+else if f < 0.5 then result = floor(unscaled)
+else if floor(unscaled) mod 2 = 0 then result = floor(unscaled)
+else result = ceil(unscaled)
+ROUND_HALF_UP => let u == nextAfter(unscaled, +∞), f == u - floor(u) in
+result = if f ≥ 0.5 then ceil(u) else floor(u)
+ROUND_UNNECESSARY => if unscaled ≠ floor(unscaled) then raise(ArithmeticException) else result = unscaled
+ROUND_UP => result = ceil(nextAfter(unscaled, +∞))
+otherwise => raise(IllegalArgumentException)
+Functional Scenario Form
+method=ROUND_CEILING && result=ceil_or_floor_based_on_sign or
+method=ROUND_DOWN && result=floor(nextAfter(unscaled,-∞)) or
+method=ROUND_FLOOR && result=floor_or_ceil_based_on_sign or
+method=ROUND_HALF_DOWN && result=ceil_if_fraction>0.5_else_floor or
+method=ROUND_HALF_EVEN && result=ceil_or_floor_based_on_even or
+method=ROUND_HALF_UP && result=ceil_if_fraction≥0.5_else_floor or
+method=ROUND_UNNECESSARY && raise_if_not_integer or
+method=ROUND_UP && result=ceil(nextAfter(unscaled,+∞)) or
+invalid_method && raise(IllegalArgumentException)
+end_process
+
+process sign_byte(x: byte) result: byte
+pre
+true
+post
+result = if x = ZB then ZB else if x > ZB then PB else NB
+Functional Scenario Form
+x=0 && result=ZB or
+x>0 && result=PB or
+x<0 && result=NB
+end_process
+
+process sign_double(x: double) result: double
+pre
+true
+post
+if isNaN(x) then result = NaN
+else result = if x = 0.0 then 0.0 else if x > 0.0 then 1.0 else -1.0
+Functional Scenario Form
+isNaN(x) && result=NaN or
+x=0.0 && result=0.0 or
+x>0.0 && result=1.0 or
+x<0.0 && result=-1.0
+end_process
+
+process sign_float(x: float) result: float
+pre
+true
+post
+if isNaN(x) then result = NaN
+else result = if x = 0.0F then 0.0F else if x > 0.0F then 1.0F else -1.0F
+Functional Scenario Form
+isNaN(x) && result=NaN or
+x=0.0F && result=0.0F or
+x>0.0F && result=1.0F or
+x<0.0F && result=-1.0F
+end_process
+
+process sign_int(x: int) result: int
+pre
+true
+post
+result = if x = 0 then 0 else if x > 0 then 1 else -1
+Functional Scenario Form
+x=0 && result=0 or
+x>0 && result=1 or
+x<0 && result=-1
+end_process
+
+process sign_long(x: long) result: long
+pre
+true
+post
+result = if x = 0L then 0L else if x > 0L then 1L else -1L
+Functional Scenario Form
+x=0 && result=0L or
+x>0 && result=1L or
+x<0 && result=-1L
+end_process
+
+process sign_short(x: short) result: short
+pre
+true
+post
+result = if x = ZS then ZS else if x > ZS then PS else NS
+Functional Scenario Form
+x=0 && result=ZS or
+x>0 && result=PS or
+x<0 && result=NS
+end_process
+
+process sinh(x: double) result: double
+pre
+true
+post
+result = (exp(x) - exp(-x)) / 2.0
+Functional Scenario Form
+called && result = (exp(x) - exp(-x))/2.0
+end_process
+
+process subAndCheck_int(x: int, y: int) result: int
+pre
+true
+post
+let s == (long) x - (long) y in
+if s < Integer.MIN_VALUE ∨ s > Integer.MAX_VALUE then raise(ArithmeticException)
+else result = (int) s
+Functional Scenario Form
+(long)x - (long)y < Integer.MIN_VALUE or > Integer.MAX_VALUE && raise(ArithmeticException) or
+otherwise && result = (int)((long)x - (long)y)
+end_process
+
+process subAndCheck_long(a: long, b: long) result: long
+pre
+true
+post
+if b = Long.MIN_VALUE then
+if a < 0 then result = a - b else raise(ArithmeticException)
+else
+result = addAndCheck(a, -b, LocalizedFormats.OVERFLOW_IN_ADDITION)
+Functional Scenario Form
+b = Long.MIN_VALUE and a < 0 && result=a-b or
+b = Long.MIN_VALUE and a ≥ 0 && raise(ArithmeticException) or
+b ≠ Long.MIN_VALUE && result = addAndCheck(a, -b, LocalizedFormats.OVERFLOW_IN_ADDITION)
+end_process
+
+process pow_int_int(k: int, e: int) result: int
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process pow_int_long(k: int, e: long) result: int
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process pow_long_int(k: long, e: int) result: long
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process pow_long_long(k: long, e: long) result: long
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process pow_BigInteger_int(k: BigInteger, e: int) result: BigInteger
+pre
+e ≥ 0
+post
+result = k.pow(e)
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k.pow(e)
+end_process
+
+process pow_BigInteger_long(k: BigInteger, e: long) result: BigInteger
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process pow_BigInteger_BigInteger(k: BigInteger, e: BigInteger) result: BigInteger
+pre
+e ≥ 0
+post
+result = k^e
+Functional Scenario Form
+e < 0 && raise(IllegalArgumentException) or
+otherwise && result = k^e
+end_process
+
+process distance1_double(p1: sequence of double, p2: sequence of double) result: double
+pre
+|p1| = |p2|
+post
+result = Σ { abs(p1(i) - p2(i)) | i ∈ [0..|p1|-1] }
+Functional Scenario Form
+called && result = Σ abs(p1(i)-p2(i))
+end_process
+
+process distance1_int(p1: sequence of int, p2: sequence of int) result: int
+pre
+|p1| = |p2|
+post
+result = Σ { abs(p1(i) - p2(i)) | i ∈ [0..|p1|-1] }
+Functional Scenario Form
+called && result = Σ abs(p1(i)-p2(i))
+end_process
+
+process distance_double(p1: sequence of double, p2: sequence of double) result: double
+pre
+|p1| = |p2|
+post
+result = sqrt( Σ { (p1(i) - p2(i))^2 | i ∈ [0..|p1|-1] } )
+Functional Scenario Form
+called && result = sqrt(Σ (p1(i)-p2(i))^2)
+end_process
+
+process distance_int(p1: sequence of int, p2: sequence of int) result: double
+pre
+|p1| = |p2|
+post
+result = sqrt( Σ { (p1(i) - p2(i))^2 | i ∈ [0..|p1|-1] } )
+Functional Scenario Form
+called && result = sqrt(Σ (p1(i)-p2(i))^2)
+end_process
+
+process distanceInf_double(p1: sequence of double, p2: sequence of double) result: double
+pre
+|p1| = |p2|
+post
+result = max { abs(p1(i) - p2(i)) | i ∈ [0..|p1|-1] }
+Functional Scenario Form
+called && result = max(abs(p1(i)-p2(i)))
+end_process
+
+process distanceInf_int(p1: sequence of int, p2: sequence of int) result: int
+pre
+|p1| = |p2|
+post
+result = max { abs(p1(i) - p2(i)) | i ∈ [0..|p1|-1] }
+Functional Scenario Form
+called && result = max(abs(p1(i) - p2(i)))
+end_process
+
+process define_OrderDirection() result: void
+pre
+true
+post
+// Enumeration type used by checkOrder.
+// OrderDirection = { INCREASING, DECREASING }
+skip
+Functional Scenario Form
+called && skip
+end_process
+
+process checkOrder(val: sequence of double, dir: OrderDirection, strict: Boolean) result: void
+pre
+val ≠ null ∧ |val| ≥ 1
+post
+// Verify monotonicity according to dir and strict.
+// previous = val[0]; then for i=1..n-1:
+// INCREASING: strict ? val[i] > previous : val[i] ≥ previous
+// DECREASING: strict ? val[i] < previous : val[i] ≤ previous
+// If any test fails at index i, raise NonMonotonousSequenceException(val[i], previous, i, dir, strict).
+(∀ i • 1 ≤ i < |val| ⇒
+( (dir = INCREASING ∧ (strict ⇒ val[i] > val[i-1]) ∧ (¬strict ⇒ val[i] ≥ val[i-1])) ∨
+(dir = DECREASING ∧ (strict ⇒ val[i] < val[i-1]) ∧ (¬strict ⇒ val[i] ≤ val[i-1])) )
+)
+∨
+raise(NonMonotonousSequenceException)
+Functional Scenario Form
+array ordered as required && no exception or
+first violation at index i && raise(NonMonotonousSequenceException)
+end_process
+
+process checkOrder_increasing_strict(val: sequence of double) result: void
+pre
+val ≠ null ∧ |val| ≥ 1
+post
+effect(checkOrder(val, INCREASING, true))
+Functional Scenario Form
+called && effect(checkOrder(val, INCREASING, true))
+end_process
+
+process safeNorm(v: sequence of double) result: double
+pre
+v ≠ null
+post
+// Stable 2-norm per MINPACK "enorm" translation.
+let rdwarf == 3.834e-20,
+rgiant == 1.304e19,
+floatn == (double)|v|,
+agiant == rgiant / floatn in
+let s1 == 0.0, s2 == 0.0, s3 == 0.0,
+x1max == 0.0, x3max == 0.0 in
+// one-pass classification/accumulation
+accum:
+∀ i • 0 ≤ i < |v| ⇒
+let xabs == abs(v[i]) in
+if (xabs < rdwarf ∨ xabs > agiant) then
+if (xabs > rdwarf) then
+if (xabs > x1max)
+then ( let r == x1max / xabs in s1' = 1.0 + s1 + rr; x1max' = xabs )
+else ( let r == xabs / x1max in s1' = s1 + rr )
+else
+if (xabs > x3max)
+then ( let r == x3max / xabs in s3' = 1.0 + s3 + rr; x3max' = xabs )
+else if (xabs ≠ 0.0) then ( let r == xabs / x3max in s3' = s3 + rr ) else skip
+else
+s2' = s2 + xabsxabs
+// combine scales
+result =
+if s1 ≠ 0.0 then x1max * sqrt(s1 + (s2/x1max)/x1max)
+else if s2 = 0.0 then x3max * sqrt(s3)
+else if s2 ≥ x3max then sqrt(s2 * (1.0 + (x3max/s2) * (x3max * s3)))
+else sqrt(x3max * ((s2/x3max) + (x3max * s3)))
+Functional Scenario Form
+mixed tiny/huge components && result via scaled s1 branch or
+no huge but tiny present && result = x3maxsqrt(s3) or
+regular scale present && result via s2-combination
+end_process
+
+end_module

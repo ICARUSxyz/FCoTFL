@@ -1,0 +1,127 @@
+module ExtendedMessageFormatModule
+type
+  pattern: String
+  locale: Locale
+  registry: Map[String, FormatFactory]
+  format: Format
+  pos: ParsePosition
+  desc: String
+  result: int
+
+process applyPattern(pattern: String) result: void
+pre  pattern ≠ null
+post if registry = null then
+       uses Java MessageFormat.applyPattern(pattern)
+     else
+       parses pattern, strips custom formats, applies standard pattern, then reinserts custom formats
+Functional Scenario Form
+(registry = null) && (uses standard Java MessageFormat) or
+(registry ≠ null) && (parses and reinserts custom format placeholders)
+end_process
+
+process toPattern() result: String
+pre  true
+post result = this.toPattern
+Functional Scenario Form
+(true) && (result = stored toPattern string)
+end_process
+
+process equals(obj: Object) result: Boolean
+pre  true
+post result = (obj is ExtendedMessageFormat)
+           && super.equals(obj)
+           && this.toPattern = obj.toPattern
+           && this.registry = obj.registry
+Functional Scenario Form
+(obj is ExtendedMessageFormat ∧ super.equals(obj) ∧ toPattern = obj.toPattern ∧ registry = obj.registry) && (result = true) or
+(¬above condition) && (result = false)
+end_process
+
+process hashCode() result: int
+pre  true
+post result = 31 × (31 × super.hashCode() + hashCode(registry)) + hashCode(toPattern)
+Functional Scenario Form
+(true) && (result = computed hash)
+end_process
+
+process getFormat(desc: String) result: Format
+pre  true
+post if registry = null then
+       result = null
+     else
+       parses desc into (name, args)
+       result = registry.get(name).getFormat(name, args, locale)
+Functional Scenario Form
+(registry = null) && (result = null) or
+(registry ≠ null ∧ registry contains name) && (result = registry[name].getFormat(...)) or
+(registry ≠ null ∧ name not in registry) && (result = null)
+end_process
+
+process readArgumentIndex(pattern: String, pos: ParsePosition) result: int
+pre  pos.index < pattern.length
+post parses argument index at current position, updates pos, and returns integer index
+Functional Scenario Form
+(valid format string) && (returns index) or
+(invalid format element) && (throws IllegalArgumentException)
+end_process
+
+process parseFormatDescription(pattern: String, pos: ParsePosition) result: String
+pre  pos.index < pattern.length
+post result = substring of pattern from pos to matching closing '}', accounting for nested braces and quoted text
+Functional Scenario Form
+(valid format element with nested braces or quoted string) && (result = format content) or
+(no matching closing brace) && (throws IllegalArgumentException)
+end_process
+
+process insertFormats(pattern: String, customPatterns: sequence of String) result: String
+pre  pattern ≠ null
+post if customPatterns contains non-null then
+       result = pattern with custom format descriptions re-inserted
+     else
+       result = pattern
+Functional Scenario Form
+(customPatterns contains elements) && (result = pattern with custom insertions) or
+(customPatterns is empty) && (result = pattern)
+end_process
+
+process seekNonWs(pattern: String, pos: ParsePosition) result: void
+pre  pos.index < pattern.length
+post pos is advanced to the next non-whitespace character
+Functional Scenario Form
+(whitespace at pos) && (pos advanced to non-whitespace) or
+(no whitespace) && (pos unchanged)
+end_process
+
+process next(pos: ParsePosition) result: ParsePosition
+pre  pos ≠ null
+post result.index = pos.index + 1
+Functional Scenario Form
+(true) && (position incremented)
+end_process
+
+process appendQuotedString(pattern: String, pos: ParsePosition, appendTo: StringBuilder, escapingOn: Boolean) result: StringBuilder
+pre  pos.index < pattern.length
+post result = appendTo with quoted text appended, including escaped quotes if escapingOn
+Functional Scenario Form
+(quoted string terminates properly) && (quoted text appended) or
+(no closing quote) && (throws IllegalArgumentException)
+end_process
+
+process getQuotedString(pattern: String, pos: ParsePosition, escapingOn: Boolean) result: void
+pre  pos.index < pattern.length
+post pos advanced to end of quoted string
+Functional Scenario Form
+(valid quoted string) && (position advanced) or
+(invalid quoted string) && (throws IllegalArgumentException)
+end_process
+
+process containsElements(coll: Collection) result: Boolean
+pre  true
+post result = true if any element in coll is not null, else false
+Functional Scenario Form
+(∃x ∈ coll. x ≠ null) && (result = true) or
+(∀x ∈ coll. x = null) && (result = false)
+end_process
+
+
+end_module

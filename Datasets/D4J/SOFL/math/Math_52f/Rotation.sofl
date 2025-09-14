@@ -1,0 +1,522 @@
+module Rotation
+type
+  q0: double
+  q1: double
+  q2: double
+  q3: double
+
+
+process ctor_quaternion(_q0: double, _q1: double, _q2: double, _q3: double, needsNormalization: boolean) result: Rotation
+pre
+  true
+post
+  if needsNormalization then
+    let inv = 1.0 / FastMath.sqrt(_q0 * _q0 + _q1 * _q1 + _q2 * _q2 + _q3 * _q3) in
+      q0' = _q0 * inv and q1' = _q1 * inv and q2' = _q2 * inv and q3' = _q3 * inv
+  else
+    q0' = _q0 and q1' = _q1 and q2' = _q2 and q3' = _q3
+  and result' = this
+Functional Scenario Form
+  needsNormalization = true && (q0',q1',q2',q3') are normalized from inputs or
+  needsNormalization = false && (q0',q1',q2',q3') = inputs
+end_process
+
+process ctor_axis_angle(axis: Vector3D, angle: double) result: Rotation
+pre
+  axis.getNorm() ≠ 0.0
+post
+  let norm = axis.getNorm(),
+      half = -0.5 * angle,
+      coeff = FastMath.sin(half) / norm in
+    q0' = FastMath.cos(half) and
+    q1' = coeff * axis.getX() and
+    q2' = coeff * axis.getY() and
+    q3' = coeff * axis.getZ() and
+    result' = this
+Functional Scenario Form
+  axis.getNorm() > 0 && quaternion set from axis-angle with negative-half-angle convention or
+  axis.getNorm() = 0 && throws MathRuntimeException(LocalizedFormats.ZERO_NORM_FOR_ROTATION_AXIS)
+end_process
+
+process ctor_matrix(m: double[][], threshold: double) result: Rotation
+pre
+  m ≠ null and (#rows(m) = 3 and #cols(m[0]) = 3 and #cols(m[1]) = 3 and #cols(m[2]) = 3)
+post
+  // orthogonalize and validate determinant > 0, then derive quaternion (scalar-first)
+  let ort = orthogonalizeMatrix(m, threshold),
+      det = ort[0][0]*(ort[1][1]*ort[2][2] - ort[2][1]*ort[1][2]) -
+            ort[1][0]*(ort[0][1]*ort[2][2] - ort[2][1]*ort[0][2]) +
+            ort[2][0]*(ort[0][1]*ort[1][2] - ort[1][1]*ort[0][2]) in
+    if det < 0.0 then
+      raise NotARotationMatrixException(LocalizedFormats.CLOSEST_ORTHOGONAL_MATRIX_HAS_NEGATIVE_DETERMINANT, det)
+    else
+      // choose numerically stable branch to fill q0'..q3' (details abstracted)
+      quaternion_of_matrix(ort, q0', q1', q2', q3') and
+      result' = this
+Functional Scenario Form
+  valid 3x3 near-orthogonal with det>0 && quaternion derived or
+  not 3x3 / cannot orthogonalize within threshold / det<0 && NotARotationMatrixException thrown
+end_process
+
+process ctor_pair(u1: Vector3D, u2: Vector3D, v1: Vector3D, v2: Vector3D) result: Rotation
+pre
+  u1.getNormSq() ≠ 0.0 and u2.getNormSq() ≠ 0.0 and v1.getNormSq() ≠ 0.0 and v2.getNormSq() ≠ 0.0
+post
+  // Build rotation mapping (u1,u2) to (v1',v2') in their plane, with v2' corrected if needed.
+  // If degeneracy detected (almost identity), set quaternion to identity.
+  (
+    // identity/degenerate branch
+    degenerate_case(u1,u2,v1,v2) ⇒ (q0' = 1.0 and q1' = 0.0 and q2' = 0.0 and q3' = 0.0)
+  )
+  or
+  (
+    // general branch (details abstracted; follows normalization/correction and cross-product tests)
+    general_pair_to_pair_quaternion(u1,u2,v1,v2, q0', q1', q2', q3')
+  )
+  and result' = this
+Functional Scenario Form
+  any zero-norm input && throws MathRuntimeException(LocalizedFormats.ZERO_NORM_FOR_ROTATION_DEFINING_VECTOR) or
+  degenerate geometry && quaternion' = identity or
+  regular geometry && quaternion' maps (u1,u2) to corrected (v1',v2')
+end_process
+
+// ---- helper predicates (abstract specifications) ----
+process orthogonalizeMatrix(m: double[][], threshold: double) result: double[][]
+pre
+  true
+post
+  // abstract: returns closest orthogonal matrix to m within threshold or raises NotARotationMatrixException
+  true
+Functional Scenario Form
+  within threshold && result' is orthogonal with det possibly checked elsewhere or
+  exceeds threshold && NotARotationMatrixException thrown
+end_process
+
+process quaternion_of_matrix(R: double[][], q0o: double, q1o: double, q2o: double, q3o: double) result: Void
+pre
+  true
+post
+  // abstract: fills q0o..q3o as a unit quaternion representing R (scalar-first, det(R)=+1)
+  true
+Functional Scenario Form
+  true && outputs unit quaternion for R
+end_process
+
+process degenerate_case(u1: Vector3D, u2: Vector3D, v1: Vector3D, v2: Vector3D) result: boolean
+pre
+  true
+post
+  // abstract: true iff algorithm detects near-alignment leading to identity rotation
+  result' ∈ {true,false}
+Functional Scenario Form
+  true && result' indicates degeneracy
+end_process
+
+process general_pair_to_pair_quaternion(u1: Vector3D, u2: Vector3D, v1: Vector3D, v2: Vector3D,
+                                         q0o: double, q1o: double, q2o: double, q3o: double) result: Void
+pre
+  true
+post
+  // abstract: performs normalization/correction and yields unit quaternion mapping (u1,u2)→(v1',v2')
+  true
+Functional Scenario Form
+  true && outputs unit quaternion for pair mapping
+end_process
+
+process ctor_uv(u: Vector3D, v: Vector3D) result: Rotation
+pre
+  u.getNorm() ≠ 0.0 and v.getNorm() ≠ 0.0
+post
+  let normProduct = u.getNorm() * v.getNorm(),
+      dot = u.dotProduct(v) in
+    if dot < ((2.0e-15 - 1.0) * normProduct) then
+      let w = u.orthogonal() in
+        q0' = 0.0 and q1' = -w.getX() and q2' = -w.getY() and q3' = -w.getZ()
+    else
+      let q0tmp = FastMath.sqrt(0.5 * (1.0 + dot / normProduct)),
+          coeff = 1.0 / (2.0 * q0tmp * normProduct),
+          qc = v.crossProduct(u) in
+        q0' = q0tmp and
+        q1' = coeff * qc.getX() and q2' = coeff * qc.getY() and q3' = coeff * qc.getZ()
+    end if
+  and result' = this
+Functional Scenario Form
+  u or v has zero norm && throws MathRuntimeException(LocalizedFormats.ZERO_NORM_FOR_ROTATION_DEFINING_VECTOR) or
+  u ≈ -v (anti-parallel) && q0'=0 and (q1',q2',q3') = -u.orthogonal() or
+  general case && shortest-arc quaternion from u to v is set
+end_process
+
+process ctor_order_angles(order: RotationOrder, a1: double, a2: double, a3: double) result: Rotation
+pre
+  order ≠ null
+post
+  // Compose three axis-angle rotations per order (A1,a1)∘(A2,a2)∘(A3,a3)
+  let r1 = rotation_of_axis_angle(order.getA1(), a1),
+      r2 = rotation_of_axis_angle(order.getA2(), a2),
+      r3 = rotation_of_axis_angle(order.getA3(), a3),
+      composed = compose_rotations(r1, compose_rotations(r2, r3)) in
+    q0' = composed.q0 and q1' = composed.q1 and q2' = composed.q2 and q3' = composed.q3
+  and result' = this
+Functional Scenario Form
+  valid order && result' matches r1∘r2∘r3 composition
+end_process
+
+process revert() result: Rotation
+pre
+  true
+post
+  // As per given implementation: negate scalar term only.
+  result'.q0 = -q0 and result'.q1 = q1 and result'.q2 = q2 and result'.q3 = q3
+Functional Scenario Form
+  always && returns rotation with q0 negated, vector part unchanged
+end_process
+
+process getQ0() result: double
+pre
+  true
+post
+  result' = q0
+Functional Scenario Form
+  always && returns q0
+end_process
+
+process getQ1() result: double
+pre
+  true
+post
+  result' = q1
+Functional Scenario Form
+  always && returns q1
+end_process
+
+process getQ2() result: double
+pre
+  true
+post
+  result' = q2
+Functional Scenario Form
+  always && returns q2
+end_process
+
+process getQ3() result: double
+pre
+  true
+post
+  result' = q3
+Functional Scenario Form
+  always && returns q3
+end_process
+
+process getAxis() result: Vector3D
+pre
+  true
+post
+  let squaredSine = q1*q1 + q2*q2 + q3*q3 in
+    if squaredSine = 0.0 then
+      // arbitrary axis when angle is 0
+      result' = Vector3D(1, 0, 0)
+    else if q0 < 0.0 then
+      let inv = 1.0 / FastMath.sqrt(squaredSine) in
+        result' = Vector3D(q1*inv, q2*inv, q3*inv)
+    else
+      let inv = -1.0 / FastMath.sqrt(squaredSine) in
+        result' = Vector3D(q1*inv, q2*inv, q3*inv)
+    end if
+Functional Scenario Form
+  zero-angle && returns (1,0,0) or
+  q0 < 0 && returns normalized vector part or
+  q0 ≥ 0 && returns negative normalized vector part
+end_process
+
+process getAngle() result: double
+pre
+  true
+post
+  if (q0 < -0.1 or q0 > 0.1) then
+    result' = 2.0 * FastMath.asin(FastMath.sqrt(q1*q1 + q2*q2 + q3*q3))
+  else if q0 < 0.0 then
+    result' = 2.0 * FastMath.acos(-q0)
+  else
+    result' = 2.0 * FastMath.acos(q0)
+  end if
+Functional Scenario Form
+  |q0|>0.1 && angle via asin(norm(vector)) or
+  q0<0 && angle via acos(-q0) or
+  q0≥0 && angle via acos(q0)
+end_process
+
+process getAngles(order: RotationOrder) result: double[]
+pre
+  order ≠ null
+post
+  // Computes Cardan/Euler angles per 'order' using applyTo/applyInverseTo on basis vectors.
+  // Throws CardanEulerSingularityException when the intermediate component is ~±1.
+  case order of
+    RotationOrder.XYZ ->
+      let v1 = applyTo(Vector3D.PLUS_K),
+          v2 = applyInverseTo(Vector3D.PLUS_I) in
+        if (v2.getZ() < -0.9999999999 or v2.getZ() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(-v1.getY(), v1.getZ()),
+                      FastMath.asin(v2.getZ()),
+                      FastMath.atan2(-v2.getY(), v2.getX()) ]
+        end if
+  | RotationOrder.XZY ->
+      let v1 = applyTo(Vector3D.PLUS_J),
+          v2 = applyInverseTo(Vector3D.PLUS_I) in
+        if (v2.getY() < -0.9999999999 or v2.getY() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(v1.getZ(), v1.getY()),
+                     -FastMath.asin(v2.getY()),
+                      FastMath.atan2(v2.getZ(), v2.getX()) ]
+        end if
+  | RotationOrder.YXZ ->
+      let v1 = applyTo(Vector3D.PLUS_K),
+          v2 = applyInverseTo(Vector3D.PLUS_J) in
+        if (v2.getZ() < -0.9999999999 or v2.getZ() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(v1.getX(), v1.getZ()),
+                     -FastMath.asin(v2.getZ()),
+                      FastMath.atan2(v2.getX(), v2.getY()) ]
+        end if
+  | RotationOrder.YZX ->
+      let v1 = applyTo(Vector3D.PLUS_I),
+          v2 = applyInverseTo(Vector3D.PLUS_J) in
+        if (v2.getX() < -0.9999999999 or v2.getX() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(-v1.getZ(), v1.getX()),
+                      FastMath.asin(v2.getX()),
+                      FastMath.atan2(-v2.getZ(), v2.getY()) ]
+        end if
+  | RotationOrder.ZXY ->
+      let v1 = applyTo(Vector3D.PLUS_J),
+          v2 = applyInverseTo(Vector3D.PLUS_K) in
+        if (v2.getY() < -0.9999999999 or v2.getY() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(-v1.getX(), v1.getY()),
+                      FastMath.asin(v2.getY()),
+                      FastMath.atan2(-v2.getX(), v2.getZ()) ]
+        end if
+  | RotationOrder.ZYX ->
+      let v1 = applyTo(Vector3D.PLUS_I),
+          v2 = applyInverseTo(Vector3D.PLUS_K) in
+        if (v2.getX() < -0.9999999999 or v2.getX() > 0.9999999999) then
+          raise CardanEulerSingularityException(true)
+        else
+          result' = [ FastMath.atan2(v1.getY(), v1.getX()),
+                     -FastMath.asin(v2.getX()),
+                      FastMath.atan2(v2.getY(), v2.getZ()) ]
+        end if
+  | RotationOrder.XYX ->
+      let v1 = applyTo(Vector3D.PLUS_I),
+          v2 = applyInverseTo(Vector3D.PLUS_I) in
+        if (v2.getX() < -0.9999999999 or v2.getX() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getY(), -v1.getZ()),
+                      FastMath.acos(v2.getX()),
+                      FastMath.atan2(v2.getY(), v2.getZ()) ]
+        end if
+  | RotationOrder.XZX ->
+      let v1 = applyTo(Vector3D.PLUS_I),
+          v2 = applyInverseTo(Vector3D.PLUS_I) in
+        if (v2.getX() < -0.9999999999 or v2.getX() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getZ(), v1.getY()),
+                      FastMath.acos(v2.getX()),
+                      FastMath.atan2(v2.getZ(), -v2.getY()) ]
+        end if
+  | RotationOrder.YXY ->
+      let v1 = applyTo(Vector3D.PLUS_J),
+          v2 = applyInverseTo(Vector3D.PLUS_J) in
+        if (v2.getY() < -0.9999999999 or v2.getY() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getX(), v1.getZ()),
+                      FastMath.acos(v2.getY()),
+                      FastMath.atan2(v2.getX(), -v2.getZ()) ]
+        end if
+  | RotationOrder.YZY ->
+      let v1 = applyTo(Vector3D.PLUS_J),
+          v2 = applyInverseTo(Vector3D.PLUS_J) in
+        if (v2.getY() < -0.9999999999 or v2.getY() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getZ(), -v1.getX()),
+                      FastMath.acos(v2.getY()),
+                      FastMath.atan2(v2.getZ(), v2.getX()) ]
+        end if
+  | RotationOrder.ZXZ ->
+      let v1 = applyTo(Vector3D.PLUS_K),
+          v2 = applyInverseTo(Vector3D.PLUS_K) in
+        if (v2.getZ() < -0.9999999999 or v2.getZ() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getX(), -v1.getY()),
+                      FastMath.acos(v2.getZ()),
+                      FastMath.atan2(v2.getX(), v2.getY()) ]
+        end if
+  | RotationOrder.ZYZ ->
+      let v1 = applyTo(Vector3D.PLUS_K),
+          v2 = applyInverseTo(Vector3D.PLUS_K) in
+        if (v2.getZ() < -0.9999999999 or v2.getZ() > 0.9999999999) then
+          raise CardanEulerSingularityException(false)
+        else
+          result' = [ FastMath.atan2(v1.getY(), v1.getX()),
+                      FastMath.acos(v2.getZ()),
+                      FastMath.atan2(v2.getY(), -v2.getX()) ]
+        end if
+  end case
+Functional Scenario Form
+  non-singular && returns [α1,α2,α3] per order or
+  singular middle angle (≈±π/2 or endpoints) && CardanEulerSingularityException(thrown=true for Cardan, false for Euler)
+end_process
+
+// -------- additional helper/abstract specs used above --------
+
+process rotation_of_axis_angle(axis: Vector3D, ang: double) result: Rotation
+pre
+  axis.getNorm() ≠ 0.0
+post
+  // identical to ctor_axis_angle semantics
+  let norm = axis.getNorm(), half = -0.5*ang, coeff = FastMath.sin(half)/norm in
+    result'.q0 = FastMath.cos(half) and
+    result'.q1 = coeff*axis.getX() and
+    result'.q2 = coeff*axis.getY() and
+    result'.q3 = coeff*axis.getZ()
+Functional Scenario Form
+  valid axis && returns unit quaternion for (axis,ang) or
+  zero axis && throws MathRuntimeException(LocalizedFormats.ZERO_NORM_FOR_ROTATION_AXIS)
+end_process
+
+process compose_rotations(rA: Rotation, rB: Rotation) result: Rotation
+pre
+  true
+post
+  // abstract: quaternion composition rA ∘ rB
+  // result' corresponds to applying rB then rA
+  true
+Functional Scenario Form
+  always && result' = rA∘rB
+end_process
+
+process applyTo(v: Vector3D) result: Vector3D
+pre
+  true
+post
+  // abstract: rotate v by this rotation
+  true
+Functional Scenario Form
+  always && returns rotated vector
+end_process
+
+process applyInverseTo(v: Vector3D) result: Vector3D
+pre
+  true
+post
+  // abstract: apply inverse rotation to v
+  true
+Functional Scenario Form
+  always && returns inverse-rotated vector
+end_process
+
+process getMatrix() result: sequence of sequence of double
+pre
+  true
+post
+  // result' is a 3x3 rotation matrix corresponding to quaternion (q0, q1, q2, q3)
+  |result'| = 3 and (∀ i • |result'[i]| = 3) and
+  result'[0][0] = 2.0 * (q0 * q0 + q1 * q1) - 1.0 and
+  result'[1][0] = 2.0 * (q1 * q2 - q0 * q3) and
+  result'[2][0] = 2.0 * (q1 * q3 + q0 * q2) and
+  result'[0][1] = 2.0 * (q1 * q2 + q0 * q3) and
+  result'[1][1] = 2.0 * (q0 * q0 + q2 * q2) - 1.0 and
+  result'[2][1] = 2.0 * (q2 * q3 - q0 * q1) and
+  result'[0][2] = 2.0 * (q1 * q3 - q0 * q2) and
+  result'[1][2] = 2.0 * (q2 * q3 + q0 * q1) and
+  result'[2][2] = 2.0 * (q0 * q0 + q3 * q3) - 1.0
+Functional Scenario Form
+  true && result' = rotationMatrixFromQuaternion(q0, q1, q2, q3)
+end_process
+
+process applyTo(u: Vector3D) result: Vector3D
+pre
+  u ≠ null
+post
+  // result' is u rotated by quaternion (q0, q1, q2, q3)
+  let x = u.x, y = u.y, z = u.z, s = q1 * x + q2 * y + q3 * z in
+    result'.x = 2 * (q0 * (x * q0 - (q2 * z - q3 * y)) + s * q1) - x and
+    result'.y = 2 * (q0 * (y * q0 - (q3 * x - q1 * z)) + s * q2) - y and
+    result'.z = 2 * (q0 * (z * q0 - (q1 * y - q2 * x)) + s * q3) - z
+Functional Scenario Form
+  true && result' = rotateVectorByQuaternion(u, q0, q1, q2, q3)
+end_process
+
+process applyInverseTo(u: Vector3D) result: Vector3D
+pre
+  u ≠ null
+post
+  // result' is u rotated by the inverse of quaternion (q0, q1, q2, q3)
+  let x = u.x, y = u.y, z = u.z, s = q1 * x + q2 * y + q3 * z, m0 = -q0 in
+    result'.x = 2 * (m0 * (x * m0 - (q2 * z - q3 * y)) + s * q1) - x and
+    result'.y = 2 * (m0 * (y * m0 - (q3 * x - q1 * z)) + s * q2) - y and
+    result'.z = 2 * (m0 * (z * m0 - (q1 * y - q2 * x)) + s * q3) - z
+Functional Scenario Form
+  true && result' = rotateVectorByQuaternionInverse(u, q0, q1, q2, q3)
+end_process
+
+process applyTo(r: Rotation) result: Rotation
+pre
+  r ≠ null
+post
+  // result' is composition of r by this rotation
+  result'.q0 = r.q0 * q0 - (r.q1 * q1 + r.q2 * q2 + r.q3 * q3) and
+  result'.q1 = r.q1 * q0 + r.q0 * q1 + (r.q2 * q3 - r.q3 * q2) and
+  result'.q2 = r.q2 * q0 + r.q0 * q2 + (r.q3 * q1 - r.q1 * q3) and
+  result'.q3 = r.q3 * q0 + r.q0 * q3 + (r.q1 * q2 - r.q2 * q1)
+Functional Scenario Form
+  true && result' = composeRotations(r, this)
+end_process
+
+process applyInverseTo(r: Rotation) result: Rotation
+pre
+  r ≠ null
+post
+  // result' is composition of r by the inverse of this rotation
+  result'.q0 = -r.q0 * q0 - (r.q1 * q1 + r.q2 * q2 + r.q3 * q3) and
+  result'.q1 = -r.q1 * q0 + r.q0 * q1 + (r.q2 * q3 - r.q3 * q2) and
+  result'.q2 = -r.q2 * q0 + r.q0 * q2 + (r.q3 * q1 - r.q1 * q3) and
+  result'.q3 = -r.q3 * q0 + r.q0 * q3 + (r.q1 * q2 - r.q2 * q1)
+Functional Scenario Form
+  true && result' = composeRotationsInverse(r, this)
+end_process
+
+process orthogonalizeMatrix(m: sequence of sequence of double, threshold: double) result: sequence of sequence of double
+pre
+  |m| = 3 and (∀ i • |m[i]| = 3) and threshold > 0
+post
+  // returns orthogonalized matrix close to m, within threshold, or throws NotARotationMatrixException
+  (∃ o • |o| = 3 ∧ (∀ i • |o[i]| = 3) ∧ isOrthogonal(o) ∧ frobeniusNormDifference(o, m) ≤ threshold ∧ result' = o) or
+  throws(NotARotationMatrixException)
+Functional Scenario Form
+  frobeniusNormDifference(orthogonalize(m), m) ≤ threshold && result' = orthogonalize(m) or
+  frobeniusNormDifference(orthogonalize(m), m) > threshold && throws(NotARotationMatrixException)
+end_process
+
+process distance(r1: Rotation, r2: Rotation) result: double
+pre
+  r1 ≠ null and r2 ≠ null
+post
+  result' = r1.applyInverseTo(r2).getAngle()
+Functional Scenario Form
+  true && result' = r1.applyInverseTo(r2).getAngle()
+end_process
+
+
+end_module

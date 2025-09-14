@@ -1,0 +1,13 @@
+
+org/apache/commons/lang3/builder/HashCodeBuilder.java#105#        @Override
+
+org/apache/commons/lang3/builder/HashCodeBuilder.java#107#            return new HashSet<IDKey>();
+org/apache/commons/lang3/builder/HashCodeBuilder.java#108#        }
+org/apache/commons/lang3/builder/HashCodeBuilder.java#109#    };
+org/apache/commons/lang3/builder/HashCodeBuilder.java#152#        return getRegistry().contains(new IDKey(value));
+
+136
+195
+177
+171
+356

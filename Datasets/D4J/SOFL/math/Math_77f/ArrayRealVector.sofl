@@ -1,0 +1,993 @@
+moudle ArrayRealVector
+var
+NON_FITTING_POSITION_AND_SIZE_MESSAGE: String = "position {0} and size {1} don't fit to the size of the input array {2}"
+serialVersionUID: long = -1097961340710804027L
+
+process ArrayRealVector() // default ctor
+pre
+true
+post
+data ≠ null ∧ |data| = 0
+Functional Scenario Form
+always && data is a new empty array
+end_process
+
+process ArrayRealVector(size: int) // zeros ctor
+pre
+size ≥ 0
+post
+data ≠ null ∧ |data| = size ∧ (∀i:0..size-1 • data[i] = 0.0)
+Functional Scenario Form
+size ≥ 0 && data allocated with zeros of given size
+end_process
+
+process ArrayRealVector(size: int, preset: double) // preset ctor
+pre
+size ≥ 0
+post
+data ≠ null ∧ |data| = size ∧ (∀i:0..size-1 • data[i] = preset)
+Functional Scenario Form
+size ≥ 0 && data filled with preset
+end_process
+
+process ArrayRealVector(d: double[]) // copy array
+pre
+d ≠ null
+post
+data ≠ null ∧ |data| = |d| ∧ (∀i:0..|d|-1 • data[i] = d[i]) ∧ data ≠ d
+Functional Scenario Form
+d provided && data is deep copy of d
+end_process
+
+process ArrayRealVector(d: double[], copyArray: boolean) // copy/ref array with checks
+pre
+d ≠ null ∧ |d| > 0
+post
+(copyArray ⇒ (data ≠ d ∧ |data|=|d| ∧ ∀i • data[i]=d[i])) ∧
+(¬copyArray ⇒ (data = d))
+Functional Scenario Form
+d=null || |d|=0 && throw (NullPointerException or IllegalArgumentException)
+or copyArray=true && data is deep copy
+or copyArray=false && data references d
+end_process
+
+process ArrayRealVector(d: double[], pos: int, size: int) // slice ctor
+pre
+d ≠ null ∧ 0 ≤ pos ∧ 0 ≤ size ∧ pos + size ≤ |d|
+post
+|data| = size ∧ (∀k:0..size-1 • data[k] = d[pos + k])
+Functional Scenario Form
+pos+size > |d| || pos<0 || size<0 && throw IllegalArgumentException
+or valid slice && data copies the specified range
+end_process
+
+process ArrayRealVector(d: Double[]) // boxed array copy
+pre
+d ≠ null
+post
+|data| = |d| ∧ (∀i:0..|d|-1 • data[i] = d[i].doubleValue())
+Functional Scenario Form
+d provided && data equals unboxed values
+end_process
+
+process ArrayRealVector(d: Double[], pos: int, size: int) // boxed slice
+pre
+d ≠ null ∧ 0 ≤ pos ∧ 0 ≤ size ∧ pos + size ≤ |d|
+post
+|data| = size ∧ (∀k:0..size-1 • data[k] = d[pos + k].doubleValue())
+Functional Scenario Form
+invalid bounds && throw IllegalArgumentException
+or valid bounds && data equals unboxed slice
+end_process
+
+process ArrayRealVector(v: RealVector) // deep copy from RealVector
+pre
+v ≠ null
+post
+|data| = v.getDimension() ∧ (∀i:0..|data|-1 • data[i] = v.getEntry(i))
+Functional Scenario Form
+always && data deep-copies entries from v
+end_process
+
+process ArrayRealVector(v: ArrayRealVector) // deep copy convenience
+pre
+v ≠ null
+post
+|data| = |v.data| ∧ (∀i • data[i] = v.data[i]) ∧ data ≠ v.data
+Functional Scenario Form
+always && deep copy from other ArrayRealVector
+end_process
+
+process ArrayRealVector(v: ArrayRealVector, deep: boolean) // copy or share
+pre
+v ≠ null
+post
+(deep ⇒ (data ≠ v.data ∧ |data|=|v.data| ∧ ∀i • data[i]=v.data[i]))
+∧ (¬deep ⇒ data = v.data)
+Functional Scenario Form
+deep=true && deep copy; or deep=false && shallow copy (shared backing array)
+end_process
+
+process ArrayRealVector(v1: ArrayRealVector, v2: ArrayRealVector) // append
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = |v1.data| + |v2.data| ∧
+(∀i:0..|v1.data|-1 • data[i] = v1.data[i]) ∧
+(∀j:0..|v2.data|-1 • data[|v1.data|+j] = v2.data[j])
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process ArrayRealVector(v1: ArrayRealVector, v2: RealVector) // append
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = |v1.data| + v2.getDimension() ∧
+(∀i:0..|v1.data|-1 • data[i] = v1.data[i]) ∧
+(∀j:0..v2.getDimension()-1 • data[|v1.data|+j] = v2.getEntry(j))
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process ArrayRealVector(v1: RealVector, v2: ArrayRealVector) // append
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = v1.getDimension() + |v2.data| ∧
+(∀i:0..v1.getDimension()-1 • data[i] = v1.getEntry(i)) ∧
+(∀j:0..|v2.data|-1 • data[v1.getDimension()+j] = v2.data[j])
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process ArrayRealVector(v1: ArrayRealVector, v2: double[]) // append
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = |v1| + |v2| ∧
+(∀i:0..|v1|-1 • data[i] = v1.data[i]) ∧
+(∀j:0..|v2|-1 • data[|v1|+j] = v2[j])
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process ArrayRealVector(v1: double[], v2: ArrayRealVector) // append
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = |v1| + |v2| ∧
+(∀i:0..|v1|-1 • data[i] = v1[i]) ∧
+(∀j:0..|v2|-1 • data[|v1|+j] = v2.data[j])
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process ArrayRealVector(v1: double[], v2: double[]) // append arrays
+pre
+v1 ≠ null ∧ v2 ≠ null
+post
+|data| = |v1| + |v2| ∧
+(∀i:0..|v1|-1 • data[i] = v1[i]) ∧
+(∀j:0..|v2|-1 • data[|v1|+j] = v2[j])
+Functional Scenario Form
+always && data is concatenation of v1 then v2
+end_process
+
+process copy() result: AbstractRealVector
+pre
+true
+post
+result ≠ this ∧ result is ArrayRealVector ∧
+|result| = |data| ∧ (∀i:0..|data|-1 • result.getEntry(i) = data[i])
+Functional Scenario Form
+always && returns deep copy of this vector
+end_process
+
+process add(v: RealVector) result: RealVector
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i:0..|data|-1 • result.getEntry(i) = data[i] + v.getEntry(i)) ∧ state unchanged
+Functional Scenario Form
+v is ArrayRealVector && elementwise sum
+or v is other RealVector with same dimension && elementwise sum via sparseIterator
+or dimension mismatch && throw IllegalArgumentException
+end_process
+
+process add(v: double[]) result: RealVector
+pre
+v ≠ null ∧ |v| = |data|
+post
+result is ArrayRealVector ∧ (∀i:0..|data|-1 • result.getEntry(i) = data[i] + v[i]) ∧ state unchanged
+Functional Scenario Form
+|v|=|data| && return elementwise sum
+or otherwise && throw IllegalArgumentException
+end_process
+
+process add(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result is ArrayRealVector ∧ (∀i • result.getEntry(i) = data[i] + v.data[i]) ∧ state unchanged
+Functional Scenario Form
+valid sizes && elementwise sum
+or size mismatch && throw IllegalArgumentException (via delegated check)
+end_process
+
+process subtract(v: RealVector) result: RealVector
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result is ArrayRealVector ∧ (∀i • result.getEntry(i) = data[i] - v.getEntry(i)) ∧ state unchanged
+Functional Scenario Form
+v is ArrayRealVector && elementwise difference
+or v other RealVector same dimension && elementwise difference via sparseIterator
+or dimension mismatch && throw IllegalArgumentException
+end_process
+
+process subtract(v: double[]) result: RealVector
+pre
+v ≠ null ∧ |v| = |data|
+post
+result is ArrayRealVector ∧ (∀i • result.getEntry(i) = data[i] - v[i]) ∧ state unchanged
+Functional Scenario Form
+|v| matches && return elementwise difference
+or otherwise && throw IllegalArgumentException
+end_process
+
+process subtract(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result is ArrayRealVector ∧ (∀i • result.getEntry(i) = data[i] - v.data[i]) ∧ state unchanged
+Functional Scenario Form
+valid sizes && elementwise difference
+or size mismatch && throw IllegalArgumentException (via delegated check)
+end_process
+
+process mapAddToSelf(d: double) result: RealVector
+pre
+true
+post
+(∀i:0..|data|-1 • data[i] = old(data[i]) + d) ∧ result = this
+Functional Scenario Form
+always && in-place add scalar and return this
+end_process
+
+process mapSubtractToSelf(d: double) result: RealVector
+pre
+true
+post
+(∀i:0..|data|-1 • data[i] = old(data[i]) - d) ∧ result = this
+Functional Scenario Form
+always && in-place subtract scalar and return this
+end_process
+
+process mapMultiplyToSelf(d: double) result: RealVector
+pre
+true
+post
+(∀i:0..|data|-1 • data[i] = old(data[i]) * d) ∧ result = this
+Functional Scenario Form
+always && in-place multiply by scalar and return this
+end_process
+
+process mapDivideToSelf(d: double) result: RealVector
+pre
+true
+post
+(∀i:0..|data|-1 • data[i] = old(data[i]) / d) ∧ result = this
+Functional Scenario Form
+always && in-place divide by scalar and return this
+end_process
+
+process mapPowToSelf(d: double) result: RealVector
+pre
+true
+post
+(∀i:0..|data|-1 • data[i] = Math.pow(old(data[i]), d)) ∧ result = this
+Functional Scenario Form
+always && in-place power with exponent d and return this
+end_process
+
+process mapExpToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.exp(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place exp and return this
+end_process
+
+process mapExpm1ToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.expm1(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place expm1 and return this
+end_process
+
+process mapLogToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.log(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place natural log and return this
+end_process
+
+process mapLog10ToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.log10(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place log10 and return this
+end_process
+
+process mapLog1pToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.log1p(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place log1p and return this
+end_process
+
+process mapCoshToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.cosh(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place cosh and return this
+end_process
+
+process mapSinhToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.sinh(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place sinh and return this
+end_process
+
+process mapTanhToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.tanh(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place tanh and return this
+end_process
+
+process mapCosToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.cos(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place cos and return this
+end_process
+
+process mapSinToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.sin(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place sin and return this
+end_process
+
+process mapTanToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.tan(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place tan and return this
+end_process
+
+process mapAcosToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.acos(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place acos and return this
+end_process
+
+process mapAsinToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.asin(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place asin and return this
+end_process
+
+process mapAtanToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.atan(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place atan and return this
+end_process
+
+process mapInvToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = 1.0 / old(data[i])) ∧ result = this
+Functional Scenario Form
+always && in-place reciprocal and return this
+end_process
+
+process mapAbsToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.abs(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place abs and return this
+end_process
+
+process mapSqrtToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.sqrt(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place sqrt and return this
+end_process
+
+process mapCbrtToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.cbrt(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place cbrt and return this
+end_process
+
+process mapCeilToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.ceil(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place ceil and return this
+end_process
+
+process mapFloorToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.floor(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place floor and return this
+end_process
+
+process mapRintToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.rint(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place rint and return this
+end_process
+
+process mapSignumToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.signum(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place signum and return this
+end_process
+
+process mapUlpToSelf() result: RealVector
+pre
+true
+post
+(∀i • data[i] = Math.ulp(old(data[i]))) ∧ result = this
+Functional Scenario Form
+always && in-place ulp and return this
+end_process
+
+process ebeMultiply(v: RealVector) result: RealVector
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i:0..|data|-1 • result.getEntry(i) = data[i] * v.getEntry(i)) ∧ state unchanged
+Functional Scenario Form
+|v| ≠ |data| && throw IllegalArgumentException
+or v is ArrayRealVector && elementwise product with v.data
+or v is other RealVector with same dimension && elementwise product via accessor
+end_process
+
+process ebeMultiply(v: double[]) result: RealVector
+pre
+v ≠ null ∧ |v| = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i • result.getEntry(i) = data[i] * v[i]) ∧ state unchanged
+Functional Scenario Form
+|v|=|data| && return elementwise product
+or otherwise && throw IllegalArgumentException
+end_process
+
+process ebeMultiply(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i • result.getEntry(i) = data[i] * v.data[i]) ∧ state unchanged
+Functional Scenario Form
+valid sizes && elementwise product
+or size mismatch && throw IllegalArgumentException (via delegated check)
+end_process
+
+process ebeDivide(v: RealVector) result: RealVector
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i • result.getEntry(i) = data[i] / v.getEntry(i)) ∧ state unchanged
+Functional Scenario Form
+|v| ≠ |data| && throw IllegalArgumentException
+or v is ArrayRealVector && elementwise division with v.data
+or v is other RealVector with same dimension && elementwise division via accessor
+end_process
+
+process ebeDivide(v: double[]) result: RealVector
+pre
+v ≠ null ∧ |v| = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i • result.getEntry(i) = data[i] / v[i]) ∧ state unchanged
+Functional Scenario Form
+|v|=|data| && return elementwise division
+or otherwise && throw IllegalArgumentException
+end_process
+
+process ebeDivide(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result is ArrayRealVector ∧ |result| = |data| ∧
+(∀i • result.getEntry(i) = data[i] / v.data[i]) ∧ state unchanged
+Functional Scenario Form
+valid sizes && elementwise division
+or size mismatch && throw IllegalArgumentException (via delegated check)
+end_process
+
+process getData() result: double[]
+pre
+true
+post
+result ≠ data ∧ |result| = |data| ∧ (∀i:0..|data|-1 • result[i] = data[i]) ∧ state unchanged
+Functional Scenario Form
+always && returns deep copy of internal array
+end_process
+
+process getDataRef() result: double[]
+pre
+true
+post
+result = data ∧ state unchanged
+Functional Scenario Form
+always && returns direct reference to internal data array
+end_process
+
+process dotProduct(v: RealVector) result: double
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result = Σ(i:0..|data|-1 • data[i] * v.getEntry(i)) ∧ state unchanged
+Functional Scenario Form
+v instanceof ArrayRealVector && call dotProduct(ArrayRealVector)
+or v is other RealVector && iterate sparseIterator to sum products
+or dimension mismatch && throw IllegalArgumentException
+end_process
+
+process dotProduct(v: double[]) result: double
+pre
+v ≠ null ∧ |v| = |data|
+post
+result = Σ(i:0..|data|-1 • data[i] * v[i]) ∧ state unchanged
+Functional Scenario Form
+valid length && compute sum of elementwise products
+or otherwise && throw IllegalArgumentException
+end_process
+
+process dotProduct(v: ArrayRealVector) result: double
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result = Σ(i:0..|data|-1 • data[i] * v.data[i]) ∧ state unchanged
+Functional Scenario Form
+delegate to dotProduct(double[])
+end_process
+
+process getNorm() result: double
+pre
+true
+post
+result = sqrt(Σ(i • data[i]^2)) ∧ state unchanged
+Functional Scenario Form
+always && Euclidean norm
+end_process
+
+process getL1Norm() result: double
+pre
+true
+post
+result = Σ(i • |data[i]|) ∧ state unchanged
+Functional Scenario Form
+always && Manhattan norm
+end_process
+
+process getLInfNorm() result: double
+pre
+true
+post
+result = max(i • |data[i]|) ∧ state unchanged
+Functional Scenario Form
+always && Chebyshev norm
+end_process
+
+process getDistance(v: RealVector) result: double
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result = sqrt(Σ(i • (data[i] - v.getEntry(i))^2)) ∧ state unchanged
+Functional Scenario Form
+v instanceof ArrayRealVector && call getDistance(ArrayRealVector)
+or valid dimension && compute Euclidean distance
+or mismatch && throw IllegalArgumentException
+end_process
+
+process getDistance(v: double[]) result: double
+pre
+v ≠ null ∧ |v| = |data|
+post
+result = sqrt(Σ(i • (data[i] - v[i])^2)) ∧ state unchanged
+Functional Scenario Form
+valid length && compute
+or otherwise && throw IllegalArgumentException
+end_process
+
+process getDistance(v: ArrayRealVector) result: double
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result = sqrt(Σ(i • (data[i] - v.data[i])^2)) ∧ state unchanged
+Functional Scenario Form
+delegate to getDistance(double[])
+end_process
+
+process getL1Distance(v: RealVector) result: double
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result = Σ(i • |data[i] - v.getEntry(i)|) ∧ state unchanged
+Functional Scenario Form
+v instanceof ArrayRealVector && call getL1Distance(ArrayRealVector)
+or valid dimension && compute L1 distance
+or mismatch && throw IllegalArgumentException
+end_process
+
+process getL1Distance(v: double[]) result: double
+pre
+v ≠ null ∧ |v| = |data|
+post
+result = Σ(i • |data[i] - v[i]|) ∧ state unchanged
+Functional Scenario Form
+valid length && compute
+or otherwise && throw IllegalArgumentException
+end_process
+
+process getL1Distance(v: ArrayRealVector) result: double
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result = Σ(i • |data[i] - v.data[i]|) ∧ state unchanged
+Functional Scenario Form
+delegate to getL1Distance(double[])
+end_process
+
+process getLInfDistance(v: RealVector) result: double
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result = max(i • |data[i] - v.getEntry(i)|) ∧ state unchanged
+Functional Scenario Form
+v instanceof ArrayRealVector && call getLInfDistance(ArrayRealVector)
+or valid dimension && compute
+or mismatch && throw IllegalArgumentException
+end_process
+
+process getLInfDistance(v: double[]) result: double
+pre
+v ≠ null ∧ |v| = |data|
+post
+result = max(i • |data[i] - v[i]|) ∧ state unchanged
+Functional Scenario Form
+valid length && compute
+or otherwise && throw IllegalArgumentException
+end_process
+
+process getLInfDistance(v: ArrayRealVector) result: double
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result = max(i • |data[i] - v.data[i]|) ∧ state unchanged
+Functional Scenario Form
+delegate to getLInfDistance(double[])
+end_process
+
+process unitVector() result: RealVector
+pre
+getNorm() ≠ 0
+post
+result = this / getNorm() ∧ state unchanged
+Functional Scenario Form
+zero norm && throw ArithmeticException
+or non-zero norm && return normalized copy
+end_process
+
+process unitize()
+pre
+getNorm() ≠ 0
+post
+data updated to old(data) / old(getNorm())
+Functional Scenario Form
+zero norm && throw ArithmeticException
+or non-zero norm && in-place normalize
+end_process
+
+process projection(v: RealVector) result: RealVector
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result = v * (dotProduct(v) / v.dotProduct(v)) ∧ state unchanged
+end_process
+
+process projection(v: double[]) result: RealVector
+pre
+v ≠ null ∧ |v| = |data|
+post
+result = projection(new ArrayRealVector(v,false))
+end_process
+
+process projection(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result = v * (dotProduct(v) / v.dotProduct(v)) ∧ state unchanged
+end_process
+
+process outerProduct(v: RealVector) result: RealMatrix
+pre
+v ≠ null ∧ v.getDimension() = |data|
+post
+result is m×m where m=|data| ∧ result[i,j] = data[i] * v.getEntry(j)
+end_process
+
+process outerProduct(v: ArrayRealVector) result: RealMatrix
+pre
+v ≠ null ∧ |v.data| = |data|
+post
+result[i,j] = data[i] * v.data[j]
+end_process
+
+process outerProduct(v: double[]) result: RealMatrix
+pre
+v ≠ null ∧ |v| = |data|
+post
+result[i,j] = data[i] * v[j]
+end_process
+
+process getEntry(index: int) result: double
+pre
+0 ≤ index < |data|
+post
+result = data[index] ∧ state unchanged
+end_process
+
+process getDimension() result: int
+pre
+true
+post
+result = |data| ∧ state unchanged
+end_process
+
+process append(v: RealVector) result: RealVector
+pre
+v ≠ null
+post
+result = concatenation of this and v entries ∧ state unchanged
+end_process
+
+process append(v: ArrayRealVector) result: ArrayRealVector
+pre
+v ≠ null
+post
+result = new ArrayRealVector(this, v) ∧ state unchanged
+Functional Scenario Form
+valid input && return concatenated copy
+end_process
+
+process append(in: double) result: RealVector
+pre
+true
+post
+result.length = |data| + 1 ∧ result[0..|data|-1] = data ∧ result[|data|] = in ∧ state unchanged
+Functional Scenario Form
+always && copy data then append scalar
+end_process
+
+process append(in: double[]) result: RealVector
+pre
+in ≠ null
+post
+result = concatenation(data, in) ∧ state unchanged
+Functional Scenario Form
+valid input && return concatenated copy
+end_process
+
+process getSubVector(index: int, n: int) result: RealVector
+pre
+0 ≤ index ∧ 0 ≤ n ∧ index + n ≤ |data|
+post
+result[k] = data[index + k] for k ∈ [0..n-1] ∧ state unchanged
+Functional Scenario Form
+valid range && return slice
+or invalid range && throw MatrixIndexException
+end_process
+
+process setEntry(index: int, value: double)
+pre
+0 ≤ index < |data|
+post
+data' = data with data'[index] = value ∧ ∀j≠index • data'[j] = data[j]
+Functional Scenario Form
+valid index && assign element
+or invalid index && throw MatrixIndexException
+end_process
+
+process setSubVector(index: int, v: RealVector)
+pre
+v ≠ null ∧ 0 ≤ index ∧ index + v.getDimension() ≤ |data|
+post
+∀k∈[0..v.getDimension()-1] • data'[index + k] = v.getEntry(k) ∧ other entries unchanged
+Functional Scenario Form
+v is ArrayRealVector && bulk copy via set(index, (ArrayRealVector)v)
+or v other type && copy entry by entry
+or invalid range && throw MatrixIndexException
+end_process
+
+process setSubVector(index: int, v: double[])
+pre
+v ≠ null ∧ 0 ≤ index ∧ index + |v| ≤ |data|
+post
+∀k∈[0..|v|-1] • data'[index + k] = v[k] ∧ other entries unchanged
+Functional Scenario Form
+valid range && System.arraycopy
+or invalid range && throw MatrixIndexException
+end_process
+
+process set(index: int, v: ArrayRealVector)
+pre
+v ≠ null ∧ 0 ≤ index ∧ index + |v.data| ≤ |data|
+post
+∀k∈[0..|v.data|-1] • data'[index + k] = v.data[k] ∧ other entries unchanged
+Functional Scenario Form
+delegate && setSubVector(index, v.data)
+end_process
+
+process set(value: double)
+pre
+true
+post
+∀i∈[0..|data|-1] • data'[i] = value
+Functional Scenario Form
+always && fill with scalar
+end_process
+
+process toArray() result: double[]
+pre
+true
+post
+result = clone(data) ∧ result ≠ data ∧ state unchanged
+Functional Scenario Form
+always && return defensive copy
+end_process
+
+process toString() result: String
+pre
+true
+post
+result = DEFAULT_FORMAT.format(this) ∧ state unchanged
+Functional Scenario Form
+always && format with RealVectorFormat default instance
+end_process
+
+process checkVectorDimensions(v: RealVector)
+pre
+v ≠ null
+post
+(v.getDimension() = |data| ∧ state unchanged) ∨ (v.getDimension() ≠ |data| ∧ throw IllegalArgumentException)
+Functional Scenario Form
+same dimension && return normally
+or mismatch && throw IllegalArgumentException
+end_process
+
+process checkVectorDimensions(n: int)
+pre
+true
+post
+(n = |data| ∧ state unchanged) ∨ (n ≠ |data| ∧ throw IllegalArgumentException)
+Functional Scenario Form
+expected matches && return
+or mismatch && throw IllegalArgumentException
+end_process
+
+process isNaN() result: boolean
+pre
+true
+post
+result ⇔ ∃i • Double.isNaN(data[i]) ∧ state unchanged
+Functional Scenario Form
+any NaN && return true
+or none NaN && return false
+end_process
+
+process isInfinite() result: boolean
+pre
+true
+post
+(isNaN() ⇒ result = false) ∧ (¬isNaN() ⇒ (result ⇔ ∃i • Double.isInfinite(data[i]))) ∧ state unchanged
+Functional Scenario Form
+contains NaN && return false
+or no NaN and some infinite && return true
+or no NaN and none infinite && return false
+end_process
+
+process equals(other: Object) result: boolean
+pre
+true
+post
+result = (
+(this = other) ∨
+(other is RealVector ∧
+((RealVector)other).getDimension() = |data| ∧
+(((RealVector)other).isNaN() ∧ this.isNaN()) ∨
+(¬((RealVector)other).isNaN() ∧ ∀i • data[i] = ((RealVector)other).getEntry(i))
+)
+) ∧ state unchanged
+Functional Scenario Form
+same reference && true
+or other not RealVector || dim mismatch && false
+or rhs isNaN && return this.isNaN()
+or all entries equal && true
+or any entry differs && false
+end_process
+
+process hashCode() result: int
+pre
+true
+post
+result = (isNaN() ? 9 : MathUtils.hash(data)) ∧ state unchanged
+Functional Scenario Form
+vector has NaN && return 9
+or otherwise && return MathUtils.hash over data
+end_process
+
+end_module

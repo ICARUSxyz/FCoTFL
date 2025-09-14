@@ -1,0 +1,18 @@
+// Test Case 1: Animation Parameter Binding
+→ Condition: Player is on the ground
+→ Expected Animator Bool: "isGround" = true
+→ Actual Result: No animation triggered
+// Animator not responding due to incorrect parameter name used in script.
+
+
+// Test Case 2: Player Direction Flip
+→ Input: Press left/right key
+→ Expected: Player sprite flips correctly
+→ Actual: Player sprite appears distorted or flattened
+// Incorrect vector construction leads to malformed localScale, possibly missing Z-axis.
+
+// Test Case 3: Death Condition
+→ Trigger: Player touches "Spike"
+→ Expected: Animation plays, game ends
+→ Actual: Animation plays, game does not end
+// `playerDead` flag set incorrectly before being passed to game over handler.

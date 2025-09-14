@@ -1,0 +1,44 @@
+module LookupTranslator
+
+type
+  input: sequence of char,
+  index: int,
+  resultString: sequence of char,
+  matched: sequence of char,
+  map: set of pair of (sequence of char, sequence of char),
+  out: Writer
+
+process LookupTranslatorConstructor(lookup: sequence of sequence of pair of (sequence of char, sequence of char)) 
+  result: LookupTranslator
+pre
+  true
+post
+  result.lookupMap = convertToMap(lookup) &&
+  result.shortest = min length of keys in lookup &&
+  result.longest = max length of keys in lookup
+Functional Scenario Form
+  (lookup ≠ null) && (result.lookupMap created from lookup) &&
+  (result.shortest = min length of lookup keys) &&
+  (result.longest = max length of lookup keys)
+end_process
+
+process translate(input: sequence of char, index: int, out: Writer) result: int
+pre
+  0 ≤ index < |input|
+post
+  (∃ len: int. shortest ≤ len ≤ longest ∧
+    index + len ≤ |input| ∧
+    input[index .. index+len-1] ∈ dom(lookupMap)) →
+      result = len ∧ out.write(lookupMap[input[index .. index+len-1]]) &&
+  (¬∃ len: int. shortest ≤ len ≤ longest ∧
+    index + len ≤ |input| ∧
+    input[index .. index+len-1] ∈ dom(lookupMap)) →
+      result = 0
+Functional Scenario Form
+  (∃ s: sequence of char. s = input[index..index+i-1] ∧ s ∈ dom(lookupMap)) &&
+    (result = |s| ∧ out.write(lookupMap[s])) or
+  (∀ s: input[index..index+i-1]. s ∉ dom(lookupMap)) &&
+    (result = 0)
+end_process
+
+end_module

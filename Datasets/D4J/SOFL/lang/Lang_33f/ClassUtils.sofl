@@ -1,0 +1,284 @@
+module ClassUtils
+type 
+    object: Object
+    valueIfNull: String
+    cls: Class
+    className: String
+    classNames: sequence of String
+    classes: sequence of Class
+    valueIfNull: String
+    result: String
+    resultList: sequence of Class
+    resultNameList: sequence of String
+
+process getShortClassName(object: Object, valueIfNull: String) result: String
+pre  true
+post (object ≠ null → result = getShortClassName(object.getClass())) ∧
+     (object = null → result = valueIfNull)
+Functional Scenario Form 
+(object ≠ null) && (result = getShortClassName(object.getClass())) or 
+(object = null) && (result = valueIfNull)
+end_process
+
+process getShortClassName(cls: Class) result: String
+pre  true
+post (cls ≠ null → result = getShortClassName(cls.getName())) ∧
+     (cls = null → result = "")
+Functional Scenario Form 
+(cls ≠ null) && (result = getShortClassName(cls.getName())) or 
+(cls = null) && (result = "")
+end_process
+
+process getShortClassName(className: String) result: String
+pre  true
+post if className = null ∨ className = "" then
+         result = ""
+     else if className startsWith "[" then
+         result = formatted name with array prefix
+     else if className ∈ reverseAbbreviationMap then
+         result = reverseAbbreviationMap[className]
+     else 
+         result = substring after last '.'
+Functional Scenario Form 
+(className = null ∨ className = "") && (result = "") or
+(className starts with "[") && (result = formatted array name) or
+(className ∈ reverseAbbreviationMap) && (result = reverseAbbreviationMap[className]) or
+(true) && (result = className after last dot, with '$' replaced)
+end_process
+
+process getPackageName(object: Object, valueIfNull: String) result: String
+pre  true
+post (object ≠ null → result = getPackageName(object.getClass())) ∧
+     (object = null → result = valueIfNull)
+Functional Scenario Form 
+(object ≠ null) && (result = getPackageName(object.getClass())) or 
+(object = null) && (result = valueIfNull)
+end_process
+
+process getPackageName(cls: Class) result: String
+pre  true
+post (cls ≠ null → result = getPackageName(cls.getName())) ∧
+     (cls = null → result = "")
+Functional Scenario Form 
+(cls ≠ null) && (result = getPackageName(cls.getName())) or 
+(cls = null) && (result = "")
+end_process
+
+process getPackageName(className: String) result: String
+pre  true
+post if className = null ∨ className = "" then
+         result = ""
+     else 
+         result = className substring before last '.'
+Functional Scenario Form 
+(className = null ∨ className = "") && (result = "") or 
+(true) && (result = className before last dot)
+end_process
+
+process getAllSuperclasses(cls: Class) classes: sequence of Class
+pre  true
+post (cls = null → classes = null) ∧
+     (cls ≠ null → classes = list of superclasses of cls in order)
+Functional Scenario Form 
+(cls = null) && (classes = null) or 
+(cls ≠ null) && (classes = superclasses of cls in order)
+end_process
+
+process getShortClassName(object: Object, valueIfNull: String) result: String
+pre  true
+post (object = null → result = valueIfNull) ∧
+     (object ≠ null → result = getShortClassName(object.getClass()))
+Functional Scenario Form
+(object = null) && (result = valueIfNull) or
+(object ≠ null) && (result = getShortClassName(object.getClass()))
+end_process
+
+process getShortClassName(cls: Class) result: String
+pre  true
+post (cls = null → result = "") ∧
+     (cls ≠ null → result = getShortClassName(cls.getName()))
+Functional Scenario Form
+(cls = null) && (result = "") or
+(cls ≠ null) && (result = getShortClassName(cls.getName()))
+end_process
+
+process getShortClassName(className: String) result: String
+pre  className ≠ null ∧ className ≠ ""
+post result = computedShortClassName(className)
+Functional Scenario Form
+(className = null ∨ className = "") && (result = "") or
+(className ≠ null ∧ className ≠ "") && (result = computedShortClassName(className))
+end_process
+
+process getPackageName(object: Object, valueIfNull: String) result: String
+pre  true
+post (object = null → result = valueIfNull) ∧
+     (object ≠ null → result = getPackageName(object.getClass()))
+Functional Scenario Form
+(object = null) && (result = valueIfNull) or
+(object ≠ null) && (result = getPackageName(object.getClass()))
+end_process
+
+process getPackageName(cls: Class) result: String
+pre  true
+post (cls = null → result = "") ∧
+     (cls ≠ null → result = getPackageName(cls.getName()))
+Functional Scenario Form
+(cls = null) && (result = "") or
+(cls ≠ null) && (result = getPackageName(cls.getName()))
+end_process
+
+process getPackageName(className: String) result: String
+pre  className ≠ null ∧ className ≠ ""
+post result = computedPackageName(className)
+Functional Scenario Form
+(className = null ∨ className = "") && (result = "") or
+(className ≠ null ∧ className ≠ "") && (result = computedPackageName(className))
+end_process
+
+process getAllSuperclasses(cls: Class) resultList: sequence of Class
+pre  true
+post (cls = null → resultList = null) ∧
+     (cls ≠ null → resultList = superclasses of cls in top-down order)
+Functional Scenario Form
+(cls = null) && (resultList = null) or
+(cls ≠ null) && (resultList = list of superclasses from cls.getSuperclass())
+end_process
+
+process getShortClassNameFromObject(object: Object, valueIfNull: String) result: String
+pre  true
+post (object = null → result = valueIfNull) ∧ 
+     (object ≠ null → result = getShortClassNameFromClass(object.getClass()))
+Functional Scenario Form 
+(object = null) && (result = valueIfNull) or 
+(object ≠ null) && (result = getShortClassNameFromClass(object.getClass()))
+end_process
+
+process getPackageNameFromObject(object: Object, valueIfNull: String) result: String
+pre  true
+post (object = null → result = valueIfNull) ∧ 
+     (object ≠ null → result = getPackageNameFromClass(object.getClass()))
+Functional Scenario Form 
+(object = null) && (result = valueIfNull) or 
+(object ≠ null) && (result = getPackageNameFromClass(object.getClass()))
+end_process
+
+process convertClassNamesToClasses(classNames: sequence of String) result: sequence of Class
+pre  true
+post (classNames = null → result = null) ∧ 
+     (classNames ≠ null → |result| = |classNames| ∧ ∀i ∈ [0..|classNames|-1] •
+        (classNames(i) = null → result(i) = null) ∧
+        (classNames(i) ≠ null → try load className → result(i) or null if fails))
+Functional Scenario Form 
+(classNames = null) && (result = null) or 
+(classNames ≠ null) && (result = classes with Class.forName success or null if fails)
+end_process
+
+process convertClassesToClassNames(classes: sequence of Class) result: sequence of String
+pre  true
+post (classes = null → result = null) ∧ 
+     (classes ≠ null → |result| = |classes| ∧ ∀i ∈ [0..|classes|-1] •
+        (classes(i) = null → result(i) = null) ∧
+        (classes(i) ≠ null → result(i) = classes(i).getName()))
+Functional Scenario Form 
+(classes = null) && (result = null) or 
+(classes ≠ null) && (each className = class.getName() or null)
+end_process
+
+process isAssignable(classArray: sequence of Class, toClassArray: sequence of Class) result: Boolean
+pre  true
+post (|classArray| ≠ |toClassArray| → result = false) ∧
+     (|classArray| = |toClassArray| → result = ∀i ∈ [0..|classArray|-1] • 
+        isAssignable(classArray(i), toClassArray(i), autoboxing))
+Functional Scenario Form 
+(|classArray| ≠ |toClassArray|) && (result = false) or 
+(for all pairs (c1, c2) isAssignable) && (result = true) or 
+(exists i, not isAssignable) && (result = false)
+end_process
+
+process isAssignableSingle(cls: Class, toClass: Class) result: Boolean
+pre  true
+post (toClass = null → result = false) ∧
+     (cls = null → result = ¬toClass.isPrimitive()) ∧
+     (cls ≠ null ∧ toClass ≠ null → result = isTypeConvertible(cls, toClass))
+Functional Scenario Form 
+(toClass = null) && (result = false) or 
+(cls = null) && (result = ¬toClass.isPrimitive()) or 
+(primitive/wrapper logic or isAssignableFrom) && (result = true or false)
+end_process
+
+process primitiveToWrapper(cls: Class) result: Class
+pre  true
+post (cls = null → result = null) ∧ 
+     (cls ≠ null ∧ cls.isPrimitive() → result = primitiveWrapperMap(cls)) ∧ 
+     (cls ≠ null ∧ ¬cls.isPrimitive() → result = cls)
+Functional Scenario Form 
+(cls = null) && (result = null) or 
+(cls is primitive) && (result = wrapper) or 
+(cls not primitive) && (result = cls)
+end_process
+
+process wrapperToPrimitive(cls: Class) result: Class
+pre  true
+post (cls = null → result = null) ∧ 
+     (cls ≠ null ∧ cls ∈ wrapperPrimitiveMap → result = wrapperPrimitiveMap(cls)) ∧ 
+     (cls ≠ null ∧ cls ∉ wrapperPrimitiveMap → result = null)
+Functional Scenario Form 
+(cls = null) && (result = null) or 
+(cls is wrapper) && (result = primitive) or 
+(cls not wrapper) && (result = null)
+end_process
+
+process isInnerClass(cls: Class) result: Boolean
+pre  true
+post (cls = null → result = false) ∧ 
+     (cls ≠ null → result = (INNER_CLASS_SEPARATOR_CHAR ∈ cls.getName()))
+Functional Scenario Form 
+(cls = null) && (result = false) or 
+(cls ≠ null ∧ contains '$') && (result = true) or 
+(cls ≠ null ∧ no '$') && (result = false)
+end_process
+
+process isAssignable(classArray: sequence of Class, toClassArray: sequence of Class) result: Boolean
+pre 
+    true
+post 
+    (length(classArray) ≠ length(toClassArray) ⇒ result = false) ∧
+    (length(classArray) = length(toClassArray) ⇒
+        result = ∀ i ∈ [0..length(classArray)-1] • 
+                 isAssignable(classArray[i], toClassArray[i], SystemUtils.isJavaVersionAtLeast(1.5)))
+Functional Scenario Form 
+(length(classArray) ≠ length(toClassArray)) && (result = false) or 
+(length(classArray) = length(toClassArray)) && (result = ∀ i • isAssignable(classArray[i], toClassArray[i], SystemUtils.isJavaVersionAtLeast(1.5))))
+end_process
+
+process isAssignable(cls: Class, toClass: Class) result: Boolean
+pre 
+    true
+post 
+    ((toClass = null) ⇒ result = false) ∧
+    ((cls = null ∧ toClass ≠ null ∧ ¬toClass.isPrimitive()) ⇒ result = true) ∧
+    ((cls ≠ null ∧ toClass ≠ null) ⇒ 
+        result = isAssignable(cls, toClass, SystemUtils.isJavaVersionAtLeast(1.5)))
+Functional Scenario Form 
+(toClass = null) && (result = false) or
+(cls = null && ¬toClass.isPrimitive()) && (result = true) or
+(cls ≠ null && toClass ≠ null) && (result = isAssignable(cls, toClass, SystemUtils.isJavaVersionAtLeast(1.5)))
+end_process
+
+process isAssignable(cls: Class, toClass: Class, autoboxing: Boolean) result: Boolean
+pre 
+    true
+post 
+    ((toClass = null) ⇒ result = false) ∧
+    ((cls = null ∧ ¬toClass.isPrimitive()) ⇒ result = true) ∧
+    ((cls ≠ null ∧ toClass ≠ null) ⇒ 
+        result = JavaLanguageSpecAssignable(cls, toClass, autoboxing))
+Functional Scenario Form 
+(toClass = null) && (result = false) or 
+(cls = null && ¬toClass.isPrimitive()) && (result = true) or 
+(cls ≠ null && toClass ≠ null) && (result = JavaLanguageSpecAssignable(cls, toClass, autoboxing))
+end_process
+
+
+end_module

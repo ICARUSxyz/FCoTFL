@@ -1,0 +1,272 @@
+module DateTimeParserBucket  
+type:  
+  iMillis: long  
+  iPivotYear: int
+  iDefaultYear: int  
+
+var:  
+  iOffset: int = 0  
+  iSavedFieldsCount: int = 0  
+  iSavedFieldsShared: boolean = false  
+
+
+// Main constructor
+process constructor(instantLocal: long, chrono: Chronology, locale: Locale, pivotYear: Integer?, defaultYear: int)  
+pre true  
+post  
+  chrono' = DateTimeUtils.getChronology(chrono)  
+  iMillis' = instantLocal  
+  iChrono' = chrono'.withUTC()  
+  iLocale' = (locale ≠ null ? locale : Locale.getDefault())  
+  iZone' = (chrono'.getZone() = DateTimeZone.UTC ? null : chrono'.getZone())  
+  iOffset' = 0  
+  iPivotYear' = pivotYear  
+  iDefaultYear' = defaultYear  
+  iSavedFields' = new SavedField[8]  
+  iSavedFieldsCount' = 0  
+  iSavedFieldsShared' = false  
+  iSavedState' = null  
+Functional Scenario Form  
+instantLocal=0L chrono=ISOChronology locale=null pivotYear=2000 defaultYear=2000 && initializes UTC chronology  
+locale=Locale.US && sets US locale  
+chrono=UTC && sets iZone=null  
+end_process  
+
+// Chronology getter
+process getChronology() result: Chronology  
+pre true  
+post  
+  result' = iChrono  
+Functional Scenario Form  
+iChrono=ISOChronology.UTC && returns same  
+end_process  
+
+// Locale getter
+process getLocale() result: Locale  
+pre true  
+post  
+  result' = iLocale  
+Functional Scenario Form  
+iLocale=Locale.FRENCH && returns French  
+end_process  
+
+// Zone getter
+process getZone() result: DateTimeZone?  
+pre true  
+post  
+  result' = iZone  
+Functional Scenario Form  
+iZone=DateTimeZone.UTC && returns null (UTC normalized)  
+iZone=DateTimeZone.forID("EST") && returns EST  
+end_process  
+
+// Zone setter
+process setZone(zone: DateTimeZone?)  
+pre true  
+post  
+  iSavedState' = null  
+  zone = DateTimeZone.UTC  
+    ? iZone' = null  
+    : iZone' = zone  
+  iOffset' = 0  
+Functional Scenario Form  
+zone=UTC && sets iZone=null  
+zone=EST && sets iZone=EST  
+zone=null && sets iZone=null  
+end_process  
+
+// Offset setter
+process setOffset(offset: int)  
+pre true  
+post  
+  iSavedState' = null  
+  iOffset' = offset  
+  iZone' = null  
+Functional Scenario Form  
+offset=3600000 && sets iOffset=3600000 iZone=null  
+end_process  
+
+// Field saver (text input)
+process saveField(fieldType: DateTimeFieldType, text: String, locale: Locale)  
+pre true  
+post  
+  field = new SavedField(fieldType.getField(iChrono), text, locale)  
+  saveField(field)  
+Functional Scenario Form  
+fieldType=year text="2025" locale=Locale.US && creates SavedField  
+end_process  
+
+// Internal field saver
+process saveField(field: SavedField)  
+pre true  
+post  
+  savedFields = iSavedFields  
+  savedFieldsCount = iSavedFieldsCount  
+  savedFieldsCount = savedFields.length ∨ iSavedFieldsShared  
+    ? newSize = (savedFieldsCount = savedFields.length ? savedFieldsCount * 2 : savedFields.length)  
+      newArray = new SavedField[newSize]  
+      System.arraycopy(savedFields, 0, newArray, 0, savedFieldsCount)  
+      iSavedFields' = newArray  
+      iSavedFieldsShared' = false  
+      savedFields' = newArray  
+    : // No resize  
+  iSavedState' = null  
+  savedFields'[savedFieldsCount] = field  
+  iSavedFieldsCount' = savedFieldsCount + 1  
+Functional Scenario Form  
+savedFieldsCount=8 && doubles array size to 16  
+iSavedFieldsShared=true && creates new array  
+savedFieldsCount=3 && stores at index 3  
+end_process  
+
+// State saving
+process saveState() result: Object  
+pre true  
+post  
+  iSavedState = null  
+    ? iSavedState' = new SavedState()  
+  result' = iSavedState  
+Functional Scenario Form  
+initial state && returns new SavedState  
+non-null state && returns existing  
+end_process  
+
+// State restoration
+process restoreState(savedState: Object) result: boolean  
+pre true  
+post  
+  savedState instanceof SavedState  
+    ? ((SavedState)savedState).restoreState(this)  
+        ? iSavedState' = savedState  
+          result' = true  
+        : result' = false  
+    : result' = false  
+Functional Scenario Form  
+savedState=valid SavedState && restores state returns true  
+savedState=String && returns false  
+end_process 
+
+// Sorting helper
+process sort(array: array of SavedField, high: int)  
+pre high ≥ 0  
+post  
+  high > 10  
+    ? array' = Arrays.sort(array, 0, high)  
+  else  
+    for i=0 to high-1  
+      ? for j=i downto 1  
+          ? array[j-1].compareTo(array[j]) > 0  
+              ? temp = array[j]  
+                array'[j] = array[j-1]  
+                array'[j-1] = temp  
+              : break  
+Functional Scenario Form  
+high=5 && performs insertion sort  
+high=15 && uses Arrays.sort  
+array[0..2] unsorted && returns sorted subarray  
+end_process  
+
+// SavedState constructor
+process SavedState_constructor()  
+pre true  
+post  
+  iZone' = DateTimeParserBucket.this.iZone  
+  iOffset' = DateTimeParserBucket.this.iOffset  
+  iSavedFields' = DateTimeParserBucket.this.iSavedFields  
+  iSavedFieldsCount' = DateTimeParserBucket.this.iSavedFieldsCount  
+Functional Scenario Form  
+bucket.iZone=EST bucket.iSavedFieldsCount=3 && captures EST and count=3  
+end_process  
+
+// State restoration logic
+process restoreState(enclosing: DateTimeParserBucket) result: boolean  
+pre true  
+post  
+  enclosing ≠ DateTimeParserBucket.this  
+    ? result' = false  
+  else  
+    enclosing.iZone' = this.iZone  
+    enclosing.iOffset' = this.iOffset  
+    enclosing.iSavedFields' = this.iSavedFields  
+    this.iSavedFieldsCount < enclosing.iSavedFieldsCount  
+        ? enclosing.iSavedFieldsShared' = true  
+    enclosing.iSavedFieldsCount' = this.iSavedFieldsCount  
+    result' = true  
+Functional Scenario Form  
+enclosing=same_bucket savedFieldsCount=2 < currentCount=5 && sets shared=true  
+enclosing=different_bucket && returns false  
+savedFieldsCount=5 >= currentCount=3 && no shared flag change  
+end_process  
+
+// SavedField constructor (int value)
+process createSavedField_int(field: DateTimeField, value: int) result: SavedField  
+pre true  
+post  
+  result.iField' = field  
+  result.iValue' = value  
+  result.iText' = null  
+  result.iLocale' = null  
+Functional Scenario Form  
+field=yearField value=2025 && creates int-based SavedField  
+end_process  
+
+// SavedField constructor (text value)
+process createSavedField_text(field: DateTimeField, text: String, locale: Locale) result: SavedField  
+pre true  
+post  
+  result.iField' = field  
+  result.iValue' = 0  
+  result.iText' = text  
+  result.iLocale' = locale  
+Functional Scenario Form  
+field=monthField text="August" locale=Locale.US && creates text-based SavedField  
+end_process  
+
+// Field setting with optional reset
+process SavedField_set(sf: SavedField, millis: long, reset: boolean) result: long  
+pre true  
+post  
+  sf.iText = null  
+    ? millis' = sf.iField.set(millis, sf.iValue)  
+    : millis' = sf.iField.set(millis, sf.iText, sf.iLocale)  
+  reset  
+    ? result' = sf.iField.roundFloor(millis')  
+    : result' = millis'  
+Functional Scenario Form  
+sf.iText=null reset=false && sets with int value  
+sf.iText="12" reset=true && sets text then rounds  
+end_process  
+
+// Field comparison
+process SavedField_compareTo(sf1: SavedField, sf2: SavedField) result: int  
+pre true  
+post  
+  rangeResult = compareReverse(sf1.iField.getRangeDurationField(), sf2.iField.getRangeDurationField())  
+  rangeResult ≠ 0  
+    ? result' = rangeResult  
+    : result' = compareReverse(sf1.iField.getDurationField(), sf2.iField.getDurationField())  
+Functional Scenario Form  
+sf1=yearField sf2=monthField && compares range durations  
+same range && compares durations  
+end_process  
+
+// Reverse duration comparison
+process compareReverse(a: DurationField, b: DurationField) result: int  
+pre true  
+post  
+  (a = null ∨ ¬a.isSupported()) ∧ (b = null ∨ ¬b.isSupported())  
+    ? result' = 0  
+  (a = null ∨ ¬a.isSupported())  
+    ? result' = -1  
+  (b = null ∨ ¬b.isSupported())  
+    ? result' = 1  
+  else  
+    result' = -a.compareTo(b)  
+Functional Scenario Form  
+a=null b=null && returns 0  
+a=supported b=null && returns -1  
+a=yearDuration b=monthDuration && returns negative comparison  
+end_process  
+
+
+end_module  

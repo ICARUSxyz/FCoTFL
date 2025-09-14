@@ -1,0 +1,48 @@
+module UC8_syntaxhighlighter
+type
+  pattern: String
+  keywordPatterns: sequence of String
+  text: String
+  
+process UC8_syntaxhighlighter(parent: QTextDocument) result: UC8_syntaxhighlighter
+pre
+  parent ≠ null
+post
+  this.parent = parent
+  keywordFormat.foreground = Qt::blue
+  keywordFormat.fontWeight = QFont::Bold
+  keywordPatterns = [
+    "\\bclass\\b", "\\bconst\\b", "\\bvirtual\\b", "\\bint\\b",
+    "\\bfloat\\b", "\\bvoid\\b", "\\bpublic\\b"
+  ]
+  for each pattern in keywordPatterns:
+    create rule with pattern and keywordFormat
+    append to highlightingRules
+  classFormat.foreground = Qt::darkMagenta
+  classFormat.fontWeight = QFont::Bold
+  rule with pattern "\\bQ[A-Za-z]+\\b" and classFormat appended
+  functionFormat.foreground = Qt::darkCyan
+  functionFormat.fontItalic = true
+  rule with pattern "\\b[A-Za-z0-9_]+(?=\\()" and functionFormat appended
+  quotationFormat.foreground = Qt::darkGreen
+  rule with pattern "\".*\"" and quotationFormat appended
+  singleLineCommentFormat.foreground = Qt::red
+  rule with pattern "//[^\\n]*" and singleLineCommentFormat appended
+Functional Scenario Form
+parent is valid && all highlighting rules initialized correctly
+end_process
+
+process highlightBlock(text: String) result: Void
+pre
+  text ≠ null
+post
+  for each rule in highlightingRules:
+    find all matches of rule.pattern in text
+    for each match:
+      setFormat(start, length, rule.format) executed
+Functional Scenario Form
+text contains syntax matching one or more rules && formats applied accordingly or
+text does not match any rule && no format applied
+end_process
+
+end_module

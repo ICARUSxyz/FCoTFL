@@ -1,0 +1,256 @@
+module AbstractLeastSquaresOptimizer  
+type:  
+
+  weightedResidualJacobian: double[][]           
+  cols: int                                 
+  rows: int                                        
+  point: double[]                                
+  objective: double[]                           
+  weightedResiduals: double[]           
+  cost: double                              
+  jacobianEvaluations: int  
+
+var:  
+  DEFAULT_SINGULARITY_THRESHOLD: double = 1e-14  
+
+// Deprecated default constructor  
+process constructor_default()  
+pre true  
+post  
+  // Default initialization handled by superclass  
+end_process  
+
+// Primary constructor  
+process constructor(checker: ConvergenceChecker<PointVectorValuePair>)  
+pre true  
+post  
+  super(checker)  // Invoke superclass constructor  
+end_process  
+
+// Jacobian evaluations accessor  
+process getJacobianEvaluations() result: int  
+pre true  
+post  
+  result' = jacobianEvaluations  
+end_process  
+
+// Jacobian matrix update  
+process updateJacobian()  
+pre true  
+post  
+  weightedJacobian = computeWeightedJacobian(point)  
+  weightedResidualJacobian' = weightedJacobian.scalarMultiply(-1).getData()  
+Functional Scenario Form  
+point initialized && updates weightedResidualJacobian  
+end_process  
+
+// Weighted Jacobian computation  
+process computeWeightedJacobian(params: double[]) result: RealMatrix  
+pre true  
+post  
+  jacobianEvaluations' = jacobianEvaluations + 1  
+  nC = params.length  
+  dsPoint = new DerivativeStructure[nC]  
+  ∀i:0≤i<nC → dsPoint[i] = new DerivativeStructure(nC, 1, i, params[i])  
+  dsValue = jF.value(dsPoint)  
+  nR = getTarget().length  
+  dsValue.length ≠ nR → throw DimensionMismatchException(dsValue.length, nR)  
+  jacobianData = new double[nR][nC]  
+  ∀i:0≤i<nR → orders = new int[nC] → ∀j:0≤j<nC → orders[j] = 1 →  
+    jacobianData[i][j] = dsValue[i].getPartialDerivative(orders)  
+    orders[j] = 0  
+  result' = weightMatrixSqrt.multiply(MatrixUtils.createRealMatrix(jacobianData))  
+Functional Scenario Form  
+params valid && computes weighted Jacobian  
+nR ≠ dsValue.length && throws DimensionMismatchException  
+end_process  
+
+// Residuals and cost update  
+process updateResidualsAndCost()  
+pre true  
+post  
+  objective' = computeObjectiveValue(point)  
+  res = computeResiduals(objective)  
+  cost' = computeCost(res)  
+  residuals = new ArrayRealVector(res)  
+  weightedResiduals' = weightMatrixSqrt.operate(residuals).toArray()  
+Functional Scenario Form  
+point initialized && updates cost and residuals  
+end_process  
+
+// Cost computation  
+process computeCost(residuals: double[]) result: double  
+pre true  
+post  
+  r = new ArrayRealVector(residuals)  
+  result' = FastMath.sqrt(r.dotProduct(getWeight().operate(r)))  
+end_process  
+
+// Root Mean Square  
+process getRMS() result: double  
+pre true  
+post  
+  result' = FastMath.sqrt(getChiSquare() / rows)  
+Functional Scenario Form  
+rows>0 && returns positive RMS  
+end_process  
+
+// Chi-square value  
+process getChiSquare() result: double  
+pre true  
+post  
+  result' = cost * cost  
+end_process  
+
+// Weight matrix accessor  
+process getWeightSquareRoot() result: RealMatrix  
+pre true  
+post  
+  result' = weightMatrixSqrt.copy()  
+end_process  
+
+// Cost setter  
+process setCost(newCost: double)  
+pre true  
+post  
+  cost' = newCost  
+end_process  
+
+// Covariance computation (deprecated)  
+process getCovariances() result: double[][]  
+pre true  
+post  
+  result' = getCovariances(DEFAULT_SINGULARITY_THRESHOLD)  
+end_process  
+
+// Covariance with threshold (deprecated)  
+process getCovariances(threshold: double) result: double[][]  
+pre true  
+post  
+  result' = computeCovariances(point, threshold)  
+end_process  
+
+// Core covariance computation  
+process computeCovariances(params: double[], threshold: double) result: double[][]  
+pre true  
+post  
+  j = computeWeightedJacobian(params)  
+  jTj = j.transpose().multiply(j)  
+  solver = new QRDecomposition(jTj, threshold).getSolver()  
+  result' = solver.getInverse().getData()  
+Functional Scenario Form  
+valid jacobian && returns covariance  
+singular jacobian && throws SingularMatrixException  
+end_process  
+
+// Parameter errors estimation  
+process guessParametersErrors() result: double[]  
+pre true  
+post  
+  rows ≤ cols → throw NumberIsTooSmallException(rows, cols)  
+  c = FastMath.sqrt(getChiSquare() / (rows - cols))  
+  covar = computeCovariances(point, 1e-14)  
+  errors = new double[cols]  
+  ∀i:0≤i<cols → errors[i] = FastMath.sqrt(covar[i][i]) * c  
+  result' = errors  
+Functional Scenario Form  
+rows>cols && returns parameter errors  
+rows≤cols && throws exception  
+end_process  
+
+// Parameter standard deviations  
+process computeSigma(params: double[], covarianceSingularityThreshold: double) result: double[]  
+pre true  
+post  
+  nC = params.length  
+  sig = new double[nC]  
+  cov = computeCovariances(params, covarianceSingularityThreshold)  
+  ∀i:0≤i<nC → sig[i] = FastMath.sqrt(cov[i][i])  
+  result' = sig  
+end_process  
+
+// Optimization entry point (DifferentiableVectorFunction)  
+process optimize_diff(maxEval: int,  
+                      f: DifferentiableMultivariateVectorFunction,  
+                      target: double[], weights: double[],  
+                      startPoint: double[]) result: PointVectorValuePair  
+pre true  
+post  
+  result' = optimizeInternal(maxEval,  
+                             FunctionUtils.toMultivariateDifferentiableVectorFunction(f),  
+                             new Target(target),  
+                             new Weight(weights),  
+                             new InitialGuess(startPoint))  
+end_process  
+
+// Optimization entry point (MultivariateDifferentiableVectorFunction)  
+process optimize_multi(maxEval: int,  
+                       f: MultivariateDifferentiableVectorFunction,  
+                       target: double[], weights: double[],  
+                       startPoint: double[]) result: PointVectorValuePair  
+pre true  
+post  
+  result' = optimizeInternal(maxEval, f,  
+                            new Target(target),  
+                            new Weight(weights),  
+                            new InitialGuess(startPoint))  
+end_process  
+
+// Core optimization routine  
+process optimizeInternal(maxEval: int,  
+                         f: MultivariateDifferentiableVectorFunction,  
+                         optData: OptimizationData[]) result: PointVectorValuePair  
+pre true  
+post  
+  result' = super.optimizeInternal(maxEval,  
+                                  FunctionUtils.toDifferentiableMultivariateVectorFunction(f),  
+                                  optData)  
+end_process  
+
+// Setup for optimization  
+process setUp()  
+pre true  
+post  
+  super.setUp()  
+  jacobianEvaluations' = 0  
+  weightMatrixSqrt' = squareRoot(getWeight())  
+  jF' = FunctionUtils.toMultivariateDifferentiableVectorFunction((DifferentiableMultivariateVectorFunction)getObjectiveFunction())  
+  point' = getStartPoint()  
+  rows' = getTarget().length  
+  cols' = point.length  
+Functional Scenario Form  
+called before optimization && initializes state  
+end_process  
+
+// Residuals computation  
+process computeResiduals(objectiveValue: double[]) result: double[]  
+pre true  
+post  
+  target = getTarget()  
+  objectiveValue.length ≠ target.length → throw DimensionMismatchException(target.length, objectiveValue.length)  
+  residuals = new double[target.length]  
+  ∀i:0≤i<target.length → residuals[i] = target[i] - objectiveValue[i]  
+  result' = residuals  
+Functional Scenario Form  
+matching dimensions && computes residuals  
+mismatched dimensions && throws exception  
+end_process  
+
+// Weight matrix square root  
+process squareRoot(m: RealMatrix) result: RealMatrix  
+pre true  
+post  
+  m instanceof DiagonalMatrix  
+    ? dim = m.getRowDimension()  
+      sqrtM = new DiagonalMatrix(dim)  
+      ∀i:0≤i<dim → sqrtM.setEntry(i, i, FastMath.sqrt(m.getEntry(i, i)))  
+      result' = sqrtM  
+    : dec = new EigenDecomposition(m)  
+      result' = dec.getSquareRoot()  
+Functional Scenario Form  
+diagonal matrix && computes element-wise sqrt  
+non-diagonal matrix && uses eigenvalue decomposition  
+end_process  
+
+
+end_module

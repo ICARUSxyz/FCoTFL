@@ -1,0 +1,280 @@
+module FractionModule
+type 
+    numerator: int
+    denominator: int
+    whole: int
+    value: real
+    str: string
+    f: Fraction
+
+process getFraction(numerator: int, denominator: int) f: Fraction
+pre  denominator ≠ 0 ∧ (denominator > 0 ∨ numerator ≠ Integer.MIN_VALUE ∧ denominator ≠ Integer.MIN_VALUE)
+post if denominator > 0 then
+         f = Fraction(numerator, denominator)
+     else
+         f = Fraction(-numerator, -denominator)
+Functional Scenario Form
+(denominator ≠ 0 ∧ denominator > 0) && (f = Fraction(numerator, denominator)) or
+(denominator ≠ 0 ∧ denominator < 0 ∧ numerator ≠ MIN_INT ∧ denominator ≠ MIN_INT) && (f = Fraction(-numerator, -denominator))
+end_process
+
+process getFraction(whole: int, numerator: int, denominator: int) f: Fraction
+pre  denominator > 0 ∧ numerator ≥ 0 ∧ (whole * denominator + numerator) ∈ int
+post let n = if whole < 0 then whole * denominator - numerator else whole * denominator + numerator in
+     f = Fraction(n, denominator)
+Functional Scenario Form
+(denominator > 0 ∧ numerator ≥ 0 ∧ whole * denominator + numerator ∈ int) && (whole ≥ 0) && (f = Fraction(whole * denominator + numerator, denominator)) or
+(denominator > 0 ∧ numerator ≥ 0 ∧ whole * denominator - numerator ∈ int) && (whole < 0) && (f = Fraction(whole * denominator - numerator, denominator))
+end_process
+
+process getReducedFraction(numerator: int, denominator: int) f: Fraction
+pre  denominator ≠ 0 ∧ (numerator ≠ Integer.MIN_VALUE ∨ denominator ≠ Integer.MIN_VALUE)
+post if numerator = 0 then
+         f = ZERO
+     else
+         let gcd = greatestCommonDivisor(abs(numerator), abs(denominator)) in
+         let n = numerator / gcd, d = denominator / gcd in
+         if d > 0 then f = Fraction(n, d)
+         else f = Fraction(-n, -d)
+Functional Scenario Form
+(denominator ≠ 0 ∧ numerator = 0) && (f = ZERO) or
+(denominator ≠ 0 ∧ numerator ≠ 0) && (f = reduced Fraction of numerator and denominator)
+end_process
+
+process getFraction(value: real) f: Fraction
+pre  ¬isNaN(value) ∧ abs(value) ≤ Integer.MAX_VALUE
+post f ≈ value ∧ f.denominator ≤ 10000 ∧ converged within 25 iterations
+Functional Scenario Form
+(value is double ∧ |value| ≤ MAX_INT ∧ converges) && (f ≈ value ∧ f.denominator ≤ 10000)
+end_process
+
+process getFraction(str: string) f: Fraction
+pre  str ≠ null
+post if str contains '.' then
+         f ≈ Double.parseDouble(str)
+     else if str matches "X Y/Z" then
+         f = getFraction(X, Y, Z)
+     else if str matches "Y/Z" then
+         f = getFraction(Y, Z)
+     else
+         f = getFraction(X, 1)
+Functional Scenario Form
+(str contains '.') && (f ≈ parsed double value) or
+(str matches "X Y/Z") && (f = getFraction(X, Y, Z)) or
+(str matches "Y/Z") && (f = getFraction(Y, Z)) or
+(str matches integer only) && (f = getFraction(X, 1))
+end_process
+
+process getNumerator(): int
+pre  true
+post result = numerator
+Functional Scenario Form 
+true && (result = numerator)
+end_process
+
+process getDenominator(): int
+pre  true
+post result = denominator
+Functional Scenario Form 
+true && (result = denominator)
+end_process
+
+process getProperNumerator(): int
+pre  denominator ≠ 0
+post result = abs(numerator mod denominator)
+Functional Scenario Form 
+(denominator ≠ 0) && (result = abs(numerator mod denominator))
+end_process
+
+process getProperWhole(): int
+pre  denominator ≠ 0
+post result = numerator div denominator
+Functional Scenario Form 
+(denominator ≠ 0) && (result = numerator div denominator)
+end_process
+
+process intValue(): int
+pre  true
+post result = numerator div denominator
+Functional Scenario Form 
+true && (result = numerator div denominator)
+end_process
+
+process longValue(): long
+pre  true
+post result = (long) numerator div denominator
+Functional Scenario Form 
+true && (result = (long) numerator div denominator)
+end_process
+
+process floatValue(): float
+pre  true
+post result = (float) numerator / (float) denominator
+Functional Scenario Form 
+true && (result = (float) numerator / (float) denominator)
+end_process
+
+process doubleValue(): real
+pre  true
+post result = (double) numerator / (double) denominator
+Functional Scenario Form 
+true && (result = (double) numerator / (double) denominator)
+end_process
+
+process reduce(): Fraction
+pre  true
+post if numerator = 0 then
+         result = ZERO
+     else
+         let gcd = gcd(abs(numerator), denominator) in
+         if gcd = 1 then result = this
+         else result = Fraction(numerator div gcd, denominator div gcd)
+Functional Scenario Form 
+(numerator = 0) && (result = ZERO) or
+(gcd = 1) && (result = this) or
+(gcd > 1) && (result = Fraction(numerator / gcd, denominator / gcd))
+end_process
+
+process invert(): Fraction
+pre  numerator ≠ 0 ∧ (numerator ≠ Integer.MIN_VALUE)
+post if numerator < 0 then
+         result = Fraction(-denominator, -numerator)
+     else
+         result = Fraction(denominator, numerator)
+Functional Scenario Form 
+(numerator > 0) && (result = Fraction(denominator, numerator)) or
+(numerator < 0) && (result = Fraction(-denominator, -numerator))
+end_process
+
+process negate(): Fraction
+pre  numerator ≠ Integer.MIN_VALUE
+post result = Fraction(-numerator, denominator)
+Functional Scenario Form 
+true && (result = Fraction(-numerator, denominator))
+end_process
+
+process abs(): Fraction
+pre  true
+post if numerator ≥ 0 then
+         result = this
+     else
+         result = negate()
+Functional Scenario Form 
+(numerator ≥ 0) && (result = this) or
+(numerator < 0) && (result = Fraction(-numerator, denominator))
+end_process
+
+process pow(power: int): Fraction
+pre  true
+post if power = 1 then
+         result = this
+     else if power = 0 then
+         result = ONE
+     else if power < 0 then
+         result = invert().pow(-power) (or adjusted for MIN_VALUE)
+     else if power mod 2 = 0 then
+         result = (this * this).pow(power / 2)
+     else
+         result = (this * this).pow(power / 2) * this
+Functional Scenario Form 
+(power = 1) && (result = this) or
+(power = 0) && (result = ONE) or
+(power < 0) && (result = invert().pow(-power)) or
+(power > 0 ∧ even) && (result = (this * this).pow(power / 2)) or
+(power > 0 ∧ odd) && (result = (this * this).pow(power / 2) * this)
+end_process
+
+process add(fraction: Fraction): Fraction
+pre  fraction ≠ null
+post result = reduced sum of this + fraction
+Functional Scenario Form 
+(fraction ≠ null) && (result = this + fraction in reduced form)
+end_process
+
+process subtract(fraction: Fraction): Fraction
+pre  fraction ≠ null
+post result = reduced difference of this - fraction
+Functional Scenario Form 
+(fraction ≠ null) && (result = this - fraction in reduced form)
+end_process
+
+process multiplyBy(fraction: Fraction): Fraction
+pre  fraction ≠ null
+post if numerator = 0 or fraction.numerator = 0 then
+         result = ZERO
+     else
+         result = reduced((numerator * fraction.numerator) / (denominator * fraction.denominator))
+Functional Scenario Form 
+(numerator = 0 ∨ fraction.numerator = 0) && (result = ZERO) or
+(true) && (result = getReducedFraction((numerator * fraction.numerator) / (denominator * fraction.denominator)))
+end_process
+
+process divideBy(fraction: Fraction): Fraction
+pre  fraction ≠ null ∧ fraction.numerator ≠ 0
+post result = this.multiplyBy(fraction.invert())
+Functional Scenario Form 
+(fraction ≠ null ∧ fraction.numerator ≠ 0) && (result = this.multiplyBy(fraction.invert()))
+end_process
+
+process equals(obj: Object): Boolean
+pre  true
+post if obj = this then
+         result = true
+     else if obj is not Fraction then
+         result = false
+     else
+         result = (this.numerator = obj.numerator ∧ this.denominator = obj.denominator)
+Functional Scenario Form 
+(obj = this) && result or
+(obj ≠ Fraction) && ¬result or
+(obj is Fraction ∧ numerator = obj.numerator ∧ denominator = obj.denominator) && result
+end_process
+
+process compareTo(other: Fraction): int
+pre  other ≠ null
+post if this = other then
+         result = 0
+     else if this < other then
+         result = -1
+     else
+         result = 1
+Functional Scenario Form 
+(this = other) && (result = 0) or
+(this < other) && (result = -1) or
+(this > other) && (result = 1)
+end_process
+
+process toString(): String
+pre  true
+post result = numerator + "/" + denominator
+Functional Scenario Form 
+true && (result = numerator + "/" + denominator)
+end_process
+
+process toProperString(): String
+pre  true
+post if numerator = 0 then
+         result = "0"
+     else if numerator = denominator then
+         result = "1"
+     else if numerator = -denominator then
+         result = "-1"
+     else if abs(numerator) > denominator then
+         if numerator mod denominator = 0 then
+             result = getProperWhole()
+         else
+             result = getProperWhole() + " " + getProperNumerator() + "/" + denominator
+     else
+         result = numerator + "/" + denominator
+Functional Scenario Form 
+(numerator = 0) && result = "0" or
+(numerator = denominator) && result = "1" or
+(numerator = -denominator) && result = "-1" or
+(abs(numerator) > denominator ∧ numerator mod denominator = 0) && (result = getProperWhole()) or
+(abs(numerator) > denominator ∧ numerator mod denominator ≠ 0) && 
+    (result = getProperWhole() + " " + getProperNumerator() + "/" + denominator) or
+(abs(numerator) ≤ denominator) && (result = numerator + "/" + denominator)
+end_process
+
+
+end_module

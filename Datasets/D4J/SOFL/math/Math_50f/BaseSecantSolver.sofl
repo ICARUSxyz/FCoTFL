@@ -1,0 +1,99 @@
+module BaseSecantSolver
+
+var
+  DEFAULT_ABSOLUTE_ACCURACY = 1e-6
+
+process ctor_abs(absoluteAccuracy: double, m: Method) result: BaseSecantSolver
+pre
+  absoluteAccuracy > 0.0 and m ∈ Method
+post
+  // super(absoluteAccuracy) is assumed valid
+  allowed' = AllowedSolution.ANY_SIDE and
+  method' = m and
+  result' = this
+Functional Scenario Form
+  absoluteAccuracy>0 && allowed'=ANY_SIDE && method'=m
+end_process
+
+process ctor_rel_abs(relativeAccuracy: double, absoluteAccuracy: double, m: Method) result: BaseSecantSolver
+pre
+  relativeAccuracy > 0.0 and absoluteAccuracy > 0.0 and m ∈ Method
+post
+  allowed' = AllowedSolution.ANY_SIDE and
+  method' = m and
+  result' = this
+Functional Scenario Form
+  inputs valid && allowed'=ANY_SIDE && method'=m
+end_process
+
+process ctor_rel_abs_fun(relativeAccuracy: double, absoluteAccuracy: double, functionValueAccuracy: double, m: Method) result: BaseSecantSolver
+pre
+  relativeAccuracy > 0.0 and absoluteAccuracy > 0.0 and functionValueAccuracy > 0.0 and m ∈ Method
+post
+  allowed' = AllowedSolution.ANY_SIDE and
+  method' = m and
+  result' = this
+Functional Scenario Form
+  inputs valid && allowed'=ANY_SIDE && method'=m
+end_process
+
+process solve_with_allowed(maxEval: int, f: UnivariateRealFunction, min: double, max: double, allowedSolution: AllowedSolution) result: double
+pre
+  maxEval > 0 and f ≠ null and min < max and allowedSolution ∈ AllowedSolution
+post
+  // delegates to 5-arg overload with start = midpoint
+  result' = solve_with_start_allowed(maxEval, f, min, max, min + 0.5 * (max - min), allowedSolution)
+Functional Scenario Form
+  valid args && result' = solve_with_start_allowed(...)
+end_process
+
+process solve_with_start_allowed(maxEval: int, f: UnivariateRealFunction, min: double, max: double, startValue: double, allowedSolution: AllowedSolution) result: double
+pre
+  maxEval > 0 and f ≠ null and min < max and min ≤ startValue ≤ max and allowedSolution ∈ AllowedSolution
+post
+  allowed' = allowedSolution and
+  // calls framework super.solve which leads to doSolve
+  result' = doSolve()
+Functional Scenario Form
+  valid args && allowed' = allowedSolution
+end_process
+
+process solve_with_start(maxEval: int, f: UnivariateRealFunction, min: double, max: double, startValue: double) result: double
+pre
+  maxEval > 0 and f ≠ null and min < max and min ≤ startValue ≤ max
+post
+  result' = solve_with_start_allowed(maxEval, f, min, max, startValue, AllowedSolution.ANY_SIDE)
+Functional Scenario Form
+  valid args && result' = solve_with_start_allowed(..., ANY_SIDE)
+end_process
+
+process doSolve() result: double
+pre
+  // framework guarantees function and interval set via super.solve
+  true
+post
+  // Let x0=min, x1=max, f0=f(x0), f1=f(x1).
+  // If f0=0 or f1=0 return the corresponding bound.
+  // Otherwise, verifyBracketing(x0,x1) holds and iterate Secant-based updates until termination.
+  // On termination, result' satisfies the chosen AllowedSolution within solver tolerances.
+  (
+    (computeObjectiveValue(getMin()) = 0.0 && result' = getMin()) or
+    (computeObjectiveValue(getMax()) = 0.0 && result' = getMax()) or
+    (
+      // iterative secant step x = x1 - f1*(x1-x0)/(f1-f0) with method-specific updates:
+      //  ILLINOIS: f0 := f0 * 0.5
+      //  PEGASUS:  f0 := f0 * f1/(f1+fx)
+      //  REGULA_FALSI: if stagnation (x==x1) then raise ConvergenceException
+      // Termination conditions:
+      //  |f(result')| ≤ ftol with side per 'allowed', or
+      //  |x1 - x0| < max(rtol*|x1|, atol) with side per 'allowed'
+      true
+    )
+  )
+Functional Scenario Form
+  f(min)=0 && result'=min or
+  f(max)=0 && result'=max or
+  bracketing holds and method in {REGULA_FALSI, ILLINOIS, PEGASUS} iterates to tolerance and result' respects allowed side
+end_process
+
+end_module

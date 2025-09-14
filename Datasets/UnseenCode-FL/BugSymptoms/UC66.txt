@@ -1,0 +1,19 @@
+// Test Case 1: Loading skill explosion effect with incorrect skill ID variable
+→ Setup: Trigger OnLoadComplete() with a defined skill ID
+→ Expected Output: SkillConfigInfo is correctly retrieved
+→ Actual Output: SkillConfigInfo is null or causes exception
+// Suggests mismatch between used variable name and actual definition.
+
+
+// Test Case 2: Explosion position misalignment in FixDistanceArea skill
+→ Setup: SkillType == FixDistanceArea; check fixPosition assignment
+→ Expected Output: Explosion appears aligned with target's vertical position
+→ Actual Output: Explosion appears shifted horizontally
+// Indicates position component assignment may be using wrong axis.
+
+
+// Test Case 3: Default direction fallback for rotation
+→ Setup: dir == Vector3.zero
+→ Expected Output: Object retains previous rotation or applies neutral orientation
+→ Actual Output: Unexpected behavior or lack of orientation
+// Suggests default direction may not initialize as intended.

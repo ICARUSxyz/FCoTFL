@@ -1,0 +1,11 @@
+// Test Case 1: Timer Display Formatting
+→ Scene Start → Wait 9 seconds → Observe `timeScore` label
+→ Expected: "09"
+→ Actual: "9"
+// Single-digit times displayed without leading zero, inconsistent visual format.
+
+// Test Case 2: Game Over Handling
+→ Trigger: player dies
+→ Expected: game over UI appears, time stops
+→ Actual: game over UI appears, time stops
+// Behavior is consistent, though the use of integer time scale (0) instead of float (0f) may be noted in some engine configurations.

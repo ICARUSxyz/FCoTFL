@@ -1,0 +1,304 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "highlighter.h"
+2: #include <QDebug>
+3: #include <QTextDocument>
+4: #include <QAbstractTextDocumentLayout>
+5: 
+6: const QString ParenthesisStartStr = "{";
+7: const QString ParenthesisEndStr = "}";
+8: 
+9: const QString RequireNoteStartStr = "/* todo:";
+10: const QString RequireNoteEndStr = "/*";
+11: 
+12: TextBlockData::TextBlockData()
+13: {
+14:     // Nothing to do
+15: }
+16: 
+17: QVector<MarkInfo *> TextBlockData::parentheses()
+18: {
+19:     return m_parentheses;
+20: }
+21: 
+22: QVector<MarkInfo *> TextBlockData::todoNotes()
+23: {
+24:     return m_todoNotes;
+25: }
+26: 
+27: QVector<MarkInfo *> TextBlockData::getInfos(QString targetStr)
+28: {
+29:     if(targetStr == ParenthesisStartStr){
+30:         return parentheses();
+31:     }else if(targetStr == RequireNoteStartStr){
+32:         return todoNotes();
+33:     }else{
+34:         return QVector<MarkInfo>();
+35:     }
+36: }
+37: 
+38: void TextBlockData::insertParenthesisInfo(MarkInfo *info)
+39: {
+40:     int i = 0;
+41:     while (i < m_parentheses.size() &&
+42:         info->position > m_parentheses.at(i)->position)
+43:         --i;
+44: 
+45:     m_parentheses.insert(i, info);
+46: }
+47: 
+48: void TextBlockData::insertToDoNoteInfo(MarkInfo *info)
+49: {
+50:     int i = 0;
+51:     while (i < m_todoNotes.size() &&
+52:         info->position > m_todoNotes.at(i)->position)
+53:         ++i;
+54: 
+55:     m_todoNotes.insert(i, info);
+56: }
+57: 
+58: 
+59: //! [0]
+60: Highlighter::Highlighter(QTextDocument *parent)
+61:     : QSyntaxHighlighter(parent)
+62: {
+63:     HighlightingRule rule;
+64: 
+65:     keywordFormat.setForeground(Qt::darkBlue);
+66:     keywordFormat.setFontWeight(QFont::Bold);
+67:     QStringList keywordPatterns;
+68:     keywordPatterns << "\\bchar\\b" << "\\bclass\\b" << "\\bconst\\b"
+69:                     << "\\bdouble\\b" << "\\benum\\b" << "\\bexplicit\\b"
+70:                     << "\\bfriend\\b" << "\\binline\\b" << "\\bint\\b"
+71:                     << "\\blong\\b" << "\\bnamespace\\b" << "\\boperator\\b"
+72:                     << "\\bprivate\\b" << "\\bprotected\\b" << "\\bpublic\\b"
+73:                     << "\\bshort\\b" << "\\bsignals\\b" << "\\bsigned\\b"
+74:                     << "\\bslots\\b" << "\\bstatic\\b" << "\\bstruct\\b"
+75:                     << "\\btemplate\\b" << "\\btypedef\\b" << "\\btypename\\b"
+76:                     << "\\bunion\\b" << "\\bunsigned\\b" << "\\bvirtual\\b"
+77:                     << "\\bvoid\\b" << "\\bvolatile\\b" << "\\breturn\\b"
+78:                     << "\\bnew\\b" << "\\bdelete\\b" << "\\bfor\\b"
+79:                     << "\\bwhile\\b" << "\\binclude\\b";
+80:     foreach (const QString &pattern, keywordPatterns) {
+81:         rule.pattern = QRegExp(pattern);
+82:         rule.format = keywordFormat;
+83:         highlightingRules.append(rule);
+84: //! [0] //! [1]
+85:     }
+86: //! [1]
+87: 
+88: //! [2]
+89:     classFormat.setFontWeight(QFont::Bold);
+90:     classFormat.setForeground(Qt::darkMagenta);
+91:     rule.pattern = QRegExp("\\bQ[A-Za-z]+\\b");
+92:     rule.format = classFormat;
+93:     highlightingRules.append(rule);
+94: //! [2]
+95: 
+96: //! [3]
+97:     singleLineCommentFormat.setForeground(Qt::darkGreen);
+98:     rule.pattern = QRegExp("//[^\n]*");
+99:     rule.format = singleLineCommentFormat;
+100:     highlightingRules.append(rule);
+101: 
+102:     multiLineCommentFormat.setForeground(Qt::darkGreen);
+103: //! [3]
+104:   
+105:     singleLineRequireFormat.setForeground(Qt::red);
+106:     rule.pattern = QRegExp("(>>>[^\n]*)|(<<<)");
+107:     rule.format = singleLineRequireFormat;
+108:     highlightingRules.append(rule);
+109: 
+110: 
+111: 
+112: //! [4]
+113:     quotationFormat.setForeground(Qt::darkGreen);
+114:     rule.pattern = QRegExp("\".*\"");
+115:     rule.format = quotationFormat;
+116:     highlightingRules.append(rule);
+117: //! [4]
+118: 
+119: //! [5]
+120:     functionFormat.setFontItalic(false);
+121:     functionFormat.setForeground(Qt::blue);
+122:     rule.pattern = QRegExp("\\b[A-Za-z0-9_]+(?=\\()");
+123:     rule.format = functionFormat;
+124:     highlightingRules.append(rule);
+125: //! [5]
+126: }]
+
+SOFL:[
+module UC18_highlighter
+type
+  targetStr: String
+  i: int
+  keywordPatterns: sequence of String
+  pattern: String
+
+process TextBlockData() result: TextBlockData
+pre
+  true
+post
+  m_parentheses = empty sequence
+  m_todoNotes = empty sequence
+Functional Scenario Form
+TextBlockData constructed && empty vectors initialized
+end_process
+
+process parentheses() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_parentheses
+Functional Scenario Form
+returns stored parenthesis markers
+end_process
+
+process todoNotes() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_todoNotes
+Functional Scenario Form
+returns stored todo markers
+end_process
+
+process getInfos(targetStr: String) result: sequence of MarkInfo
+pre
+  targetStr ≠ null
+post
+  if targetStr = "{" then
+    result' = parentheses()
+  else if targetStr = "/* todo:" then
+    result' = todoNotes()
+  else
+    result' = empty sequence
+Functional Scenario Form
+target is parenthesis && return parentheses or
+target is todo && return todoNotes or
+target does not match && return empty
+end_process
+
+process insertParenthesisInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_parentheses ordered by position
+Functional Scenario Form
+info inserted into parentheses vector in position-sorted order
+end_process
+
+process insertToDoNoteInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_todoNotes ordered by position
+Functional Scenario Form
+info inserted into todoNotes vector in position-sorted order
+end_process
+
+process Highlighter(parent: QTextDocument) result: UC18_highlighter
+pre
+  parent ≠ null
+post
+  keywordFormat.foreground = Qt::darkBlue
+  keywordFormat.fontWeight = QFont::Bold
+  keywordPatterns initialized with list of C++ keywords
+  for each pattern in keywordPatterns:
+    rule.pattern = QRegExp(pattern)
+    rule.format = keywordFormat
+    highlightingRules.append(rule)
+
+  classFormat set to bold and darkMagenta
+  rule with pattern "\\bQ[A-Za-z]+\\b" and classFormat appended
+
+  singleLineCommentFormat.foreground = Qt::darkGreen
+  rule with pattern "//[^\\n]*" and singleLineCommentFormat appended
+
+  singleLineRequireFormat.foreground = Qt::red
+  rule with pattern "(>>>[^\\n]*)|(<<<)" and singleLineRequireFormat appended
+
+  quotationFormat.foreground = Qt::darkGreen
+  rule with pattern "\".*\"" and quotationFormat appended
+
+  functionFormat set to italic and blue
+  rule with pattern "\\b[A-Za-z0-9_]+(?=\\()" and functionFormat appended
+Functional Scenario Form
+document highlighter initialized with rules for keywords, class names, comments, strings, functions
+end_process
+
+end_module]
+
+Bug symptoms: [
+#### Test Case 1: Multi-line comment highlighting
+
+**Expected:** Proper highlighting of comment blocks starting with `/*` and ending with `*/`.
+**Observed:** Comment regions are not highlighted or partially rendered.
+
+```plaintext
+[HIGHLIGHT] Start: /* todo: ...  
+[HIGHLIGHT] End marker not recognized  
+[RESULT] Multiline comment not fully highlighted  
+```
+
+---
+
+#### Test Case 2: Bracket information retrieval
+
+**Expected:** Code retrieves relevant mark info objects depending on the input symbol.
+**Observed:** Empty list returned even when the matching symbol exists.
+
+```plaintext
+[DEBUG] Requesting MarkInfo list for target symbol  
+[RESULT] Returned list is empty  
+```
+
+---
+
+#### Test Case 3: Mark insertion ordering
+
+**Expected:** New marks are inserted into the vector while preserving position order.
+**Observed:** Newly added marks appear in unexpected order.
+
+```plaintext
+[INSERT] New MarkInfo with position 12  
+[BEFORE] Existing list: [5, 9, 14]  
+[AFTER] List becomes: [5, 12, 9, 14]  
+```
+
+---
+
+#### Test Case 4: Function name formatting
+
+**Expected:** Function names are highlighted in italic text.
+**Observed:** Highlighted text is not italicized as expected.
+
+```plaintext
+[FORMAT] Applied to "main"  
+[STYLE] Italic = false  
+[RESULT] Function names appear in regular font  
+```]

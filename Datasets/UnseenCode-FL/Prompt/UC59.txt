@@ -1,0 +1,137 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: "use strict";
+2: var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+3:     return new (P || (P = Promise))(function (resolve, reject) {
+4:         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+5:         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+6:         function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+7:         step((generator = generator.apply(thisArg, _arguments || [])).next());
+8:     });
+9: };
+10: Object.defineProperty(exports, "__esModule", { value: true });
+11: const TCP = require("net");
+12: const ProtoBuf = require("protobufjs");
+13: const mylogger_1 = require("./mylogger");
+14: const const_1 = require("./const");
+15: class ServerBase {
+16:     constructor(name) {
+17:         this._host = ',';
+18:         this._name = name;
+19:         this._port = 0;
+20:         this._server = {};
+21:     }
+22:     initialize(serverConfig) {
+23:         if (serverConfig.serverInfo != undefined) {
+24:             this._host = serverConfig.serverInfo.host;
+25:             this._port = serverConfig.serverInfo.port;
+26:         }
+27:         if (serverConfig.logger) {
+28:             mylogger_1.myLogger.initialize(serverConfig.logger);
+29:         }
+30:     }
+31:     //系统process.on('SIGINT')后需要处理收尾的事情。builder处理，不要手动调用
+32:     dispose() {
+33:         mylogger_1.myLogger.info('server will dispose ...');
+34:         if (this._server.listening) {
+35:             this._server.close();
+36:         }
+37:     }
+38:     initProtoBuf(pbFile) {
+39:         return __awaiter(this, void 0, void 0, function* () {
+40:             return yield ProtoBuf.load(pbFile);
+41:         });
+42:     }
+43:     listen(cb) {
+44:         this._server = TCP.createServer((socket) => {
+45:             this.onConnection(socket);
+46:         });
+47:         if (this._server) {
+48:             this._server.on(const_1.ServerEvent.ERROR, (e) => {
+49:                 mylogger_1.myLogger.error('tcp server error: ', e);
+50:                 process.exit(0);
+51:             });
+52:             this._server.listen(this._port, this._host, cb);
+53:             mylogger_1.myLogger.log('server is starting...');
+54:         }
+55:     }
+56: }
+57: exports.default = ServerBase;
+58: //# sourceMappingURL=serverbase.js.map]
+
+SOFL:[
+module UC59_serverbase
+
+process initialize(serverConfig: record(serverInfo: record(host: string, port: int), logger: Object)) result: Boolean
+pre  
+  serverConfig ≠ null
+post 
+  ((_host = serverConfig.serverInfo.host ∧ _port = serverConfig.serverInfo.port ∧ mylogger_1.myLogger.initialized = true ∧ result = true)
+    ∨ (result = true ∧ mylogger_1.myLogger.initialized = false ∧ serverConfig.serverInfo = undefined))
+end_process
+
+process dispose() 
+pre  
+  true
+post 
+  (¬_server.listening ∧ mylogger_1.myLogger.logged = true)
+end_process
+
+process initProtoBuf(pbFile: string) result: Object
+pre  
+  pbFile ≠ ""
+post 
+  (result = ProtoBuf.load(pbFile))
+Functional Scenario Form 
+(pbFile ≠ "") && (result = ProtoBuf.load(pbFile))
+end_process
+
+process listen(cb: function)
+pre  
+  cb ≠ null
+post 
+  (_server ≠ null ∧ _server.on(const_1.ServerEvent.ERROR, ...) ∧ _server.listen(_port, _host, cb) ∧ mylogger_1.myLogger.logged = true)
+Functional Scenario Form 
+(cb ≠ null) && (_server.on(const_1.ServerEvent.ERROR, ...) ∧ _server.listen(_port, _host, cb) ∧ mylogger_1.myLogger.logged = true)
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Server startup with default host
+→ Config input: { serverInfo: { port: 8080 } }
+→ Expected: Server binds to 0.0.0.0 or localhost
+→ Actual: Error: listen EADDRNOTAVAIL ,8080
+// Binding to ',' causes invalid address error on startup.
+
+// Test Case 2: Error event during TCP operation
+→ Simulated condition: Port already in use
+→ Expected: Error logged, process exits with error code
+→ Actual log:
+  [ERROR] tcp server error: Error: listen EADDRINUSE
+  [SYSTEM] Process exited with code 0
+// Process exits silently despite critical error, no indication of failure.]

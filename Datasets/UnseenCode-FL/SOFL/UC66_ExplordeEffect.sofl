@@ -1,0 +1,61 @@
+module UC66_ExplordeEffect
+type 
+  skillID: int
+  mType: int
+  isDead: Boolean
+
+process OnLoadComplete() result: Boolean
+pre  
+  true
+post 
+  EntityManager.AllEntitys.TryGetValue(enOwnerKey, enOwner) ∧
+  (
+    (obj ≠ null ∧ enOwner ≠ null) →
+      skillinfo = ConfigReader.GetSkillInfo(skillID) ∧
+      point = enOwner.RealEntity.objAttackPoint ∧
+      (
+        point ≠ null →
+          (
+            (skillinfo.SkillType = SkillTypeEnum.FixDistanceArea) →
+              fixPosition.y = point.position.y ∧
+              GetTransform().position = fixPosition
+          ) ∨
+          (
+            (skillinfo.SkillType ≠ SkillTypeEnum.FixDistanceArea) →
+              GetTransform().position = point.position
+          ) ∧
+
+          EntityManager.AllEntitys.TryGetValue(enTargetKey, enTarget) ∧
+          (
+            (mType = IEffect.ESkillEffectType.eET_FlyEffect ∧ enTarget ≠ null) →
+              GetTransform().rotation = Quaternion.LookRotation(enTarget.RealEntity.transform.position - GetTransform().position)
+          ) ∨
+          (
+            (mType ≠ IEffect.ESkillEffectType.eET_FlyEffect ∨ enTarget = null) →
+              (dir = Vector3.zero → dir = Vector3.one) ∧
+              GetTransform().rotation = Quaternion.LookRotation(dir)
+          )
+      )
+  ) ∧
+  result = true
+Functional Scenario Form 
+(obj ≠ null ∧ enOwner ≠ null ∧ point ≠ null ∧ skillinfo.SkillType = FixDistanceArea) && (fixPosition adjusted, position set, rotation set) or
+(obj ≠ null ∧ enOwner ≠ null ∧ point ≠ null ∧ skillinfo.SkillType ≠ FixDistanceArea) && (position set, rotation set) or
+(otherwise) && (no action taken) 
+end_process
+
+process Update() result: Boolean
+pre  
+  true
+post 
+  (isDead = true → no change ∧ result = true) ∨
+  (isDead = false → 
+    GetTransform().position = fixPosition ∧
+    base.Update() called ∧
+    result = true)
+Functional Scenario Form 
+(isDead = true) && (return immediately) or
+(isDead = false) && (position updated to fixPosition, call base.Update())
+end_process
+
+end_module

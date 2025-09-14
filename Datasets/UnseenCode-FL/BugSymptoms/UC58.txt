@@ -1,0 +1,23 @@
+// Test Case 1: Missing database field in config
+→ Input config: { user: "root", password: "123456" }
+→ Expected: Connection initialization fails with warning
+→ Actual log: "no config parse to json right."
+// Initialization aborted when required config fields are missing.
+
+// Test Case 2: Query using Promise interface
+→ Input: query("SELECT * FROM users WHERE id = ?", [1])
+→ Expected: Returned user row
+→ Actual: Error: ER_ACCESS_DENIED_ERROR
+// Proper error passed to reject; connection gracefully released.
+
+// Test Case 3: Query using callback interface
+→ Simulated condition: MySQL server unavailable
+→ Expected: Error passed to callback
+→ Actual: TypeError: Cannot read property 'query' of undefined
+// Callback-based query attempts to access `connection` even after failed acquisition.
+
+// Test Case 4: Custom connection limit
+→ Input config: { host: "localhost", user: "root", password: "123", database: "testdb" }
+→ Expected pool config: connectionLimit = 5
+→ Actual behavior: Max connections hit quickly under load
+// Default or hardcoded limit results in connection exhaustion during concurrent queries.

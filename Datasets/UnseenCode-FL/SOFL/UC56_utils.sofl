@@ -1,0 +1,124 @@
+module UC56_utils
+type
+    name: string
+    ext: string
+    conFile: string
+    strObj: string
+    filepath: string
+    extName: string
+    fileList: sequence of string
+    min, max: int
+    rand: int
+    data: string
+    hashResult: string
+    vector:composed type of  { x: float, y: float, z: float }
+    result: Boolean
+    file: string
+    xmlData: string
+    impact: Boolean
+    dist: float
+    v: float
+
+var
+    defaultExt: string = ".conf"
+
+process readConfig(name: string, ext: string) result: JSObject
+pre
+    ext ≠ null
+post
+    (conFile = FileSystem.read(`./conf/` + name + ext, "utf8")) ∧
+    ((conFile ≠ null ∧ result = JSON.parse(conFile)) ∨ (conFile = null ∧ result = null))
+Functional Scenario Form
+(ext ≠ null ∧ conFile ≠ null) && result = JSON.parse(conFile) or
+(ext ≠ null ∧ conFile = null) && result = null
+end_process
+
+process reverseMap(mapData: Map of <any, any>) reversedMap: Map of <any, any>
+pre
+    mapData ≠ null
+post
+    ∀(k, v) ∈ mapData ⇒ reversedMap[v] = k
+Functional Scenario Form
+(mapData ≠ null) && ∀(k, v) ∈ mapData ⇒ reversedMap[v] = k
+end_process
+
+process getJSObject(file: string) result: JSObject
+pre
+    file ≠ null
+post
+    (xmlData = FileSystem.read(file, "utf-8")) ∧
+    ((parse(xmlData, jsonData) ∧ result = jsonData) ∨ (parse(xmlData) fails ∧ exception thrown))
+Functional Scenario Form
+(file ≠ null ∧ parse(xmlData, jsonData)) && result = jsonData or
+(file ≠ null ∧ parse(xmlData) fails) && exception thrown
+end_process
+
+process checkNumber(strObj: string) result: Boolean
+pre
+    true
+post
+    result = (isNaN(Number(strObj)) = false)
+Functional Scenario Form
+(strObj is numeric string) && result = true or
+(strObj is not numeric string) && result = false
+end_process
+
+process readDir(filepath: string, extName: string, fileList: sequence of string) result: sequence of string
+pre
+    filepath ≠ null ∧ extName ≠ null
+post
+    result = all file paths in filepath (recursively) where extension = extName (case-insensitive)
+Functional Scenario Form
+(filepath valid ∧ extName given) && result = list of all matching files
+end_process
+
+process randNumber(min: int, max: int) rand: int
+pre
+    min ≤ max
+post
+    rand ∈ [min, max]
+Functional Scenario Form
+(min ≤ max) && rand ∈ [min, max]
+end_process
+
+process md5(data: string) hashResult: string
+pre
+    data ≠ null
+post
+    hashResult = Crypto.md5(data)
+Functional Scenario Form
+(data ≠ null) && hashResult = md5 hash of data
+end_process
+
+process isZero(vector: { x: float, y: float, z: float }) result: Boolean
+pre
+    true
+post
+    result = (vector.x = 0 ∧ vector.y = 0 ∧ vector.z = 0)
+Functional Scenario Form
+(vector = {0,0,0}) && result = true or
+(vector ≠ {0,0,0}) && result = false
+end_process
+
+process ifSphereImpact(s1: Sphere, s2: Sphere) impact: Boolean
+pre
+    s1 ≠ null ∧ s2 ≠ null
+post
+    impact = s1.intersects(s2)
+Functional Scenario Form
+(s1 intersects s2) && impact = true or
+(s1 does not intersect s2) && impact = false
+end_process
+
+process ifImpactExt(sphere: Sphere, aabb: AABB) impact: Boolean
+pre
+    sphere ≠ null ∧ aabb ≠ null
+post
+    Compute squared distance `dist` between `sphere.center` and AABB, then:
+    impact = (dist < sphere.radius²)
+Functional Scenario Form
+(dist < sphere.radius²) && impact = true or
+(dist ≥ sphere.radius²) && impact = false
+end_process
+
+end_module

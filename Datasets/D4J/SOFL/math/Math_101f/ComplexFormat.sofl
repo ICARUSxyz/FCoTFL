@@ -1,0 +1,375 @@
+module ComplexFormat
+type
+imaginaryCharacter: String
+
+var
+DEFAULT_IMAGINARY_CHARACTER: String = "i"
+serialVersionUID: long = -6337346779577272306L	
+
+process ctor_default(self: ComplexFormat) result: ComplexFormat
+pre
+true
+post
+result.imaginaryCharacter = DEFAULT_IMAGINARY_CHARACTER
+∧ result.imaginaryFormat = getDefaultNumberFormat(Locale.getDefault())
+∧ result.realFormat = getDefaultNumberFormat(Locale.getDefault())
+Functional Scenario Form
+true && imaginaryCharacter'(result)="i" ∧ imaginaryFormat'(result)=DefaultNumberFormat(locale=default) ∧ realFormat'(result)=DefaultNumberFormat(locale=default)
+end_process
+
+process ctor_with_number_format(self: ComplexFormat, format: NumberFormat) result: ComplexFormat
+pre
+format ≠ null
+post
+result.imaginaryCharacter = DEFAULT_IMAGINARY_CHARACTER
+∧ result.imaginaryFormat = clone(format)
+∧ result.realFormat = format
+Functional Scenario Form
+format≠null && imaginaryCharacter'(result)="i" ∧ imaginaryFormat'(result)=clone(format) ∧ realFormat'(result)=format
+end_process
+
+process ctor_with_real_imag_formats(self: ComplexFormat, realFmt: NumberFormat, imagFmt: NumberFormat) result: ComplexFormat
+pre
+realFmt ≠ null ∧ imagFmt ≠ null
+post
+result.imaginaryCharacter = DEFAULT_IMAGINARY_CHARACTER
+∧ result.realFormat = realFmt
+∧ result.imaginaryFormat = imagFmt
+Functional Scenario Form
+realFmt≠null ∧ imagFmt≠null && imaginaryCharacter'(result)="i" ∧ realFormat'(result)=realFmt ∧ imaginaryFormat'(result)=imagFmt
+end_process
+
+process ctor_with_imag_char(self: ComplexFormat, ch: String) result: ComplexFormat
+pre
+ch ≠ null ∧ |ch| ≥ 1
+post
+result.imaginaryCharacter = ch
+∧ result.imaginaryFormat = getDefaultNumberFormat(Locale.getDefault())
+∧ result.realFormat = getDefaultNumberFormat(Locale.getDefault())
+Functional Scenario Form
+ch valid && imaginaryCharacter'(result)=ch ∧ imaginaryFormat'(result)=DefaultNumberFormat(locale=default) ∧ realFormat'(result)=DefaultNumberFormat(locale=default)
+end_process
+
+process ctor_with_imag_char_and_format(self: ComplexFormat, ch: String, format: NumberFormat) result: ComplexFormat
+pre
+ch ≠ null ∧ |ch| ≥ 1 ∧ format ≠ null
+post
+result.imaginaryCharacter = ch
+∧ result.realFormat = format
+∧ result.imaginaryFormat = clone(format)
+Functional Scenario Form
+ch valid ∧ format≠null && imaginaryCharacter'(result)=ch ∧ realFormat'(result)=format ∧ imaginaryFormat'(result)=clone(format)
+end_process
+
+process ctor_full(self: ComplexFormat, ch: String, realFmt: NumberFormat, imagFmt: NumberFormat) result: ComplexFormat
+pre
+ch ≠ null ∧ |ch| ≥ 1 ∧ realFmt ≠ null ∧ imagFmt ≠ null
+post
+result.imaginaryCharacter = ch
+∧ result.realFormat = realFmt
+∧ result.imaginaryFormat = imagFmt
+Functional Scenario Form
+ch valid ∧ realFmt≠null ∧ imagFmt≠null && imaginaryCharacter'(result)=ch ∧ realFormat'(result)=realFmt ∧ imaginaryFormat'(result)=imagFmt
+end_process
+
+process formatComplex_static(c: Complex) result: String
+pre
+c ≠ null
+post
+result = getInstance(Locale.getDefault()).format(c, new StringBuffer(), new FieldPosition(0)).toString()
+Functional Scenario Form
+c≠null && result = format_with_default_instance(c)
+end_process
+
+process format_complex(self: ComplexFormat, complex: Complex, buf: StringBuffer, pos: FieldPosition) result: StringBuffer
+pre
+complex ≠ null ∧ buf ≠ null ∧ pos ≠ null
+post
+pos.beginIndex = 0 ∧ pos.endIndex = 0
+∧ let re = complex.real, im = complex.imag in
+(buf' = appendNumber(buf, re, self.realFormat))
+∧ ((im < 0) ⇒ buf' = append(buf', " - ") ∧ buf' = appendNumber(buf', -im, self.imaginaryFormat) ∧ buf' = append(buf', self.imaginaryCharacter))
+∧ ((im > 0 ∨ isNaN(im)) ⇒ buf' = append(buf', " + ") ∧ buf' = appendNumber(buf', im, self.imaginaryFormat) ∧ buf' = append(buf', self.imaginaryCharacter))
+∧ result = buf'
+Functional Scenario Form
+im<0 && buf' = real + " - " + |im| + imagChar
+im>0 ∨ isNaN(im) && buf' = real + " + " + im + imagChar
+im=0 && buf' = real only
+end_process
+
+process format_object(self: ComplexFormat, obj: Any, buf: StringBuffer, pos: FieldPosition) result: StringBuffer
+pre
+buf ≠ null ∧ pos ≠ null
+post
+(obj is Complex ⇒ result = format_complex(self, (Complex)obj, buf, pos))
+∨ (obj is Number ⇒ result = format_complex(self, new Complex(((Number)obj).doubleValue(), 0.0), buf, pos))
+∨ (¬(obj is Complex) ∧ ¬(obj is Number) ⇒ raises IllegalArgumentException)
+Functional Scenario Form
+obj is Complex && result = format_complex(self,obj,buf,pos)
+obj is Number && result = format_complex(self,Complex(obj,0),buf,pos)
+otherwise && throws IllegalArgumentException
+end_process
+
+process format_double_private(self: ComplexFormat, value: Real, nf: NumberFormat, buf: StringBuffer, pos: FieldPosition) result: StringBuffer
+pre
+nf ≠ null ∧ buf ≠ null ∧ pos ≠ null
+post
+(isNaN(value) ∨ isInfinite(value) ⇒ result = append(buf, "(" + toString(value) + ")"))
+∨ (finite(value) ⇒ result = nf.format(value, buf, pos))
+Functional Scenario Form
+isNaN∨isInfinite && buf' = buf + "(" + value + ")"
+finite && buf' = nf.format(value)
+end_process
+
+process getAvailableLocales_static() result: Array<Locale>
+pre
+true
+post
+result = NumberFormat.getAvailableLocales()
+Functional Scenario Form
+true && result=NumberFormat.availableLocales
+end_process
+
+process getDefaultNumberFormat_static() result: NumberFormat
+pre
+true
+post
+result = getDefaultNumberFormat_static(Locale.getDefault())
+Functional Scenario Form
+true && result=DefaultNumberFormat(locale=default)
+end_process
+
+process getDefaultNumberFormat_static_locale(locale: Locale) result: NumberFormat
+pre
+locale ≠ null
+post
+result = NumberFormat.getInstance(locale) ∧ result.maximumFractionDigits = 2
+Functional Scenario Form
+locale≠null && nf=NumberFormat.getInstance(locale) ∧ nf.maxFractionDigits=2
+end_process
+
+process getImaginaryCharacter(self: ComplexFormat) result: String
+pre
+true
+post
+result = self.imaginaryCharacter
+Functional Scenario Form
+true && result=imaginaryCharacter(self)
+end_process
+
+process getImaginaryFormat(self: ComplexFormat) result: NumberFormat
+pre
+true
+post
+result = self.imaginaryFormat
+Functional Scenario Form
+true && result=imaginaryFormat(self)
+end_process
+
+process getInstance_static() result: ComplexFormat
+pre
+true
+post
+let f = getDefaultNumberFormat_static(Locale.getDefault()) in
+result = ctor_with_number_format(new ComplexFormat, f)
+Functional Scenario Form
+true && result=ComplexFormat(numberFormat=DefaultNumberFormat(locale=default))
+end_process
+
+process getInstance_static_locale(locale: Locale) result: ComplexFormat
+pre
+locale ≠ null
+post
+let f = getDefaultNumberFormat_static(locale) in
+result = ctor_with_number_format(new ComplexFormat, f)
+Functional Scenario Form
+locale≠null && result=ComplexFormat(numberFormat=DefaultNumberFormat(locale))
+end_process
+
+process getRealFormat(self: ComplexFormat) result: NumberFormat
+pre
+true
+post
+result = self.realFormat
+Functional Scenario Form
+true && result=realFormat(self)
+end_process
+
+process parse_string(self: ComplexFormat, source: String) result: Complex
+pre
+source ≠ null
+post
+let p = new ParsePosition(0), c = parse_with_position(self, source, p) in
+((p.index ≠ 0 ⇒ result = c)
+∧ (p.index = 0 ⇒ raises ParseException with errorIndex=p.errorIndex))
+Functional Scenario Form
+p.index≠0 && result=parse_with_position(self,source)
+p.index=0 && throws ParseException
+end_process
+
+-- helper to denote the two-argument parse used internally; specification placeholder (actual implementation appears later in the file series)
+process parse_with_position(self: ComplexFormat, source: String, pos: ParsePosition) result: Complex
+pre
+source ≠ null ∧ pos ≠ null
+post
+-- will be defined in subsequent additions
+true
+Functional Scenario Form
+true && deferred-spec
+end_process
+
+process parse_with_position(self: ComplexFormat, source: String, pos: ParsePosition) result: Complex
+pre
+source ≠ null ∧ pos ≠ null
+post
+let initial = pos.index in
+parseAndIgnoreWhitespace(self, source, pos);
+let re = parseNumber_format(self, source, self.realFormat, pos) in
+(re = null ⇒ pos.index = initial ∧ result = null)
+∨ (re ≠ null ∧
+let signStart = pos.index in
+let c = parseNextCharacter(self, source, pos) in
+(c = 0 ⇒ result = new Complex(re, 0.0))
+∨ ((c = '+' ∨ c = '-') ∧
+let s = (c = '+') ? 1 : -1 in
+parseAndIgnoreWhitespace(self, source, pos);
+let im = parseNumber_format(self, source, self.realFormat, pos) in
+(im = null ⇒ pos.index = initial ∧ result = null)
+∨ (im ≠ null ∧
+let n = |self.imaginaryCharacter| in
+let start = pos.index, end = start + n in
+((start ≥ |source| ∨ end > |source| ∨
+substring(source,start,end) ≠ self.imaginaryCharacter)
+⇒ pos.index = initial ∧ pos.errorIndex = start ∧ result = null)
+∨ (substring(source,start,end) = self.imaginaryCharacter ∧
+pos.index = end ∧
+result = new Complex(re, im * s)))))
+∨ ((c ≠ 0 ∧ c ≠ '+' ∧ c ≠ '-') ⇒ pos.index = initial ∧ pos.errorIndex = signStart ∧ result = null)
+Functional Scenario Form
+valid real without sign && result=Complex(re,0)
+valid real with '+' imag and suffix && result=Complex(re,+im)
+valid real with '-' imag and suffix && result=Complex(re,-im)
+invalid sign && result=null ∧ pos.index=initial
+invalid imaginary number && result=null ∧ pos.index=initial
+missing imaginary suffix && result=null ∧ pos.index=initial
+end_process
+
+process parseAndIgnoreWhitespace(self: ComplexFormat, source: String, pos: ParsePosition)
+pre
+source ≠ null ∧ pos ≠ null
+post
+let _ = parseNextCharacter(self, source, pos) in
+pos.index = pos.index - 1
+Functional Scenario Form
+leading whitespace present && pos.index moves to first non-space (not consumed)
+no whitespace && pos.index unchanged
+end_process
+
+process parseNextCharacter(self: ComplexFormat, source: String, pos: ParsePosition) result: Char
+pre
+source ≠ null ∧ pos ≠ null
+post
+let i0 = pos.index in
+if i0 < |source| then
+let i = smallest j ≥ i0 with (j=|source| ∨ ¬isWhitespace(source[j])) in
+pos.index = min(i+1, |source|)
+∧ result = (i < |source| ? source[i] : 0)
+else
+pos.index = i0 ∧ result = 0
+Functional Scenario Form
+next non-space exists && result=that char ∧ pos.index=after it
+at end or only spaces to end && result=0 ∧ pos.index advanced to |source|
+end_process
+
+process parseNumber_special(self: ComplexFormat, source: String, value: Real, pos: ParsePosition) result: Number
+pre
+source ≠ null ∧ pos ≠ null
+post
+let pat = "(" + toString(value) + ")", start = pos.index, end = start + |pat| in
+((end < |source| ∧ substring(source,start,end) = pat) ⇒ pos.index = end ∧ result = new Double(value))
+∨ (otherwise ⇒ pos.index = start ∧ result = null)
+Functional Scenario Form
+matches "(value)" && result=Double(value) ∧ pos.index=end
+no match && result=null ∧ pos.index stays
+end_process
+
+process parseNumber_format(self: ComplexFormat, source: String, fmt: NumberFormat, pos: ParsePosition) result: Number
+pre
+source ≠ null ∧ fmt ≠ null ∧ pos ≠ null
+post
+let start = pos.index in
+result = fmt.parse(source, pos);
+if pos.index = start then
+let specials = [NaN, +Infinity, -Infinity] in
+result = first non-null of parseNumber_special(self, source, v, pos) over v∈specials
+else result = result
+Functional Scenario Form
+standard number parses && result≠null ∧ pos.index>start
+fallback special "(NaN|Infinity)" parses && result≠null ∧ pos.index advanced
+no parse && result=null ∧ pos.index=start
+end_process
+
+process parseObject(self: ComplexFormat, source: String, pos: ParsePosition) result: Object
+pre
+source ≠ null ∧ pos ≠ null
+post
+result = parse_with_position(self, source, pos)
+Functional Scenario Form
+true && result=parse_with_position(self,source,pos)
+end_process
+
+process setImaginaryCharacter(self: ComplexFormat, s: String)
+pre
+s ≠ null ∧ |s| > 0
+post
+self.imaginaryCharacter = s
+Functional Scenario Form
+valid s && imaginaryCharacter'(self)=s
+end_process
+
+process setImaginaryCharacter_invalid(self: ComplexFormat, s: String)
+pre
+s = null ∨ |s| = 0
+post
+raises IllegalArgumentException
+Functional Scenario Form
+s null or empty && throws IllegalArgumentException
+end_process
+
+process setImaginaryFormat(self: ComplexFormat, nf: NumberFormat)
+pre
+nf ≠ null
+post
+self.imaginaryFormat = nf
+Functional Scenario Form
+nf≠null && imaginaryFormat'(self)=nf
+end_process
+
+process setImaginaryFormat_invalid(self: ComplexFormat, nf: NumberFormat)
+pre
+nf = null
+post
+raises IllegalArgumentException
+Functional Scenario Form
+nf=null && throws IllegalArgumentException
+end_process
+
+process setRealFormat(self: ComplexFormat, nf: NumberFormat)
+pre
+nf ≠ null
+post
+self.realFormat = nf
+Functional Scenario Form
+nf≠null && realFormat'(self)=nf
+end_process
+
+process setRealFormat_invalid(self: ComplexFormat, nf: NumberFormat)
+pre
+nf = null
+post
+raises IllegalArgumentException
+Functional Scenario Form
+nf=null && throws IllegalArgumentException
+end_process
+
+end_module

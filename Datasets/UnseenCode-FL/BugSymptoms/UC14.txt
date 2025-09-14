@@ -1,0 +1,47 @@
+#### Test Case 1: Initialize FaultPromptDialog with a parent
+
+**Expected:** Dialog inherits the correct parent from the argument.
+**Observed:** Dialog does not appear in the expected parent window hierarchy.
+
+```plaintext
+[DEBUG] Dialog created with incorrect parent context  
+[UI] Parent-child relationship not reflected in UI tree  
+```
+
+---
+
+#### Test Case 2: Clicking the "Fix" button
+
+**Expected:** Button emits a distinct "released" signal for handler.
+**Observed:** Unexpected behavior; "entered" signal triggered instead of "released".
+
+```plaintext
+[UI] Fix button clicked  
+[EVENT] enteredSignal emitted  
+[WARN] releasedSignal not triggered  
+```
+
+---
+
+#### Test Case 3: Showing rule description
+
+**Expected:** Rule description dialog resizes proportionally to screen factor.
+**Observed:** Application crashes or shows unexpected dialog size.
+
+```plaintext
+[ERROR] use of uninitialized variable 'factor'  
+[CRASH] FaultPromptDialog::showRuleDescript  
+```
+
+---
+
+#### Test Case 4: Clicking the "Unfix" button
+
+**Expected:** Emits a signal to reverse previous "fix" operation.
+**Observed:** Emits the same signal as "Fix" button.
+
+```plaintext
+[UI] Unfix button clicked  
+[SIGNAL] fixSignal emitted  
+[NOTE] Signal indistinguishable from Fix action  
+```

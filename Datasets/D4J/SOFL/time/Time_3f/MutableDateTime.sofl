@@ -1,0 +1,1269 @@
+module MutableDateTime  
+type:  
+  iRoundingMode: int  
+
+var:  
+  serialVersionUID: long = 2852608688135209575L  
+  ROUND_NONE: int = 0  
+  ROUND_FLOOR: int = 1  
+  ROUND_CEILING: int = 2  
+  ROUND_HALF_FLOOR: int = 3  
+  ROUND_HALF_CEILING: int = 4  
+  ROUND_HALF_EVEN: int = 5  
+
+// Static factory methods
+process now() result: MutableDateTime  
+pre true  
+post  
+  result' = new MutableDateTime()  
+
+Functional Scenario Form  
+default time zone && creates current datetime  
+end_process  
+
+process now(zone: DateTimeZone) result: MutableDateTime  
+pre true  
+post  
+  zone = null  
+    ⇒ errorMsg = "Zone must not be null" ∧ result = NullPointerException  
+  else  
+    result' = new MutableDateTime(zone)  
+
+Functional Scenario Form  
+zone=UTC && creates UTC datetime  
+zone=null && throws exception  
+end_process  
+
+process now(chrono: Chronology) result: MutableDateTime  
+pre true  
+post  
+  chrono = null  
+    ⇒ errorMsg = "Chronology must not be null" ∧ result = NullPointerException  
+  else  
+    result' = new MutableDateTime(chrono)  
+
+Functional Scenario Form  
+chrono=ISO && creates ISO datetime  
+chrono=null && throws exception  
+end_process  
+
+process parse(str: String) result: MutableDateTime  
+pre true  
+post  
+  parser = ISODateTimeFormat.dateTimeParser().withOffsetParsed() ∧  
+  result' = parser.parseDateTime(str).toMutableDateTime()  
+
+Functional Scenario Form  
+str="2023-07-30T15:30" && parses datetime  
+end_process  
+
+process parse(str: String, formatter: DateTimeFormatter) result: MutableDateTime  
+pre true  
+post  
+  result' = formatter.parseDateTime(str).toMutableDateTime()  
+
+Functional Scenario Form  
+str="30/07/2023" formatter=dd/MM/yyyy && parses datetime  
+end_process  
+
+// Constructors
+process constructor()  
+pre true  
+post  
+  super()  
+
+Functional Scenario Form  
+no parameters && creates current datetime with default zone  
+end_process  
+
+process constructor(zone: DateTimeZone)  
+pre true  
+post  
+  super(zone)  
+
+Functional Scenario Form  
+zone=Paris && creates datetime in Paris time  
+zone=null && uses default zone  
+end_process  
+
+process constructor(chronology: Chronology)  
+pre true  
+post  
+  super(chronology)  
+
+Functional Scenario Form  
+chronology=ISO && creates datetime with ISO chronology  
+chronology=null && uses default ISO chronology  
+end_process  
+
+process constructor(instant: long)  
+pre true  
+post  
+  super(instant)  
+
+Functional Scenario Form  
+instant=1690752000000L && sets specific timestamp  
+end_process  
+
+process constructor(instant: long, zone: DateTimeZone)  
+pre true  
+post  
+  super(instant, zone)  
+
+Functional Scenario Form  
+instant=1690752000000L zone=UTC && sets UTC timestamp  
+zone=null && uses default time zone  
+end_process  
+
+process constructor(instant: long, chronology: Chronology)  
+pre true  
+post  
+  super(instant, chronology)  
+
+Functional Scenario Form  
+instant=1690752000000L chronology=Buddhist && sets Buddhist datetime  
+chronology=null && uses ISO default  
+end_process  
+
+process constructor(instant: Object)  
+pre true  
+post  
+  super(instant, null)  
+
+Functional Scenario Form  
+instant=Date object && converts Date to datetime  
+instant=Calendar object && converts Calendar to datetime  
+instant=String && parses datetime string  
+instant=null && sets current time  
+end_process  
+
+process constructor(instant: Object, zone: DateTimeZone)  
+pre true  
+post  
+  super(instant, zone)  
+
+Functional Scenario Form  
+instant="2023-07-30" zone=Paris && parses in Paris time  
+zone=null && uses default time zone  
+end_process  
+
+process constructor(instant: Object, chronology: Chronology)  
+pre true  
+post  
+  chrono = DateTimeUtils.getChronology(chronology) ∧  
+  super(instant, chrono)  
+
+Functional Scenario Form  
+instant=ReadableInstant chronology=null && uses instant's chronology  
+chronology=ISO && forces ISO chronology  
+end_process  
+
+process constructor(
+    year: int, 
+    monthOfYear: int, 
+    dayOfMonth: int, 
+    hourOfDay: int, 
+    minuteOfHour: int, 
+    secondOfMinute: int, 
+    millisOfSecond: int)  
+pre true  
+post  
+  super(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond)  
+
+Functional Scenario Form  
+valid datetime components && creates ISO datetime  
+end_process  
+
+process constructor(
+    year: int, 
+    monthOfYear: int, 
+    dayOfMonth: int, 
+    hourOfDay: int, 
+    minuteOfHour: int, 
+    secondOfMinute: int, 
+    millisOfSecond: int, 
+    zone: DateTimeZone)  
+pre true  
+post  
+  super(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond, zone)  
+
+Functional Scenario Form  
+zone=UTC && creates UTC datetime  
+zone=null && uses default zone  
+end_process  
+
+process constructor(
+    year: int, 
+    monthOfYear: int, 
+    dayOfMonth: int, 
+    hourOfDay: int, 
+    minuteOfHour: int, 
+    secondOfMinute: int, 
+    millisOfSecond: int, 
+    chronology: Chronology)  
+pre true  
+post  
+  super(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond, chronology)  
+
+Functional Scenario Form  
+chronology=Buddhist && creates Buddhist datetime  
+chronology=null && uses ISO default  
+end_process  
+
+// Rounding methods
+process getRoundingField() result: DateTimeField?  
+pre true  
+post  
+  result' = iRoundingField  
+
+Functional Scenario Form  
+rounding disabled && returns null  
+rounding enabled && returns rounding field  
+end_process  
+
+process getRoundingMode() result: int  
+pre true  
+post  
+  result' = iRoundingMode  
+
+Functional Scenario Form  
+rounding disabled && returns ROUND_NONE  
+rounding enabled && returns rounding mode  
+end_process  
+
+process setRounding(field: DateTimeField?)  
+pre true  
+post  
+  field = null  
+    ⇒ iRoundingField' = null ∧ iRoundingMode' = ROUND_NONE  
+  else  
+    iRoundingField' = field ∧  
+    iRoundingMode' = ROUND_FLOOR ∧  
+    // Apply rounding immediately  
+    millis = getMillis() ∧  
+    roundedMillis = field.roundFloor(millis) ∧  
+    setMillis(roundedMillis)  
+
+Functional Scenario Form  
+field=null && disables rounding  
+field=minuteOfHour && sets rounding to minute floor  
+end_process  
+
+process setRounding(field: DateTimeField?, mode: int)  
+pre true  
+post  
+  field ≠ null ∧ (mode < ROUND_NONE ∨ mode > ROUND_HALF_EVEN)  
+    ⇒ errorMsg = "Illegal rounding mode: " + mode ∧  
+      result = IllegalArgumentException  
+  else  
+    (mode = ROUND_NONE  
+      ⇒ iRoundingField' = null  
+      else  
+        iRoundingField' = field  
+    ) ∧  
+    iRoundingMode' = (field = null ? ROUND_NONE : mode) ∧  
+    setMillis(getMillis())  // Apply rounding immediately  
+
+Functional Scenario Form  
+field=null mode=5 && disables rounding  
+field=secondOfMinute mode=ROUND_FLOOR && sets floor rounding to seconds  
+mode=10 && throws exception  
+end_process  
+
+// Millisecond setting with rounding
+process setMillis(instant: long)  
+pre true  
+post  
+  roundedInstant = instant ∧  
+  (  
+    iRoundingMode = ROUND_NONE  
+      ⇒ // No change  
+    iRoundingMode = ROUND_FLOOR  
+      ⇒ roundedInstant' = iRoundingField.roundFloor(instant)  
+    iRoundingMode = ROUND_CEILING  
+      ⇒ roundedInstant' = iRoundingField.roundCeiling(instant)  
+    iRoundingMode = ROUND_HALF_FLOOR  
+      ⇒ roundedInstant' = iRoundingField.roundHalfFloor(instant)  
+    iRoundingMode = ROUND_HALF_CEILING  
+      ⇒ roundedInstant' = iRoundingField.roundHalfCeiling(instant)  
+    iRoundingMode = ROUND_HALF_EVEN  
+      ⇒ roundedInstant' = iRoundingField.roundHalfEven(instant)  
+  ) ∧  
+  super.setMillis(roundedInstant)  
+
+Functional Scenario Form  
+rounding disabled && sets exact millis  
+rounding=floor minute && sets millis to minute start  
+end_process  
+
+// Instant-based millisecond setting
+process setMillis(instant: ReadableInstant?)  
+pre true  
+post  
+  instant = null  
+    ⇒ millis = DateTimeUtils.currentTimeMillis()  
+  else  
+    millis = DateTimeUtils.getInstantMillis(instant)  
+  setMillis(millis)  
+
+Functional Scenario Form  
+instant=existingDateTime && copies millis  
+instant=null && sets current time  
+end_process  
+
+// Duration addition methods
+process add(duration: long)  
+pre true  
+post  
+  newMillis = FieldUtils.safeAdd(getMillis(), duration) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+duration=1000 && adds 1 second  
+overflow && throws ArithmeticException  
+end_process  
+
+process add(duration: ReadableDuration?)  
+pre true  
+post  
+  duration = null  
+    ⇒ // No change  
+  else  
+    add(duration, 1)  
+
+Functional Scenario Form  
+duration=null && no change  
+duration=Duration.standardMinutes(5) && adds 5 minutes  
+end_process  
+
+process add(duration: ReadableDuration?, scalar: int)  
+pre true  
+post  
+  duration = null  
+    ⇒ // No change  
+  else  
+    millisToAdd = FieldUtils.safeMultiply(duration.getMillis(), scalar) ∧  
+    add(millisToAdd)  
+
+Functional Scenario Form  
+duration=Duration.standardHours(2) scalar=1 && adds 2 hours  
+scalar=-1 && subtracts duration  
+end_process  
+
+process add(period: ReadablePeriod?)  
+pre true  
+post  
+  period = null  
+    ⇒ // No change  
+  else  
+    add(period, 1)  
+
+Functional Scenario Form  
+period=Months.months(1) && adds one month  
+period=null && no change  
+end_process  
+
+process add(period: ReadablePeriod?, scalar: int)  
+pre true  
+post  
+  period = null  
+    ⇒ // No change  
+  else  
+    chrono = getChronology() ∧  
+    newMillis = chrono.add(period, getMillis(), scalar) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+period=Years.years(1) scalar=1 && adds one year  
+scalar=-2 && subtracts two periods  
+period=null && no change  
+end_process  
+
+// Chronology setting
+process setChronology(chronology: Chronology?)  
+pre true  
+post  
+  super.setChronology(chronology)  
+
+Functional Scenario Form  
+chronology=ISO && sets ISO chronology  
+chronology=null && sets default chronology  
+end_process  
+
+// Time zone change (retain instant)
+process setZone(newZone: DateTimeZone?)  
+pre true  
+post  
+  newZone = DateTimeUtils.getZone(newZone) ∧  
+  currentChrono = getChronology() ∧  
+  (  
+    currentChrono.getZone() = newZone  
+      ⇒ // No change  
+    else  
+      setChronology(currentChrono.withZone(newZone))  
+  )  
+
+Functional Scenario Form  
+newZone=UTC && changes to UTC chronology  
+newZone=same as current && no change  
+newZone=null && sets default zone  
+end_process  
+
+// Time zone change (retain fields)
+process setZoneRetainFields(newZone: DateTimeZone?)  
+pre true  
+post  
+  newZone = DateTimeUtils.getZone(newZone) ∧  
+  originalZone = getZone() ∧  
+  (  
+    newZone = originalZone  
+      ⇒ // No change  
+    else  
+      millis = originalZone.getMillisKeepLocal(newZone, getMillis()) ∧  
+      setChronology(getChronology().withZone(newZone)) ∧  
+      setMillis(millis)  
+  )  
+
+Functional Scenario Form  
+newZone=NewYork from London && adjusts time to keep same field values  
+newZone=UTC && converts local time to UTC  
+end_process  
+
+// Field value setting
+process set(type: DateTimeFieldType, value: int)  
+pre true  
+post  
+  type = null  
+    ⇒ errorMsg = "Field must not be null" ∧ result = IllegalArgumentException  
+  else  
+    field = type.getField(getChronology()) ∧  
+    newMillis = field.set(getMillis(), value) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+type=HOUR_OF_DAY value=12 && sets hour to 12  
+type=null && throws exception  
+invalid value && throws IllegalArgumentException  
+end_process  
+
+// Field value addition
+process add(type: DurationFieldType, amount: int)  
+pre true  
+post  
+  type = null  
+    ⇒ errorMsg = "Field must not be null" ∧ result = IllegalArgumentException  
+  amount = 0  
+    ⇒ // No change  
+  else  
+    field = type.getField(getChronology()) ∧  
+    newMillis = field.add(getMillis(), amount) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+type=MINUTE_OF_HOUR amount=30 && adds 30 minutes  
+amount=0 && no change  
+type=null && throws exception  
+end_process  
+
+process setYear(year: int)  
+pre true  
+post  
+  field = getChronology().year() ∧  
+  newMillis = field.set(getMillis(), year) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+year=2024 && sets year to 2024  
+invalid year && throws IllegalArgumentException  
+end_process  
+
+process addYears(years: int)  
+pre true  
+post  
+  years = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().years() ∧  
+    newMillis = field.add(getMillis(), years) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+years=1 && adds one year  
+years=-5 && subtracts 5 years  
+end_process  
+
+// Weekyear methods
+process setWeekyear(weekyear: int)  
+pre true  
+post  
+  field = getChronology().weekyear() ∧  
+  newMillis = field.set(getMillis(), weekyear) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+weekyear=2024 && sets ISO week year  
+end_process  
+
+process addWeekyears(weekyears: int)  
+pre true  
+post  
+  weekyears = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().weekyears() ∧  
+    newMillis = field.add(getMillis(), weekyears) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+weekyears=1 && adds one ISO week year  
+end_process  
+
+// Month methods
+process setMonthOfYear(monthOfYear: int)  
+pre true  
+post  
+  field = getChronology().monthOfYear() ∧  
+  newMillis = field.set(getMillis(), monthOfYear) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+monthOfYear=2 && sets February  
+invalid month && throws exception  
+end_process  
+
+process addMonths(months: int)  
+pre true  
+post  
+  months = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().months() ∧  
+    newMillis = field.add(getMillis(), months) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+months=3 && adds three months  
+months=-1 && subtracts one month  
+end_process  
+
+// Week methods
+process setWeekOfWeekyear(weekOfWeekyear: int)  
+pre true  
+post  
+  field = getChronology().weekOfWeekyear() ∧  
+  newMillis = field.set(getMillis(), weekOfWeekyear) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+weekOfWeekyear=52 && sets last week of year  
+invalid week && throws exception  
+end_process  
+
+process addWeeks(weeks: int)  
+pre true  
+post  
+  weeks = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().weeks() ∧  
+    newMillis = field.add(getMillis(), weeks) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+weeks=2 && adds two weeks  
+end_process  
+
+// Day methods
+process setDayOfYear(dayOfYear: int)  
+pre true  
+post  
+  field = getChronology().dayOfYear() ∧  
+  newMillis = field.set(getMillis(), dayOfYear) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+dayOfYear=366 && sets leap year day  
+non-leap year day 366 && throws exception  
+end_process  
+
+process setDayOfMonth(dayOfMonth: int)  
+pre true  
+post  
+  field = getChronology().dayOfMonth() ∧  
+  newMillis = field.set(getMillis(), dayOfMonth) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+dayOfMonth=31 for January && sets last day  
+dayOfMonth=30 for February && throws exception  
+end_process  
+
+process setDayOfWeek(dayOfWeek: int)  
+pre true  
+post  
+  field = getChronology().dayOfWeek() ∧  
+  newMillis = field.set(getMillis(), dayOfWeek) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+dayOfWeek=DateTimeConstants.MONDAY && sets Monday  
+invalid day && throws exception  
+end_process  
+
+process addDays(days: int)  
+pre true  
+post  
+  days = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().days() ∧  
+    newMillis = field.add(getMillis(), days) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+days=7 && adds one week  
+days=-1 && subtracts one day  
+end_process  
+
+// Hour methods
+process setHourOfDay(hourOfDay: int)  
+pre true  
+post  
+  field = getChronology().hourOfDay() ∧  
+  newMillis = field.set(getMillis(), hourOfDay) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+hourOfDay=0 && sets midnight  
+hourOfDay=25 && throws exception  
+end_process  
+
+process addHours(hours: int)  
+pre true  
+post  
+  hours = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().hours() ∧  
+    newMillis = field.add(getMillis(), hours) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+hours=3 && adds three hours  
+hours=-48 && subtracts two days  
+end_process  
+
+// Minute methods
+process setMinuteOfDay(minuteOfDay: int)  
+pre true  
+post  
+  field = getChronology().minuteOfDay() ∧  
+  newMillis = field.set(getMillis(), minuteOfDay) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+minuteOfDay=0 && sets start of day  
+minuteOfDay=1440 && throws exception  
+end_process  
+
+process setMinuteOfHour(minuteOfHour: int)  
+pre true  
+post  
+  field = getChronology().minuteOfHour() ∧  
+  newMillis = field.set(getMillis(), minuteOfHour) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+minuteOfHour=30 && sets half past hour  
+minuteOfHour=60 && throws exception  
+end_process  
+
+process addMinutes(minutes: int)  
+pre true  
+post  
+  minutes = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().minutes() ∧  
+    newMillis = field.add(getMillis(), minutes) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+minutes=90 && adds 1.5 hours  
+minutes=-15 && subtracts quarter hour  
+end_process  
+
+// Second methods
+process setSecondOfDay(secondOfDay: int)  
+pre true  
+post  
+  field = getChronology().secondOfDay() ∧  
+  newMillis = field.set(getMillis(), secondOfDay) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+secondOfDay=3600 && sets 1am  
+secondOfDay=86400 && throws exception  
+end_process  
+
+process setSecondOfMinute(secondOfMinute: int)  
+pre true  
+post  
+  field = getChronology().secondOfMinute() ∧  
+  newMillis = field.set(getMillis(), secondOfMinute) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+secondOfMinute=0 && sets top of minute  
+secondOfMinute=60 && throws exception  
+end_process  
+
+process addSeconds(seconds: int)  
+pre true  
+post  
+  seconds = 0  
+    ⇒ // No change  
+  else  
+    field = getChronology().seconds() ∧  
+    newMillis = field.add(getMillis(), seconds) ∧  
+    setMillis(newMillis)  
+
+Functional Scenario Form  
+seconds=3600 && adds one hour  
+seconds=15 && adds 15 seconds  
+end_process  
+
+// Millisecond methods
+process setMillisOfDay(millisOfDay: int)  
+pre true  
+post  
+  field = getChronology().millisOfDay() ∧  
+  newMillis = field.set(getMillis(), millisOfDay) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+millisOfDay=43200000 && sets noon  
+millisOfDay=86400000 && throws exception  
+end_process  
+?)  
+pre true  
+post  
+  instant = null  
+    ⇒ currentTime = DateTimeUtils.currentTimeMillis() ∧  
+      setDate(currentTime)  
+  else  
+    instantMillis = DateTimeUtils.getInstantMillis(instant) ∧  
+    (  
+      instant instanceof ReadableDateTime  
+        ⇒ rdt = (ReadableDateTime) instant ∧  
+          chrono = DateTimeUtils.getChronology(rdt.getChronology()) ∧  
+          zone = chrono.getZone() ∧  
+          (  
+            zone = null  
+              ⇒ // No adjustment  
+            else  
+              instantMillis' = zone.getMillisKeepLocal(getZone(), instantMillis)  
+          )  
+    ) ∧  
+    setDate(instantMillis')  
+
+Functional Scenario Form  
+instant=otherDateTime && copies date part  
+instant=null && sets current date  
+end_process  
+
+process setDate(year: int, monthOfYear: int, dayOfMonth: int)  
+pre true  
+post  
+  chrono = getChronology() ∧  
+  instantMidnight = chrono.getDateTimeMillis(year, monthOfYear, dayOfMonth, 0) ∧  
+  setDate(instantMidnight)  
+
+Functional Scenario Form  
+year=2023 month=7 day=30 && sets to July 30, 2023  
+invalid date && throws exception  
+end_process  
+
+// Time setting methods
+process setTime(millis: long)  
+pre true  
+post  
+  utcChrono = ISOChronology.getInstanceUTC() ∧  
+  millisOfDay = utcChrono.millisOfDay().get(millis) ∧  
+  newMillis = getChronology().millisOfDay().set(getMillis(), millisOfDay) ∧  
+  setMillis(newMillis)  
+
+Functional Scenario Form  
+millis=noonMillis && sets time to noon  
+end_process  
+
+process setTime(instant: ReadableInstant?)  
+pre true  
+post  
+  instant = null  
+    ⇒ currentTime = DateTimeUtils.currentTimeMillis() ∧  
+      setTime(currentTime)  
+  else  
+    instantMillis = DateTimeUtils.getInstantMillis(instant) ∧  
+    chrono = DateTimeUtils.getInstantChronology(instant) ∧  
+    zone = chrono.getZone() ∧  
+    (  
+      zone = null  
+        ⇒ // No adjustment  
+      else  
+        instantMillis' = zone.getMillisKeepLocal(DateTimeZone.UTC, instantMillis)  
+    ) ∧  
+    setTime(instantMillis')  
+
+Functional Scenario Form  
+instant=otherDateTime && copies time part  
+instant=null && sets current time  
+end_process  
+
+process setTime(hour: int, minuteOfHour: int, secondOfMinute: int, millisOfSecond: int)  
+pre true  
+post  
+  chrono = getChronology() ∧  
+  instant = chrono.getDateTimeMillis(getMillis(), hour, minuteOfHour, secondOfMinute, millisOfSecond) ∧  
+  setMillis(instant)  
+
+Functional Scenario Form  
+hour=15 minute=30 second=0 millis=0 && sets to 15:30:00.000  
+invalid time && throws exception  
+end_process  
+
+// Full datetime setting
+process setDateTime(
+    year: int, 
+    monthOfYear: int, 
+    dayOfMonth: int, 
+    hourOfDay: int, 
+    minuteOfHour: int, 
+    secondOfMinute: int, 
+    millisOfSecond: int)  
+pre true  
+post  
+  chrono = getChronology() ∧  
+  instant = chrono.getDateTimeMillis(year, monthOfYear, dayOfMonth, hourOfDay, minuteOfHour, secondOfMinute, millisOfSecond) ∧  
+  setMillis(instant)  
+
+Functional Scenario Form  
+valid datetime components && sets full datetime  
+invalid components && throws exception  
+end_process  
+
+// Property access methods
+process property(type: DateTimeFieldType) result: Property  
+pre true  
+post  
+  type = null  
+    ⇒ errorMsg = "The DateTimeFieldType must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    field = type.getField(getChronology()) ∧  
+    field.isSupported() = false  
+      ⇒ errorMsg = "Field '" + type + "' is not supported" ∧  
+        result = IllegalArgumentException  
+    else  
+      result' = new Property(this, field)  
+
+Functional Scenario Form  
+type=HOUR_OF_DAY && returns hour property  
+type=unsupportedField && throws exception  
+end_process  
+
+process era() result: Property  
+pre true  
+post  
+  field = getChronology().era() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns era property  
+end_process  
+
+process centuryOfEra() result: Property  
+pre true  
+post  
+  field = getChronology().centuryOfEra() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns century property  
+end_process  
+
+process yearOfCentury() result: Property  
+pre true  
+post  
+  field = getChronology().yearOfCentury() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns year of century property  
+end_process  
+
+process yearOfEra() result: Property  
+pre true  
+post  
+  field = getChronology().yearOfEra() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns year of era property  
+end_process  
+
+process year() result: Property  
+pre true  
+post  
+  field = getChronology().year() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns year property  
+end_process  
+
+process weekyear() result: Property  
+pre true  
+post  
+  field = getChronology().weekyear() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns ISO weekyear property  
+end_process  
+
+process monthOfYear() result: Property  
+pre true  
+post  
+  field = getChronology().monthOfYear() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns month property  
+end_process  
+
+process weekOfWeekyear() result: Property  
+pre true  
+post  
+  field = getChronology().weekOfWeekyear() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns ISO week property  
+end_process  
+
+process dayOfYear() result: Property  
+pre true  
+post  
+  field = getChronology().dayOfYear() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns day of year property  
+end_process  
+
+process dayOfMonth() result: Property  
+pre true  
+post  
+  field = getChronology().dayOfMonth() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns day of month property  
+end_process  
+
+process dayOfWeek() result: Property  
+pre true  
+post  
+  field = getChronology().dayOfWeek() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns day of week property  
+end_process  
+
+// Hour properties
+process hourOfDay() result: Property  
+pre true  
+post  
+  field = getChronology().hourOfDay() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns hour of day property  
+end_process  
+
+// Minute properties
+process minuteOfDay() result: Property  
+pre true  
+post  
+  field = getChronology().minuteOfDay() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns minute of day property  
+end_process  
+
+process minuteOfHour() result: Property  
+pre true  
+post  
+  field = getChronology().minuteOfHour() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns minute of hour property  
+end_process  
+
+// Second properties
+process secondOfDay() result: Property  
+pre true  
+post  
+  field = getChronology().secondOfDay() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns second of day property  
+end_process  
+
+process secondOfMinute() result: Property  
+pre true  
+post  
+  field = getChronology().secondOfMinute() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns second of minute property  
+end_process  
+
+// Millisecond properties
+process millisOfDay() result: Property  
+pre true  
+post  
+  field = getChronology().millisOfDay() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns millis of day property  
+end_process  
+
+process millisOfSecond() result: Property  
+pre true  
+post  
+  field = getChronology().millisOfSecond() ∧  
+  result' = new Property(this, field)  
+
+Functional Scenario Form  
+always && returns millis of second property  
+end_process  
+
+// Cloning method
+process copy() result: MutableDateTime  
+pre true  
+post  
+  result' = (MutableDateTime) clone()  
+
+Functional Scenario Form  
+always && returns exact copy  
+end_process  
+
+process constructor(instant: MutableDateTime, field: DateTimeField)  
+pre true  
+post  
+  iInstant' = instant ∧  
+  iField' = field  
+
+Functional Scenario Form  
+valid instant and field && initializes property  
+end_process  
+
+// Serialization
+process writeObject(oos: ObjectOutputStream)  
+pre true  
+post  
+  oos.writeObject(iInstant) ∧  
+  oos.writeObject(iField.getType())  
+
+Functional Scenario Form  
+serialization && writes instant and field type  
+end_process  
+
+process readObject(oos: ObjectInputStream)  
+pre true  
+post  
+  iInstant' = (MutableDateTime) oos.readObject() ∧  
+  type = (DateTimeFieldType) oos.readObject() ∧  
+  iField' = type.getField(iInstant'.getChronology())  
+
+Functional Scenario Form  
+deserialization && reconstructs property  
+end_process  
+
+// Core methods
+process getField() result: DateTimeField  
+pre true  
+post  
+  result' = iField  
+
+Functional Scenario Form  
+always && returns associated field  
+end_process  
+
+protected process getMillis() result: long  
+pre true  
+post  
+  result' = iInstant.getMillis()  
+
+Functional Scenario Form  
+always && returns instant's millis  
+end_process  
+
+protected process getChronology() result: Chronology  
+pre true  
+post  
+  result' = iInstant.getChronology()  
+
+Functional Scenario Form  
+always && returns instant's chronology  
+end_process  
+
+process getMutableDateTime() result: MutableDateTime  
+pre true  
+post  
+  result' = iInstant  
+
+Functional Scenario Form  
+always && returns associated MutableDateTime  
+end_process  
+
+process add(value: int) result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.add(millis, value) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+value=10 && adds 10 units  
+end_process  
+
+process add(value: long) result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.add(millis, value) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+value=1000L && adds long value  
+end_process  
+
+process addWrapField(value: int) result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.addWrapField(millis, value) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+value=15 for hour field && wraps around to next day  
+end_process  
+
+// Set methods
+process set(value: int) result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.set(millis, value) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+value=5 for day field && sets day to 5  
+end_process  
+
+process set(text: String, locale: Locale?) result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.set(millis, text, locale) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+text="Friday" locale=ENGLISH && sets to next Friday  
+end_process  
+
+process set(text: String) result: MutableDateTime  
+pre true  
+post  
+  set(text, null)  
+
+Functional Scenario Form  
+text="January" && sets month to January  
+end_process  
+
+// Rounding methods
+process roundFloor() result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.roundFloor(millis) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+minute field && sets seconds to zero  
+end_process  
+
+process roundCeiling() result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.roundCeiling(millis) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+minute field && advances to next minute  
+end_process  
+
+process roundHalfFloor() result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.roundHalfFloor(millis) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+minute field at 30s && rounds down to same minute  
+end_process  
+
+process roundHalfCeiling() result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.roundHalfCeiling(millis) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+minute field at 30s && rounds up to next minute  
+end_process  
+
+process roundHalfEven() result: MutableDateTime  
+pre true  
+post  
+  millis = iInstant.getMillis() ∧  
+  newMillis = iField.roundHalfEven(millis) ∧  
+  iInstant.setMillis(newMillis) ∧  
+  result' = iInstant  
+
+Functional Scenario Form  
+minute field at 30s && rounds to even minute  
+end_process  
+
+end_module  

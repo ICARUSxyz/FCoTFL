@@ -1,0 +1,143 @@
+module EventState
+type:
+t0, g0: double
+maxIterationCount: int
+maxCheckInterval: double
+g0Positive: boolean
+pendingEvent: boolean
+forward: boolean
+previousEventTime: double
+pendingEventTime: double
+increasing: boolean
+nextAction: int
+
+process ctor(self: EventState, handler: EventHandler, maxCheckInterval: double, convergence: double, maxIterationCount: int) result: void
+pre
+handler ≠ null ∧ maxCheckInterval > 0 ∧ maxIterationCount ≥ 1
+post
+self.handler' = handler ∧
+self.maxCheckInterval' = maxCheckInterval ∧
+self.convergence' = |convergence| ∧
+self.maxIterationCount' = maxIterationCount ∧
+self.t0' = NaN ∧ self.g0' = NaN ∧
+self.g0Positive' = true ∧
+self.pendingEvent' = false ∧
+self.pendingEventTime' = NaN ∧
+self.previousEventTime' = NaN ∧
+self.increasing' = true ∧
+self.nextAction' = EventHandler.CONTINUE
+Functional Scenario Form
+valid inputs && fields initialized to defaults
+or invalid inputs && pre violated
+end_process
+
+process getEventHandler(self: EventState) result: EventHandler
+pre
+true
+post
+result' = self.handler
+Functional Scenario Form
+any && return handler
+end_process
+
+process getMaxCheckInterval(self: EventState) result: double
+pre
+true
+post
+result' = self.maxCheckInterval
+Functional Scenario Form
+any && return maxCheckInterval
+end_process
+
+process getConvergence(self: EventState) result: double
+pre
+true
+post
+result' = self.convergence
+Functional Scenario Form
+any && return convergence
+end_process
+
+process getMaxIterationCount(self: EventState) result: int
+pre
+true
+post
+result' = self.maxIterationCount
+Functional Scenario Form
+any && return maxIterationCount
+end_process
+
+process reinitializeBegin(self: EventState, tStart: double, yStart: double[]) result: void
+pre
+yStart ≠ null
+post
+self.t0' = tStart ∧
+self.g0' = self.handler.g(tStart, yStart) ∧
+self.g0Positive' = (self.g0' ≥ 0)
+Functional Scenario Form
+valid yStart && set t0,g0,g0Positive
+or null yStart && pre violated
+end_process
+
+process evaluateStep(self: EventState, interpolator: StepInterpolator) result: boolean
+pre
+interpolator ≠ null ∧ ¬isNaN(self.t0) ∧ ¬isNaN(self.g0)
+post
+self.forward' = interpolator.isForward() ∧
+( result' = false ∧ self.pendingEvent' = false ∧ isNaN(self.pendingEventTime') ) ∨
+( result' = true ∧ self.pendingEvent' = true ∧ self.pendingEventTime' = root ∧ self.increasing' = inc ) ∨
+( result' = false ∧ self.pendingEvent' = true ∧ |interpolator.getCurrentTime() − self.pendingEventTime| ≤ self.convergence )
+Functional Scenario Form
+no sign change over substeps && pendingEvent' = false ∧ pendingEventTime' = NaN ∧ return false
+or new bracketed root found (not duplicate) && pendingEvent' = true ∧ pendingEventTime' = root ∧ increasing' set ∧ return true
+or already pending and step ends at pendingEventTime && keep pendingEvent ∧ return false
+end_process
+
+process getEventTime(self: EventState) result: double
+pre
+true
+post
+result' = self.pendingEventTime
+Functional Scenario Form
+any && return pendingEventTime
+end_process
+
+process stepAccepted(self: EventState, t: double, y: double[]) result: void
+pre
+y ≠ null
+post
+self.t0' = t ∧
+self.g0' = self.handler.g(t, y) ∧
+( self.pendingEvent ⇒ ( self.previousEventTime' = t ∧ self.g0Positive' = self.increasing ∧ self.nextAction' = self.handler.eventOccurred(t, y, ¬(self.increasing ⊕ self.forward)) ) ) ∧
+( ¬self.pendingEvent ⇒ ( self.g0Positive' = (self.g0' ≥ 0) ∧ self.nextAction' = EventHandler.CONTINUE ) )
+Functional Scenario Form
+pendingEvent true && finalize event: set previousEventTime, g0Positive by increasing, compute nextAction
+or pendingEvent false && update g0Positive and set nextAction to CONTINUE
+end_process
+
+process stop(self: EventState) result: boolean
+pre
+true
+post
+result' = (self.nextAction = EventHandler.STOP)
+Functional Scenario Form
+nextAction=STOP && return true
+or otherwise && return false
+end_process
+
+process reset(self: EventState, t: double, y: double[]) result: boolean
+pre
+y ≠ null
+post
+( ¬self.pendingEvent ⇒ result' = false ∧ self.pendingEvent' = self.pendingEvent ∧ self.pendingEventTime' = self.pendingEventTime ) ∨
+( self.pendingEvent ∧ self.nextAction = EventHandler.RESET_STATE ⇒ self.handler.resetState(t, y) ∧ self.pendingEvent' = false ∧ self.pendingEventTime' = NaN ∧ result' = true ) ∨
+( self.pendingEvent ∧ self.nextAction = EventHandler.RESET_DERIVATIVES ⇒ self.pendingEvent' = false ∧ self.pendingEventTime' = NaN ∧ result' = true ) ∨
+( self.pendingEvent ∧ self.nextAction = EventHandler.CONTINUE ⇒ self.pendingEvent' = false ∧ self.pendingEventTime' = NaN ∧ result' = false )
+Functional Scenario Form
+no pending event && return false
+or nextAction=RESET_STATE && resetState, clear pending, return true
+or nextAction=RESET_DERIVATIVES && clear pending, return true
+or nextAction=CONTINUE && clear pending, return false
+end_process
+
+end_module

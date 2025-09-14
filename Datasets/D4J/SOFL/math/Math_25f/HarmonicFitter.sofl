@@ -1,0 +1,175 @@
+module HarmonicFitter
+type
+  a: double
+  omega: double
+  phi: double
+
+process HarmonicFitter(optimizer: DifferentiableMultivariateVectorOptimizer) 
+  result: HarmonicFitter
+pre 
+  optimizer ≠ null
+post 
+  super(optimizer)  
+Functional Scenario Form 
+validOptimizer&&fitterCreated || 
+nullOptimizer&&exceptionThrown
+end_process
+
+process fit(initialGuess: double[]) result: double[]
+pre 
+  initialGuess ≠ null ∧ initialGuess.length = 3  // [a, ω, φ]
+post 
+  result = super.fit(new HarmonicOscillator.Parametric(), initialGuess)
+Functional Scenario Form 
+validGuess&&fitPerformed || 
+invalidGuessLength&&exceptionThrown
+end_process
+
+process fit() result: double[]
+post 
+  guesser = new ParameterGuesser(getObservations()) ∧
+  result = fit(guesser.guess())
+Functional Scenario Form 
+sufficientObservations&&fitPerformed || 
+insufficientObservations&&exceptionThrown
+end_process
+
+
+type ParameterGuesser
+  observations: WeightedObservedPoint[]
+  a: real
+  omega: real
+  phi: real
+end_type
+
+process ParameterGuesser(obs: WeightedObservedPoint[]) result: ParameterGuesser
+pre 
+  obs ≠ null ∧ obs.length ≥ 4
+post 
+  result.observations = obs.clone()
+Functional Scenario Form 
+sufficientPoints&&guesserCreated || 
+insufficientPoints&&exceptionThrown
+end_process
+
+process guess() result: double[]
+post 
+  sortObservations() ∧
+  guessAOmega() ∧
+  guessPhi() ∧
+  result = [this.a, this.omega, this.phi]
+Functional Scenario Form 
+sortedObservations&&parametersGuessed
+end_process
+
+process sortObservations()
+pre 
+  this.observations ≠ null
+post 
+
+  ∀i • (1 ≤ i < observations.length) ⇒ 
+      curr = observations[i] ∧
+      j = i - 1 ∧
+      while (j ≥ 0 ∧ curr.x < observations[j].x) •
+          observations[j+1] = observations[j] ∧
+          j = j - 1 ∧
+      observations[j+1] = curr
+Functional Scenario Form 
+unsortedInput&&sortedOutput || 
+alreadySorted&&unchanged
+end_process
+
+process guessAOmega()
+pre 
+  this.observations ≠ null ∧ observations.length ≥ 4
+post
+
+  sx2 = 0 ∧ sy2 = 0 ∧ sxy = 0 ∧ sxz = 0 ∧ syz = 0 ∧
+  currentX = observations[0].x ∧
+  currentY = observations[0].y ∧
+  f2Integral = 0 ∧ fPrime2Integral = 0 ∧
+  startX = currentX ∧
+    for i = 1 to observations.length-1 •
+      previousX = currentX ∧ previousY = currentY ∧
+      currentX = observations[i].x ∧ currentY = observations[i].y ∧
+      
+
+      dx = currentX - previousX ∧
+      dy = currentY - previousY ∧
+      f2StepIntegral = dx * (previousY² + previousY*currentY + currentY²)/3 ∧
+      fPrime2StepIntegral = dy² / dx ∧
+      
+
+      x = currentX - startX ∧
+      f2Integral = f2Integral + f2StepIntegral ∧
+      fPrime2Integral = fPrime2Integral + fPrime2StepIntegral ∧
+      sx2 = sx2 + x² ∧
+      sy2 = sy2 + f2Integral² ∧
+      sxy = sxy + x * f2Integral ∧
+      sxz = sxz + x * fPrime2Integral ∧
+      syz = syz + f2Integral * fPrime2StepIntegral
+  
+
+  c1 = sy2 * sxz - sxy * syz ∧
+  c2 = sxy * sxz - sx2 * syz ∧
+  c3 = sx2 * sy2 - sxy² ∧
+  
+
+  (c1/c2 < 0 ∨ c2/c3 < 0 ⇒ 
+      xRange = observations[last].x - observations[0].x ∧
+      (xRange = 0 ⇒ throw ZeroException) ∧
+      this.omega = 2 * π / xRange ∧
+      yMin = min_i observations[i].y ∧
+      yMax = max_i observations[i].y ∧
+      this.a = 0.5 * (yMax - yMin)
+  ) ∨ (c1/c2 ≥ 0 ∧ c2/c3 ≥ 0 ⇒ 
+      (c2 = 0 ⇒ throw MathIllegalStateException) ∧
+      this.a = sqrt(c1 / c2) ∧
+      this.omega = sqrt(c2 / c3)
+  )
+Functional Scenario Form 
+validData&&coefficientsComputed || 
+zeroRange&&exceptionThrown || 
+illConditioned&&exceptionThrown || 
+allZeroData&&fallbackUsed
+end_process
+
+
+process guessPhi()
+pre 
+  this.observations ≠ null ∧ observations.length ≥ 4 ∧
+  this.a ≠ 0 ∧ this.omega ≠ 0  
+post
+
+  fcMean = 0 ∧ fsMean = 0 ∧
+  currentX = observations[0].x ∧
+  currentY = observations[0].y ∧
+  
+
+  for i = 1 to observations.length-1 •
+      previousX = currentX ∧ previousY = currentY ∧
+      currentX = observations[i].x ∧ currentY = observations[i].y ∧
+      
+
+      dx = currentX - previousX ∧
+      dy = currentY - previousY ∧
+      currentYPrime = dy / dx ∧
+      
+
+      omegaX = this.omega * currentX ∧
+      cosine = cos(omegaX) ∧
+      sine = sin(omegaX) ∧
+      fcMean = fcMean + (this.omega * currentY * cosine - currentYPrime * sine) ∧
+      fsMean = fsMean + (this.omega * currentY * sine + currentYPrime * cosine)
+  
+
+  this.phi = atan2(-fsMean, fcMean)
+Functional Scenario Form 
+validData&&phaseComputed || 
+constantData&&defaultPhase || 
+zeroDerivative&&specialHandling
+end_process
+
+
+end_module
+

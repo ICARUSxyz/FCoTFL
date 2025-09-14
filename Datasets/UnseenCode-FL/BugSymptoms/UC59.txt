@@ -1,0 +1,13 @@
+// Test Case 1: Server startup with default host
+→ Config input: { serverInfo: { port: 8080 } }
+→ Expected: Server binds to 0.0.0.0 or localhost
+→ Actual: Error: listen EADDRNOTAVAIL ,8080
+// Binding to ',' causes invalid address error on startup.
+
+// Test Case 2: Error event during TCP operation
+→ Simulated condition: Port already in use
+→ Expected: Error logged, process exits with error code
+→ Actual log:
+  [ERROR] tcp server error: Error: listen EADDRINUSE
+  [SYSTEM] Process exited with code 0
+// Process exits silently despite critical error, no indication of failure.

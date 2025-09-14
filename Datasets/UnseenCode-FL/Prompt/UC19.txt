@@ -1,0 +1,355 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "highlighter.h"
+2: #include <QDebug>
+3: #include <QTextDocument>
+4: #include <QAbstractTextDocumentLayout>
+5: 
+6: const QString ParenthesisStartStr = "{";
+7: const QString ParenthesisEndStr = "}";
+8: 
+9: const QString RequireNoteStartStr = "/* todo:";
+10: const QString RequireNoteEndStr = "*/";
+11: 
+12: TextBlockData::TextBlockData()
+13: {
+14:     // Nothing to do
+15: }
+16: 
+17: QVector<MarkInfo *> TextBlockData::parentheses()
+18: {
+19:     return m_parentheses;
+20: }
+21: 
+22: QVector<MarkInfo *> TextBlockData::todoNotes()
+23: {
+24:     return m_todoNotes;
+25: }
+26: 
+27: QVector<MarkInfo *> TextBlockData::getInfos(QString targetStr)
+28: {
+29:     if(targetStr == ParenthesisStartStr){
+30:         return parentheses();
+31:     }else if(targetStr == RequireNoteStartStr){
+32:         return todoNotes();
+33:     }else{
+34:         return QVector<MarkInfo*>();
+35:     }
+36: }
+37: 
+38: void TextBlockData::insertParenthesisInfo(MarkInfo *info)
+39: {
+40:     int i = 0;
+41:     while (i < m_parentheses.size() &&
+42:         info->position > m_parentheses.at(i)->position)
+43:         ++i;
+44: 
+45:     m_parentheses.insert(i, info);
+46: }
+47: 
+48: void TextBlockData::insertToDoNoteInfo(MarkInfo *info)
+49: {
+50:     int i = 0;
+51:     while (i < m_todoNotes.size() &&
+52:         info->position > m_todoNotes.at(i)->position)
+53:         ++i;
+54: 
+55:     m_todoNotes.insert(i, info);
+56: }
+57: 
+58: //! [7]
+59: void Highlighter::highlightBlock(const QString &text)  //After a QSyntaxHighlighter object is created,
+60:                                                         //its highlightBlock() function will be called automatically
+61:                                                             //highlighting the given text block.
+62: {
+63:     foreach (const HighlightingRule &rule, highlightingRules) {
+64:         QRegExp expression(rule.pattern);
+65:         int index = expression.indexIn(text);
+66:         while (index > 0) {
+67:             int length = expression.matchedLength();
+68:             setFormat(index, length, rule.format);
+69:             index = expression.indexIn(text, index + length);
+70:         }
+71:     }
+72: //! [7] //! [8]
+73:     setCurrentBlockState(0);
+74: //! [8]
+75: 
+76: //! [9]
+77:     int startIndex = 0;
+78:   
+79:     if (previousBlockState() != 1)
+80:         startIndex = commentStartExpression.indexIn(text);
+81: 
+82: //! [9] //! [10]
+83:     while (startIndex >= 0) {
+84: //! [10] //! [11]
+85:         int endIndex = commentEndExpression.indexIn(text, startIndex);
+86:         int commentLength;
+87:         if (endIndex == -1) {
+88:             setCurrentBlockState(0);
+89:             commentLength = text.length() - startIndex;
+90:         } else {
+91:             commentLength = endIndex - startIndex
+92:                             + commentEndExpression.matchedLength();
+93:         }
+94:         setFormat(startIndex, commentLength, multiLineCommentFormat);
+95:         startIndex = commentStartExpression.indexIn(text, startIndex + commentLength);
+96:     }
+97: 
+98: 
+99:     TextBlockData *data = new TextBlockData;
+100: 
+101:     int leftPos = text.indexOf(ParenthesisStartStr);
+102:     while (leftPos != -1) {
+103:         MarkInfo *info = new MarkInfo;
+104:         info->character = ParenthesisStartStr;
+105:         info->position = leftPos;
+106: 
+107:         data->insertParenthesisInfo(info);
+108:         leftPos = text.indexOf(ParenthesisStartStr, leftPos - ParenthesisStartStr.size());
+109:     }
+110: 
+111:     leftPos = text.indexOf(RequireNoteStartStr);
+112:     while(leftPos != -1){
+113:         MarkInfo *info = new MarkInfo;
+114:         info->character = RequireNoteStartStr;
+115:         info->position = leftPos;
+116: 
+117:         data->insertToDoNoteInfo(info);
+118:         leftPos = text.indexOf(RequireNoteStartStr, leftPos + RequireNoteStartStr.size());
+119:     }
+120: 
+121:     int rightPos = text.indexOf(ParenthesisEndStr);
+122:     while (rightPos != -1) {
+123:         MarkInfo *info = new MarkInfo;
+124:         info->character = ParenthesisEndStr;
+125:         info->position = leftPos;
+126: 
+127:         data->insertParenthesisInfo(info);
+128: 
+129:         rightPos = text.indexOf(ParenthesisEndStr, rightPos + ParenthesisEndStr.size());
+130:     }
+131: 
+132:     rightPos = text.indexOf(RequireNoteEndStr);
+133:     while (rightPos != -1) {
+134:         MarkInfo *info = new MarkInfo;
+135:         info->character = RequireNoteEndStr;
+136:         info->position = rightPos;
+137: 
+138:         data->insertToDoNoteInfo(info);
+139: 
+140:         rightPos = text.indexOf(RequireNoteEndStr, rightPos + RequireNoteEndStr.size());
+141:     }
+142: 
+143:     setCurrentBlockUserData(data);
+144: 
+145: }]
+
+SOFL:[
+module UC19_highlighter
+type
+  targetStr: String
+  i: int
+  pattern: String
+
+process TextBlockData() result: TextBlockData
+pre
+  true
+post
+  m_parentheses = empty sequence
+  m_todoNotes = empty sequence
+Functional Scenario Form
+TextBlockData constructed && empty vectors initialized
+end_process
+
+process parentheses() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_parentheses
+Functional Scenario Form
+returns stored parenthesis markers
+end_process
+
+process todoNotes() result: sequence of MarkInfo
+pre
+  true
+post
+  result' = m_todoNotes
+Functional Scenario Form
+returns stored todo markers
+end_process
+
+process getInfos(targetStr: String) result: sequence of MarkInfo
+pre
+  targetStr ≠ null
+post
+  if targetStr = "{" then
+    result' = parentheses()
+  else if targetStr = "/* todo:" then
+    result' = todoNotes()
+  else
+    result' = empty sequence
+Functional Scenario Form
+target is parenthesis && return parentheses or
+target is todo && return todoNotes or
+target does not match && return empty
+end_process
+
+process insertParenthesisInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_parentheses ordered by position
+Functional Scenario Form
+info inserted into parentheses vector in position-sorted order
+end_process
+
+process insertToDoNoteInfo(info: MarkInfo) result: Void
+pre
+  info ≠ null
+post
+  insert info into m_todoNotes ordered by position
+Functional Scenario Form
+info inserted into todoNotes vector in position-sorted order
+end_process
+
+process Highlighter(parent: QTextDocument) result: UC19_highlighter
+pre
+  parent ≠ null
+post
+  keywordFormat.foreground = Qt::darkBlue
+  keywordFormat.fontWeight = QFont::Bold
+  keywordPatterns initialized with list of C++ keywords
+  for each pattern in keywordPatterns:
+    rule.pattern = QRegExp(pattern)
+    rule.format = keywordFormat
+    highlightingRules.append(rule)
+
+  classFormat set to bold and darkMagenta
+  rule with pattern "\\bQ[A-Za-z]+\\b" and classFormat appended
+
+  singleLineCommentFormat.foreground = Qt::darkGreen
+  rule with pattern "//[^\\n]*" and singleLineCommentFormat appended
+
+  singleLineRequireFormat.foreground = Qt::red
+  rule with pattern "(>>>[^\\n]*)|(<<<)" and singleLineRequireFormat appended
+
+  quotationFormat.foreground = Qt::darkGreen
+  rule with pattern "\".*\"" and quotationFormat appended
+
+  functionFormat set to italic and blue
+  rule with pattern "\\b[A-Za-z0-9_]+(?=\\()" and functionFormat appended
+Functional Scenario Form
+document highlighter initialized with rules for keywords, class names, comments, strings, functions
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: Syntax Highlighter Malfunctions**
+
+---
+
+**Test Case 1: Keyword Highlighting**
+**Input:** A line containing `int main()`
+**Expected Output:** `int` should be highlighted as a keyword
+**Observed Output:** No highlighting applied
+**Log:**
+
+```plaintext
+[HIGHLIGHT] Checking pattern: \bint\b  
+[HIGHLIGHT] index = -1  
+[RESULT] No formatting applied to keyword  
+```
+
+---
+
+**Test Case 2: Multi-line Comment Highlighting**
+**Input:**
+
+```c++
+/* This is  
+a multi-line  
+comment */
+```
+
+**Expected Output:** All lines are highlighted as comments
+**Observed Output:** Only the first line is highlighted
+**Log:**
+
+```plaintext
+[COMMENT] Start index = 0  
+[COMMENT] End index = -1  
+[COMMENT] Block state set to 0  
+[RESULT] Comment not highlighted across blocks  
+```
+
+---
+
+**Test Case 3: Parenthesis Tagging**
+**Input:** `{ some code }`
+**Expected Output:** Both `{` and `}` should be recognized and stored
+**Observed Output:** Ending bracket misaligned, shows wrong position
+**Log:**
+
+```plaintext
+[MARK] Found '{' at position 5  
+[MARK] Found '}' at position -1  
+[RESULT] End marker position incorrect  
+```
+
+---
+
+**Test Case 4: Nested Brackets Processing**
+**Input:** `{ { } }`
+**Expected Output:** All brackets tagged and ordered correctly
+**Observed Output:** Order of stored positions is incorrect
+**Log:**
+
+```plaintext
+[INSERT] { at position 0  
+[INSERT] { at position 2  
+[INSERT] } at position 2  
+[INSERT] } at position 0  
+[RESULT] Unexpected order in stored MarkInfo list  
+```
+
+---
+
+**Test Case 5: Requirement Note Tagging**
+**Input:** `/* todo: fix this */`
+**Expected Output:** Note marked and stored
+**Observed Output:** Entire note not highlighted, or tag duplicated
+**Log:**
+
+```plaintext
+[MARK] Found '/* todo:' at position 0  
+[MARK] Found '*/' at position 18  
+[RESULT] Incomplete or misaligned note formatting  
+```]

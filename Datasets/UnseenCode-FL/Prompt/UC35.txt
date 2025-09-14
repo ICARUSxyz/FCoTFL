@@ -1,0 +1,265 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: import javax.swing.*;
+2: import java.awt.*;
+3: import java.awt.event.ActionEvent;
+4: import java.awt.event.ActionListener;
+5: 
+6: public class RegistrationScreen extends JFrame {
+7:     private JTextField useridField;
+8:     private JPasswordField passwordField;
+9:     private JPasswordField confirmPasswordField;
+10:     private AccountManager accountManager;
+11:     private boolean isUserRegistration = true;
+12: 
+13:     public RegistrationScreen(AccountManager accountManager) {
+14:         this.accountManager = accountManager;
+15: 
+16:         setTitle("新規会員/会社登録");
+17:         setSize(400, 300);
+18:         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+19:         setLocationRelativeTo(null);
+20:         setLayout(new GridLayout(6, 1));
+21: 
+22:         // 会員か会社かを選択するラジオボタン
+23:         JRadioButton userButton = new JRadioButton("会員", true);
+24:         JRadioButton companyButton = new JRadioButton("出版社");
+25:         ButtonGroup group = new ButtonGroup();
+26:         group.add(userButton);
+27:         group.add(companyButton);
+28: 
+29:         JPanel typePanel = new JPanel(new FlowLayout());
+30:         typePanel.add(new JLabel("区分:"));
+31:         typePanel.add(userButton);
+32:         typePanel.add(companyButton);
+33:         add(typePanel);
+34: 
+35:         userButton.addActionListener(e -> isUserRegistration = true);
+36:         companyButton.addActionListener(e -> isUserRegistration = true);
+37: 
+38:         // ユーザーIDラベルとフィールド
+39:         JPanel userIDPanel = new JPanel(new FlowLayout());
+40:         userIDPanel.add(new JLabel("User ID:"));
+41:         userIDField = new JTextField(20);
+42:         userIDPanel.add(userIDField);
+43:         add(userIDPanel);
+44: 
+45:         // パスワードラベルとフィールド
+46:         JPanel passwordPanel = new JPanel(new FlowLayout());
+47:         passwordPanel.add(new JLabel("Password:"));
+48:         passwordField = new JPasswordField(20);
+49:         passwordPanel.add(passwordField);
+50:         add(passwordPanel);
+51: 
+52:         // 確認パスワードラベルとフィールド
+53:         JPanel confirmPasswordPanel = new JPanel(new FlowLayout());
+54:         confirmPasswordPanel.add(new JLabel("Confirm Password:"));
+55:         confirmPasswordField = new JPasswordField(20);
+56:         confirmPasswordPanel.add(confirmPasswordField);
+57:         add(confirmPasswordPanel);
+58: 
+59:         // 登録ボタン
+60:         JButton registerButton = new JButton("登録");
+61:         registerButton.addActionListener(new ActionListener() {
+62:             @Override
+63:             public void actionPerformed(ActionEvent e) {
+64:                 String userID = userIDField.getText();
+65:                 String password = new String(passwordField.getPassword());
+66:                 String confirmPassword = new String(passwordField.getPassword());
+67: 
+68:                 if (!password.equals(confirmPassword)) {
+69:                     JOptionPane.showMessageDialog(RegistrationScreen.this, "パスワードが一致しません", "Error", JOptionPane.ERROR_MESSAGE);
+70:                     return;
+71:                 }
+72: 
+73:                 if (isUserRegistration) {
+74:                     accountManager.registerUser(userID, password);
+75:                 } else {
+76:                     String companyName = JOptionPane.showInputDialog("会社名を入力してください:");
+77:                     if (companyName != null && !companyName.isEmpty()) {
+78:                         accountManager.registerCompany(userID, password);
+79:                     } else {
+80:                         JOptionPane.showMessageDialog(RegistrationScreen.this, "会社名が無効です。", "Error", JOptionPane.ERROR_MESSAGE);
+81:                         return;
+82:                     }
+83:                 }
+84: 
+85:                 JOptionPane.showMessageDialog(RegistrationScreen.this, "登録が完了しました。");
+86:                 new LoginScreen(accountManager).setVisible(true);
+87:                 dispose();
+88:             }
+89:         });
+90:         add(registerButton);
+91:     }
+92: }]
+
+SOFL:[
+module UC35_RegistrationScreen
+type
+  userID: string
+  password: string
+  confirmPassword: string
+  companyName: string
+  isUserRegistration: Boolean
+  registrationResult: string
+
+process checkPasswordMatch(password: string, confirmPassword: string) result: Boolean
+pre
+  true
+post
+  result = (password = confirmPassword)
+Functional Scenario Form
+(password = confirmPassword) && (result = true)
+or
+(password ≠ confirmPassword) && (result = false)
+end_process
+
+process registerAccount(userID: string, password: string, confirmPassword: string, isUserRegistration: Boolean, companyName: string) result: string
+pre
+  userID ≠ "" ∧ password ≠ "" ∧ confirmPassword ≠ ""
+post
+  (¬checkPasswordMatch(password, confirmPassword)) ⇒ result = "PasswordMismatch"
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ isUserRegistration) ⇒ 
+    (AccountManager.registerUser(userID, password) ∧ result = "UserRegistered")
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ ¬isUserRegistration ∧ companyName ≠ "") ⇒ 
+    (AccountManager.registerCompany(userID, password, companyName) ∧ result = "CompanyRegistered")
+  ∧
+  (checkPasswordMatch(password, confirmPassword) ∧ ¬isUserRegistration ∧ companyName = "") ⇒ 
+    result = "InvalidCompanyName"
+Functional Scenario Form
+(password mismatch) && (result = "PasswordMismatch")
+or
+(user registration and password match) && (result = "UserRegistered")
+or
+(company registration with valid company name) && (result = "CompanyRegistered")
+or
+(company registration with empty company name) && (result = "InvalidCompanyName")
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: Registration Screen Behavior Summary**
+
+---
+
+**Test Case 1: Launch Registration Screen**
+
+**Action:**
+Open the registration screen.
+
+**Expected:**
+All components, including user type selection, input fields, and the register button, should be visible and usable.
+
+**Observed:**
+Layout displays as expected with all fields visible. No immediate error reported.
+
+---
+
+**Test Case 2: Select "出版社" and Register Without Company Name**
+
+**Action:**
+Switch to "出版社", enter valid ID and password, click “登録” without inputting a company name in the prompt.
+
+**Expected:**
+Error message about invalid or missing company name should appear. No registration should occur.
+
+**Observed:**
+Dialog appears but even when left empty or canceled, screen proceeds or behaves inconsistently.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Publisher  
+[WARN] Company name input is empty  
+[ERROR] Registration blocked due to invalid input  
+```
+
+---
+
+**Test Case 3: Enter Different Passwords**
+
+**Action:**
+Enter mismatching values in “Password” and “Confirm Password”, then click “登録”.
+
+**Expected:**
+System should detect mismatch and show error message.
+
+**Observed:**
+No mismatch detected. Registration proceeds regardless of differences.
+
+**Output:**
+
+```plaintext
+[INFO] Password entered: pass1234  
+[INFO] Confirm password entered: pass5678  
+[ERROR] Registration allowed despite mismatch  
+```
+
+---
+
+**Test Case 4: Register as "会員" with Matching Passwords**
+
+**Action:**
+Select "会員", enter ID and matching passwords, click “登録”.
+
+**Expected:**
+User registered successfully, message shown, and screen redirects to login.
+
+**Observed:**
+Registration completes and transition occurs as expected.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Member  
+[INFO] Registration successful  
+[INFO] Transitioning to login screen  
+```
+
+---
+
+**Test Case 5: Select "出版社" and Register with Valid Input**
+
+**Action:**
+Switch to "出版社", enter ID, passwords, and input valid company name.
+
+**Expected:**
+Company registration completes successfully.
+
+**Observed:**
+An error occurs, preventing registration due to missing parameter.
+
+**Output:**
+
+```plaintext
+[INFO] User type: Publisher  
+[ERROR] Method registerCompany(String, String) is missing required argument: companyName  
+[FAIL] Registration failed due to method call error  
+```]

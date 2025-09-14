@@ -1,0 +1,113 @@
+module UC14_faultpromptdialog
+
+process enterEvent(event: QEvent) result: Void
+pre
+  event ≠ null
+post
+  QPushButton.enterEvent(event) executed
+  emit enterSignal() executed
+Functional Scenario Form
+mouse enters button && base enterEvent executed && enterSignal emitted
+end_process
+
+process leaveEvent(event: QEvent) result: Void
+pre
+  event ≠ null
+post
+  QPushButton.leaveEvent(event) executed
+  emit leaveSignal() executed
+Functional Scenario Form
+mouse leaves button && base leaveEvent executed && leaveSignal emitted
+end_process
+
+process FaultPromptDialog(parent: QWidget) result: UC14_faultpromptdialog
+pre
+  true
+post
+  this.ui = new Ui::FaultPromptDialog
+  ui.setupUi(this) executed
+  setWindowFlags(Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint | Qt::CustomizeWindowHint) executed
+  connect ui.detailButton.clicked to showRuleDescript
+  connect ui.fixButton.clicked to fixButtonClicked
+  connect ui.fixButton.released to fixButtonReleased
+  connect ui.unfixButton.clicked to unfixButtonClicked
+  connect ui.okButton.clicked to okButtonClicked
+Functional Scenario Form
+parent is valid && dialog initialized and buttons connected
+end_process
+
+process ~FaultPromptDialog() result: Void
+pre
+  true
+post
+  delete ui executed
+Functional Scenario Form
+destructor called && ui deleted
+end_process
+
+process showRuleDescript() result: Void
+pre
+  true
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  ruleDescript.resize(factor.getScreenFactor() * ruleDescript.width(), factor.getScreenFactor() * ruleDescript.height()) executed
+  ruleDescript.show() executed
+Functional Scenario Form
+detail button clicked && rule description dialog resized and shown
+end_process
+
+process fixButtonClicked() result: Void
+pre
+  true
+post
+  emit clickedSignal() executed
+Functional Scenario Form
+fix button clicked && clickedSignal emitted
+end_process
+
+process fixButtonEntered() result: Void
+pre
+  true
+post
+  emit enteredSignal() executed
+Functional Scenario Form
+mouse entered fix button && enteredSignal emitted
+end_process
+
+process fixButtonReleased() result: Void
+pre
+  true
+post
+  emit releasedSignal() executed
+Functional Scenario Form
+fix button released && releasedSignal emitted
+end_process
+
+process fixButtonLeft() result: Void
+pre
+  true
+post
+  emit leftSignal() executed
+Functional Scenario Form
+mouse left fix button && leftSignal emitted
+end_process
+
+process unfixButtonClicked() result: Void
+pre
+  true
+post
+  emit unfixSignal() executed
+Functional Scenario Form
+unfix button clicked && unfixSignal emitted
+end_process
+
+process okButtonClicked() result: Void
+pre
+  true
+post
+  emit okclicked() executed
+Functional Scenario Form
+ok button clicked && okclicked signal emitted
+end_process
+
+end_module

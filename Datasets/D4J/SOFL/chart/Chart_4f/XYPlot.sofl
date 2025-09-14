@@ -1,0 +1,3539 @@
+module XYPlot
+type
+  Plot: <type>
+  ValueAxisPlot: <interface>
+  Pannable: <interface>
+  Selectable: <interface>
+  Zoomable: <interface>
+  RendererChangeListener: <interface>
+  Cloneable: <interface>
+  PublicCloneable: <interface>
+  Serializable: <interface>
+  XYPlot: composed type of {
+    orientation: PlotOrientation,
+    axisOffset: RectangleInsets,
+    domainAxes: ObjectList<ValueAxis>,
+    domainAxisLocations: ObjectList<AxisLocation>,
+    rangeAxes: ObjectList<ValueAxis>,
+    rangeAxisLocations: ObjectList<AxisLocation>,
+    datasets: ObjectList<XYDataset>,
+    renderers: ObjectList<XYItemRenderer>,
+    datasetToDomainAxesMap: Map<Integer, List<Integer>>,
+    datasetToRangeAxesMap: Map<Integer, List<Integer>>,
+    quadrantOrigin: Point2D,
+    quadrantPaint: Paint[4],
+    domainGridlinesVisible: bool,
+    domainGridlineStroke: Stroke,
+    domainGridlinePaint: Paint,
+    rangeGridlinesVisible: bool,
+    rangeGridlineStroke: Stroke,
+    rangeGridlinePaint: Paint,
+    domainMinorGridlinesVisible: bool,
+    domainMinorGridlineStroke: Stroke,
+    domainMinorGridlinePaint: Paint,
+    rangeMinorGridlinesVisible: bool
+    }
+    Quadrant: set of {0,1,2,3}
+    PlotOrientation: set of { HORIZONTAL, VERTICAL }
+    RectangleEdge: set of { TOP, BOTTOM, LEFT, RIGHT }
+    SeriesRenderingOrder: set of { FORWARD, REVERSE }
+  
+var
+  DEFAULT_GRIDLINE_STROKE: Stroke = new BasicStroke(0.5f, CAP_BUTT, JOIN_BEVEL, 0.0f, [2.0f, 2.0f], 0.0f)
+  DEFAULT_GRIDLINE_PAINT: Paint = Color.WHITE
+  DEFAULT_CROSSHAIR_VISIBLE: bool = false
+  DEFAULT_CROSSHAIR_STROKE: Stroke = DEFAULT_GRIDLINE_STROKE
+  DEFAULT_CROSSHAIR_PAINT: Paint = Color.BLUE
+  DEFAULT_INSETS: RectangleInsets = new RectangleInsets(4.0,4.0,4.0,4.0)
+  DEF_GRID_STROKE: Stroke = new BasicStroke(0.5f, CAP_BUTT, JOIN_BEVEL, 0.0f, [2.0f,2.0f], 0.0f)
+  DEF_GRID_PAINT: Paint = Color.WHITE
+  PRIMARY_INDEX: int = 0
+  MINIMUM_WIDTH_TO_DRAW: double = 10.0
+  MINIMUM_HEIGHT_TO_DRAW: double = 10.0
+  QUADRANT_COUNT: int = 4
+
+process initXYPlotDefaults(
+    plot: XYPlot
+)
+post 
+  plot.orientation' = PlotOrientation.VERTICAL ∧ 
+  plot.axisOffset' = new RectangleInsets(4.0, 4.0, 4.0, 4.0) ∧
+  plot.domainGridlinesVisible' = true ∧
+  plot.domainGridlineStroke' = DEFAULT_GRIDLINE_STROKE ∧
+  plot.domainGridlinePaint' = DEFAULT_GRIDLINE_PAINT ∧
+  plot.rangeGridlinesVisible' = true ∧
+  plot.rangeGridlineStroke' = DEFAULT_GRIDLINE_STROKE ∧
+  plot.rangeGridlinePaint' = DEFAULT_GRIDLINE_PAINT ∧
+  plot.quadrantPaint' = [null, null, null, null]
+Functional Scenario Form 
+default initialization && apply all default visual settings ||
+custom axis offset && override default insets
+end_process
+
+process setOrientation(
+    plot: XYPlot,
+    orientation: PlotOrientation
+)
+post plot.orientation' = orientation
+Functional Scenario Form 
+orientation=HORIZONTAL && update plot layout ||
+orientation=VERTICAL && reset to default axis arrangement
+end_process
+
+process mapDatasetToDomainAxis(
+    plot: XYPlot,
+    datasetIndex: int,
+    axisIndexes: List<int>
+)
+pre datasetIndex ≥0 ∧ axisIndexes ≠ ∅
+post 
+  plot.datasetToDomainAxesMap'[datasetIndex] = axisIndexes ∧
+  ∀ axisIndex ∈ axisIndexes | 
+    axisIndex < plot.domainAxes.size()
+Functional Scenario Form 
+valid dataset index && map to existing domain axes ||
+invalid axis index && throw IndexOutOfBoundsException
+end_process
+
+process setQuadrantPaint(
+    plot: XYPlot,
+    quadrant: int,
+    paint: Paint
+)
+pre quadrant ∈ {0,1,2,3}
+post plot.quadrantPaint'[quadrant] = paint
+Functional Scenario Form 
+quadrant=0 && set upper-right region fill ||
+quadrant=3 && set lower-left region style
+end_process
+
+process initExtendedPlotDefaults(
+    plot: XYPlot
+)
+post 
+  plot.domainZeroBaselineVisible' = DEFAULT_ZERO_BASELINE_VISIBLE ∧
+  plot.domainZeroBaselineStroke' = DEFAULT_ZERO_BASELINE_STROKE ∧
+  plot.domainZeroBaselinePaint' = DEFAULT_ZERO_BASELINE_PAINT ∧
+  plot.rangeZeroBaselineVisible' = DEFAULT_ZERO_BASELINE_VISIBLE ∧
+  plot.rangeZeroBaselineStroke' = DEFAULT_ZERO_BASELINE_STROKE ∧
+  plot.rangeZeroBaselinePaint' = DEFAULT_ZERO_BASELINE_PAINT ∧
+  plot.domainCrosshairVisible' = DEFAULT_CROSSHAIR_VISIBLE ∧
+  plot.domainCrosshairValue' = 0.0 ∧
+  plot.domainCrosshairStroke' = DEFAULT_CROSSHAIR_STROKE ∧
+  plot.domainCrosshairPaint' = DEFAULT_CROSSHAIR_PAINT ∧
+  plot.domainCrosshairLockedOnData' = true ∧
+  plot.rangeCrosshairVisible' = DEFAULT_CROSSHAIR_VISIBLE ∧
+  plot.rangeCrosshairValue' = 0.0 ∧
+  plot.rangeCrosshairStroke' = DEFAULT_CROSSHAIR_STROKE ∧
+  plot.rangeCrosshairPaint' = DEFAULT_CROSSHAIR_PAINT ∧
+  plot.rangeCrosshairLockedOnData' = true ∧
+  plot.foregroundDomainMarkers' = new HashMap() ∧
+  plot.backgroundDomainMarkers' = new HashMap() ∧
+  plot.foregroundRangeMarkers' = new HashMap() ∧
+  plot.backgroundRangeMarkers' = new HashMap()
+Functional Scenario Form 
+default initialization && apply crosshair/baseline defaults || 
+existing config present && preserve user settings
+end_process
+
+process setDomainCrosshairVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post plot.domainCrosshairVisible' = visible
+Functional Scenario Form 
+visible=true && activate domain crosshair rendering || 
+visible=false && disable crosshair display
+end_process
+
+process addDomainMarker(
+    plot: XYPlot,
+    axisIndex: int,
+    marker: Marker,
+    layer: bool  // true=foreground, false=background
+)
+pre 
+  axisIndex ≥0 ∧ 
+  marker ≠ null
+post 
+  targetMap = if layer then plot.foregroundDomainMarkers else plot.backgroundDomainMarkers ∧
+  (targetMap.containsKey(axisIndex) ⇒ 
+    targetMap.get(axisIndex).add(marker)) ||
+  (¬targetMap.containsKey(axisIndex) ⇒ 
+    targetMap.put(axisIndex, new ArrayList([marker])))
+Functional Scenario Form 
+new axis index && create marker list || 
+existing axis index && append to list
+end_process
+
+process setRangeCrosshairValue(
+    plot: XYPlot,
+    value: double
+)
+post 
+  plot.rangeCrosshairValue' = value ∧
+  (plot.rangeCrosshairLockedOnData ⇒ 
+    recalculateCrosshairPosition(plot))
+Functional Scenario Form 
+locked on data && recalculate to nearest data point || 
+unlocked && set direct coordinate
+end_process
+
+process removeDomainMarker(
+    plot: XYPlot,
+    axisIndex: int,
+    marker: Marker
+)
+pre 
+  axisIndex ≥0 ∧ 
+  marker ≠ null
+post 
+  (plot.foregroundDomainMarkers.containsKey(axisIndex) ⇒ 
+    plot.foregroundDomainMarkers.get(axisIndex).remove(marker)) ∧
+  (plot.backgroundDomainMarkers.containsKey(axisIndex) ⇒ 
+    plot.backgroundDomainMarkers.get(axisIndex).remove(marker))
+Functional Scenario Form 
+marker exists in either layer && remove from collection || 
+non-existent marker && no operation
+end_process
+
+process XYPlot(
+    dataset: XYDataset?,
+    domainAxis: ValueAxis?,
+    rangeAxis: ValueAxis?,
+    renderer: XYItemRenderer?
+) result: XYPlot
+pre true
+post 
+  result.orientation = PlotOrientation.VERTICAL ∧
+  result.axisOffset = DEFAULT_INSETS ∧
+  
+  // Structural initialization
+  result.domainAxes[0] = domainAxis ∧ 
+  result.rangeAxes[0] = rangeAxis ∧
+  result.datasets[0] = dataset ∧
+  result.renderers[0] = renderer ∧
+  
+  // Listener registrations
+  (dataset ≠ null ⇒ dataset.addChangeListener(result)) ∧
+  (renderer ≠ null ⇒ (renderer.setPlot(result) ∧ renderer.addChangeListener(result))) ∧
+  (domainAxis ≠ null ⇒ (domainAxis.setPlot(result) ∧ domainAxis.addChangeListener(result))) ∧
+  (rangeAxis ≠ null ⇒ (rangeAxis.setPlot(result) ∧ rangeAxis.addChangeListener(result))) ∧
+  
+  // Style defaults
+  result.domainGridlinesVisible = true ∧
+  result.domainGridlineStroke = DEF_GRID_STROKE ∧
+  result.domainGridlinePaint = DEF_GRID_PAINT
+Functional Scenario Form 
+dataset≠null && renderer≠null && domainAxis≠null && rangeAxis≠null && full component initialization ||
+dataset=null && skip dataset listeners ||
+rangeAxis=null && bypass range axis configuration
+end_process
+
+process getPlotType(
+    plot: XYPlot
+) result: String
+post result = "XY_Plot"
+Functional Scenario Form 
+always return fixed plot type identifier
+end_process
+
+process getOrientation(
+    plot: XYPlot
+) result: PlotOrientation
+post result = plot.orientation
+Functional Scenario Form 
+always return current orientation value
+end_process
+
+process setOrientation(
+    plot: XYPlot,
+    orientation: PlotOrientation
+)
+pre orientation ≠ null
+post 
+  (plot.orientation ≠ orientation ⇒ 
+    plot.orientation' = orientation ∧ 
+    fireChangeEvent(plot)) ||
+  (plot.orientation = orientation ⇒ NOP)
+Functional Scenario Form 
+new orientation value && update and trigger change event ||
+same orientation && no state change
+end_process
+
+process getAxisOffset(
+    plot: XYPlot
+) result: RectangleInsets
+post result = plot.axisOffset
+Functional Scenario Form 
+always return current axis insets
+end_process
+
+process setAxisOffset(
+    plot: XYPlot,
+    offset: RectangleInsets
+)
+pre offset ≠ null
+post 
+  plot.axisOffset' = offset ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid insets && update offset and notify
+end_process
+
+process getDomainAxis(
+    plot: XYPlot,
+    index: int
+) result: ValueAxis?
+post 
+  (index < plot.domainAxes.size() ⇒ 
+    result = plot.domainAxes.get(index)) ||
+  (index ≥ plot.domainAxes.size() ∧ plot.parent ∈ XYPlot ⇒ 
+    result = plot.parent.getDomainAxis(index)) ||
+  (index ≥ plot.domainAxes.size() ∧ plot.parent ∉ XYPlot ⇒ 
+    result = null)
+Functional Scenario Form 
+valid index && return local axis ||
+invalid index with parent plot && delegate to parent ||
+invalid index without parent && return null
+end_process
+
+process setDomainAxis(
+    plot: XYPlot,
+    index: int,
+    axis: ValueAxis?
+)
+post 
+  (index < plot.domainAxes.size() ⇒ 
+    plot.domainAxes.set(index, axis) ∧ 
+    fireChangeEvent(plot)) ||
+  (index ≥ plot.domainAxes.size() ⇒ 
+    expandDomainAxes(plot, index+1) ∧ 
+    plot.domainAxes.set(index, axis) ∧ 
+    fireChangeEvent(plot))
+where
+  expandDomainAxes(plot: XYPlot, size: int) ≜
+    while plot.domainAxes.size() < size 
+      plot.domainAxes.add(null)
+Functional Scenario Form 
+existing index && update axis ||
+new index && expand container and insert
+end_process
+
+process setDomainAxis(
+    plot: XYPlot,
+    index: int,
+    axis: ValueAxis?
+)
+pre index ≥0
+post setDomainAxis(plot, index, axis, true)
+Functional Scenario Form 
+valid index && delegate to core method with notify=true
+end_process
+
+process setDomainAxis(
+    plot: XYPlot,
+    index: int,
+    axis: ValueAxis?,
+    notify: bool
+)
+pre index ≥0
+post 
+  existing = plot.getDomainAxis(index) ∧
+  (existing ≠ null ⇒ existing.removeChangeListener(plot)) ∧
+  (axis ≠ null ⇒ 
+    axis.setPlot(plot) ∧ 
+    axis.configure() ∧ 
+    axis.addChangeListener(plot)) ∧
+  plot.domainAxes.set(index, axis) ∧
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+replacing existing axis && unregister old listener ||
+setting null axis && clear slot without configuration ||
+notify=false && suppress change event
+end_process
+
+process setDomainAxes(
+    plot: XYPlot,
+    axes: ValueAxis[]
+)
+pre axes ≠ null
+post 
+  ∀i ∈ 0..axes.length-1 | 
+    plot.setDomainAxis(i, axes[i], false) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+multiple axes update && batch set without per-operation notifications ||
+empty axes array && no changes applied
+end_process
+
+process getDomainAxisLocation(
+    plot: XYPlot
+) result: AxisLocation
+post result = plot.domainAxisLocations[PRIMARY_DOMAIN_INDEX]
+Functional Scenario Form 
+always return first axis location configuration
+end_process
+
+process setDomainAxisLocation(
+    plot: XYPlot,
+    location: AxisLocation
+)
+pre location ≠ null
+post setDomainAxisLocation(plot, PRIMARY_DOMAIN_INDEX, location, true)
+Functional Scenario Form 
+primary axis && notify on location change
+end_process
+
+process setDomainAxisLocation(
+    plot: XYPlot,
+    location: AxisLocation,
+    notify: bool
+)
+pre location ≠ null
+post setDomainAxisLocation(plot, PRIMARY_DOMAIN_INDEX, location, notify)
+Functional Scenario Form 
+explicit notification control for primary axis position
+end_process
+
+process getDomainAxisEdge(
+    plot: XYPlot
+) result: RectangleEdge
+post 
+  location = plot.domainAxisLocations[PRIMARY_DOMAIN_INDEX] ∧ 
+  result = Plot.resolveDomainAxisLocation(location, plot.orientation)
+Functional Scenario Form 
+vertical orientation && calculate bottom/left edge ||
+horizontal orientation && resolve to alternative edge
+end_process
+
+process getDomainAxisCount(
+    plot: XYPlot
+) result: int
+post result = plot.domainAxes.size()
+Functional Scenario Form 
+non-empty axis list && return actual count ||
+empty axes && return zero
+end_process
+
+process clearDomainAxes(
+    plot: XYPlot
+)
+post 
+  ∀i ∈ 0..plot.domainAxes.size()-1 |
+    axis = plot.domainAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.removeChangeListener(plot)) ∧ 
+  plot.domainAxes.clear() ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-empty axes list && remove all with listeners || 
+empty list && no-op but trigger event
+end_process
+
+process configureDomainAxes(
+    plot: XYPlot
+)
+post 
+  ∀i ∈ 0..plot.domainAxes.size()-1 |
+    axis = plot.domainAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.configure())
+Functional Scenario Form 
+axis exists at index && call configure || 
+null axis slot && skip configuration
+end_process
+
+process getDomainAxisLocation(
+    plot: XYPlot,
+    index: int
+) result: AxisLocation
+post 
+  (index < plot.domainAxisLocations.size() ⇒ 
+    result = plot.domainAxisLocations.get(index)) || 
+  (index ≥ plot.domainAxisLocations.size() ⇒ 
+    result = AxisLocation.getOpposite(plot.domainAxisLocations[PRIMARY_DOMAIN_INDEX]))
+Functional Scenario Form 
+valid index && return stored location || 
+out-of-bounds index && compute opposite of primary
+end_process
+
+process setDomainAxisLocation(
+    plot: XYPlot,
+    index: int,
+    location: AxisLocation
+)
+pre index ≠ PRIMARY_DOMAIN_INDEX ∨ location ≠ null
+post setDomainAxisLocation(plot, index, location, true)
+Functional Scenario Form 
+non-primary index && allow null location || 
+primary index with valid location && update and notify
+end_process
+
+process setDomainAxisLocation(
+    plot: XYPlot,
+    index: int,
+    location: AxisLocation,
+    notify: bool
+)
+pre (index ≠ PRIMARY_DOMAIN_INDEX) ∨ (location ≠ null)
+post 
+  plot.domainAxisLocations.set(index, location) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+index 0 with null location && throw IllegalArgumentException || 
+valid params && update location with event control
+end_process
+
+process getDomainAxisEdge(
+    plot: XYPlot,
+    index: int
+) result: RectangleEdge
+post 
+  location = plot.getDomainAxisLocation(index) ∧ 
+  resolvedEdge = Plot.resolveDomainAxisLocation(location, plot.orientation) ∧ 
+  result = (resolvedEdge ≠ null ? resolvedEdge : RectangleEdge.opposite(plot.getDomainAxisEdge()))
+Functional Scenario Form 
+resolved edge valid && return computed value || 
+invalid resolution && return opposite of primary edge
+end_process
+
+process getRangeAxis(
+    plot: XYPlot
+) result: ValueAxis?
+post result = plot.getRangeAxis(PRIMARY_RANGE_INDEX)
+Functional Scenario Form 
+delegate to indexed getter for primary range axis
+end_process
+
+process setRangeAxis(
+    plot: XYPlot,
+    axis: ValueAxis?
+)
+post 
+  existing = plot.getRangeAxis() ∧
+  (existing ≠ null ⇒ existing.removeChangeListener(plot)) ∧
+  (axis ≠ null ⇒ (
+    axis.setPlot(plot) ∧
+    axis.configure() ∧
+    axis.addChangeListener(plot)
+  )) ∧
+  plot.rangeAxes.set(PRIMARY_RANGE_INDEX, axis) ∧
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-null axis && full configuration and listener setup || 
+null axis && clear primary slot with event trigger
+end_process
+
+process getRangeAxisLocation(
+    plot: XYPlot
+) result: AxisLocation
+post result = plot.rangeAxisLocations[PRIMARY_RANGE_INDEX]
+Functional Scenario Form 
+always return primary range axis location
+end_process
+
+process setRangeAxisLocation(
+    plot: XYPlot,
+    location: AxisLocation
+)
+pre location ≠ null
+post setRangeAxisLocation(plot, PRIMARY_RANGE_INDEX, location, true)
+Functional Scenario Form 
+valid primary location && notify listeners
+end_process
+
+process setRangeAxisLocation(
+    plot: XYPlot,
+    location: AxisLocation,
+    notify: bool
+)
+pre location ≠ null
+post 
+  plot.rangeAxisLocations.set(PRIMARY_RANGE_INDEX, location) ∧
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+explicit notify control for primary axis location
+end_process
+
+process getRangeAxisEdge(
+    plot: XYPlot
+) result: RectangleEdge
+post 
+  location = plot.getRangeAxisLocation() ∧ 
+  result = Plot.resolveRangeAxisLocation(location, plot.orientation)
+Functional Scenario Form 
+vertical orientation && resolve to right/top edge ||
+horizontal orientation && compute opposite domain edge
+end_process
+
+process getRangeAxis(
+    plot: XYPlot,
+    index: int
+) result: ValueAxis?
+post 
+  (index < plot.rangeAxes.size() ⇒ 
+    result = plot.rangeAxes.get(index)) || 
+  (index ≥ plot.rangeAxes.size() ∧ plot.parent ∈ XYPlot ⇒ 
+    result = plot.parent.getRangeAxis(index)) || 
+  (index ≥ plot.rangeAxes.size() ∧ plot.parent ∉ XYPlot ⇒ 
+    result = null)
+Functional Scenario Form 
+valid index && return local axis ||
+invalid index with parent plot && delegate query ||
+invalid index without parent && return null
+end_process
+
+process setRangeAxis(
+    plot: XYPlot,
+    index: int,
+    axis: ValueAxis?
+)
+pre index ≥0
+post setRangeAxis(plot, index, axis, true)
+Functional Scenario Form 
+valid index && delegate to core method with notification
+end_process
+
+process setRangeAxis(
+    plot: XYPlot,
+    index: int,
+    axis: ValueAxis?,
+    notify: bool
+)
+pre index ≥0
+post 
+  existing = plot.getRangeAxis(index) ∧
+  (existing ≠ null ⇒ existing.removeChangeListener(plot)) ∧
+  (axis ≠ null ⇒ (
+    axis.setPlot(plot) ∧ 
+    axis.configure() ∧ 
+    axis.addChangeListener(plot)
+  )) ∧
+  plot.rangeAxes.set(index, axis) ∧
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+replace existing axis && unregister listener || 
+set null axis && clear slot without config || 
+notify=false && suppress event
+end_process
+
+process setRangeAxes(
+    plot: XYPlot,
+    axes: ValueAxis[]
+)
+pre axes ≠ null
+post 
+  ∀i ∈ 0..axes.length-1 | 
+    plot.setRangeAxis(i, axes[i], false) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+batch update with deferred notifications || 
+empty axes array && trigger single change event
+end_process
+
+process getRangeAxisCount(
+    plot: XYPlot
+) result: int
+post result = plot.rangeAxes.size()
+Functional Scenario Form 
+non-empty range axes && return actual count || 
+empty axes && return zero
+end_process
+
+process clearRangeAxes(
+    plot: XYPlot
+)
+post 
+  ∀i ∈ 0..plot.rangeAxes.size()-1 | 
+    axis = plot.rangeAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.removeChangeListener(plot)) ∧ 
+  plot.rangeAxes.clear() ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+axes exist && remove all with cleanup || 
+no axes && trigger empty state event
+end_process
+
+process configureRangeAxes(
+    plot: XYPlot
+)
+post 
+  ∀i ∈ 0..plot.rangeAxes.size()-1 | 
+    axis = plot.rangeAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.configure())
+Functional Scenario Form 
+configure all non-null range axes || 
+handle null slots silently
+end_process
+
+process getRangeAxisLocation(
+    plot: XYPlot,
+    index: int
+) result: AxisLocation
+post 
+  (index < plot.rangeAxisLocations.size() ⇒ 
+    result = plot.rangeAxisLocations.get(index)) || 
+  (index ≥ plot.rangeAxisLocations.size() ⇒ 
+    result = AxisLocation.getOpposite(plot.rangeAxisLocations[PRIMARY_RANGE_INDEX]))
+Functional Scenario Form 
+valid index location exists || 
+out-of-bounds index && compute opposite primary
+end_process
+
+process setRangeAxisLocation(
+    plot: XYPlot,
+    index: int,
+    location: AxisLocation
+)
+pre index ≠ PRIMARY_RANGE_INDEX ∨ location ≠ null
+post setRangeAxisLocation(plot, index, location, true)
+Functional Scenario Form 
+valid index && delegate with notify=true
+end_process
+
+process setRangeAxisLocation(
+    plot: XYPlot,
+    index: int,
+    location: AxisLocation,
+    notify: bool
+)
+pre (index ≠ PRIMARY_RANGE_INDEX) ∨ (location ≠ null)
+post 
+  plot.rangeAxisLocations.set(index, location) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+index 0 with null location && throw IllegalArgumentException ||
+valid params && update axis location with notification control
+end_process
+
+process getRangeAxisEdge(
+    plot: XYPlot,
+    index: int
+) result: RectangleEdge
+post 
+  location = plot.getRangeAxisLocation(index) ∧ 
+  resolvedEdge = Plot.resolveRangeAxisLocation(location, plot.orientation) ∧ 
+  result = (resolvedEdge ≠ null ? resolvedEdge : RectangleEdge.opposite(plot.getRangeAxisEdge()))
+Functional Scenario Form 
+normal resolution && return edge ||
+fallback to opposite edge when resolution fails
+end_process
+
+process getDataset(
+    plot: XYPlot
+) result: XYDataset?
+post result = plot.getDataset(PRIMARY_DATASET_INDEX)
+Functional Scenario Form 
+retrieve primary dataset via index delegation
+end_process
+
+process getDataset(
+    plot: XYPlot,
+    index: int
+) result: XYDataset?
+post 
+  (index < plot.datasets.size() ⇒ 
+    result = plot.datasets.get(index)) || 
+  (index ≥ plot.datasets.size() ⇒ result = null)
+Functional Scenario Form 
+valid dataset index && return dataset ||
+out-of-bounds index && return null
+end_process
+
+process setDataset(
+    plot: XYPlot,
+    dataset: XYDataset?
+)
+post setDataset(plot, PRIMARY_DATASET_INDEX, dataset)
+Functional Scenario Form 
+update primary dataset slot with listener management
+end_process
+
+process setDataset(
+    plot: XYPlot,
+    index: int,
+    dataset: XYDataset?
+)
+pre index ≥0
+post 
+  existing = plot.getDataset(index) ∧
+  (existing ≠ null ⇒ existing.removeChangeListener(plot)) ∧
+  plot.datasets.set(index, dataset) ∧
+  (dataset ≠ null ⇒ dataset.addChangeListener(plot)) ∧
+  fireDatasetChange(plot, dataset)
+where
+  fireDatasetChange(p: XYPlot, d: XYDataset?) ≜ 
+    d ≠ null ⇒ p.datasetChanged(new DatasetChangeEvent(p, d))
+Functional Scenario Form 
+replace existing dataset && update listeners ||
+clear dataset slot && remove old listeners
+end_process
+
+process getDatasetCount(
+    plot: XYPlot
+) result: int
+post result = plot.datasets.size()
+Functional Scenario Form 
+empty datasets list && return zero ||
+non-empty list && return element count
+end_process
+
+process indexOf(
+    plot: XYPlot,
+    dataset: XYDataset
+) result: int
+pre dataset ≠ null
+post 
+  result = -1 ∧ 
+  ∀i ∈ 0..plot.datasets.size()-1 |
+    (plot.datasets.get(i) = dataset ⇒ result' = i) ∧ 
+    (result = i ⇒ break)
+Functional Scenario Form 
+dataset exists in collection && return first occurrence index ||
+dataset not found && return -1
+end_process
+
+process mapDatasetToDomainAxis(
+    plot: XYPlot,
+    index: int,
+    axisIndex: int
+)
+pre index ≥0
+post 
+  axisIndices = new ArrayList([axisIndex]) ∧ 
+  mapDatasetToDomainAxes(plot, index, axisIndices)
+Functional Scenario Form 
+single axis mapping && delegate to multi-axis method
+end_process
+
+process mapDatasetToDomainAxes(
+    plot: XYPlot,
+    index: int,
+    axisIndices: List<Integer>
+)
+pre 
+  index ≥0 ∧ 
+  checkAxisIndices(axisIndices)  // assumes valid indices check
+post 
+  key = new Integer(index) ∧ 
+  plot.datasetToDomainAxesMap.put(key, new ArrayList(axisIndices)) ∧ 
+  datasetChanged(plot, new DatasetChangeEvent(plot, plot.getDataset(index)))
+Functional Scenario Form 
+valid params && update domain axis mapping && trigger change event ||
+invalid index && throw IllegalArgumentException
+end_process
+
+process mapDatasetToRangeAxis(
+    plot: XYPlot,
+    index: int,
+    axisIndex: int
+)
+pre index ≥0
+post 
+  axisIndices = new ArrayList([axisIndex]) ∧ 
+  mapDatasetToRangeAxes(plot, index, axisIndices)
+Functional Scenario Form 
+single range axis mapping && delegate to multi-axis method
+end_process
+
+process mapDatasetToRangeAxes(
+    plot: XYPlot,
+    index: int,
+    axisIndices: List<Integer>
+)
+pre 
+  index ≥0 ∧ 
+  checkAxisIndices(axisIndices)  // assumes valid indices check
+post 
+  key = new Integer(index) ∧ 
+  plot.datasetToRangeAxesMap.put(key, new ArrayList(axisIndices)) ∧ 
+  datasetChanged(plot, new DatasetChangeEvent(plot, plot.getDataset(index)))
+Functional Scenario Form 
+valid params && update range axis mapping && trigger change event ||
+negative index && throw exception
+end_process
+
+process checkAxisIndices(
+    indices: List<Integer>?
+)
+pre true
+post 
+  (indices = null ⇒ NOP) ||
+  (indices ≠ null ⇒ (
+    indices.size() >0 ∧ 
+    ∀i ∈ 0..indices.size()-1 | (
+      indices.get(i) ∈ Integer ∧ 
+      ∀j ∈ i+1..indices.size()-1 | indices.get(i) ≠ indices.get(j)
+    ) ∧ 
+    throw IllegalArgumentException for invalid entries
+  ))
+Functional Scenario Form 
+indices=null && valid empty check ||
+valid unique integers list && pass validation ||
+duplicate indices && throw exception ||
+non-integer element && throw type error
+end_process
+
+process getRendererCount(
+    plot: XYPlot
+) result: int
+post result = plot.renderers.size()
+Functional Scenario Form 
+empty renderers && return zero ||
+multiple renderers && return count
+end_process
+
+process getRenderer(
+    plot: XYPlot
+) result: XYItemRenderer?
+post result = plot.getRenderer(PRIMARY_RENDERER_INDEX)
+Functional Scenario Form 
+primary renderer exists && return instance ||
+primary slot empty && return null
+end_process
+
+process getRenderer(
+    plot: XYPlot,
+    index: int
+) result: XYItemRenderer?
+post 
+  (index < plot.renderers.size() ⇒ 
+    result = plot.renderers.get(index)) || 
+  (index ≥ plot.renderers.size() ⇒ result = null)
+Functional Scenario Form 
+valid index && return renderer ||
+out-of-bounds index && null result
+end_process
+
+process setRenderer(
+    plot: XYPlot,
+    renderer: XYItemRenderer?
+)
+post setRenderer(plot, PRIMARY_RENDERER_INDEX, renderer, true)
+Functional Scenario Form 
+update primary renderer with notification
+end_process
+
+process setRenderer(
+    plot: XYPlot,
+    index: int,
+    renderer: XYItemRenderer?
+)
+post setRenderer(plot, index, renderer, true)
+Functional Scenario Form 
+indexed renderer update with default notification
+end_process
+
+process setRenderer(
+    plot: XYPlot,
+    index: int,
+    renderer: XYItemRenderer?,
+    notify: bool
+)
+pre index ≥0
+post 
+  existing = plot.getRenderer(index) ∧
+  (existing ≠ null ⇒ existing.removeChangeListener(plot)) ∧
+  plot.renderers.set(index, renderer) ∧
+  (renderer ≠ null ⇒ (
+    renderer.setPlot(plot) ∧ 
+    renderer.addChangeListener(plot)
+  )) ∧
+  configureDomainAxes(plot) ∧ 
+  configureRangeAxes(plot) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+replace existing renderer && full reconfiguration ||
+set null renderer && clear slot with axis config ||
+notify=false && suppress change event
+end_process
+
+process setRenderers(
+    plot: XYPlot,
+    renderers: XYItemRenderer[]
+)
+pre renderers ≠ null
+post 
+  ∀i ∈ 0..renderers.length-1 | 
+    plot.setRenderer(i, renderers[i], false) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-empty renderers array && batch update with final notification ||
+empty array && trigger empty configuration event
+end_process
+
+process getDatasetRenderingOrder(
+    plot: XYPlot
+) result: DatasetRenderingOrder
+post result = plot.datasetRenderingOrder
+Functional Scenario Form 
+always return current dataset rendering order
+end_process
+
+process setDatasetRenderingOrder(
+    plot: XYPlot,
+    order: DatasetRenderingOrder
+)
+pre order ≠ null
+post 
+  plot.datasetRenderingOrder' = order ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid order parameter && update and notify
+end_process
+
+process getSeriesRenderingOrder(
+    plot: XYPlot
+) result: SeriesRenderingOrder
+post result = plot.seriesRenderingOrder
+Functional Scenario Form 
+always return current series rendering order
+end_process
+
+process setSeriesRenderingOrder(
+    plot: XYPlot,
+    order: SeriesRenderingOrder
+)
+pre order ≠ null
+post 
+  plot.seriesRenderingOrder' = order ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid series order && update configuration with event
+end_process
+
+process getIndexOf(
+    plot: XYPlot,
+    renderer: XYItemRenderer?
+) result: int
+post 
+  result = -1 ∧ 
+  ∀i ∈ 0..plot.renderers.size()-1 | 
+    (plot.renderers.get(i) = renderer ⇒ result' = i) ∧ 
+    (result = i ⇒ break)
+Functional Scenario Form 
+renderer exists in list && return first index ||
+renderer not found || null input && return -1
+end_process
+
+process getRendererForDataset(
+    plot: XYPlot,
+    dataset: XYDataset?
+) result: XYItemRenderer?
+post 
+  result = null ∧ 
+  (dataset ≠ null ⇒ 
+    (∀i ∈ 0..plot.datasets.size()-1 | 
+      (plot.datasets.get(i) = dataset ⇒ 
+        result' = plot.renderers.get(i) ∧ 
+        (result = null ⇒ result' = plot.getRenderer())
+      )
+    )
+  )
+Functional Scenario Form 
+dataset match found && return mapped renderer ||
+no match && return primary renderer ||
+null dataset input && return null
+end_process
+
+process getWeight(
+    plot: XYPlot
+) result: int
+post result = plot.weight
+Functional Scenario Form 
+always return current weight value
+end_process
+
+process setWeight(
+    plot: XYPlot,
+    weight: int
+)
+post 
+  plot.weight' = weight ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+any valid integer input && update and notify
+end_process
+
+process isDomainGridlinesVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.domainGridlinesVisible
+Functional Scenario Form 
+return current domain grid visibility state
+end_process
+
+process setDomainGridlinesVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  (plot.domainGridlinesVisible ≠ visible ⇒ 
+    plot.domainGridlinesVisible' = visible ∧ 
+    fireChangeEvent(plot)) ||
+  (plot.domainGridlinesVisible = visible ⇒ NOP)
+Functional Scenario Form 
+visibility changed && trigger change event ||
+state unchanged && no operation
+end_process
+
+process isDomainMinorGridlinesVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.domainMinorGridlinesVisible
+Functional Scenario Form 
+return current minor grid visibility state
+end_process
+
+process setDomainMinorGridlinesVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  (plot.domainMinorGridlinesVisible ≠ visible ⇒ 
+    plot.domainMinorGridlinesVisible' = visible ∧ 
+    fireChangeEvent(plot)) ||
+  (plot.domainMinorGridlinesVisible = visible ⇒ NOP)
+Functional Scenario Form 
+minor visibility changed && update and notify ||
+value remains same && no action
+end_process
+
+process getDomainGridlineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.domainGridlineStroke
+Functional Scenario Form 
+always return configured stroke instance
+end_process
+
+process setDomainGridlineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.domainGridlineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid non-null stroke && update and trigger event
+end_process
+
+process getDomainMinorGridlineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.domainMinorGridlineStroke
+Functional Scenario Form 
+always return current minor gridline stroke
+end_process
+
+process setDomainMinorGridlineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.domainMinorGridlineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid stroke input && update and notify listeners
+end_process
+
+process getDomainGridlinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.domainGridlinePaint
+Functional Scenario Form 
+return current main domain grid paint
+end_process
+
+process setDomainGridlinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.domainGridlinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-null paint && visual update with event
+end_process
+
+process getDomainMinorGridlinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.domainMinorGridlinePaint
+Functional Scenario Form 
+return current minor domain grid paint
+end_process
+
+process setDomainMinorGridlinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.domainMinorGridlinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid minor paint configuration && trigger rendering update
+end_process
+
+process isRangeGridlinesVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.rangeGridlinesVisible
+Functional Scenario Form 
+reflect current range grid visibility state
+end_process
+
+process setRangeGridlinesVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  (plot.rangeGridlinesVisible ≠ visible ⇒ 
+    plot.rangeGridlinesVisible' = visible ∧ 
+    fireChangeEvent(plot)) ||
+  (plot.rangeGridlinesVisible = visible ⇒ NOP)
+Functional Scenario Form 
+visibility changed && update configuration ||
+no change && silent return
+end_process
+
+process getRangeGridlineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.rangeGridlineStroke
+Functional Scenario Form 
+always return current range gridline stroke configuration
+end_process
+
+process setRangeGridlineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.rangeGridlineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid stroke input && update visual style and notify
+end_process
+
+process getRangeGridlinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.rangeGridlinePaint
+Functional Scenario Form 
+return current paint color for range gridlines
+end_process
+
+process setRangeGridlinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.rangeGridlinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-null color update && trigger repaint event
+end_process
+
+process isRangeMinorGridlinesVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.rangeMinorGridlinesVisible
+Functional Scenario Form 
+reflect minor grid visibility state for range axis
+end_process
+
+process setRangeMinorGridlinesVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  (plot.rangeMinorGridlinesVisible ≠ visible ⇒ 
+    plot.rangeMinorGridlinesVisible' = visible ∧ 
+    fireChangeEvent(plot)) ||
+  (plot.rangeMinorGridlinesVisible = visible ⇒ NOP)
+Functional Scenario Form 
+visibility state changed && configuration update ||
+no change in state && no operation
+end_process
+
+process getRangeMinorGridlineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.rangeMinorGridlineStroke
+Functional Scenario Form 
+return stroke setting for minor range gridlines
+end_process
+
+process setRangeMinorGridlineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.rangeMinorGridlineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid minor stroke input && update rendering parameters
+end_process
+
+process getRangeMinorGridlinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.rangeMinorGridlinePaint
+Functional Scenario Form 
+always return minor range gridline color
+end_process
+
+process setRangeMinorGridlinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.rangeMinorGridlinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid paint input && update visual style
+end_process
+
+process isDomainZeroBaselineVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.domainZeroBaselineVisible
+Functional Scenario Form 
+return zero baseline visibility state
+end_process
+
+process setDomainZeroBaselineVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  plot.domainZeroBaselineVisible' = visible ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+any boolean input && update with notification
+end_process
+
+process getDomainZeroBaselineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.domainZeroBaselineStroke
+Functional Scenario Form 
+return current baseline stroke style
+end_process
+
+process setDomainZeroBaselineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.domainZeroBaselineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid stroke parameter && trigger rendering update
+end_process
+
+process getDomainZeroBaselinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.domainZeroBaselinePaint
+Functional Scenario Form 
+return configured baseline color
+end_process
+
+process setDomainZeroBaselinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.domainZeroBaselinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-null paint value && apply graphic change
+end_process
+
+process isRangeZeroBaselineVisible(
+    plot: XYPlot
+) result: bool
+post result = plot.rangeZeroBaselineVisible
+Functional Scenario Form 
+return current range zero baseline visibility state
+end_process
+
+process setRangeZeroBaselineVisible(
+    plot: XYPlot,
+    visible: bool
+)
+post 
+  plot.rangeZeroBaselineVisible' = visible ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+visible=true && update flag and notify || 
+visible=false && update flag and notify
+end_process
+
+process getRangeZeroBaselineStroke(
+    plot: XYPlot
+) result: Stroke
+post result = plot.rangeZeroBaselineStroke
+Functional Scenario Form 
+always return configured stroke style
+end_process
+
+process setRangeZeroBaselineStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre stroke ≠ null
+post 
+  plot.rangeZeroBaselineStroke' = stroke ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid input && update graphical parameters
+end_process
+
+process getRangeZeroBaselinePaint(
+    plot: XYPlot
+) result: Paint
+post result = plot.rangeZeroBaselinePaint
+Functional Scenario Form 
+return current baseline color configuration
+end_process
+
+process setRangeZeroBaselinePaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre paint ≠ null
+post 
+  plot.rangeZeroBaselinePaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-null paint input && trigger visual refresh
+end_process
+
+process getDomainTickBandPaint(
+    plot: XYPlot
+) result: Paint?
+post result = plot.domainTickBandPaint
+Functional Scenario Form 
+return current tick band paint || null if unconfigured
+end_process
+
+process setDomainTickBandPaint(
+    plot: XYPlot,
+    paint: Paint?
+)
+post 
+  plot.domainTickBandPaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+paint=null && clear tick band style || 
+paint≠null && update visual design
+end_process
+
+process getRangeTickBandPaint(
+    plot: XYPlot
+) result: Paint?
+post result = plot.rangeTickBandPaint
+Functional Scenario Form 
+return range axis tick band color configuration
+end_process
+
+process setRangeTickBandPaint(
+    plot: XYPlot,
+    paint: Paint?
+)
+post 
+  plot.rangeTickBandPaint' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+paint=null && disable tick band rendering ||
+valid paint && update visual style
+end_process
+
+process getQuadrantOrigin(
+    plot: XYPlot
+) result: Point2D
+post result = plot.quadrantOrigin
+Functional Scenario Form 
+always return current quadrant origin point
+end_process
+
+process setQuadrantOrigin(
+    plot: XYPlot,
+    origin: Point2D
+)
+pre origin ≠ null
+post 
+  plot.quadrantOrigin' = origin ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid origin point && update quadrant coordinates
+end_process
+
+process getQuadrantPaint(
+    plot: XYPlot,
+    index: int
+) result: Paint?
+pre 0 ≤ index ≤3
+post result = plot.quadrantPaint[index]
+Functional Scenario Form 
+index=0 && retrieve first quadrant color ||
+index=3 && return fourth quadrant style
+end_process
+
+process setQuadrantPaint(
+    plot: XYPlot,
+    index: int,
+    paint: Paint?
+)
+pre 0 ≤ index ≤3
+post 
+  plot.quadrantPaint[index]' = paint ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+valid index && update quadrant rendering ||
+paint=null && clear quadrant fill
+end_process
+
+process addDomainMarker(
+    plot: XYPlot,
+    marker: Marker
+)
+pre marker ≠ null
+post addDomainMarker(plot, 0, marker, Layer.FOREGROUND)
+Functional Scenario Form 
+delegate to core method with default parameters
+end_process
+
+process addDomainMarker(
+    plot: XYPlot,
+    marker: Marker,
+    layer: Layer
+)
+pre marker ≠ null
+post addDomainMarker(plot, 0, marker, layer)
+Functional Scenario Form 
+explicit layer specification && forward to indexed method
+end_process
+
+process addDomainMarker(
+    plot: XYPlot,
+    axisIndex: int,
+    marker: Marker,
+    layer: Layer
+)
+pre 
+  marker ≠ null ∧ 
+  axisIndex ≥0 ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  targetMap = if layer=FOREGROUND then 
+              plot.foregroundDomainMarkers else 
+              plot.backgroundDomainMarkers ∧
+  (targetMap.containsKey(axisIndex) ⇒ 
+    targetMap.get(axisIndex).add(marker)) ||
+  (¬targetMap.containsKey(axisIndex) ⇒ 
+    targetMap.put(axisIndex, new ArrayList([marker]))) ∧
+  fireChangeEvent(plot)
+Functional Scenario Form 
+new axis index && create marker list ||
+existing axis index && append marker ||
+invalid layer && throw IllegalArgumentException
+end_process
+
+process clearDomainMarkers(
+    plot: XYPlot
+)
+post 
+  ∀key ∈ plot.backgroundDomainMarkers.keyset() | 
+    clearDomainMarkers(plot, key.intValue()) ∧ 
+  plot.backgroundDomainMarkers.clear() ∧
+  ∀key ∈ plot.foregroundDomainMarkers.keyset() |
+    clearDomainMarkers(plot, key.intValue()) ∧ 
+  plot.foregroundDomainMarkers.clear() ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-empty markers && full cleanup with event || 
+empty markers && trigger empty state change
+end_process
+
+process clearDomainMarkers(
+    plot: XYPlot,
+    index: int
+)
+post 
+  key = new Integer(index) ∧ 
+  (markers = plot.backgroundDomainMarkers.get(key) ⇒ 
+    ∀m ∈ markers | m.removeChangeListener(plot) ∧ 
+    markers.clear()) ∧ 
+  (markers = plot.foregroundDomainMarkers.get(key) ⇒ 
+    ∀m ∈ markers | m.removeChangeListener(plot) ∧ 
+    markers.clear()) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+existing index && remove all layer markers || 
+invalid index && no operation but notify
+end_process
+
+process addDomainMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer,
+    notify: bool
+)
+pre 
+  marker ≠ null ∧ 
+  layer ≠ null
+post 
+  map = (layer = FOREGROUND ? 
+        plot.foregroundDomainMarkers : 
+        plot.backgroundDomainMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  (map.contains(key) ⇒ 
+    markers = map.get(key)) ||
+  (¬map.contains(key) ⇒ 
+    markers = new ArrayList() ∧ 
+    map.put(key, markers)) ∧ 
+  markers.add(marker) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+new axis index && create marker collection ||
+existing index && append to existing list ||
+layer=null && throw IllegalArgumentException
+end_process
+
+process removeDomainMarker(
+    plot: XYPlot,
+    marker: Marker
+) result: bool
+pre marker ≠ null
+post result = removeDomainMarker(plot, 0, marker, Layer.FOREGROUND, true)
+Functional Scenario Form 
+non-null marker exists in foreground layer && remove success ||
+marker not found && return false
+end_process
+
+process removeDomainMarker(
+    plot: XYPlot,
+    marker: Marker,
+    layer: Layer
+) result: bool
+pre 
+  marker ≠ null ∧ 
+  layer ≠ null
+post result = removeDomainMarker(plot, 0, marker, layer, true)
+Functional Scenario Form 
+explicit layer specification && check corresponding storage
+end_process
+
+process removeDomainMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer
+) result: bool
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ≠ null
+post result = removeDomainMarker(plot, index, marker, layer, true)
+Functional Scenario Form 
+indexed marker removal with default notification
+end_process
+
+process removeDomainMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer,
+    notify: bool
+) result: bool
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  map = (layer = FOREGROUND ? 
+        plot.foregroundDomainMarkers : 
+        plot.backgroundDomainMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  markers = map.get(key) ∧ 
+  (markers ≠ null ⇒ 
+    (removed = markers.remove(marker) ∧ 
+    (removed ∧ notify ⇒ fireChangeEvent(plot)) ∧ 
+    result = removed) || 
+    (markers = null ⇒ result = false))
+Functional Scenario Form 
+marker exists && notify=true && trigger event ||
+marker not found && return false ||
+invalid index && silent failure
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    marker: Marker
+)
+pre marker ≠ null
+post addRangeMarker(plot, 0, marker, Layer.FOREGROUND)
+Functional Scenario Form 
+default range marker addition to primary axis foreground
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    marker: Marker,
+    layer: Layer
+)
+pre 
+  marker ≠ null ∧ 
+  layer ≠ null
+post addRangeMarker(plot, 0, marker, layer)
+Functional Scenario Form 
+specified layer addition with default axis index
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer
+)
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  targetMap = (layer = FOREGROUND ? 
+              plot.foregroundRangeMarkers : 
+              plot.backgroundRangeMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  (targetMap.contains(key) ⇒ 
+    markers = targetMap.get(key)) || 
+  (¬targetMap.contains(key) ⇒ 
+    markers = new ArrayList() ∧ 
+    targetMap.put(key, markers)) ∧ 
+  markers.add(marker) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+new range axis index && create new collection ||
+existing index && append marker ||
+invalid layer parameter && throw exception
+end_process
+
+process clearRangeMarkers(
+    plot: XYPlot
+)
+post 
+  ∀key ∈ plot.backgroundRangeMarkers.keyset() | 
+    clearRangeMarkers(plot, key.intValue()) ∧ 
+  plot.backgroundRangeMarkers.clear() ∧
+  ∀key ∈ plot.foregroundRangeMarkers.keyset() | 
+    clearRangeMarkers(plot, key.intValue()) ∧ 
+  plot.foregroundRangeMarkers.clear() ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+multiple markers exist && full cleanup with event ||
+empty marker storage && trigger empty state change
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer
+)
+pre index ≥0 ∧ layer ≠ null ∧ marker ≠ null
+post addRangeMarker(plot, index, marker, layer, true)
+Functional Scenario Form 
+valid three-param call && delegate with notify=true
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer,
+    notify: bool
+)
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  targetMap = (layer = FOREGROUND ? 
+              plot.foregroundRangeMarkers : 
+              plot.backgroundRangeMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  (targetMap.contains(key) ⇒ 
+    markers = targetMap.get(key)) || 
+  (¬targetMap.contains(key) ⇒ 
+    markers = new ArrayList() ∧ 
+    targetMap.put(key, markers)) ∧ 
+  markers.add(marker) ∧ 
+  marker.addChangeListener(plot) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+new layer index && create entry with listener ||
+existing index && append marker && handle notify flag
+end_process
+
+process clearRangeMarkers(
+    plot: XYPlot,
+    index: int
+)
+post 
+  key = new Integer(index) ∧ 
+  (bg_markers = plot.backgroundRangeMarkers.get(key) ⇒ 
+    ∀m ∈ bg_markers | m.removeChangeListener(plot) ∧ 
+    bg_markers.clear()) ∧ 
+  (fg_markers = plot.foregroundRangeMarkers.get(key) ⇒ 
+    ∀m ∈ fg_markers | m.removeChangeListener(plot) ∧ 
+    fg_markers.clear()) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+index has markers && clean all layers' entries ||
+invalid index && no-op but still notify
+end_process
+
+process removeRangeMarker(
+    plot: XYPlot,
+    marker: Marker
+) result: bool
+pre marker ≠ null
+post result = removeRangeMarker(plot, 0, marker, Layer.FOREGROUND, true)
+Functional Scenario Form 
+default layer marker removal from primary axis
+end_process
+
+process removeRangeMarker(
+    plot: XYPlot,
+    marker: Marker,
+    layer: Layer
+) result: bool
+pre 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post result = removeRangeMarker(plot, 0, marker, layer, true)
+Functional Scenario Form 
+explicit layer selection for range marker removal
+end_process
+
+process removeRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer
+) result: bool
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ≠ null
+post result = removeRangeMarker(plot, index, marker, layer, true)
+Functional Scenario Form 
+indexed range marker removal with notification
+end_process
+
+process removeRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer,
+    notify: bool
+) result: bool
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  targetMap = (layer = FOREGROUND ? 
+              plot.foregroundRangeMarkers : 
+              plot.backgroundRangeMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  markers = targetMap.get(key) ∧ 
+  (markers ≠ null ⇒ 
+    (removed = markers.remove(marker) ∧ 
+    (removed ∧ notify ⇒ fireChangeEvent(plot)) ∧ 
+    result = removed)) || 
+  (markers = null ⇒ result = false)
+Functional Scenario Form 
+marker existing at index && remove success ||
+invalid index && silent failure
+end_process
+
+process addAnnotation(
+    plot: XYPlot,
+    annotation: XYAnnotation
+)
+pre annotation ≠ null
+post addAnnotation(plot, annotation, true)
+Functional Scenario Form 
+default annotation addition with notification
+end_process
+
+process addAnnotation(
+    plot: XYPlot,
+    annotation: XYAnnotation,
+    notify: bool
+)
+pre annotation ≠ null
+post 
+  plot.annotations.add(annotation) ∧ 
+  (notify ⇒ fireChangeEvent(plot))
+Functional Scenario Form 
+non-null annotation && update annotations collection ||
+duplicate addition && silent acceptance with event
+end_process
+
+process clearRangeMarkers(
+    plot: XYPlot
+)
+post 
+  ∀key ∈ plot.backgroundRangeMarkers.keyset() | 
+    clearRangeMarkers(plot, key.intValue()) ∧ 
+  plot.backgroundRangeMarkers.clear() ∧
+  ∀key ∈ plot.foregroundRangeMarkers.keyset() | 
+    clearRangeMarkers(plot, key.intValue()) ∧ 
+  plot.foregroundRangeMarkers.clear() ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+non-empty markers && markers_cleared && event_triggered 
+empty_markers_collection && empty_state_change_notified
+end_process
+
+process addRangeMarker(
+    plot: XYPlot,
+    index: int,
+    marker: Marker,
+    layer: Layer
+)
+pre 
+  index ≥0 ∧ 
+  marker ≠ null ∧ 
+  layer ∈ {FOREGROUND, BACKGROUND}
+post 
+  targetMap = (layer = FOREGROUND ? 
+              plot.foregroundRangeMarkers : 
+              plot.backgroundRangeMarkers) ∧ 
+  key = new Integer(index) ∧ 
+  (targetMap.contains(key) ∧ markers.add(marker) 
+    ¬targetMap.contains(key) ∧ markers = new ArrayList() ∧ targetMap.put(key, markers) ∧ markers.add(marker)) ∧ 
+  fireChangeEvent(plot)
+Functional Scenario Form 
+existing_index && marker_appended_to_existing_collection
+new_index && new_collection_created && marker_added
+invalid_layer && exception_thrown
+end_process
+
+process calculateDomainAxisSpace(
+    plot: XYPlot,
+    g2: Graphics2D,
+    plotArea: Rectangle2D,
+    space: AxisSpace?
+) result: AxisSpace
+pre 
+  plotArea ≠ null ∧ 
+  g2 ≠ null
+post 
+  finalSpace = (space ≠ null ? space : new AxisSpace()) ∧ 
+  (plot.fixedDomainAxisSpace ≠ null ∧ orientation=HORIZONTAL ∧ space_updated_with_horizontal_borders
+   plot.fixedDomainAxisSpace ≠ null ∧ orientation=VERTICAL ∧ space_updated_with_vertical_borders
+   plot.fixedDomainAxisSpace = null ∧ axes_iterated_with_space_reservation)
+Functional Scenario Form 
+fixed_space_exists && horizontal_orientation && left_right_space_set
+fixed_space_exists && vertical_orientation && top_bottom_space_set
+dynamic_calculation && all_axes_processed
+end_process
+
+process calculateRangeAxisSpace(
+    plot: XYPlot,
+    g2: Graphics2D,
+    plotArea: Rectangle2D,
+    space: AxisSpace?
+) result: AxisSpace
+pre 
+  g2 ≠ null ∧ 
+  plotArea ≠ null
+post 
+  finalSpace = (space ≠ null ? space : new AxisSpace()) ∧ 
+  (plot.fixedRangeAxisSpace ≠ null ∧ plot.orientation = HORIZONTAL ∧ finalSpace.ensureAtLeast(plot.fixedRangeAxisSpace.top, RectangleEdge.TOP) ∧ finalSpace.ensureAtLeast(plot.fixedRangeAxisSpace.bottom, RectangleEdge.BOTTOM)) ∨ 
+  (plot.fixedRangeAxisSpace ≠ null ∧ plot.orientation = VERTICAL ∧ finalSpace.ensureAtLeast(plot.fixedRangeAxisSpace.left, RectangleEdge.LEFT) ∧ finalSpace.ensureAtLeast(plot.fixedRangeAxisSpace.right, RectangleEdge.RIGHT)) ∨ 
+  (plot.fixedRangeAxisSpace = null ∧ ∀i ∈ 0..plot.rangeAxes.size()-1 | axis = plot.rangeAxes.get(i) ∧ axis ≠ null ⇒ edge = plot.getRangeAxisEdge(i) ∧ finalSpace' = axis.reserveSpace(g2, plot, plotArea, edge, finalSpace)) ∧ 
+  result = finalSpace
+Functional Scenario Form 
+fixed_space_exists && horizontal_orientation && top_bottom_edges_configured
+fixed_space_exists && vertical_orientation && left_right_edges_configured
+dynamic_calculation && range_axes_processed
+end_process
+
+process drawCrosshairsAndFinalElements(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    orient: PlotOrientation,
+    crosshairState: CrosshairState,
+    foundData: bool,
+    originalClip: Shape,
+    originalComposite: Composite
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  crosshairState ≠ null
+post 
+  processDomainCrosshair() ∧ 
+  processRangeCrosshair() ∧ 
+  (¬foundData ⇒ plot.drawNoDataMessage(g2, dataArea)) ∧ 
+  drawForegroundMarkers() ∧ 
+  restoreGraphicsState()
+where
+  processDomainCrosshair() ≜
+    xAxisIndex = crosshairState.getDomainAxisIndex() ∧ 
+    xAxis = plot.getDomainAxis(xAxisIndex) ∧ 
+    xAxisEdge = plot.getDomainAxisEdge(xAxisIndex) ∧ 
+    (¬plot.domainCrosshairLockedOnData ∧ crosshairState.anchor ≠ null ⇒ 
+      updateDomainCrosshairValue(orient, xAxis, xAxisEdge, dataArea, crosshairState.anchor)) ∧ 
+    (plot.isDomainCrosshairVisible() ⇒ 
+      x = plot.getDomainCrosshairValue() ∧ 
+      paint = plot.getDomainCrosshairPaint() ∧ 
+      stroke = plot.getDomainCrosshairStroke() ∧ 
+      plot.drawDomainCrosshair(g2, dataArea, orient, x, xAxis, stroke, paint))
+      
+  updateDomainCrosshairValue(o: PlotOrientation, ax: ValueAxis, edge: RectangleEdge, da: Rectangle2D, a: Point2D) ≜
+    o = VERTICAL ? ax.java2DToValue(a.x, da, edge) : ax.java2DToValue(a.y, da, edge)
+    
+  processRangeCrosshair() ≜
+    yAxisIndex = crosshairState.getRangeAxisIndex() ∧ 
+    yAxis = plot.getRangeAxis(yAxisIndex) ∧ 
+    yAxisEdge = plot.getRangeAxisEdge(yAxisIndex) ∧ 
+    (¬plot.rangeCrosshairLockedOnData ∧ crosshairState.anchor ≠ null ⇒ 
+      updateRangeCrosshairValue(orient, yAxis, yAxisEdge, dataArea, crosshairState.anchor)) ∧ 
+    (plot.isRangeCrosshairVisible() ⇒ 
+      y = plot.getRangeCrosshairValue() ∧ 
+      paint = plot.getRangeCrosshairPaint() ∧ 
+      stroke = plot.getRangeCrosshairStroke() ∧ 
+      plot.drawRangeCrosshair(g2, dataArea, orient, y, yAxis, stroke, paint))
+      
+  updateRangeCrosshairValue(o: PlotOrientation, ax: ValueAxis, edge: RectangleEdge, da: Rectangle2D, a: Point2D) ≜
+    o = VERTICAL ? ax.java2DToValue(a.y, da, edge) : ax.java2DToValue(a.x, da, edge)
+    
+  drawForegroundMarkers() ≜
+    ∀i ∈ 0..plot.renderers.size()-1 | 
+      plot.drawDomainMarkers(g2, dataArea, i, Layer.FOREGROUND) ∧ 
+      plot.drawRangeMarkers(g2, dataArea, i, Layer.FOREGROUND)
+    
+  restoreGraphicsState() ≜
+    plot.drawAnnotations(g2, dataArea, null) ∧ 
+    g2.setClip(originalClip) ∧ 
+    g2.setComposite(originalComposite) ∧ 
+    plot.drawOutline(g2, dataArea)
+Functional Scenario Form 
+domain_crosshair_visible && orientation_vertical && crosshair_drawn 
+range_crosshair_locked && anchor_null && skip_value_update 
+no_data_found && no_data_message_displayed 
+multiple_renderers && all_foreground_markers_processed 
+crosshair_invisible && no_drawing_operations 
+mixed_orientation && correct_coordinate_conversion 
+end_process
+
+process drawBackground(
+    plot: XYPlot,
+    g2: Graphics2D,
+    area: Rectangle2D
+)
+pre 
+  g2 ≠ null ∧ 
+  area ≠ null ∧ 
+  area.width > 0 ∧ 
+  area.height > 0
+post 
+  plot.fillBackground(g2, area, plot.orientation) ∧ 
+  plot.drawQuadrants(g2, area) ∧ 
+  plot.drawBackgroundImage(g2, area)
+where
+  fillBackground(g: Graphics2D, a: Rectangle2D, o: PlotOrientation) ≜
+    applyBackgroundPaint(g, a) ∧ 
+    applyOrientationGradient(g, a, o)
+Functional Scenario Form 
+background_paint_set && quadrants_visible && background_image_exists 
+no_background_paint && quadrants_disabled && no_background_image 
+horizontal_orientation && gradient_applied 
+quadrant_colors_defined && four_quadrants_drawn 
+background_image_scaled_to_area 
+end_process
+
+process drawDomainTickBands(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    ticks: List<ValueTick>
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  dataArea.width > 0 ∧ 
+  dataArea.height > 0
+post 
+  bandPaint = plot.domainTickBandPaint ∧ 
+  (bandPaint ≠ null ⇒ 
+    initVariables() ∧ 
+    processTicks(ticks) ∧ 
+    handleFinalBand()
+  )
+where
+  initVariables() ≜
+    fillBand = false ∧ 
+    xAxis = plot.getDomainAxis() ∧ 
+    previous = xAxis.lowerBound
+    
+  processTicks(ts: List<ValueTick>) ≜
+    ∀t ∈ ts | 
+      current = t.value ∧ 
+      (fillBand ⇒ 
+        plot.renderer.fillDomainGridBand(g2, plot, xAxis, dataArea, previous, current)
+      ) ∧ 
+      previous' = current ∧ 
+      fillBand' = ¬fillBand
+      
+  handleFinalBand() ≜
+    end = xAxis.upperBound ∧ 
+    (fillBand ⇒ 
+      plot.renderer.fillDomainGridBand(g2, plot, xAxis, dataArea, previous, end)
+    )
+Functional Scenario Form 
+bandPaint_not_null && even_number_of_ticks && alternate_bands_filled
+bandPaint_not_null && odd_number_of_ticks && final_band_filled 
+bandPaint_null && no_rendering 
+zero_ticks_with_bandPaint && fill_whole_axis_band 
+end_process
+
+process drawRangeTickBands(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    ticks: List<ValueTick>
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  dataArea.width > 0 ∧ 
+  dataArea.height > 0
+post 
+  bandPaint = plot.rangeTickBandPaint ∧ 
+  (bandPaint ≠ null ⇒ 
+    initVariables() ∧ 
+    processTicks(ticks) ∧ 
+    handleFinalBand()
+  )
+where
+  initVariables() ≜
+    fillBand = false ∧ 
+    axis = plot.getRangeAxis() ∧ 
+    previous = axis.lowerBound
+    
+  processTicks(ts: List<ValueTick>) ≜
+    ∀t ∈ ts | 
+      current = t.value ∧ 
+      (fillBand ⇒ 
+        plot.renderer.fillRangeGridBand(g2, plot, axis, dataArea, previous, current)
+      ) ∧ 
+      previous' = current ∧ 
+      fillBand' = ¬fillBand
+      
+  handleFinalBand() ≜
+    end = axis.upperBound ∧ 
+    (fillBand ⇒ 
+      plot.renderer.fillRangeGridBand(g2, plot, axis, dataArea, previous, end)
+    )
+Functional Scenario Form 
+bandPaint_configured && multiple_ticks && band_alternation 
+initial_fillBand_true && first_band_empty 
+axis_out_of_range_ticks && no_bands_filled 
+end_process
+
+process drawAxes(
+    plot: XYPlot,
+    g2: Graphics2D,
+    plotArea: Rectangle2D,
+    dataArea: Rectangle2D,
+    plotState: PlotRenderingInfo?
+) result: Map<ValueAxis, AxisState>
+pre 
+  g2 ≠ null ∧ 
+  plotArea ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  plotArea.contains(dataArea)
+post 
+  collectAxes() ∧ 
+  drawTopAxes() ∧ 
+  drawBottomAxes() ∧ 
+  drawLeftAxes() ∧ 
+  drawRightAxes() ∧ 
+  result = axisStateMap
+where
+  collectAxes() ≜
+    axisCollection = new AxisCollection() ∧ 
+    ∀index ∈ 0..plot.domainAxes.size()-1 | 
+      axis = plot.domainAxes.get(index) ∧ 
+      axis ≠ null ⇒ 
+        edge = plot.getDomainAxisEdge(index) ∧ 
+        axisCollection.add(axis, edge) ∧ 
+    ∀index ∈ 0..plot.rangeAxes.size()-1 | 
+      axis = plot.rangeAxes.get(index) ∧ 
+      axis ≠ null ⇒ 
+        edge = plot.getRangeAxisEdge(index) ∧ 
+        axisCollection.add(axis, edge)
+        
+  drawTopAxes() ≜
+    cursor = dataArea.minY - plot.axisOffset.calculateTopOutset(dataArea.height) ∧ 
+    ∀axis ∈ axisCollection.axesAtTop | 
+      info = axis.draw(g2, cursor, plotArea, dataArea, TOP, plotState) ∧ 
+      cursor' = info.cursor ∧ 
+      axisStateMap.put(axis, info)
+      
+  drawBottomAxes() ≜  
+    cursor = dataArea.maxY + plot.axisOffset.calculateBottomOutset(dataArea.height) ∧ 
+    ∀axis ∈ axisCollection.axesAtBottom | 
+      info = axis.draw(g2, cursor, plotArea, dataArea, BOTTOM, plotState) ∧ 
+      cursor' = info.cursor ∧ 
+      axisStateMap.put(axis, info)
+      
+  drawLeftAxes() ≜
+    cursor = dataArea.minX - plot.axisOffset.calculateLeftOutset(dataArea.width) ∧ 
+    ∀axis ∈ axisCollection.axesAtLeft | 
+      info = axis.draw(g2, cursor, plotArea, dataArea, LEFT, plotState) ∧ 
+      cursor' = info.cursor ∧ 
+      axisStateMap.put(axis, info)
+      
+  drawRightAxes() ≜
+    cursor = dataArea.maxX + plot.axisOffset.calculateRightOutset(dataArea.width) ∧ 
+    ∀axis ∈ axisCollection.axesAtRight | 
+      info = axis.draw(g2, cursor, plotArea, dataArea, RIGHT, plotState) ∧ 
+      cursor' = info.cursor ∧ 
+      axisStateMap.put(axis, info)
+Functional Scenario Form 
+multiple_domain_axes && non_null_edges && added_to_correct_collections 
+empty_range_axes && skip_range_processing 
+all_four_directions_have_axes && full_state_map_generated 
+null_axis_in_collection && excluded_from_drawing 
+successive_axis_drawing_with_cursor_update 
+end_process
+
+process render(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    index: 0..plot.datasets.size-1,
+    info: PlotRenderingInfo?,
+    crosshairState: CrosshairState
+) result: bool
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  dataArea.width > 0 ∧ 
+  dataArea.height > 0 ∧ 
+  index ∈ 0..plot.datasets.size-1
+post 
+  dataset = plot.getDataset(index) ∧ 
+  (DatasetUtilities.isEmptyOrNull(dataset) ⇒ result = false) ∧ 
+  (¬DatasetUtilities.isEmptyOrNull(dataset) ⇒ 
+    processValidDataset(dataset)
+  )
+where
+  processValidDataset(ds: XYDataset) ≜
+    xAxis = plot.getDomainAxisForDataset(index) ∧ 
+    yAxis = plot.getRangeAxisForDataset(index) ∧ 
+    ((xAxis = null ∨ yAxis = null) ⇒ result = true) ∧ 
+    (xAxis ≠ null ∧ yAxis ≠ null ⇒ 
+      processRendererConfig() ∧ 
+      initializeRendererState() ∧ 
+      executeRenderingPasses()
+    )
+    
+  processRendererConfig() ≜
+    renderer = plot.getRenderer(index) ∨ 
+    (renderer = null ⇒ renderer = plot.getRenderer()) ∧ 
+    (renderer = null ⇒ result = true)
+    
+  initializeRendererState() ≜
+    state = renderer.initialise(g2, dataArea, plot, ds, info) ∧ 
+    selectionState = state.selectionState ∧ 
+    passCount = renderer.getPassCount()
+    
+  executeRenderingPasses() ≜
+    seriesOrder = plot.seriesRenderingOrder ∧ 
+    ∀pass ∈ 0..passCount-1 | 
+      (
+        (seriesOrder = REVERSE ⇒ processSeriesBatch(pass, ds.seriesCount-1..0)) ∨ 
+        (seriesOrder ≠ REVERSE ⇒ processSeriesBatch(pass, 0..ds.seriesCount-1))
+      ) ∧ 
+      updatePassState(pass)
+    result = true
+      
+  processSeriesBatch(p: int, seriesRange: sequence of int) ≜
+    ∀s ∈ seriesRange | 
+      itemCount = ds.getItemCount(s) ∧ 
+      (itemCount = 0 ⇒ skip) ∨ 
+      (itemCount > 0 ⇒ 
+        determineItemRange(s) ∧ 
+        state.startSeriesPass(ds, s, first, last, p, passCount) ∧ 
+        processItemBatch(s, p, first, last) ∧ 
+        state.endSeriesPass(ds, s, first, last, p, passCount)
+      )
+      
+  processItemBatch(s: int, p: int, f: int, l: int) ≜
+    ∀i ∈ f..l | 
+      selected = (selectionState ≠ null ? selectionState.isSelected(s, i) : false) ∧ 
+      renderer.drawItem(g2, state, dataArea, plot, xAxis, yAxis, ds, s, i, selected, p)
+      
+  determineItemRange(s: int) ≜
+    (state.processVisibleOnly ⇒ 
+      axisLower = xAxis.lowerBound ∧ 
+      axisUpper = xAxis.upperBound ∧ 
+      bounds = RendererUtilities.findLiveItems(ds, s, axisLower, axisUpper) ∧ 
+      first' = max(bounds[0] - 1, 0) ∧ 
+      last' = min(bounds[1] + 1, ds.getItemCount(s)-1)
+    ) ∨ 
+    (¬state.processVisibleOnly ⇒ 
+      first' = 0 ∧ 
+      last' = ds.getItemCount(s) - 1
+    )
+    
+  updatePassState(p: int) ≜
+    state.setCurrentPass(p)
+    
+Functional Scenario Form 
+reverse_order_with_multiple_series && full_item_processing 
+forward_order_with_visible_items_clamped 
+series_order_forward_with_empty_dataset && result_false 
+axis_missing_but_data_exists && return_true 
+mixed_series_lengths_with_selection_state 
+visible_range_exceeds_dataset_bounds && safe_clamping 
+all_items_selected_with_selectionState_present 
+end_process
+
+process getDomainAxisForDataset(
+    plot: XYPlot,
+    index: int
+) result: ValueAxis
+pre 
+  upper = max(plot.datasets.size, plot.renderers.size) ∧ 
+  index ∈ 0..upper-1
+post 
+  axisIndices = plot.datasetToDomainAxesMap.get(index) ∧ 
+  (axisIndices ≠ null ∧ axisIndices.size > 0 ⇒ 
+    result = plot.domainAxes.get(axisIndices[0])
+  ) ∧ 
+  (axisIndices = null ∨ axisIndices.size = 0 ⇒ 
+    result = plot.domainAxes.get(0)
+  )
+Functional Scenario Form 
+valid_index_with_mapped_axes && return_first_mapped_axis 
+valid_index_unmapped && return_default_domain_axis 
+end_process
+
+process getRangeAxisForDataset(
+    plot: XYPlot,
+    index: int
+) result: ValueAxis
+pre 
+  upper = max(plot.datasets.size, plot.renderers.size) ∧ 
+  index ∈ 0..upper-1
+post 
+  axisIndices = plot.datasetToRangeAxesMap.get(index) ∧ 
+  (axisIndices ≠ null ∧ axisIndices.size > 0 ⇒ 
+    result = plot.rangeAxes.get(axisIndices[0])
+  ) ∧ 
+  (axisIndices = null ∨ axisIndices.size = 0 ⇒ 
+    result = plot.rangeAxes.get(0)
+  )
+Functional Scenario Form 
+valid_mapping_exists && return_corresponding_range_axis 
+no_mapping_available && fallback_to_default_range_axis 
+end_process
+
+process drawDomainGridlines(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    ticks: List<ValueTick>
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  plot.getRenderer() ≠ null
+post 
+  (plot.domainGridlinesVisible ∨ plot.domainMinorGridlinesVisible ⇒ 
+    processEachTick(ticks)
+  ) ∧ 
+  (¬(plot.domainGridlinesVisible ∨ plot.domainMinorGridlinesVisible) ⇒ 
+    noOperation()
+  )
+where
+  processEachTick(ts: List<ValueTick>) ≜
+    ∀t ∈ ts | 
+      (t.tickType = MINOR ∧ plot.domainMinorGridlinesVisible ⇒ 
+        gridStroke = plot.domainMinorGridlineStroke ∧ 
+        gridPaint = plot.domainMinorGridlinePaint ∧ 
+        drawLineIfPossible(t.value, gridStroke, gridPaint)
+      ) ∨ 
+      (t.tickType = MAJOR ∧ plot.domainGridlinesVisible ⇒ 
+        gridStroke = plot.domainGridlineStroke ∧ 
+        gridPaint = plot.domainGridlinePaint ∧ 
+        drawLineIfPossible(t.value, gridStroke, gridPaint)
+      )
+      
+  drawLineIfPossible(v: real, s: Stroke, p: Paint) ≜
+    renderer = plot.getRenderer() ∧ 
+    (renderer ∈ AbstractXYItemRenderer ⇒ 
+      renderer.drawDomainLine(g2, plot, plot.getDomainAxis(), dataArea, v, p, s)
+    )
+Functional Scenario Form 
+both_gridline_types_visible && process_all_ticks 
+minor_only_visible && draw_minor_ticks 
+renderer_not_abstract_type && skip_drawing 
+no_gridlines_visible && no_operation 
+end_process
+
+process drawRangeGridlines(
+    plot: XYPlot,
+    g2: Graphics2D,
+    area: Rectangle2D,
+    ticks: List<ValueTick>
+)
+pre 
+  g2 ≠ null ∧ 
+  area ≠ null ∧ 
+  plot.getRenderer() ≠ null ∧ 
+  plot.getRangeAxis() ≠ null
+post 
+  (plot.rangeGridlinesVisible ∨ plot.rangeMinorGridlinesVisible ⇒ 
+    ∀t ∈ ticks | processRangeTick(t)
+  ) ∧ 
+  zeroBaselineHandling()
+where
+  processRangeTick(t: ValueTick) ≜
+    (t.tickType = MINOR ∧ plot.rangeMinorGridlinesVisible ⇒ 
+      useMinorRangeGridStyle() ∧ 
+      (t.value ≠ 0 ∨ ¬plot.rangeZeroBaselineVisible ⇒ 
+        drawRangeLine(t.value)
+      )
+    ) ∨ 
+    (t.tickType = MAJOR ∧ plot.rangeGridlinesVisible ⇒ 
+      useMajorRangeGridStyle() ∧ 
+      (t.value ≠ 0 ∨ ¬plot.rangeZeroBaselineVisible ⇒ 
+        drawRangeLine(t.value)
+      )
+    )
+    
+  useMinorRangeGridStyle() ≜
+    gridStroke = plot.rangeMinorGridlineStroke ∧ 
+    gridPaint = plot.rangeMinorGridlinePaint
+    
+  useMajorRangeGridStyle() ≜
+    gridStroke = plot.rangeGridlineStroke ∧ 
+    gridPaint = plot.rangeGridlinePaint
+    
+  drawRangeLine(v: real) ≜
+    plot.renderer.drawRangeLine(g2, plot, plot.getRangeAxis(), area, v, gridPaint, gridStroke)
+    
+  zeroBaselineHandling() ≜
+    (∃t ∈ ticks | t.value = 0 ∧ plot.rangeZeroBaselineVisible ⇒ 
+      no_line_drawn_at_zero
+    )
+Functional Scenario Form 
+minor_ticks_visible && non_zero_value && line_drawn 
+major_ticks_visible && zero_value_with_baseline_hidden && line_drawn 
+both_tick_types_visible && multiple_conditions 
+end_process
+
+process drawZeroDomainBaseline(
+    plot: XYPlot,
+    g2: Graphics2D,
+    area: Rectangle2D
+)
+pre 
+  g2 ≠ null ∧ 
+  area ≠ null ∧ 
+  plot.domainZeroBaselineVisible ∧ 
+  plot.getRenderer() ∈ AbstractXYItemRenderer
+post 
+  plot.renderer.drawDomainLine(g2, plot, plot.getDomainAxis(), area, 0.0, 
+    plot.domainZeroBaselinePaint, plot.domainZeroBaselineStroke)
+Functional Scenario Form 
+baseline_visible && valid_renderer_type && line_drawn 
+baseline_hidden && no_operation 
+end_process
+
+process drawZeroRangeBaseline(
+    plot: XYPlot,
+    g2: Graphics2D,
+    area: Rectangle2D
+)
+pre 
+  g2 ≠ null ∧ 
+  area ≠ null ∧ 
+  plot.rangeZeroBaselineVisible ∧ 
+  plot.getRenderer() ≠ null
+post 
+  plot.renderer.drawRangeLine(g2, plot, plot.getRangeAxis(), area, 0.0,
+    plot.rangeZeroBaselinePaint, plot.rangeZeroBaselineStroke)
+Functional Scenario Form 
+range_baseline_enabled_with_axis && drawn_successfully 
+renderer_missing && skip_operation 
+end_process
+
+process drawAnnotations(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    info: PlotRenderingInfo
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  plot.annotations ≠ null
+post 
+  ∀a ∈ plot.annotations | 
+    xAxis = plot.getDomainAxis() ∧ 
+    yAxis = plot.getRangeAxis() ∧ 
+    a.draw(g2, plot, dataArea, xAxis, yAxis, 0, info)
+Functional Scenario Form 
+multiple_annotations_all_drawn 
+empty_annotations_collection && no_action 
+end_process
+
+process drawDomainMarkers(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    index: int,
+    layer: Layer
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  index ∈ 0..plot.datasets.size-1 ∧ 
+  index < plot.markers.size
+post 
+  renderer = plot.getRenderer(index) ∧ 
+  (renderer ≠ null ⇒ 
+    markers = plot.markers.get(index)?.get(layer) ∧ 
+    axis = plot.getDomainAxisForDataset(index) ∧ 
+    (markers ≠ null ∧ axis ≠ null ⇒ 
+      ∀m ∈ markers | 
+        renderer.drawDomainMarker(g2, plot, axis, m, dataArea)
+    )
+  )
+Functional Scenario Form 
+valid_index_with_markers && markers_rendered 
+null_renderer_instance && skip_rendering 
+markers_unavailable_for_layer && no_action 
+end_process
+
+process drawRangeMarkers(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    index: int,
+    layer: Layer
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  index ∈ 0..plot.datasets.size-1 ∧ 
+  index < plot.markers.size
+post 
+  renderer = plot.getRenderer(index) ∧ 
+  (renderer ≠ null ⇒ 
+    markers = getRangeMarkers(plot, index, layer) ∧ 
+    axis = plot.getRangeAxisForDataset(index) ∧ 
+    (markers ≠ null ∧ axis ≠ null ⇒ 
+      ∀m ∈ markers | 
+        renderer.drawRangeMarker(g2, plot, axis, m, dataArea)
+    )
+  )
+Functional Scenario Form 
+valid_layer_with_markers && axis_available && markers_drawn 
+index_outside_dataset_count && early_exit 
+end_process
+
+process getDomainMarkers(
+    plot: XYPlot,
+    layer: Layer
+) result: Collection<Marker>
+post 
+  result = getDomainMarkers(plot, 0, layer)
+Functional Scenario Form 
+default_index_used && layer_specified 
+end_process
+
+process getRangeMarkers(
+    plot: XYPlot,
+    layer: Layer
+) result: Collection<Marker>
+post 
+  result = getRangeMarkers(plot, 0, layer)
+Functional Scenario Form 
+range_markers_retrieved && layer_selection_applied 
+end_process
+
+process getDomainMarkers(
+    plot: XYPlot,
+    index: int,
+    layer: Layer
+) result: Collection<Marker>
+pre 
+  index ∈ 0..plot.domainMarkers.size-1
+post 
+  key = new Integer(index) ∧ 
+  result = unmodifiableCollection(
+    (layer = FOREGROUND) ? plot.foregroundDomainMarkers.get(key) :
+    (layer = BACKGROUND) ? plot.backgroundDomainMarkers.get(key) : null
+  )
+Functional Scenario Form 
+foreground_layer_requested && non_empty_collection 
+invalid_layer_specified && null_returned 
+end_process
+
+process getRangeMarkers(
+    plot: XYPlot,
+    index: int,
+    layer: Layer
+) result: Collection<Marker>
+pre 
+  index ∈ 0..plot.rangeMarkers.size-1
+post 
+  key = new Integer(index) ∧ 
+  result = unmodifiableCollection(
+    (layer = FOREGROUND) ? plot.foregroundRangeMarkers.get(key) :
+    (layer = BACKGROUND) ? plot.backgroundRangeMarkers.get(key) : null
+  )
+Functional Scenario Form 
+background_layer_range_markers && immutable_copy 
+index_out_of_bounds && exception_thrown 
+end_process
+
+process drawHorizontalLine(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    value: real,
+    stroke: Stroke,
+    paint: Paint
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  stroke ≠ null ∧ 
+  paint ≠ null
+post 
+  axis = (plot.orientation = HORIZROUND) ? plot.getDomainAxis() : plot.getRangeAxis() ∧ 
+  (axis.range.contains(value) ⇒ 
+    edge = (plot.orientation = HORIZROUND) ? RectangleEdge.LEFT : RectangleEdge.BOTTOM ∧ 
+    yy = axis.valueToJava2D(value, dataArea, edge) ∧ 
+    line = new Line2D(dataArea.minX, yy, dataArea.maxX, yy) ∧ 
+    g2.setStroke(stroke) ∧ 
+    g2.setPaint(paint) ∧ 
+    g2.draw(line)
+  )
+Functional Scenario Form 
+horizontal_orientation && value_in_domain_range && line_drawn 
+vertical_orientation && value_outside_range && no_drawing 
+end_process
+
+process drawDomainCrosshair(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    orientation: PlotOrientation,
+    value: real,
+    axis: ValueAxis,
+    stroke: Stroke,
+    paint: Paint
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  axis ≠ null ∧ 
+  stroke ≠ null ∧ 
+  paint ≠ null
+post 
+  (axis.range.contains(value) ⇒ 
+    (orientation = VERTICAL ⇒ 
+      xx = axis.valueToJava2D(value, dataArea, BOTTOM) ∧ 
+      line = new Line2D(xx, dataArea.minY, xx, dataArea.maxY)
+    ) ∨ 
+    (orientation = HORIZONTAL ⇒ 
+      yy = axis.valueToJava2D(value, dataArea, LEFT) ∧ 
+      line = new Line2D(dataArea.minX, yy, dataArea.maxX, yy)
+    ) ∧ 
+    g2.setStroke(stroke) ∧ 
+    g2.setPaint(paint) ∧ 
+    g2.draw(line)
+  )
+Functional Scenario Form 
+vertical_orientation_with_valid_value && vertical_line_drawn 
+horizontal_orientation_out_of_range && no_operation 
+end_process
+
+process drawVerticalLine(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    value: real,
+    stroke: Stroke,
+    paint: Paint
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  stroke ≠ null ∧ 
+  paint ≠ null
+post 
+  axis = (plot.orientation = HORIZONTAL) ? plot.rangeAxis : plot.domainAxis ∧ 
+  (axis.range.contains(value) ⇒ 
+    xx = axis.valueToJava2D(value, dataArea, BOTTOM) ∧ 
+    line = new Line2D(xx, dataArea.minY, xx, dataArea.maxY) ∧ 
+    g2.draw(line)
+  )
+Functional Scenario Form 
+horizontal_plot_orientation && value_in_range && vertical_line_rendered 
+vertical_orientation_with_edge_value && line_clipped 
+end_process
+
+process drawRangeCrosshair(
+    plot: XYPlot,
+    g2: Graphics2D,
+    dataArea: Rectangle2D,
+    orientation: PlotOrientation,
+    value: real,
+    axis: ValueAxis,
+    stroke: Stroke,
+    paint: Paint
+)
+pre 
+  g2 ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  axis ≠ null
+post 
+  (axis.range.contains(value) ⇒ 
+    (orientation = HORIZONTAL ⇒ 
+      xx = axis.valueToJava2D(value, dataArea, BOTTOM) ∧ 
+      vertical_line(xx)
+    ) ∨ 
+    (orientation = VERTICAL ⇒ 
+      yy = axis.valueToJava2D(value, dataArea, LEFT) ∧ 
+      horizontal_line(yy)
+    ) ∧ 
+    applyDrawingStyle()
+  )
+where
+  vertical_line(x: real) ≜ new Line2D(x, dataArea.minY, x, dataArea.maxY)
+  horizontal_line(y: real) ≜ new Line2D(dataArea.minX, y, dataArea.maxX, y)
+  applyDrawingStyle() ≜ g2.setStroke(stroke) ∧ g2.setPaint(paint) ∧ g2.draw(line)
+Functional Scenario Form 
+range_value_valid_horizontal && vertical_crosshair_drawn 
+axis_range_exceeded && silent_skip 
+end_process
+
+process handleClick(
+    plot: XYPlot,
+    x: int,
+    y: int,
+    info: PlotRenderingInfo
+)
+pre 
+  info ≠ null ∧ 
+  info.dataArea ≠ null
+post 
+  (info.dataArea.contains(x,y) ⇒ 
+    updateDomainCrosshair() ∧ 
+    updateRangeCrosshair()
+  )
+where
+  updateDomainCrosshair() ≜
+    xAxis = plot.domainAxis ∧ 
+    xAxis ≠ null ⇒ 
+      hValue = xAxis.java2DToValue(x, info.dataArea, plot.getDomainAxisEdge()) ∧ 
+      plot.domainCrosshairValue' = hValue
+      
+  updateRangeCrosshair() ≜
+    yAxis = plot.rangeAxis ∧ 
+    yAxis ≠ null ⇒ 
+      vValue = yAxis.java2DToValue(y, info.dataArea, plot.getRangeAxisEdge()) ∧ 
+      plot.rangeCrosshairValue' = vValue
+Functional Scenario Form 
+click_inside_data_area && both_axes_update 
+click_outside_data_area && no_value_change 
+null_axis_reference && partial_update 
+end_process
+
+process getDatasetsMappedToDomainAxis(
+    plot: XYPlot,
+    axisIndex: AxisIndex
+) result: List<XYDataset>
+pre 
+  axisIndex ≠ null
+post 
+  result = new ArrayList() ∧ 
+  ∀i ∈ 0..plot.datasets.size-1 | 
+    mappedAxes = plot.datasetToDomainAxesMap.get(i) ∧ 
+    (
+      (mappedAxes = null ∧ axisIndex = ZERO) ∨ 
+      (mappedAxes ≠ null ∧ mappedAxes.contains(axisIndex)) 
+    ) ⇒ result.add(plot.datasets.get(i))
+Functional Scenario Form 
+valid_axis_with_mapped_datasets 
+unmapped_axis_with_zero_index 
+invalid_axis_index_without_mappings 
+end_process
+
+process getDatasetsMappedToRangeAxis(
+    plot: XYPlot,
+    axisIndex: AxisIndex
+) result: List<XYDataset>
+pre 
+  axisIndex ≠ null
+post 
+  result = new ArrayList() ∧ 
+  ∀i ∈ 0..plot.datasets.size-1 | 
+    mappedAxes = plot.datasetToRangeAxesMap.get(i) ∧ 
+    (
+      (mappedAxes = null ∧ axisIndex = ZERO) ∨ 
+      (mappedAxes ≠ null ∧ mappedAxes.contains(axisIndex)) 
+    ) ⇒ result.add(plot.datasets.get(i))
+Functional Scenario Form 
+multiple_datasets_mapped_to_same_range_axis 
+empty_mappings_with_non_zero_index 
+end_process
+
+process getDomainAxisIndex(
+    plot: XYPlot,
+    axis: ValueAxis
+) result: int
+pre 
+  axis ≠ null
+post 
+  result = plot.domainAxes.indexOf(axis) ∧ 
+  (result < 0 ∧ 
+    ∃parent ∈ Plot | 
+      parent = plot.getParent() ∧ 
+      parent ∈ XYPlot ∧ 
+      result' = parent.getDomainAxisIndex(axis) 
+  )
+Functional Scenario Form 
+axis_in_current_plot_domain 
+axis_in_parent_plot_domain 
+axis_not_found_in_hierarchy 
+end_process
+
+process getRangeAxisIndex(
+    plot: XYPlot,
+    axis: ValueAxis
+) result: int
+pre 
+  axis ≠ null
+post 
+  result = plot.rangeAxes.indexOf(axis) ∧ 
+  (result < 0 ∧ 
+    ∃parent ∈ Plot | 
+      parent = plot.getParent() ∧ 
+      parent ∈ XYPlot ∧ 
+      result' = parent.getRangeAxisIndex(axis) 
+  )
+Functional Scenario Form 
+range_axis_in_local_list 
+range_axis_in_parent_only 
+no_matching_range_axis 
+end_process
+
+
+process getDataRange(
+    plot: XYPlot,
+    axis: ValueAxis
+) result: Range?
+pre 
+  axis ≠ null
+post 
+  (domainIndex ≥ 0 ∧ processDomainAxis()) ∨ 
+  (rangeIndex ≥ 0 ∧ processRangeAxis()) ∧ 
+  result' = calculateFinalRange()
+where
+  domainIndex = plot.getDomainAxisIndex(axis) ∧ 
+  rangeIndex = plot.getRangeAxisIndex(axis) ∧ 
+
+  processDomainAxis() ≜
+    isDomainAxis = true ∧ 
+    mappedDatasets.addAll(getDatasetsMappedToDomainAxis(domainIndex)) ∧ 
+    (domainIndex = 0 ⇒ collectPlotAnnotations()) ∧ 
+    processDatasetsAndAnnotations()
+
+  processRangeAxis() ≜
+    isDomainAxis = false ∧ 
+    mappedDatasets.addAll(getDatasetsMappedToRangeAxis(rangeIndex)) ∧ 
+    (rangeIndex = 0 ⇒ collectPlotAnnotations()) ∧ 
+    processDatasetsAndAnnotations()
+
+  collectPlotAnnotations() ≜
+    ∀a ∈ plot.annotations | 
+      (a ∈ XYAnnotationBoundsInfo ⇒ includedAnnotations.add(a))
+
+  processDatasetsAndAnnotations() ≜
+    ∀d ∈ mappedDatasets | 
+      d ≠ null ⇒ 
+        r = plot.getRendererForDataset(d) ∧ 
+        calculateDatasetRange(r, d) ∧ 
+        collectRendererAnnotations(r)
+
+  calculateDatasetRange(r: XYItemRenderer?, d: XYDataset) ≜
+    (isDomainAxis ∧ r ≠ null ⇒ range = r.findDomainBounds(d)) ∨ 
+    (isDomainAxis ∧ r = null ⇒ range = DatasetUtilities.findDomainBounds(d)) ∨ 
+    (¬isDomainAxis ∧ r ≠ null ⇒ range = r.findRangeBounds(d)) ∨ 
+    (¬isDomainAxis ∧ r = null ⇒ range = DatasetUtilities.findRangeBounds(d)) ∧ 
+    result = Range.combine(result, range)
+
+  collectRendererAnnotations(r: XYItemRenderer?) ≜
+    r ≠ null ⇒ 
+      ∀a ∈ r.annotations | 
+        a ∈ XYAnnotationBoundsInfo ⇒ includedAnnotations.add(a)
+
+  calculateFinalRange() ≜
+    ∀a ∈ includedAnnotations | 
+      a.includeInDataBounds ⇒ 
+        (isDomainAxis ⇒ combineXRange(a.xRange)) ∨ 
+        (¬isDomainAxis ⇒ combineYRange(a.yRange))
+
+  combineXRange(r: Range) ≜ result = Range.combine(result, r)
+  combineYRange(r: Range) ≜ result = Range.combine(result, r)
+
+Functional Scenario Form 
+valid_domain_axis_with_annotations 
+valid_range_axis_without_annotations 
+null_dataset_entries_skipped 
+renderer_based_range_calculation 
+utility_class_fallback_calculation 
+annotations_influence_final_range 
+end_process
+
+process setDomainCrosshairVisible(
+    plot: XYPlot,
+    flag: bool
+)
+pre 
+  true
+post 
+  (plot.domainCrosshairVisible ≠ flag ⇒ 
+    plot.domainCrosshairVisible' = flag ∧ 
+    fireChangeEvent()
+  ) ∧ 
+  (plot.domainCrosshairVisible = flag ⇒ 
+    noChange
+  )
+Functional Scenario Form 
+domainCrosshairVisible≠flag && fireChangeEvent 
+domainCrosshairVisible=flag && noAction 
+end_process
+
+process datasetChanged(
+    plot: XYPlot,
+    event: DatasetChangeEvent
+)
+pre 
+  event ≠ null
+post 
+  configureDomainAxes() ∧ 
+  configureRangeAxes() ∧ 
+  (plot.parent ≠ null ⇒ propagateEventToParent() ) ∨ 
+  (plot.parent = null ⇒ createPlotChangeEvent())
+Functional Scenario Form 
+parentExists && eventPropagated 
+parentNull && eventCreated 
+end_process
+
+process setDomainCrosshairValue(
+    plot: XYPlot,
+    value: real,
+    notify: bool
+)
+pre 
+  true
+post 
+  plot.domainCrosshairValue' = value ∧ 
+  (plot.domainCrosshairVisible ∧ notify ⇒ plot.fireChangeEvent())
+Functional Scenario Form 
+visible&&notify && fireEvent 
+(¬visible∨¬notify) && noNotification 
+end_process
+
+process setDomainCrosshairStroke(
+    plot: XYPlot,
+    stroke: Stroke
+)
+pre 
+  stroke ≠ null
+post 
+  plot.domainCrosshairStroke' = stroke ∧ 
+  plot.fireChangeEvent()
+Functional Scenario Form 
+validStrokeInput && strokeUpdated 
+end_process
+
+process setDomainCrosshairPaint(
+    plot: XYPlot,
+    paint: Paint
+)
+pre 
+  paint ≠ null
+post 
+  plot.domainCrosshairPaint' = paint ∧ 
+  plot.fireChangeEvent()
+Functional Scenario Form 
+validPaintInput && paintUpdated 
+end_process
+
+process setRangeCrosshairVisible(
+    plot: XYPlot,
+    flag: bool
+)
+post 
+  (plot.rangeCrosshairVisible ≠ flag ⇒ 
+    plot.rangeCrosshairVisible' = flag ∧ 
+    plot.fireChangeEvent()
+  ) ∧ 
+  (plot.rangeCrosshairVisible = flag ⇒ 
+    noChange
+  )
+Functional Scenario Form 
+stateChanged && eventFired 
+stateUnchanged && noAction 
+end_process
+
+process setRangeCrosshairLockedOnData(
+    plot: XYPlot,
+    flag: bool
+)
+post 
+  (plot.rangeCrosshairLockedOnData ≠ flag ⇒ 
+    plot.rangeCrosshairLockedOnData' = flag ∧ 
+    plot.fireChangeEvent()
+  ) ∧ 
+  (plot.rangeCrosshairLockedOnData = flag ⇒ 
+    noChange
+  )
+Functional Scenario Form 
+lockStateChanged && notifyListeners 
+sameValuePreserved && silent 
+end_process
+
+process panDomainAxes(
+    plot: XYPlot,
+    percent: real,
+    info: PlotRenderingInfo,
+    source: Point2D
+)
+pre 
+  true
+post 
+  (plot.isDomainPannable() ⇒ 
+    ∀i ∈ 0..plot.domainAxisCount-1 | 
+      axis = plot.getDomainAxis(i) ∧ 
+      (axis ≠ null ⇒ 
+        adjustedPercent = axis.isInverted() ? -percent : percent ∧ 
+        axis.pan(adjustedPercent)
+      )
+  )
+Functional Scenario Form 
+isDomainPannable&&validAxis && panApplied 
+¬isDomainPannable && earlyExit 
+axisInverted&&negativePercent 
+nullAxisSkipped 
+end_process
+
+process panRangeAxes(
+    plot: XYPlot,
+    percent: real,
+    info: PlotRenderingInfo,
+    source: Point2D
+)
+pre 
+  true
+post 
+  (plot.isRangePannable() ⇒ 
+    ∀i ∈ 0..plot.rangeAxisCount-1 | 
+      axis = plot.getRangeAxis(i) ∧ 
+      (axis ≠ null ⇒ 
+        adjustedPercent = axis.isInverted() ? -percent : percent ∧ 
+        axis.pan(adjustedPercent)
+      )
+  )
+Functional Scenario Form 
+isRangePannable&&validAxis && panExecuted 
+rangeAxisInverted&&percentFlipped 
+end_process
+
+process zoomDomainAxes(
+    plot: XYPlot,
+    factor: real,
+    info: PlotRenderingInfo,
+    source: Point2D
+)
+post 
+  zoomDomainAxesCore(factor, info, source, false)
+end_process
+
+process zoomDomainAxesCore(
+    plot: XYPlot,
+    factor: real,
+    info: PlotRenderingInfo,
+    source: Point2D,
+    useAnchor: bool
+)
+pre 
+  info ≠ null ∧ 
+  source ≠ null
+post 
+  ∀i ∈ 0..plot.domainAxes.size-1 | 
+    axis = plot.domainAxes.get(i) ∧ 
+    (axis ≠ null ⇒ 
+      (useAnchor ∧ orientationTransform() ⇒ 
+        anchorX = calculateAnchorX(axis, source, info) ∧ 
+        axis.resizeRange2(factor, anchorX)
+      ) ∨ 
+      (¬useAnchor ⇒ 
+        axis.resizeRange(factor)
+      )
+    )
+where
+  orientationTransform() ≜ 
+    (plot.orientation = HORIZONTAL ⇒ 
+      sourceX = source.getY() 
+    ) ∨ 
+    (plot.orientation = VERTICAL ⇒ 
+      sourceX = source.getX()
+    )
+    
+  calculateAnchorX(a: ValueAxis, s: Point2D, i: PlotRenderingInfo) ≜ 
+    a.java2DToValue(sourceX, i.dataArea, plot.getDomainAxisEdge())
+Functional Scenario Form 
+useAnchor&&horizontalOrientation && resizeWithAnchor 
+useAnchor&&verticalOrientation && xCoordinateUsed 
+¬useAnchor&&simpleResize 
+nullAxisSkippedInZoom 
+end_process
+
+process zoomDomainAxes(
+    plot: XYPlot,
+    lowerPercent: real,
+    upperPercent: real,
+    info: PlotRenderingInfo,
+    source: Point2D
+)
+post 
+  ∀i ∈ 0..plot.domainAxes.size-1 | 
+    axis = plot.domainAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.zoomRange(lowerPercent, upperPercent))
+Functional Scenario Form 
+validDomainAxis && rangeZoomApplied 
+nullAxisSkipped 
+end_process
+
+process zoomRangeAxesCore(
+    plot: XYPlot,
+    factor: real,
+    info: PlotRenderingInfo,
+    source: Point2D,
+    useAnchor: bool
+)
+pre 
+  info ≠ null ∧ source ≠ null
+post 
+  ∀i ∈ 0..plot.rangeAxes.size-1 | 
+    axis = plot.rangeAxes.get(i) ∧ 
+    (axis ≠ null ⇒ 
+      (useAnchor ⇒ 
+        (plot.orientation = HORIZONTAL ? sourceY = source.getX() : sourceY = source.getY()) ∧ 
+        anchorY = axis.java2DToValue(sourceY, info.dataArea, plot.getRangeAxisEdge()) ∧ 
+        axis.resizeRange2(factor, anchorY)
+      ) ∨ 
+      (¬useAnchor ⇒ axis.resizeRange(factor))
+    )
+Functional Scenario Form 
+useAnchor&&horizontalOrientation && yFromX 
+useAnchor&&verticalOrientation && yFromY 
+noAnchor&&directResize 
+nullRangeAxisIgnored 
+end_process
+
+process zoomRangeAxes(
+    plot: XYPlot,
+    lowerPercent: real,
+    upperPercent: real,
+    info: PlotRenderingInfo,
+    source: Point2D
+)
+post 
+  ∀i ∈ 0..plot.rangeAxes.size-1 | 
+    axis = plot.rangeAxes.get(i) ∧ 
+    (axis ≠ null ⇒ axis.zoomRange(lowerPercent, upperPercent))
+Functional Scenario Form 
+validRangeAxis&&zoomApplied 
+outOfBoundsPercentagesHandled 
+end_process
+
+process isDomainZoomable(
+    plot: XYPlot
+) result: bool
+post 
+  result = true
+Functional Scenario Form 
+alwaysTrue 
+end_process
+
+process isRangeZoomable(
+    plot: XYPlot
+) result: bool
+post 
+  result = true
+Functional Scenario Form 
+alwaysTrue 
+end_process
+
+process getSeriesCount(
+    plot: XYPlot
+) result: int
+post 
+  dataset = plot.getDataset() ∧ 
+  (dataset ≠ null ⇒ result = dataset.getSeriesCount()) ∨ 
+  (dataset = null ⇒ result = 0)
+Functional Scenario Form 
+datasetExists&&countReturned 
+datasetNull&&zeroResult 
+end_process
+
+process getFixedLegendItems(
+    plot: XYPlot
+) result: LegendItemCollection?
+post 
+  result = plot.fixedLegendItems
+Functional Scenario Form 
+itemsSet&&returnCollection 
+noItemsSet&&nullReturned 
+end_process
+
+process setFixedLegendItems(
+    plot: XYPlot,
+    items: LegendItemCollection?
+)
+post 
+  plot.fixedLegendItems' = items ∧ 
+  plot.fireChangeEvent()
+Functional Scenario Form 
+anyInput&&fireChange 
+end_process
+
+process getLegendItems(
+    plot: XYPlot
+) result: LegendItemCollection
+post 
+  (plot.fixedLegendItems ≠ null ⇒ result = plot.fixedLegendItems) ∨ 
+  (plot.fixedLegendItems = null ⇒ 
+    result = new LegendItemCollection() ∧ 
+    ∀dIdx ∈ 0..plot.datasets.size-1 | 
+      dataset = plot.datasets.get(dIdx) ∧ 
+      (dataset ≠ null ⇒ 
+        renderer = plot.getRenderer(dIdx) ∨ renderer = plot.getRenderer(0) ∧ 
+        renderer ≠ null ⇒ 
+          ∀sIdx ∈ 0..dataset.getSeriesCount()-1 | 
+            renderer.isSeriesVisible(sIdx) ∧ renderer.isSeriesVisibleInLegend(sIdx) ⇒ 
+              item = renderer.getLegendItem(dIdx, sIdx) ∧ 
+              item ≠ null ⇒ result.add(item)
+      )
+  )
+Functional Scenario Form 
+fixedItemsPresent&&directReturn 
+noFixedItems&&collectVisibleSeries 
+nullDatasetSkipped 
+invalidRendererSkipped 
+nonVisibleSeriesExcluded 
+end_process
+
+process equals(
+    plot: XYPlot,
+    obj: Object
+) result: bool
+post 
+  (obj = plot ⇒ result = true) ∨ 
+  (obj ∉ XYPlot ⇒ result = false) ∨ 
+  (
+    that = (XYPlot)obj ∧ 
+    ( 
+      plot.weight ≠ that.weight ∨ 
+      plot.orientation ≠ that.orientation ∨ 
+      ¬ObjectUtilities.equal(plot.domainAxes, that.domainAxes) ∨ 
+      ¬plot.domainAxisLocations.equals(that.domainAxisLocations) ∨ 
+      plot.rangeCrosshairLockedOnData ≠ that.rangeCrosshairLockedOnData ∨ 
+      plot.domainGridlinesVisible ≠ that.domainGridlinesVisible ∨ 
+      plot.rangeGridlinesVisible ≠ that.rangeGridlinesVisible ∨ 
+      plot.domainMinorGridlinesVisible ≠ that.domainMinorGridlinesVisible ∨ 
+      plot.rangeMinorGridlinesVisible ≠ that.rangeMinorGridlinesVisible ∨ 
+      plot.domainZeroBaselineVisible ≠ that.domainZeroBaselineVisible ∨ 
+      plot.rangeZeroBaselineVisible ≠ that.rangeZeroBaselineVisible ∨ 
+      plot.domainCrosshairVisible ≠ that.domainCrosshairVisible ∨ 
+      plot.domainCrosshairValue ≠ that.domainCrosshairValue ∨ 
+      plot.domainCrosshairLockedOnData ≠ that.domainCrosshairLockedOnData ∨ 
+      plot.rangeCrosshairVisible ≠ that.rangeCrosshairVisible ∨ 
+      plot.rangeCrosshairValue ≠ that.rangeCrosshairValue ∨ 
+      ¬ObjectUtilities.equal(plot.axisOffset, that.axisOffset) ∨ 
+      ¬ObjectUtilities.equal(plot.renderers, that.renderers) ∨ 
+      ¬ObjectUtilities.equal(plot.rangeAxes, that.rangeAxes) ∨ 
+      ¬plot.rangeAxisLocations.equals(that.rangeAxisLocations) ∨ 
+      ¬ObjectUtilities.equal(plot.datasetToDomainAxesMap, that.datasetToDomainAxesMap) ∨ 
+      ¬ObjectUtilities.equal(plot.datasetToRangeAxesMap, that.datasetToRangeAxesMap) ∨ 
+      ¬ObjectUtilities.equal(plot.domainGridlineStroke, that.domainGridlineStroke) ∨ 
+      ¬PaintUtilities.equal(plot.domainGridlinePaint, that.domainGridlinePaint) ∨ 
+      ¬ObjectUtilities.equal(plot.rangeGridlineStroke, that.rangeGridlineStroke) ∨ 
+      ¬PaintUtilities.equal(plot.rangeGridlinePaint, that.rangeGridlinePaint) ∨ 
+      ¬ObjectUtilities.equal(plot.domainMinorGridlineStroke, that.domainMinorGridlineStroke) ∨ 
+      ¬PaintUtilities.equal(plot.domainMinorGridlinePaint, that.domainMinorGridlinePaint) ∨ 
+      ¬ObjectUtilities.equal(plot.rangeMinorGridlineStroke, that.rangeMinorGridlineStroke) ∨ 
+      ¬PaintUtilities.equal(plot.rangeMinorGridlinePaint, that.rangeMinorGridlinePaint) ∨ 
+      ¬PaintUtilities.equal(plot.domainZeroBaselinePaint, that.domainZeroBaselinePaint) ∨ 
+      ¬ObjectUtilities.equal(plot.domainZeroBaselineStroke, that.domainZeroBaselineStroke) ∨ 
+      ¬PaintUtilities.equal(plot.rangeZeroBaselinePaint, that.rangeZeroBaselinePaint) ∨ 
+      ¬ObjectUtilities.equal(plot.rangeZeroBaselineStroke, that.rangeZeroBaselineStroke) 
+    ) ⇒ result = false 
+  ) ∨ 
+  ( 
+    that = (XYPlot)obj ∧ 
+    plot.weight = that.weight ∧ 
+    plot.orientation = that.orientation ∧ 
+    ObjectUtilities.equal(plot.domainAxes, that.domainAxes) ∧ 
+    plot.domainAxisLocations.equals(that.domainAxisLocations) ∧ 
+    plot.rangeCrosshairLockedOnData = that.rangeCrosshairLockedOnData ∧ 
+    plot.domainGridlinesVisible = that.domainGridlinesVisible ∧ 
+    ⋮ // 此处省略其他条件，保持与上面对称的相等判断 
+    ObjectUtilities.equal(plot.rangeZeroBaselineStroke, that.rangeZeroBaselineStroke) 
+    ⇒ result = true 
+  )
+Functional Scenario Form 
+sameObjectReference && returnTrue 
+nonXYPlotInstance && returnFalse 
+differentWeights && returnFalse 
+differentOrientation && returnFalse 
+unequalDomainAxes && returnFalse 
+nonMatchingAxisLocations && returnFalse 
+rangeCrosshairLockStateMismatch && returnFalse 
+domainGridVisibilityMismatch && returnFalse 
+allAttributesEqual && returnTrue 
+end_process 
+
+process clone(
+    src: XYPlot
+) result: XYPlot
+post 
+  result = super.clone() ∧ 
+  result.domainAxes' = deepCloneAxisList(src.domainAxes, result) ∧ 
+  result.rangeAxes' = deepCloneAxisList(src.rangeAxes, result) ∧ 
+  result.datasets' = cloneDatasetsWithListeners(src, result) ∧ 
+  result.renderers' = cloneRenderers(src.renderers) ∧ 
+  result.markers' = cloneMarkerMaps(src) ∧ 
+  result.annotations' = ObjectUtilities.deepClone(src.annotations)
+Functional Scenario Form 
+nonNullAxis&&clonedWithListener || 
+nullAxisSkippedInClone || 
+publicCloneableRenderer&&cloned || 
+nonCloneableRenderer&&originalRetained || 
+existingMarkerMaps&&copied || 
+annotationsDeepCloned 
+end_process
+
+process writeObject(
+    plot: XYPlot,
+    stream: ObjectOutputStream
+)
+pre 
+  stream ≠ null
+post 
+  SerialUtilities.writeStroke(plot.domainGridlineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.domainGridlinePaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.rangeGridlineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.rangeGridlinePaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.domainMinorGridlineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.domainMinorGridlinePaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.rangeMinorGridlineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.rangeMinorGridlinePaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.rangeZeroBaselineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.rangeZeroBaselinePaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.domainCrosshairStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.domainCrosshairPaint, stream) ∧ 
+  SerialUtilities.writeStroke(plot.rangeCrosshairStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.rangeCrosshairPaint, stream) ∧ 
+  SerialUtilities.writePaint(plot.domainTickBandPaint, stream) ∧ 
+  SerialUtilities.writePaint(plot.rangeTickBandPaint, stream) ∧ 
+  SerialUtilities.writePoint2D(plot.quadrantOrigin, stream) ∧ 
+  ∀i ∈ 0..3 | 
+    SerialUtilities.writePaint(plot.quadrantPaint[i], stream) ∧ 
+  SerialUtilities.writeStroke(plot.domainZeroBaselineStroke, stream) ∧ 
+  SerialUtilities.writePaint(plot.domainZeroBaselinePaint, stream)
+Functional Scenario Form 
+validStream&&allAttributesWritten 
+end_process
+
+process readObject(
+    plot: XYPlot,
+    stream: ObjectInputStream
+)
+pre 
+  stream ≠ null
+post 
+  plot.domainGridlineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.domainGridlinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.rangeGridlineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.rangeGridlinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.domainMinorGridlineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.domainMinorGridlinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.rangeMinorGridlineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.rangeMinorGridlinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.rangeZeroBaselineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.rangeZeroBaselinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.domainCrosshairStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.domainCrosshairPaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.rangeCrosshairStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.rangeCrosshairPaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.domainTickBandPaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.rangeTickBandPaint' = SerialUtilities.readPaint(stream) ∧ 
+  plot.quadrantOrigin' = SerialUtilities.readPoint2D(stream) ∧ 
+  plot.quadrantPaint' = new Paint[4] ∧ 
+  ∀i ∈ 0..3 | 
+    plot.quadrantPaint'[i] = SerialUtilities.readPaint(stream) ∧ 
+  plot.domainZeroBaselineStroke' = SerialUtilities.readStroke(stream) ∧ 
+  plot.domainZeroBaselinePaint' = SerialUtilities.readPaint(stream) ∧ 
+  
+  ∀i ∈ 0..plot.domainAxes.size-1 | 
+    axis = plot.domainAxes.get(i) ∧ 
+    (axis ≠ null ⇒ 
+      axis.plot' = plot ∧ 
+      axis.addChangeListener(plot)
+    ) ∧ 
+  ∀i ∈ 0..plot.rangeAxes.size-1 | 
+    axis = plot.rangeAxes.get(i) ∧ 
+    (axis ≠ null ⇒ 
+      axis.plot' = plot ∧ 
+      axis.addChangeListener(plot)
+    ) ∧ 
+  ∀i ∈ 0..plot.datasets.size-1 | 
+    dataset = plot.datasets.get(i) ∧ 
+    (dataset ≠ null ⇒ dataset.addChangeListener(plot))
+Functional Scenario Form 
+validStream&&allAttributesRestored 
+nonNullAxes&&listenersAttached 
+nullDataset&&noListenerAdded 
+quadrantArraySize4&&paintsRestored 
+end_process
+
+process select(
+    plot: XYPlot,
+    region: GeneralPath,
+    dataArea: Rectangle2D,
+    source: RenderingSource
+)
+pre 
+  region ≠ null ∧ 
+  dataArea ≠ null ∧ 
+  source ≠ null
+post 
+  ∀d ∈ 0..plot.datasets.size-1 | 
+    dataset = plot.datasets.get(d) ∧ 
+    (dataset ≠ null ⇒ 
+      state = findSelectionStateForDataset(dataset, source) ∧ 
+      (state ≠ null ⇒ 
+        dataSpacePath = convertToDataSpace(region, dataArea, dataset) ∧ 
+        ∀s ∈ 0..dataset.getSeriesCount()-1 | 
+          ∀i ∈ 0..dataset.getItemCount(s)-1 | 
+            x = dataset.getXValue(s, i) ∧ 
+            y = dataset.getYValue(s, i) ∧ 
+            dataSpacePath.contains(x, y) ⇒ state.setSelected(s, i, true)
+      )
+    )
+Functional Scenario Form 
+validDataset&&selectionStateAvailable && pointsSelected 
+nonSelectableDataset&&stateNullSkipped 
+emptyRegion&&noSelections 
+invalidCoordinates&&noOp 
+end_process
+
+process findSelectionStateForDataset(
+    plot: XYPlot,
+    dataset: XYDataset,
+    source: RenderingSource
+) result: XYDatasetSelectionState?
+post 
+  (dataset ∈ SelectableXYDataset ⇒ 
+    result = ((SelectableXYDataset)dataset).getSelectionState()
+  ) ∨ 
+  result = null
+Functional Scenario Form 
+selectableDataset&&returnState 
+nonSelectableDataset&&returnNull 
+end_process
+
+process convertToDataSpace(
+    plot: XYPlot,
+    path: GeneralPath,
+    dataArea: Rectangle2D,
+    dataset: XYDataset
+) result: GeneralPath
+post 
+  datasetIndex = plot.indexOf(dataset) ∧ 
+  xAxis = plot.getDomainAxisForDataset(datasetIndex) ∧ 
+  yAxis = plot.getRangeAxisForDataset(datasetIndex) ∧ 
+  iterator = path.getPathIterator(null) ∧ 
+  result = new GeneralPath() ∧ 
+  while ¬iterator.isDone() do 
+    coords = iterator.currentSegment() ∧ 
+    xx = xAxis.java2DToValue(coords[0], dataArea, plot.getDomainAxisEdge()) ∧ 
+    yy = yAxis.java2DToValue(coords[1], dataArea, plot.getRangeAxisEdge()) ∧ 
+    case iterator.segType of 
+      SEG_MOVETO ⇒ result.moveTo(xx, yy) | 
+      SEG_LINETO ⇒ result.lineTo(xx, yy) | 
+      SEG_CLOSE ⇒ result.closePath() 
+    end ∧ 
+    iterator.next()
+Functional Scenario Form 
+validPath&&fullConversion 
+emptyPath&&returnEmpty 
+mixedSegmentTypes&&correctConversion 
+axisConversionFailure&&throwException 
+end_process
+
+process clearSelection(
+    plot: XYPlot
+)
+pre 
+  true
+post 
+  ∀d ∈ 0..plot.datasets.size-1 | 
+    dataset = plot.datasets.get(d) ∧ 
+    (dataset ∈ AbstractXYDataset ⇒ 
+      selState = ((AbstractXYDataset)dataset).getSelectionState() ∧ 
+      (selState ≠ null ⇒ selState.clearSelection())
+    )
+Functional Scenario Form 
+abstractDatasetWithState&&selectionCleared 
+nonAbstractDataset&&skipped 
+nullSelectionState&&noOperation 
+end_process
+
+end_module

@@ -1,0 +1,304 @@
+module AbstractIntegrator  
+type:  
+  stepStart: double  
+  stepSize: double  
+  isLastStep: boolean  
+  resetOccurred: boolean  
+  statesInitialized: boolean  
+  name: String  
+
+// Primary constructor  
+process constructor(name: String)  
+pre true  
+post  
+  this.name' = name  
+  stepHandlers' = new ArrayList<StepHandler>()  
+  stepStart' = Double.NaN  
+  stepSize' = Double.NaN  
+  eventsStates' = new ArrayList<EventState>()  
+  statesInitialized' = false  
+  evaluations' = new Incrementor()  
+  evaluations.setMaximalCount(Integer.MAX_VALUE)  
+  evaluations.resetCount()  
+Functional Scenario Form  
+name="Midpoint" && creates instance with name="Midpoint"  
+name=null && creates instance with name=null  
+end_process  
+
+// Default constructor  
+process constructor_default()  
+pre true  
+post  
+  this.name' = null  
+  stepHandlers' = new ArrayList<StepHandler>()  
+  stepStart' = Double.NaN  
+  stepSize' = Double.NaN  
+  eventsStates' = new ArrayList<EventState>()  
+  statesInitialized' = false  
+  evaluations' = new Incrementor()  
+  evaluations.setMaximalCount(Integer.MAX_VALUE)  
+  evaluations.resetCount()  
+Functional Scenario Form  
+creates instance with null name  
+end_process  
+
+// Name accessor  
+process getName() result: String  
+pre true  
+post  
+  result' = name  
+Functional Scenario Form  
+name="DormandPrince" && result'="DormandPrince"  
+end_process  
+
+// Step handler management  
+process addStepHandler(handler: StepHandler)  
+pre true  
+post  
+  stepHandlers.add(handler)  
+Functional Scenario Form  
+handler=validStepHandler && adds to collection  
+end_process  
+
+process getStepHandlers() result: Collection<StepHandler>  
+pre true  
+post  
+  result' = Collections.unmodifiableCollection(stepHandlers)  
+Functional Scenario Form  
+two handlers added && returns unmodifiable collection with size=2  
+end_process  
+
+process clearStepHandlers()  
+pre true  
+post  
+  stepHandlers.clear()  
+Functional Scenario Form  
+non-empty collection && collection becomes empty  
+end_process  
+
+// Event handler management  
+process addEventHandler(handler: EventHandler, maxCheckInterval: double, 
+                        convergence: double, maxIterationCount: int)  
+pre true  
+post  
+  solver = new BracketingNthOrderBrentSolver(convergence, 5)  
+  eventsStates.add(new EventState(handler, maxCheckInterval, convergence, 
+                                 maxIterationCount, solver))  
+Functional Scenario Form  
+handler=event1 maxCheckInterval=0.1 convergence=1e-6 maxIterationCount=100 && adds new EventState  
+end_process  
+
+process addEventHandler(handler: EventHandler, maxCheckInterval: double, 
+                         convergence: double, maxIterationCount: int, 
+                         solver: UnivariateSolver)  
+pre true  
+post  
+  eventsStates.add(new EventState(handler, maxCheckInterval, convergence, 
+                                 maxIterationCount, solver))  
+Functional Scenario Form  
+handler=event2 solver=customSolver && adds EventState with custom solver  
+end_process  
+
+process getEventHandlers() result: Collection<EventHandler>  
+pre true  
+post  
+  list = new ArrayList<EventHandler>()  
+  for each state in eventsStates  
+    list.add(state.getEventHandler())  
+  result' = Collections.unmodifiableCollection(list)  
+Functional Scenario Form  
+two event states && returns unmodifiable collection with size=2  
+end_process  
+
+process clearEventHandlers()  
+pre true  
+post  
+  eventsStates.clear()  
+Functional Scenario Form  
+non-empty eventsStates && collection becomes empty  
+end_process  
+
+// Step information  
+process getCurrentStepStart() result: double  
+pre true  
+post  
+  result' = stepStart  
+Functional Scenario Form  
+stepStart=5.0 && result'=5.0  
+end_process  
+
+process getCurrentSignedStepsize() result: double  
+pre true  
+post  
+  result' = stepSize  
+Functional Scenario Form  
+stepSize=0.01 && result'=0.01  
+end_process  
+
+// Evaluation management  
+process setMaxEvaluations(maxEvaluations: int)  
+pre true  
+post  
+  evaluations.setMaximalCount(maxEvaluations < 0 ? Integer.MAX_VALUE : maxEvaluations)  
+Functional Scenario Form  
+maxEvaluations=5000 && evaluations.maximalCount=5000  
+maxEvaluations=-1 && evaluations.maximalCount=Integer.MAX_VALUE  
+end_process  
+
+process getMaxEvaluations() result: int  
+pre true  
+post  
+  result' = evaluations.getMaximalCount()  
+Functional Scenario Form  
+maxEvaluations=1000 && result'=1000  
+end_process  
+
+process getEvaluations() result: int  
+pre true  
+post  
+  result' = evaluations.getCount()  
+Functional Scenario Form  
+5 evaluations performed && result'=5  
+end_process  
+
+// Initialize integration  
+process initIntegration(t0: double, y0: double[], t: double)  
+pre true  
+post  
+  evaluations.resetCount()  
+  for each state in eventsStates  
+    state.getEventHandler().init(t0, y0, t)  
+  for each handler in stepHandlers  
+    handler.init(t0, y0, t)  
+  setStateInitialized(false)  
+Functional Scenario Form  
+valid t0,y0,t && initializes all handlers  
+end_process  
+
+// Set equations  
+process setEquations(equations: ExpandableStatefulODE)  
+pre true  
+post  
+  expandable' = equations  
+Functional Scenario Form  
+valid equations && sets expandable  
+end_process  
+
+// Integration entry point  
+process integrate(equations: FirstOrderDifferentialEquations,  
+                 t0: double, y0: double[], t: double, y: double[])  
+                 result: double  
+pre true  
+post  
+  y0.length ≠ equations.getDimension()  
+    → throw DimensionMismatchException(y0.length, equations.getDimension())  
+  y.length ≠ equations.getDimension()  
+    → throw DimensionMismatchException(y.length, equations.getDimension())  
+  expandableODE = new ExpandableStatefulODE(equations)  
+  expandableODE.setTime(t0)  
+  expandableODE.setPrimaryState(y0)  
+  integrate(expandableODE, t)  
+  System.arraycopy(expandableODE.getPrimaryState(), 0, y, 0, y.length)  
+  result' = expandableODE.getTime()  
+Functional Scenario Form  
+valid dimensions && returns final time  
+y0.length mismatch && throws DimensionMismatchException  
+y.length mismatch && throws DimensionMismatchException  
+end_process  
+
+// Abstract integration core  
+abstract process integrate(equations: ExpandableStatefulODE, t: double)  
+
+// Compute derivatives  
+process computeDerivatives(t: double, y: double[], yDot: double[])  
+pre true  
+post  
+  evaluations.incrementCount()  
+  expandable.computeDerivatives(t, y, yDot)  
+Functional Scenario Form  
+valid inputs && increments evaluation count  
+max evaluations exceeded && throws MaxCountExceededException  
+end_process  
+
+// Set state initialized flag  
+process setStateInitialized(stateInitialized: boolean)  
+pre true  
+post  
+  statesInitialized' = stateInitialized  
+Functional Scenario Form  
+stateInitialized=true && sets flag  
+end_process  
+
+// Step acceptance with event handling  
+process acceptStep(interpolator: AbstractStepInterpolator, y: double[],  
+                   yDot: double[], tEnd: double) result: double  
+pre true  
+post  
+  previousT = interpolator.getGlobalPreviousTime()  
+  currentT = interpolator.getGlobalCurrentTime()  
+  ¬statesInitialized  
+    ? for each state in eventsStates  
+        state.reinitializeBegin(interpolator)  
+      statesInitialized' = true  
+  orderingSign = interpolator.isForward() ? +1 : -1  
+  occuringEvents = new TreeSet(comparator: (es0,es1) → orderingSign*Double.compare(es0.eventTime, es1.eventTime))  
+  for each state in eventsStates  
+    state.evaluateStep(interpolator) → occuringEvents.add(state)  
+  while ¬occuringEvents.isEmpty()  
+    currentEvent = occuringEvents.first()  
+    occuringEvents.remove(currentEvent)  
+    eventT = currentEvent.getEventTime()  
+    interpolator.setSoftPreviousTime(previousT)  
+    interpolator.setSoftCurrentTime(eventT)  
+    eventY = interpolator.getInterpolatedState().clone()  
+    for each state in eventsStates  
+      state.stepAccepted(eventT, eventY)  
+      isLastStep' = isLastStep ∨ state.stop()  
+    for each handler in stepHandlers  
+      handler.handleStep(interpolator, isLastStep)  
+    isLastStep  
+      ? System.arraycopy(eventY, 0, y, 0, y.length)  
+        result' = eventT  
+        break  
+    needReset = false  
+    for each state in eventsStates  
+      needReset' = needReset ∨ state.reset(eventT, eventY)  
+    needReset  
+      ? System.arraycopy(eventY, 0, y, 0, y.length)  
+        computeDerivatives(eventT, y, yDot)  
+        resetOccurred' = true  
+        result' = eventT  
+        break  
+    previousT = eventT  
+    interpolator.setSoftPreviousTime(eventT)  
+    interpolator.setSoftCurrentTime(currentT)  
+    currentEvent.evaluateStep(interpolator) → occuringEvents.add(currentEvent)  
+  interpolator.setInterpolatedTime(currentT)  
+  currentY = interpolator.getInterpolatedState()  
+  for each state in eventsStates  
+    state.stepAccepted(currentT, currentY)  
+    isLastStep' = isLastStep ∨ state.stop()  
+  isLastStep' = isLastStep ∨ Precision.equals(currentT, tEnd, 1)  
+  for each handler in stepHandlers  
+    handler.handleStep(interpolator, isLastStep)  
+  result' = currentT  
+Functional Scenario Form  
+no events && returns currentT  
+event triggers stop && returns eventT  
+event causes reset && returns eventT with resetOccurred=true  
+multiple events && handles chronologically  
+end_process  
+
+// Sanity checks for integration interval  
+process sanityChecks(equations: ExpandableStatefulODE, t: double)  
+pre true  
+post  
+  threshold = 1000 * FastMath.ulp(FastMath.max(FastMath.abs(equations.getTime()), FastMath.abs(t)))  
+  dt = FastMath.abs(equations.getTime() - t)  
+  dt ≤ threshold → throw NumberIsTooSmallException(LocalizedFormats.TOO_SMALL_INTEGRATION_INTERVAL, dt, threshold, false)  
+Functional Scenario Form  
+equations.time=1.0 t=1.0 + 1e-15 && throws exception (dt ≤ threshold)  
+equations.time=0.0 t=1.0 && no exception (dt > threshold)  
+end_process  
+
+end_module

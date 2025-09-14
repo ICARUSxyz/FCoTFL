@@ -1,0 +1,175 @@
+module SimplexSolver
+type
+  epsilon: double
+  maxUlps: int
+var
+  DEFAULT_EPSILON: real = 1.0e-6
+  DEFAULT_ULPS: int = 10
+
+process SimplexSolver() result: SimplexSolver
+post 
+  result.epsilon = DEFAULT_EPSILON ∧
+  result.maxUlps = DEFAULT_ULPS
+Functional Scenario Form 
+defaultSettingsCreated
+end_process
+
+process SimplexSolver(epsilon: real, maxUlps: int) result: SimplexSolver
+pre 
+  epsilon > 0 ∧ maxUlps > 0
+post 
+  result.epsilon = epsilon ∧
+  result.maxUlps = maxUlps
+Functional Scenario Form 
+validParameters&&solverCreated || 
+invalidEpsilon&&exceptionThrown || 
+invalidUlps&&exceptionThrown
+end_process
+
+process getPivotColumn(tableau: SimplexTableau) result: Integer
+pre 
+  tableau ≠ null
+post 
+  minValue = 0 ∧
+  minPos = null ∧
+  for i = tableau.getNumObjectiveFunctions() to tableau.getWidth() - 2 •
+      entry = tableau.getEntry(0, i) ∧
+      (entry < minValue ⇒ 
+          minValue = entry ∧
+          minPos = i
+      )
+  result = minPos
+Functional Scenario Form 
+negativeCoefficientFound || 
+noNegativeCoefficient&&returnsNull || 
+degenerateCase&&specialHandling
+end_process
+
+process getPivotRow(tableau: SimplexTableau, col: int) result: Integer
+pre 
+  tableau ≠ null ∧ 0 ≤ col < tableau.getWidth()
+post 
+
+  minRatioPositions = [] ∧
+  minRatio = REAL_MAX ∧
+  for i = tableau.getNumObjectiveFunctions() to tableau.getHeight() - 1 •
+      rhs = tableau.getEntry(i, tableau.getWidth() - 1) ∧
+      entry = tableau.getEntry(i, col) ∧
+      (Precision.compareTo(entry, 0, this.maxUlps) > 0 ⇒ 
+          ratio = rhs / entry ∧
+          cmp = Double.compare(ratio, minRatio) ∧
+          (cmp = 0 ⇒ minRatioPositions.add(i)) ∧
+          (cmp < 0 ⇒ 
+              minRatio = ratio ∧
+              minRatioPositions = [i]
+          )
+      )
+  
+
+  (minRatioPositions.size() = 0 ⇒ result = null) ∧
+  (minRatioPositions.size() = 1 ⇒ result = minRatioPositions.get(0)) ∧
+  (minRatioPositions.size() > 1 ⇒ 
+
+      (tableau.getNumArtificialVariables() > 0 ⇒ 
+          for row in minRatioPositions •
+              for i = 0 to tableau.getNumArtificialVariables() - 1 •
+                  column = i + tableau.getArtificialVariableOffset() ∧
+                  entry = tableau.getEntry(row, column) ∧
+                  (Precision.equals(entry, 1, this.maxUlps) ∧ 
+                   row = tableau.getBasicRow(column) ⇒ 
+                      return row
+                  )
+      ) ∧
+
+      (getIterations() < getMaxIterations() / 2 ⇒ 
+          minIndex = tableau.getWidth() ∧
+          minRow = null ∧
+          for row in minRatioPositions •
+              i = tableau.getNumObjectiveFunctions() ∧
+              while i < tableau.getWidth() - 1 ∧ minRow ≠ row •
+                  (row = tableau.getBasicRow(i) ∧ i < minIndex ⇒ 
+                      minIndex = i ∧
+                      minRow = row
+                  ) ∧
+                  i = i + 1
+          result = minRow
+      ) ∨
+      result = minRatioPositions.get(0)
+  )
+Functional Scenario Form 
+uniqueMinRatio&&rowSelected || 
+multipleMinRatios&&tieBroken || 
+noFeasibleRow&&returnsNull || 
+artificialVarsHandled || 
+blandRuleApplied
+end_process
+
+process doIteration(tableau: SimplexTableau)
+pre 
+  tableau ≠ null ∧
+  getIterations() < getMaxIterations()
+post 
+  incrementIterationsCounter() ∧
+  pivotCol = getPivotColumn(tableau) ∧
+  pivotRow = getPivotRow(tableau, pivotCol) ∧
+  (pivotRow = null ⇒ throw UnboundedSolutionException) ∧
+  
+
+  pivotVal = tableau.getEntry(pivotRow, pivotCol) ∧
+  tableau.divideRow(pivotRow, pivotVal) ∧    ∀i • (0 ≤ i < tableau.getHeight() ∧ i ≠ pivotRow ⇒ 
+      multiplier = tableau.getEntry(i, pivotCol) ∧
+      tableau.subtractRow(i, pivotRow, multiplier)
+  )
+Functional Scenario Form 
+validPivot&&iterationCompleted || 
+unboundedProblem&&exceptionThrown || 
+maxIterationsExceeded&&exceptionThrown
+end_process
+
+
+process solvePhase1(tableau: SimplexTableau)
+pre 
+  tableau ≠ null ∧ tableau.getNumArtificialVariables() > 0
+post 
+  while ¬tableau.isOptimal() ∧ getIterations() < getMaxIterations() •
+      doIteration(tableau)
+  
+
+  wValue = tableau.getEntry(0, tableau.getRhsOffset()) ∧
+  ¬Precision.equals(wValue, 0, this.epsilon) ⇒ 
+      throw NoFeasibleSolutionException
+Functional Scenario Form 
+phase1Converged&&feasibleSolution || 
+infeasibleProblem&&exceptionThrown || 
+unboundedPhase1&&exceptionThrown
+end_process
+
+
+process doOptimize() result: PointValuePair
+pre 
+  this.function ≠ null ∧ this.constraints ≠ null
+post 
+  tableau = new SimplexTableau(
+      getFunction(),
+      getConstraints(),
+      getGoalType(),
+      restrictToNonNegative(),
+      this.epsilon,
+      this.maxUlps
+  ) ∧
+  
+  solvePhase1(tableau) ∧  
+  tableau.dropPhase1Objective() ∧  
+  
+  while ¬tableau.isOptimal() ∧ getIterations() < getMaxIterations() •
+      doIteration(tableau)
+  
+  result = tableau.getSolution()
+Functional Scenario Form 
+optimalSolutionFound || 
+infeasibleProblem&&exceptionThrown || 
+unboundedSolution&&exceptionThrown || 
+maxIterationsExceeded&&exceptionThrown
+end_process
+
+end_module

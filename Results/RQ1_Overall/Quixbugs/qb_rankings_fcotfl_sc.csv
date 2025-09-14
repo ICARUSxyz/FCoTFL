@@ -1,0 +1,1469 @@
+bug_id,rank,file,line_number,suspiciousness,explanation,is_fault_line
+1,1,BITCOUNT,15,1.0,n = (n ^ (n - 1))?is incorrect. Causes infinite loops by introducing new?1?bits instead of clearing them.,1
+1,2,BITCOUNT,14,0.3,Loop condition?n != 0?becomes non-terminating due to faulty logic in line 15.,0
+1,3,BITCOUNT,16,0.1,count++?is correct in intent but increments indefinitely due to the infinite loop.,0
+1,4,BITCOUNT,1,0.0,Package declaration; unrelated to logic.,0
+1,5,BITCOUNT,2,0.0,Comment; no impact on execution.,0
+1,6,BITCOUNT,3,0.0,Comment; no impact on execution.,0
+1,7,BITCOUNT,4,0.0,Comment; no impact on execution.,0
+1,8,BITCOUNT,5,0.0,Comment; no impact on execution.,0
+1,9,BITCOUNT,6,0.0,Empty line; no code.,0
+1,10,BITCOUNT,7,0.0,Comment; no impact on execution.,0
+1,11,BITCOUNT,8,0.0,Comment; no impact on execution.,0
+1,12,BITCOUNT,9,0.0,Comment; no impact on execution.,0
+1,13,BITCOUNT,10,0.0,Comment; no impact on execution.,0
+1,14,BITCOUNT,11,0.0,Class declaration; structurally correct.,0
+1,15,BITCOUNT,12,0.0,Method signature; parameters are valid.,0
+1,16,BITCOUNT,13,0.0,int count = 0; correct initialization.,0
+1,17,BITCOUNT,17,0.0,Closing brace for?while?loop; structural.,0
+1,18,BITCOUNT,18,0.0,return count; syntactically correct (but value is wrong due to prior logic).,0
+1,19,BITCOUNT,19,0.0,Closing brace for method; structural.,0
+1,20,BITCOUNT,20,0.0,Closing brace for class; structural.,0
+2,1,BREADTH_FIRST_SEARCH,24,1.0,"while (true)?lacks a termination condition for an empty queue, causing?NoSuchElementException?when no path exists. Violates SOFL  s requirement to return?false.",1
+2,2,BREADTH_FIRST_SEARCH,32,0.9,"queue.addFirst(successor_node)?enforces DFS (LIFO) instead of BFS (FIFO), misaligning with the specification  s traversal logic.",0
+2,3,BREADTH_FIRST_SEARCH,16,0.7,"Static?nodesvisited?set retains state across method calls, polluting subsequent searches and violating the assumption of independent executions.",0
+2,4,BREADTH_FIRST_SEARCH,42,0.6,"Commented-out?return false?leaves no way to return?false?when the queue is empty, directly violating the post-condition.",1
+2,5,BREADTH_FIRST_SEARCH,25,0.5,"queue.removeFirst()?throws an exception when the queue is empty, but the root cause is the missing check in line 24.",0
+2,6,BREADTH_FIRST_SEARCH,1,0.0,Package declaration; unrelated to logic.,0
+2,7,BREADTH_FIRST_SEARCH,2,0.0,Import statement; no impact on logic.,0
+2,8,BREADTH_FIRST_SEARCH,3,0.0,Import statement; no impact on logic.,0
+2,9,BREADTH_FIRST_SEARCH,4,0.0,Empty line; no code.,0
+2,10,BREADTH_FIRST_SEARCH,5,0.0,Comment; no impact on execution.,0
+2,11,BREADTH_FIRST_SEARCH,6,0.0,Comment; no impact on execution.,0
+2,12,BREADTH_FIRST_SEARCH,7,0.0,Comment; no impact on execution.,0
+2,13,BREADTH_FIRST_SEARCH,8,0.0,Comment; no impact on execution.,0
+2,14,BREADTH_FIRST_SEARCH,9,0.0,Empty line; no code.,0
+2,15,BREADTH_FIRST_SEARCH,10,0.0,Comment; no impact on execution.,0
+2,16,BREADTH_FIRST_SEARCH,11,0.0,Comment; no impact on execution.,0
+2,17,BREADTH_FIRST_SEARCH,12,0.0,Comment; no impact on execution.,0
+2,18,BREADTH_FIRST_SEARCH,13,0.0,Comment; no impact on execution.,0
+2,19,BREADTH_FIRST_SEARCH,14,0.0,Class declaration; structurally correct.,0
+2,20,BREADTH_FIRST_SEARCH,15,0.0,Empty line; no code.,0
+2,21,BREADTH_FIRST_SEARCH,17,0.0,Empty line; no code.,0
+2,22,BREADTH_FIRST_SEARCH,18,0.0,Method signature; valid parameters.,0
+2,23,BREADTH_FIRST_SEARCH,19,0.0,Deque<Node> queue = new ArrayDeque<>();; correct initialization.,0
+2,24,BREADTH_FIRST_SEARCH,20,0.0,queue.addLast(startnode);; correct BFS enqueueing.,0
+2,25,BREADTH_FIRST_SEARCH,21,0.0,Empty line; no code.,0
+2,26,BREADTH_FIRST_SEARCH,22,0.0,nodesvisited.add(startnode);; correct initial marking.,0
+2,27,BREADTH_FIRST_SEARCH,23,0.0,Empty line; no code.,0
+2,28,BREADTH_FIRST_SEARCH,26,0.0,Node node = queue.removeFirst();; structurally correct but contextually flawed due to line 24.,0
+2,29,BREADTH_FIRST_SEARCH,27,0.0,if (node == goalnode); correct goal check.,0
+2,30,BREADTH_FIRST_SEARCH,28,0.0,return true;; correct for found paths.,0
+2,31,BREADTH_FIRST_SEARCH,29,0.0,else; structural.,0
+2,32,BREADTH_FIRST_SEARCH,30,0.0,Loop over successors; correct logic.,0
+2,33,BREADTH_FIRST_SEARCH,31,0.0,if (!nodesvisited.contains(...)); correct visitation check.,0
+2,34,BREADTH_FIRST_SEARCH,33,0.0,nodesvisited.add(successor_node);; correct marking.,0
+2,35,BREADTH_FIRST_SEARCH,34,0.0,Closing brace; structural.,0
+2,36,BREADTH_FIRST_SEARCH,35,0.0,Closing brace; structural.,0
+2,37,BREADTH_FIRST_SEARCH,36,0.0,Closing brace; structural.,0
+2,38,BREADTH_FIRST_SEARCH,37,0.0,Closing brace; structural.,0
+2,39,BREADTH_FIRST_SEARCH,38,0.0,Comment; no impact.,0
+2,40,BREADTH_FIRST_SEARCH,39,0.0,Comment; no impact.,0
+2,41,BREADTH_FIRST_SEARCH,40,0.0,Comment; no impact.,0
+2,42,BREADTH_FIRST_SEARCH,41,0.0,Comment; no impact.,0
+2,43,BREADTH_FIRST_SEARCH,43,0.0,Closing brace; structural.,0
+2,44,BREADTH_FIRST_SEARCH,44,0.0,Closing brace; structural.,0
+2,45,BREADTH_FIRST_SEARCH,45,0.0,Closing brace; structural.,0
+3,1,BUCKETSORT,22,1.0,"Loop iterates over input?arr?instead of?counts, violating the SOFL post-condition.?count?is actually elements from?arr, causing incorrect replication of index?i?instead of values.",1
+3,2,BUCKETSORT,23,0.9,"Collections.nCopies(count, i)?uses input values as repetition counts (instead of?counts[i]), producing invalid sorted sequences.",0
+3,3,BUCKETSORT,16,0.0,Correctly populates?counts?with frequencies. No fault here.,0
+3,4,BUCKETSORT,15,0.0,Valid initialization of?counts?with zeros.,0
+3,5,BUCKETSORT,20,0.0,Initial capacity of 100 is irrelevant to logic (ArrayList grows dynamically).,0
+3,6,BUCKETSORT,24,0.0,i++?is syntactically correct but misused due to flawed loop structure.,0
+3,7,BUCKETSORT,1,0.0,Package declaration; irrelevant to logic.,0
+3,8,BUCKETSORT,2,0.0,Import statement; no impact.,0
+3,9,BUCKETSORT,3,0.0,Empty line; no code.,0
+3,10,BUCKETSORT,4,0.0,Comment; no impact.,0
+3,11,BUCKETSORT,5,0.0,Comment; no impact.,0
+3,12,BUCKETSORT,6,0.0,Comment; no impact.,0
+3,13,BUCKETSORT,7,0.0,Comment; no impact.,0
+3,14,BUCKETSORT,8,0.0,Empty line; no code.,0
+3,15,BUCKETSORT,9,0.0,Comment; no impact.,0
+3,16,BUCKETSORT,10,0.0,Comment; no impact.,0
+3,17,BUCKETSORT,11,0.0,Comment; no impact.,0
+3,18,BUCKETSORT,12,0.0,Comment; no impact.,0
+3,19,BUCKETSORT,13,0.0,Class declaration; correct structure.,0
+3,20,BUCKETSORT,14,0.0,Method signature; valid parameters.,0
+3,21,BUCKETSORT,17,0.0,Correctly increments counts for each value in?arr.,0
+3,22,BUCKETSORT,18,0.0,Closing brace; structural.,0
+3,23,BUCKETSORT,19,0.0,Empty line; no code.,0
+3,24,BUCKETSORT,21,0.0,int i = 0; correct initialization.,0
+3,25,BUCKETSORT,25,0.0,i++?placement is correct but ineffective due to loop flaw.,0
+3,26,BUCKETSORT,26,0.0,Empty line; no code.,0
+3,27,BUCKETSORT,27,0.0,return sorted_arr; syntactically correct (value is wrong due to prior logic).,0
+3,28,BUCKETSORT,28,0.0,Closing brace; structural.,0
+3,29,BUCKETSORT,29,0.0,Closing brace; structural.,0
+4,1,DEPTH_FIRST_SEARCH,17,1.0,"Checks?nodesvisited.contains(node)?but?never adds nodes to the set, allowing infinite reprocessing of nodes. Violates DFS  s requirement to mark nodes as visited.",0
+4,2,DEPTH_FIRST_SEARCH,23,0.9,"Recursive call?search(successornodes)?causes infinite recursion in cycles due to unmarked visited nodes, leading to?StackOverflowError.",0
+4,3,DEPTH_FIRST_SEARCH,18,0.0,Returns?false?for visited nodes; structurally correct but irrelevant due to missing marking logic.,0
+4,4,DEPTH_FIRST_SEARCH,14,0.0,Initializes?nodesvisited?set; correct but unused for marking.,0
+4,5,DEPTH_FIRST_SEARCH,16,0.0,Method signature; correct structure.,0
+4,6,DEPTH_FIRST_SEARCH,19,0.0,Goal node check; correct.,0
+4,7,DEPTH_FIRST_SEARCH,22,0.0,Iterates over successors; correct logic.,1
+4,8,DEPTH_FIRST_SEARCH,1,0.0,Package declaration; irrelevant.,0
+4,9,DEPTH_FIRST_SEARCH,2,0.0,Import statement; no impact.,0
+4,10,DEPTH_FIRST_SEARCH,3,0.0,Comment; no impact.,0
+4,11,DEPTH_FIRST_SEARCH,4,0.0,Comment; no impact.,0
+4,12,DEPTH_FIRST_SEARCH,5,0.0,Comment; no impact.,0
+4,13,DEPTH_FIRST_SEARCH,6,0.0,Comment; no impact.,0
+4,14,DEPTH_FIRST_SEARCH,7,0.0,Empty line; no code.,0
+4,15,DEPTH_FIRST_SEARCH,8,0.0,Comment; no impact.,0
+4,16,DEPTH_FIRST_SEARCH,9,0.0,Comment; no impact.,0
+4,17,DEPTH_FIRST_SEARCH,10,0.0,Comment; no impact.,0
+4,18,DEPTH_FIRST_SEARCH,11,0.0,Comment; no impact.,0
+4,19,DEPTH_FIRST_SEARCH,12,0.0,Class declaration; correct.,0
+4,20,DEPTH_FIRST_SEARCH,13,0.0,Method signature; valid.,0
+4,21,DEPTH_FIRST_SEARCH,15,0.0,Inner class definition; structural.,0
+4,22,DEPTH_FIRST_SEARCH,20,0.0,Returns?true?on goal match; correct.,0
+4,23,DEPTH_FIRST_SEARCH,21,0.0,Closing brace; structural.,0
+4,24,DEPTH_FIRST_SEARCH,24,0.0,Closing brace; structural.,0
+4,25,DEPTH_FIRST_SEARCH,25,0.0,Closing brace; structural.,0
+4,26,DEPTH_FIRST_SEARCH,26,0.0,Returns?false; correct fallback.,0
+4,27,DEPTH_FIRST_SEARCH,27,0.0,Closing brace; structural.,0
+4,28,DEPTH_FIRST_SEARCH,28,0.0,Semicolon; structural.,0
+4,29,DEPTH_FIRST_SEARCH,29,0.0,Empty line; no code.,0
+4,30,DEPTH_FIRST_SEARCH,30,0.0,Search instance creation; correct.,0
+4,31,DEPTH_FIRST_SEARCH,31,0.0,Returns search result; correct.,0
+4,32,DEPTH_FIRST_SEARCH,32,0.0,Closing brace; structural.,0
+4,33,DEPTH_FIRST_SEARCH,33,0.0,Closing brace; structural.,0
+4,34,DEPTH_FIRST_SEARCH,34,0.0,Closing brace; structural.,0
+5,1,DETECT_CYCLE,18,1.0,Checks?hare.getSuccessor() == null?but does?not check if?hare?itself is null. Causes?NullPointerException?when?hare?becomes null after line 22. Violates SOFL  s requirement to handle all valid inputs safely.,1
+5,2,DETECT_CYCLE,22,0.9,"hare = hare.getSuccessor().getSuccessor()?may set?hare?to?null?if any successor is null. This null value propagates to the next loop iteration, triggering line 18  s NPE.",0
+5,3,DETECT_CYCLE,17,0.0,while (true)?loop structure is correct for Floyd  s algorithm but depends on proper null checks.,0
+5,4,DETECT_CYCLE,19,0.0,return false?is correct for acyclic lists but unreachable in some cases due to prior NPE.,0
+5,5,DETECT_CYCLE,21,0.0,tortoise = tortoise.getSuccessor()?is correct for 1-step movement.,0
+5,6,DETECT_CYCLE,24,0.0,Cycle detection logic (hare == tortoise) is correct.,0
+5,7,DETECT_CYCLE,1,0.0,Package declaration; unrelated to logic.,0
+5,8,DETECT_CYCLE,2,0.0,Import statement; no impact.,0
+5,9,DETECT_CYCLE,3,0.0,Comment; no impact.,0
+5,10,DETECT_CYCLE,4,0.0,Comment; no impact.,0
+5,11,DETECT_CYCLE,5,0.0,Comment; no impact.,0
+5,12,DETECT_CYCLE,6,0.0,Comment; no impact.,0
+5,13,DETECT_CYCLE,7,0.0,Empty line; no code.,0
+5,14,DETECT_CYCLE,8,0.0,Comment; no impact.,0
+5,15,DETECT_CYCLE,9,0.0,Comment; no impact.,0
+5,16,DETECT_CYCLE,10,0.0,Comment; no impact.,0
+5,17,DETECT_CYCLE,11,0.0,Comment; no impact.,0
+5,18,DETECT_CYCLE,12,0.0,Class declaration; correct structure.,0
+5,19,DETECT_CYCLE,13,0.0,Method signature; valid parameters.,0
+5,20,DETECT_CYCLE,14,0.0,Node hare = node; correct initialization.,0
+5,21,DETECT_CYCLE,15,0.0,Node tortoise = node; correct initialization.,0
+5,22,DETECT_CYCLE,16,0.0,Empty line; no code.,0
+5,23,DETECT_CYCLE,20,0.0,Closing brace; structural.,0
+5,24,DETECT_CYCLE,23,0.0,Empty line; no code.,0
+5,25,DETECT_CYCLE,25,0.0,return true; correct cycle detection.,0
+5,26,DETECT_CYCLE,26,0.0,Closing brace; structural.,0
+5,27,DETECT_CYCLE,27,0.0,Closing brace; structural.,0
+5,28,DETECT_CYCLE,28,0.0,Closing brace; structural.,0
+6,1,FIND_FIRST_IN_SORTED,17,1.0,"Initializes?hi = arr.length?instead of?arr.length - 1. Causes?ArrayIndexOutOfBoundsException?when?mid = arr.length?(e.g., in?test_1). Violates SOFL  s array bounds constraints.",0
+6,2,FIND_FIRST_IN_SORTED,25,0.9,"Sets?hi = mid?instead of?hi = mid - 1?when?x <= arr[mid]. Fails to properly narrow the search space, causing infinite loops for missing?x?(e.g.,?test_2,?test_4).",0
+6,3,FIND_FIRST_IN_SORTED,22,0.8,Accesses?arr[mid]?without bounds checks. Directly throws exceptions when?mid?is invalid due to line 17  s?hi?initialization.,0
+6,4,FIND_FIRST_IN_SORTED,19,0.5,"while (lo <= hi)?loop condition is correct only if?hi?is properly initialized and updated. Combined with line 17/25 faults, it enables infinite loops.",1
+6,5,FIND_FIRST_IN_SORTED,1,0.0,Package declaration; irrelevant to logic.,0
+6,6,FIND_FIRST_IN_SORTED,2,0.0,Import statement; no impact.,0
+6,7,FIND_FIRST_IN_SORTED,3,0.0,Comment; no impact.,0
+6,8,FIND_FIRST_IN_SORTED,4,0.0,Comment; no impact.,0
+6,9,FIND_FIRST_IN_SORTED,5,0.0,Comment; no impact.,0
+6,10,FIND_FIRST_IN_SORTED,6,0.0,Comment; no impact.,0
+6,11,FIND_FIRST_IN_SORTED,7,0.0,Empty line; no code.,0
+6,12,FIND_FIRST_IN_SORTED,8,0.0,Comment; no impact.,0
+6,13,FIND_FIRST_IN_SORTED,9,0.0,Comment; no impact.,0
+6,14,FIND_FIRST_IN_SORTED,10,0.0,Comment; no impact.,0
+6,15,FIND_FIRST_IN_SORTED,11,0.0,Comment; no impact.,0
+6,16,FIND_FIRST_IN_SORTED,12,0.0,Comment; no impact.,0
+6,17,FIND_FIRST_IN_SORTED,13,0.0,Class declaration; structurally correct.,0
+6,18,FIND_FIRST_IN_SORTED,14,0.0,Empty line; no code.,0
+6,19,FIND_FIRST_IN_SORTED,15,0.0,Method signature; valid parameters.,0
+6,20,FIND_FIRST_IN_SORTED,16,0.0,int lo = 0; correct initialization.,0
+6,21,FIND_FIRST_IN_SORTED,18,0.0,Empty line; no code.,0
+6,22,FIND_FIRST_IN_SORTED,20,0.0,int mid = (lo + hi) / 2; correct midpoint calculation.,0
+6,23,FIND_FIRST_IN_SORTED,21,0.0,Empty line; no code.,0
+6,24,FIND_FIRST_IN_SORTED,23,0.0,return mid; correct for valid first occurrence.,0
+6,25,FIND_FIRST_IN_SORTED,24,0.0,else if (x <= arr[mid]); conditionally correct but depends on prior faults.,0
+6,26,FIND_FIRST_IN_SORTED,26,0.0,Closing brace; structural.,0
+6,27,FIND_FIRST_IN_SORTED,27,0.0,lo = mid + 1; correct adjustment for?x > arr[mid].,0
+6,28,FIND_FIRST_IN_SORTED,28,0.0,Closing brace; structural.,0
+6,29,FIND_FIRST_IN_SORTED,29,0.0,Closing brace; structural.,0
+6,30,FIND_FIRST_IN_SORTED,30,0.0,Empty line; no code.,0
+6,31,FIND_FIRST_IN_SORTED,31,0.0,return -1; syntactically correct (fails due to prior logic).,0
+6,32,FIND_FIRST_IN_SORTED,32,0.0,Closing brace; structural.,0
+6,33,FIND_FIRST_IN_SORTED,33,0.0,Closing brace; structural.,0
+6,34,FIND_FIRST_IN_SORTED,34,0.0,Closing brace; structural.,0
+7,1,FIND_IN_SORTED,20,1.0,"Recursive call uses?mid?as the new start for?x > arr[mid], failing to advance past?mid. Causes infinite recursion when?x?is not found, leading to timeout.",1
+7,2,FIND_IN_SORTED,27,0.9,"Initializes?end?to?arr.length?(exclusive bound). Combined with line 20  s fault, prevents termination when?x?exceeds all elements.",0
+7,3,FIND_IN_SORTED,17,0.8,"Accesses?arr[mid]?without checks. If?mid?were invalid (due to incorrect bounds), causes?ArrayIndexOutOfBoundsException.",0
+7,4,FIND_IN_SORTED,19,0.5,The?else if (x > arr[mid])?condition directs control to line 20  s faulty recursion.,0
+7,5,FIND_IN_SORTED,1,0.0,Package declaration; unrelated to logic.,0
+7,6,FIND_IN_SORTED,2,0.0,Comment; no impact.,0
+7,7,FIND_IN_SORTED,3,0.0,Comment; no impact.,0
+7,8,FIND_IN_SORTED,4,0.0,Comment; no impact.,0
+7,9,FIND_IN_SORTED,5,0.0,Comment; no impact.,0
+7,10,FIND_IN_SORTED,6,0.0,Empty line; no code.,0
+7,11,FIND_IN_SORTED,7,0.0,Comment; no impact.,0
+7,12,FIND_IN_SORTED,8,0.0,Comment; no impact.,0
+7,13,FIND_IN_SORTED,9,0.0,Comment; no impact.,0
+7,14,FIND_IN_SORTED,10,0.0,Comment; no impact.,0
+7,15,FIND_IN_SORTED,11,0.0,Class declaration; correct structure.,0
+7,16,FIND_IN_SORTED,12,0.0,Method signature; valid parameters.,0
+7,17,FIND_IN_SORTED,13,0.0,Base case check (start == end); correct.,0
+7,18,FIND_IN_SORTED,14,0.0,Returns?-1; correct for base case.,0
+7,19,FIND_IN_SORTED,15,0.0,Empty line; no code.,0
+7,20,FIND_IN_SORTED,16,0.0,Midpoint calculation; correct.,0
+7,21,FIND_IN_SORTED,18,0.0,Recursive call for?x < arr[mid]; correct.,0
+7,22,FIND_IN_SORTED,21,0.0,else?block; structural.,0
+7,23,FIND_IN_SORTED,22,0.0,Returns?mid; correct if value found.,0
+7,24,FIND_IN_SORTED,23,0.0,Closing brace; structural.,0
+7,25,FIND_IN_SORTED,24,0.0,Closing brace; structural.,0
+7,26,FIND_IN_SORTED,25,0.0,Empty line; no code.,0
+7,27,FIND_IN_SORTED,26,0.0,Method signature; correct.,0
+7,28,FIND_IN_SORTED,28,0.0,Closing brace; structural.,0
+7,29,FIND_IN_SORTED,29,0.0,Closing brace; structural.,0
+8,1,FLATTEN,26,1.0,Infinite recursive call on arr itself without checking for a base case; directly causes StackOverflowError when arr is not an ArrayList.,1
+8,2,FLATTEN,21,0.95,"Calls flatten(x) without verifying that x is not an ArrayList, which will route to line 26 and recurse infinitely for scalar values.",1
+8,3,FLATTEN,14,0.6,"Controls whether the input is treated as a list; does not ensure that the non-list path (i.e., scalar input) is properly handled.",0
+8,4,FLATTEN,13,0.3,"Entry point of the function; although correct in definition, it accepts Object inputs without sufficient type guard logic, violating SOFL's ""true"" precondition.",0
+8,5,FLATTEN,15,0.1,"Casts to ArrayList under the assumption that arr is a list, which is safe due to the instanceof check, but still contributes indirectly to logic flow.",0
+8,6,FLATTEN,16,0.05,"Initializes the result list, logically sound, but downstream logic depends on proper recursion control.",0
+8,7,FLATTEN,12,0.0,Method signature; not directly related to the recursion fault.,0
+8,8,FLATTEN,17,0.0,For-loop iteration setup; no observed issue with structure.,0
+8,9,FLATTEN,18,0.0,Recursion on nested lists; logic appears consistent with intent.,0
+8,10,FLATTEN,19,0.0,Correctly flattens nested lists using addAll.,0
+8,11,FLATTEN,20,0.0,Control path for scalar elements; problem lies in next call.,0
+8,12,FLATTEN,22,0.0,Correctly adds flattened result to list.,0
+8,13,FLATTEN,23,0.0,End of for-loop block; not relevant to bug.,0
+8,14,FLATTEN,24,0.0,Returns result list from list case; working correctly.,0
+8,15,FLATTEN,25,0.0,"else block opener; structurally fine, logic issue is in 26.",0
+8,16,FLATTEN,27,0.0,End of method.,0
+8,17,FLATTEN,28,0.0,End of class.,0
+8,18,FLATTEN,1,0.0,Blank,0
+8,19,FLATTEN,2,0.0,Blank,0
+8,20,FLATTEN,3,0.0,Blank,0
+8,21,FLATTEN,4,0.0,Blank,0
+8,22,FLATTEN,5,0.0,Blank,0
+8,23,FLATTEN,6,0.0,Blank,0
+8,24,FLATTEN,7,0.0,Blank,0
+8,25,FLATTEN,8,0.0,Blank,0
+8,26,FLATTEN,9,0.0,Blank,0
+8,27,FLATTEN,10,0.0,Blank,0
+8,28,FLATTEN,11,0.0,Blank,0
+8,29,FLATTEN,29,0.0,Blank,0
+9,1,GCD,19,1.0,"Calls gcd(a % b, b) instead of standard gcd(b, a % b), causing infinite recursion when a < b.",1
+9,2,GCD,15,0.6,Entry point to the recursive method; lacks input validation for a ≥ 0 ∧ b ≥ 0 ∧ (a ≠ 0 ∨ b ≠ 0) as required by SOFL precondition.,0
+9,3,GCD,16,0.1,"Base case if (b == 0) is logically sound, but does not validate a > 0, which could violate SOFL spec if a = 0.",0
+9,4,GCD,20,0.0,"else block itself is structurally fine, but continues the flawed logic initiated at line 19.",0
+9,5,GCD,17,0.0,"Return of a in base case is correct when b == 0, assuming valid inputs.",0
+9,6,GCD,18,0.0,"Part of standard recursion block, no independent logical fault.",0
+9,7,GCD,21,0.0,"Structural end of method, not relevant to logic.",0
+9,8,GCD,22,0.0,Class closing bracket; no functional logic.,0
+9,9,GCD,14,0.0,Method header itself is fine in terms of signature.,0
+9,10,GCD,13,0.0,Class declaration — no issues.,0
+9,11,GCD,1,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,12,GCD,2,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,13,GCD,3,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,14,GCD,4,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,15,GCD,5,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,16,GCD,6,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,17,GCD,7,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,18,GCD,8,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,19,GCD,9,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,20,GCD,10,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,21,GCD,11,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+9,22,GCD,12,0.0,Package/imports/comments/JavaDoc — do not affect logic.,0
+10,1,GET_FACTORS,27,1.0,Always returns empty list if no factor found; violates postcondition that prime n should be returned as singleton list [n].,1
+10,2,GET_FACTORS,14,0.9,No base case for returning n when n is prime; leads to incorrect results and empty list.,0
+10,3,GET_FACTORS,23,0.8,"Recursively builds the factor list, but fails to handle the case when n / i is a prime number that should be included.",0
+10,4,GET_FACTORS,22,0.3,"Adds a divisor i, but only works correctly when n % i == 0; contributes to incomplete result when n is prime.",0
+10,5,GET_FACTORS,19,0.2,"Iteration may miss larger prime divisors due to loop bounds; however, logic is otherwise sound.",0
+10,6,GET_FACTORS,18,0.1,Uses approximate bound for loop (sqrt(n) + 1.0); may skip a factor equal to n itself.,0
+10,7,GET_FACTORS,15,0.05,"Valid check for base case n == 1, though complements precondition; harmless.",0
+10,8,GET_FACTORS,24,0.05,Early return on successful factor division; logic is sound but contributes to overall control flow that fails on prime n.,0
+10,9,GET_FACTORS,21,0.01,Initializes new result list; minor role in logic.,0
+10,10,GET_FACTORS,20,0.01,Correct conditional logic; low suspicion.,0
+10,11,GET_FACTORS,25,0.01,Proper control flow continuation.,0
+10,12,GET_FACTORS,16,0.01,Returns empty list for n == 1; correct per specification.,0
+10,13,GET_FACTORS,26,0.01,Ends loop scope; structurally fine.,0
+10,14,GET_FACTORS,17,0.0,Empty line; not executable.,0
+10,15,GET_FACTORS,28,0.0,Closes method; no logic here.,0
+10,16,GET_FACTORS,29,0.0,Closes class; not related to logic.,0
+10,17,GET_FACTORS,13,0.0,Class declaration.,0
+10,18,GET_FACTORS,12,0.0,Comment block closure.,0
+10,19,GET_FACTORS,11,0.0,Javadoc author tag.,0
+10,20,GET_FACTORS,10,0.0,Empty Javadoc line.,0
+10,21,GET_FACTORS,9,0.0,Javadoc start.,0
+10,22,GET_FACTORS,8,0.0,Empty line.,0
+10,23,GET_FACTORS,7,0.0,Comment block end.,0
+10,24,GET_FACTORS,6,0.0,Comment on IDE.,0
+10,25,GET_FACTORS,5,0.0,Comment on IDE.,0
+10,26,GET_FACTORS,4,0.0,Start of IDE comment block.,0
+10,27,GET_FACTORS,3,0.0,Empty line.,0
+10,28,GET_FACTORS,2,0.0,Import statement.,0
+10,29,GET_FACTORS,1,0.0,Package declaration.,0
+11,1,HANOI,26,1.0,The recursive call uses helper as the end point when it should be using end. This leads to incorrect tower transitions.,0
+11,2,HANOI,27,0.9,The move added to steps is incorrect - it should be moving from start to end (not start to helper). This is the core logic error causing all test failures.,1
+11,3,HANOI,28,0.8,The recursive call uses helper as the start point when it should be using start. This compounds the error from line 26.,0
+11,4,HANOI,19,0.5,The PriorityQueue setup is unnecessarily complex but not directly related to the core logic error.,0
+11,5,HANOI,15,0.0,Method signature is correct.,0
+11,6,HANOI,1,0.0,Package declaration; irrelevant.,0
+11,7,HANOI,2,0.0,Import statement; no impact.,0
+11,8,HANOI,3,0.0,Comment; no impact.,0
+11,9,HANOI,4,0.0,Comment; no impact.,0
+11,10,HANOI,5,0.0,Comment; no impact.,0
+11,11,HANOI,6,0.0,Comment; no impact.,0
+11,12,HANOI,7,0.0,Empty line; no code.,0
+11,13,HANOI,8,0.0,Comment; no impact.,0
+11,14,HANOI,9,0.0,Comment; no impact.,0
+11,15,HANOI,10,0.0,Comment; no impact.,0
+11,16,HANOI,11,0.0,Comment; no impact.,0
+11,17,HANOI,12,0.0,Comment; no impact.,0
+11,18,HANOI,13,0.0,Class declaration; correct.,0
+11,19,HANOI,14,0.0,Comment; no impact.,0
+11,20,HANOI,16,0.0,Initializes steps list; correct.,0
+11,21,HANOI,17,0.0,Empty line; no code.,0
+11,22,HANOI,18,0.0,Base case check; correct.,0
+11,23,HANOI,20,0.0,PriorityQueue initialization; correct but unnecessary.,0
+11,24,HANOI,21,0.0,Adds peg 1; correct but unnecessary.,0
+11,25,HANOI,22,0.0,Adds peg 2; correct but unnecessary.,0
+11,26,HANOI,23,0.0,Removes start peg; correct but unnecessary.,0
+11,27,HANOI,24,0.0,Removes end peg; correct but unnecessary.,0
+11,28,HANOI,25,0.0,Gets helper peg; correct but unnecessarily complex.,0
+11,29,HANOI,29,0.0,Closing brace; structural.,0
+11,30,HANOI,30,0.0,Empty line; no code.,0
+11,31,HANOI,31,0.0,Returns steps; correct.,0
+11,32,HANOI,32,0.0,Closing brace; structural,0
+11,33,HANOI,33,0.0,Blank,0
+11,34,HANOI,34,0.0,Blank,0
+11,35,HANOI,35,0.0,Blank,0
+11,36,HANOI,36,0.0,Blank,0
+11,37,HANOI,37,0.0,Blank,0
+11,38,HANOI,38,0.0,Blank,0
+11,39,HANOI,39,0.0,Blank,0
+11,40,HANOI,40,0.0,Blank,0
+11,41,HANOI,41,0.0,Blank,0
+11,42,HANOI,42,0.0,Blank,0
+11,43,HANOI,43,0.0,Blank,0
+11,44,HANOI,44,0.0,Blank,0
+11,45,HANOI,45,0.0,Blank,0
+11,46,HANOI,46,0.0,Blank,0
+11,47,HANOI,47,0.0,Blank,0
+11,48,HANOI,48,0.0,Blank,0
+11,49,HANOI,49,0.0,Blank,0
+11,50,HANOI,50,0.0,Blank,0
+11,51,HANOI,51,0.0,Blank,0
+11,52,HANOI,52,0.0,Blank,0
+11,53,HANOI,53,0.0,Blank,0
+11,54,HANOI,54,0.0,Blank,0
+11,55,HANOI,55,0.0,Blank,0
+11,56,HANOI,56,0.0,Blank,0
+11,57,HANOI,57,0.0,Blank,0
+11,58,HANOI,58,0.0,Blank,0
+11,59,HANOI,59,0.0,Blank,0
+11,60,HANOI,60,0.0,Blank,0
+11,61,HANOI,61,0.0,Blank,0
+11,62,HANOI,62,0.0,Blank,0
+11,63,HANOI,63,0.0,Blank,0
+11,64,HANOI,64,0.0,Blank,0
+11,65,HANOI,65,0.0,Blank,0
+12,1,IS_VALID_PARENTHESIZATION,24,1.0,"Unconditionally returns true without verifying that all opened parentheses have been closed (depth == 0), violating the postcondition.",1
+12,2,IS_VALID_PARENTHESIZATION,14,0.8,"Initializes the depth variable correctly, but its final state is never validated, contributing to the missing correctness check.",0
+12,3,IS_VALID_PARENTHESIZATION,21,0.4,"Handles over-closing (depth < 0), but highlights the asymmetry — under-closing (leftover () is ignored entirely.",0
+12,4,IS_VALID_PARENTHESIZATION,13,0.3,Method signature — the correctness of this method directly depends on properly validating well-formed parentheses.,0
+12,5,IS_VALID_PARENTHESIZATION,23,0.1,Closes the loop — no action is taken to validate the final value of depth.,0
+12,6,IS_VALID_PARENTHESIZATION,15,0.05,"For loop bounds are standard, but contributes to overall logic that doesn’t validate final depth.",0
+12,7,IS_VALID_PARENTHESIZATION,16,0.05,"Extracts character from the string — relevant to control flow, but implementation here is fine.",0
+12,8,IS_VALID_PARENTHESIZATION,17,0.01,Correctly checks for '(' character.,0
+12,9,IS_VALID_PARENTHESIZATION,18,0.01,"Increments depth, consistent with parentheses tracking logic.",0
+12,10,IS_VALID_PARENTHESIZATION,19,0.01,Else block correctly assumes ')' if not '('.,0
+12,11,IS_VALID_PARENTHESIZATION,20,0.01,Decrements depth for closing parentheses.,0
+12,12,IS_VALID_PARENTHESIZATION,22,0.01,Correctly returns false if closing parentheses appear without matching opening ones.,0
+12,13,IS_VALID_PARENTHESIZATION,25,0.0,Method closing — no effect on logic.,0
+12,14,IS_VALID_PARENTHESIZATION,12,0.0,Class declaration — not involved in control logic.,0
+12,15,IS_VALID_PARENTHESIZATION,1,0.0,Package declaration.,0
+12,16,IS_VALID_PARENTHESIZATION,2,0.0,Imports.,0
+12,17,IS_VALID_PARENTHESIZATION,3,0.0,Comment line — no semantic value.,0
+12,18,IS_VALID_PARENTHESIZATION,4,0.0,Comment line.,0
+12,19,IS_VALID_PARENTHESIZATION,5,0.0,Comment line.,0
+12,20,IS_VALID_PARENTHESIZATION,6,0.0,Comment line.,0
+12,21,IS_VALID_PARENTHESIZATION,7,0.0,Blank line.,0
+12,22,IS_VALID_PARENTHESIZATION,8,0.0,Javadoc comment start.,0
+12,23,IS_VALID_PARENTHESIZATION,9,0.0,Javadoc comment.,0
+12,24,IS_VALID_PARENTHESIZATION,10,0.0,Javadoc comment.,0
+12,25,IS_VALID_PARENTHESIZATION,11,0.0,Javadoc comment.,0
+12,26,IS_VALID_PARENTHESIZATION,26,0.0,Blank,0
+13,1,KHEAPSORT,27,1.0,Looping over all arr elements causes duplicated insertions into the heap.,1
+13,2,KHEAPSORT,28,1.0,"Re-adding all elements to the heap introduces duplicates, violating sorting and permutation properties.",0
+13,3,KHEAPSORT,29,0.9,Polling from a wrongly populated heap leads to incorrect or repeated output.,0
+13,4,KHEAPSORT,30,0.9,Adding incorrect elements into output because heap content is wrong.,0
+13,5,KHEAPSORT,22,0.7,"Initial heap setup with arr.subList(0, k) is correct but unprotected, enabling duplication later.",0
+13,6,KHEAPSORT,21,0.5,Heap initialization itself is standard but indirectly allows wrong behavior by misuse later.,0
+13,7,KHEAPSORT,33,0.4,"Drains all elements from an incorrectly built heap, worsening the final output problem.",0
+13,8,KHEAPSORT,34,0.4,Adds elements remaining in a wrong heap to output.,0
+13,9,KHEAPSORT,20,0.2,Function declaration line; involved but not directly causing faulty logic.,0
+13,10,KHEAPSORT,26,0.2,Output list initialization; output accumulates bad elements but this line itself is standard.,0
+13,11,KHEAPSORT,31,0.1,"End of if (height > 0) block; correctly structured, no logical flaw here.",0
+13,12,KHEAPSORT,32,0.1,Correctly returns output; the return itself is not faulty.,0
+13,13,KHEAPSORT,37,0.1,Method returns output; returning happens after faulty population.,0
+13,14,KHEAPSORT,39,0.0,"Empty line, no logic.",0
+13,15,KHEAPSORT,18,0.0,"Comment about binary tree heap properties, not executable.",0
+13,16,KHEAPSORT,19,0.0,"Comment about priority queue ordering, not executable.",0
+13,17,KHEAPSORT,17,0.0,"Comment about heap node structure, not executable.",0
+13,18,KHEAPSORT,16,0.0,"Comment about binary tree heap concept, not executable.",0
+13,19,KHEAPSORT,15,0.0,"Comment about heap O(log n) property, not executable.",0
+13,20,KHEAPSORT,14,0.0,"Comment about heap import, not executable.",0
+13,21,KHEAPSORT,13,0.0,"Class declaration KHEAPSORT, no issues.",0
+13,22,KHEAPSORT,12,0.0,"Class definition line, no issues.",0
+13,23,KHEAPSORT,11,0.0,"JavaDoc author tag, non-code.",0
+13,24,KHEAPSORT,10,0.0,"JavaDoc blank line, non-code.",0
+13,25,KHEAPSORT,9,0.0,"JavaDoc start, non-code.",0
+13,26,KHEAPSORT,8,0.0,"Blank line, no logic.",0
+13,27,KHEAPSORT,7,0.0,"End of comment block, no code.",0
+13,28,KHEAPSORT,6,0.0,"Comment line for IDE templates, no code.",0
+13,29,KHEAPSORT,5,0.0,"Comment line for IDE templates, no code.",0
+13,30,KHEAPSORT,4,0.0,"Comment line for IDE templates, no code.",0
+13,31,KHEAPSORT,3,0.0,"Comment line for IDE templates, no code.",0
+13,32,KHEAPSORT,2,0.0,"Import java.util.*, normal import.",0
+13,33,KHEAPSORT,1,0.0,"Package declaration, standard.",0
+13,34,KHEAPSORT,23,0.0,Blank,0
+13,35,KHEAPSORT,24,0.0,Blank,0
+13,36,KHEAPSORT,25,0.0,Blank,0
+13,37,KHEAPSORT,35,0.0,Blank,0
+13,38,KHEAPSORT,36,0.0,Blank,0
+13,39,KHEAPSORT,38,0.0,Blank,0
+13,40,KHEAPSORT,40,0.0,Blank,0
+14,1,KNAPSACK,30,1.0,"The condition weight < j wrongly excludes cases where weight == j, leading to failure to include valid items when weight exactly matches capacity.",1
+14,2,KNAPSACK,31,0.9,"The memoization logic depends directly on the previous wrong condition, so the wrong subset value is calculated.",0
+14,3,KNAPSACK,25,0.6,"Loop iterates over j, but correctness depends critically on the condition inside; indirectly related to faulty updates.",0
+14,4,KNAPSACK,29,0.5,Redundant initialization of memo[i][j] = 0 is correct but related to the control flow of memo filling. Slight suspicion as an adjacent part.,0
+14,5,KNAPSACK,19,0.4,"Loop over i is generally sound, but memoization depends on the correct sequencing of i and j; minor relevance.",0
+14,6,KNAPSACK,21,0.3,"Item attribute assignment is done with i-1 indexing. While generally safe, wrong item assignment would propagate, but less suspicious.",0
+14,7,KNAPSACK,22,0.3,"Assignment of weight from items[i-1][0] is safe assuming correct structure, low suspicion.",0
+14,8,KNAPSACK,23,0.3,"Assignment of value from items[i-1][1], similarly minor.",0
+14,9,KNAPSACK,14,0.2,Method signature; only suspicious if input handling is wrong (not the case here).,0
+14,10,KNAPSACK,15,0.2,Initialization of weight and value; unlikely to cause the fault unless misused later.,0
+14,11,KNAPSACK,16,0.2,Computation of n = items.length is correct but basic; very low suspicion.,0
+14,12,KNAPSACK,17,0.2,Initialization of memoization table; no apparent error in size.,0
+14,13,KNAPSACK,20,0.1,Start of for loop; structure is standard.,0
+14,14,KNAPSACK,24,0.1,End of conditional block setting weight and value; no clear problem.,0
+14,15,KNAPSACK,26,0.1,Start of inner loop; structure is fine.,0
+14,16,KNAPSACK,27,0.1,Checking `i==0,0
+14,17,KNAPSACK,28,0.1,Setting memo[i][j]=0 in base cases; normal initialization.,0
+14,18,KNAPSACK,32,0.1,"else branch when weight >= j, slightly irrelevant to the specific fault.",0
+14,19,KNAPSACK,33,0.1,"Setting memo[i][j]=memo[i-1][j], standard no-pick condition.",0
+14,20,KNAPSACK,34,0.1,Closing else block; no issues.,0
+14,21,KNAPSACK,37,0.0,End of inner loop. Pure control flow.,0
+14,22,KNAPSACK,38,0.0,End of outer loop. Pure control flow.,0
+14,23,KNAPSACK,39,0.0,Return statement; not suspicious.,0
+14,24,KNAPSACK,40,0.0,End of method. No issue.,0
+14,25,KNAPSACK,41,0.0,End of class. Pure syntax.,0
+14,26,KNAPSACK,1,0.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,27,KNAPSACK,2,1.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,28,KNAPSACK,3,2.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,29,KNAPSACK,4,3.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,30,KNAPSACK,5,4.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,31,KNAPSACK,6,5.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,32,KNAPSACK,7,6.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,33,KNAPSACK,8,7.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,34,KNAPSACK,9,8.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,35,KNAPSACK,10,9.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,36,KNAPSACK,11,10.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,37,KNAPSACK,12,11.0,"Package, import, comment, class declaration, author info — no relevance to logic faults.",0
+14,38,KNAPSACK,13,0.0,Blank,0
+14,39,KNAPSACK,18,0.0,Blank,0
+14,40,KNAPSACK,35,0.0,Blank,0
+14,41,KNAPSACK,36,0.0,Blank,0
+14,42,KNAPSACK,42,0.0,Blank,0
+15,1,KTH,8,1.0,"Directly accesses arr.get(0) without checking if arr is non-empty, causing IndexOutOfBoundsException.",0
+15,2,KTH,23,0.95,"Recursively calls kth(below, k) without verifying below is non-empty, risking repeated empty list access.",0
+15,3,KTH,25,0.95,"Recursively calls kth(above, k) without verifying above is non-empty, risking repeated empty list access.",1
+15,4,KTH,7,0.7,Method header assumes preconditions are met but no internal safeguard against empty arr.,0
+15,5,KTH,22,0.5,"Decides to recurse into below, dependent on potentially empty array.",0
+15,6,KTH,24,0.5,"Decides to recurse into above, dependent on potentially empty array.",0
+15,7,KTH,6,0.3,Class definition; not directly faulty but houses the problematic method.,0
+15,8,KTH,20,0.2,Computes num_less but does not independently verify list state.,0
+15,9,KTH,21,0.2,Computes num_lessoreq; correctness depends on non-empty partitions.,0
+15,10,KTH,12,0.1,"for loop over arr; behavior expected, but if arr empty, no iterations.",0
+15,11,KTH,13,0.05,Correctly partitions elements less than pivot.,0
+15,12,KTH,15,0.05,Correctly partitions elements greater than pivot.,0
+15,13,KTH,14,0.01,Adds elements smaller than pivot to below.,0
+15,14,KTH,16,0.01,Adds elements greater than pivot to above.,0
+15,15,KTH,26,0.01,Correctly selects pivot when neither recursion condition holds.,0
+15,16,KTH,27,0.01,Returns pivot when k is in proper range.,0
+15,17,KTH,28,0.01,Normal closing of if-else control block.,0
+15,18,KTH,29,0.01,Closing brace for method; no impact.,0
+15,19,KTH,30,0.01,Closing brace for class; no impact.,0
+15,20,KTH,1,0.0,Package declaration; no impact on bug.,0
+15,21,KTH,2,0.0,Import statement; no impact on bug.,0
+15,22,KTH,3,0.0,Start of comment block; no impact.,0
+15,23,KTH,4,0.0,Empty comment line; no impact.,0
+15,24,KTH,5,0.0,End of comment block; no impact.,0
+15,25,KTH,9,0.0,Blank,0
+15,26,KTH,10,0.0,Blank,0
+15,27,KTH,11,0.0,Blank,0
+15,28,KTH,17,0.0,Blank,0
+15,29,KTH,18,0.0,Blank,0
+15,30,KTH,19,0.0,Blank,0
+16,1,LCS_LENGTH,33,1.0,"Only updates DP on character match, missing the standard LCS ""max of neighbors"" update for mismatch.",0
+16,2,LCS_LENGTH,31,0.95,"Loops through s, but within it, only match-based updates are done, missing updates for non-matches.",0
+16,3,LCS_LENGTH,32,0.95,"Loops through t, similarly part of the faulty nested loop missing mismatch handling.",0
+16,4,LCS_LENGTH,37,0.9,"Updates only based on previous row and current column upon a match, no update logic for when characters differ.",1
+16,5,LCS_LENGTH,35,0.9,The conditional if (dp.containsKey(i-1)) is awkward and unnecessary — standard DP should assume previous values exist or default to 0.,0
+16,6,LCS_LENGTH,36,0.8,"Retrieves internal_map, but logic for updating is bound only to match cases.",0
+16,7,LCS_LENGTH,38,0.8,"Sets the matched case value, but the method lacks a non-match handling fallback.",0
+16,8,LCS_LENGTH,39,0.7,"Reinserts internal_map into dp, potentially redundant because internal_map is already a reference to the value inside dp.",0
+16,9,LCS_LENGTH,41,0.6,"Inside the else branch: only assigns 1 if characters match and i-1 is absent, but again no handling of mismatch cases.",0
+16,10,LCS_LENGTH,42,0.6,"Puts a hardcoded 1 when first matched, ignoring that subsequence building must be cumulative.",0
+16,11,LCS_LENGTH,43,0.6,"Similar issue: reinserts internal_map, possibly redundant and also missing proper chain updates.",0
+16,12,LCS_LENGTH,17,0.5,"Initialization of dp structure, although not a direct cause, its overly complex hashtable structure complicates tracing.",0
+16,13,LCS_LENGTH,21,0.5,Initializes initialize maps but logic not tied directly to LCS optimal substructure principles.,0
+16,14,LCS_LENGTH,24,0.4,"Fetches internal_map again, potential redundancy, slightly confusing for maintenance but minor to the fault.",0
+16,15,LCS_LENGTH,25,0.4,Correctly sets initial zeros but may obscure missing default values when later accessing previous cells.,0
+16,16,LCS_LENGTH,49,0.4,Checks if dp is empty before extracting results; not faulty by itself but part of a potentially broken chain.,0
+16,17,LCS_LENGTH,50,0.3,Starts collecting DP maximums; the error by this point has already been made.,0
+16,18,LCS_LENGTH,51,0.3,"Loops through each dp[i] map for max values; processing correct given DP contents, but the source DP is wrong.",0
+16,19,LCS_LENGTH,52,0.3,"Picks maximum of each dp[i]; again, propagates wrong values if DP table is faulty.",0
+16,20,LCS_LENGTH,54,0.2,Returns overall maximum value from ret_list; logical continuation of previous steps.,0
+16,21,LCS_LENGTH,55,0.2,"Returns 0 if dp is empty; not buggy, just fallback behavior.",0
+16,22,LCS_LENGTH,56,0.1,Return statement; not buggy independently.,0
+16,23,LCS_LENGTH,58,0.0,"Closing brace, irrelevant.",0
+16,24,LCS_LENGTH,59,0.0,"Closing brace, irrelevant.",0
+16,25,LCS_LENGTH,13,0.0,"Function signature, correct.",0
+16,26,LCS_LENGTH,14,0.0,"Comment, no impact.",0
+16,27,LCS_LENGTH,15,0.0,"Comment, no impact.",0
+16,28,LCS_LENGTH,16,0.0,"Comment, no impact.",0
+16,29,LCS_LENGTH,18,0.0,"Initializes DP structure, standard, not a fault source.",0
+16,30,LCS_LENGTH,20,0.0,"For-loop for string s, setup step, not fault source itself.",0
+16,31,LCS_LENGTH,22,0.0,Puts initialized empty maps in DP; necessary but not the fault.,0
+16,32,LCS_LENGTH,23,0.0,"For-loop for string t, again setup, not the bug.",0
+16,33,LCS_LENGTH,26,0.0,"Reinserts internal map, redundant but not directly faulty.",0
+16,34,LCS_LENGTH,28,0.0,"Ends first loop, neutral.",0
+16,35,LCS_LENGTH,30,0.0,"Starts actual LCS logic loop, structure is correct but inner logic wrong.",0
+16,36,LCS_LENGTH,34,0.0,"Blank line, no effect.",0
+16,37,LCS_LENGTH,40,0.0,"Else branch entry, control structure itself is fine.",0
+16,38,LCS_LENGTH,44,0.0,"Ends else branch, neutral.",0
+16,39,LCS_LENGTH,45,0.0,"Ends match block, neutral.",0
+16,40,LCS_LENGTH,46,0.0,"Ends inner loop, neutral.",0
+16,41,LCS_LENGTH,47,0.0,"Ends outer loop, neutral.",0
+16,42,LCS_LENGTH,48,0.0,"Blank line, no effect.",0
+16,43,LCS_LENGTH,53,0.0,"Ends collection loop, neutral.",0
+16,44,LCS_LENGTH,1,0.0,Blank,0
+16,45,LCS_LENGTH,2,0.0,Blank,0
+16,46,LCS_LENGTH,3,0.0,Blank,0
+16,47,LCS_LENGTH,4,0.0,Blank,0
+16,48,LCS_LENGTH,5,0.0,Blank,0
+16,49,LCS_LENGTH,6,0.0,Blank,0
+16,50,LCS_LENGTH,7,0.0,Blank,0
+16,51,LCS_LENGTH,8,0.0,Blank,0
+16,52,LCS_LENGTH,9,0.0,Blank,0
+16,53,LCS_LENGTH,10,0.0,Blank,0
+16,54,LCS_LENGTH,11,0.0,Blank,0
+16,55,LCS_LENGTH,12,0.0,Blank,0
+16,56,LCS_LENGTH,19,0.0,Blank,0
+16,57,LCS_LENGTH,27,0.0,Blank,0
+16,58,LCS_LENGTH,29,0.0,Blank,0
+16,59,LCS_LENGTH,57,0.0,Blank,0
+17,1,LEVENSHTEIN,17,1.0,Incorrectly adds 1 when characters match; should recurse without increment to satisfy minimal edit distance specification.,1
+17,2,LEVENSHTEIN,16,0.95,Condition where characters match is handled improperly; leads directly to wrong recursion cost.,0
+17,3,LEVENSHTEIN,19,0.8,"Part of the main mismatch handling; although likely correct structurally, still needs careful validation given surrounding logic.",0
+17,4,LEVENSHTEIN,20,0.7,Recursive call for insertion; affected by overall error propagation.,0
+17,5,LEVENSHTEIN,21,0.7,Recursive call for substitution; affected by overall error propagation.,0
+17,6,LEVENSHTEIN,22,0.7,Recursive call for deletion; affected by overall error propagation.,0
+17,7,LEVENSHTEIN,13,0.5,"Entry point of the function; while generally fine, it initializes logic that leads to incorrect recursive results.",0
+17,8,LEVENSHTEIN,18,0.5,Starting point of mismatch handling; transition from match case to edit operations.,0
+17,9,LEVENSHTEIN,14,0.2,Base case for empty strings; seems correct but still worth minimal attention since recursion can reach here wrongly.,0
+17,10,LEVENSHTEIN,15,0.2,Handles empty source or target; correctly contributes to stopping recursion.,0
+17,11,LEVENSHTEIN,23,0.1,"Closing parenthesis for the Math.min block; syntax structure, low chance of being root cause.",0
+17,12,LEVENSHTEIN,24,0.05,Closing of else block; no functional logic here.,0
+17,13,LEVENSHTEIN,25,0.01,Closing of method; syntactic only.,0
+17,14,LEVENSHTEIN,1,0.0,Package declaration; irrelevant to logic.,0
+17,15,LEVENSHTEIN,2,0.0,Import statement for java.util.*; standard utility imports.,0
+17,16,LEVENSHTEIN,3,0.0,Start of comment block; not executable.,0
+17,17,LEVENSHTEIN,4,0.0,Comment text; not executable.,0
+17,18,LEVENSHTEIN,5,0.0,Comment text; not executable.,0
+17,19,LEVENSHTEIN,6,0.0,End of comment block; not executable.,0
+17,20,LEVENSHTEIN,7,0.0,Empty line; irrelevant.,0
+17,21,LEVENSHTEIN,8,0.0,Start of JavaDoc; not executable.,0
+17,22,LEVENSHTEIN,9,0.0,JavaDoc content; not executable.,0
+17,23,LEVENSHTEIN,10,0.0,JavaDoc content; not executable.,0
+17,24,LEVENSHTEIN,11,0.0,JavaDoc content; not executable.,0
+17,25,LEVENSHTEIN,12,0.0,Class definition line; structure only.,0
+17,26,LEVENSHTEIN,26,0.0,Blank,0
+18,1,LIS,22,1.0,"The core condition arr[ends.get(j)] < val may not correctly identify the proper prefix, causing incorrect LIS computation.",0
+18,2,LIS,29,1.0,"The condition for updating ends and longest may wrongly prevent subsequence extension, leading to underestimation of LIS.",0
+18,3,LIS,30,0.95,"Updating ends.put(length+1, i) without ensuring minimal ending values can cause improper LIS formation.",0
+18,4,LIS,31,0.9,Incorrectly increasing longest due to flawed prefix computation affects the final output directly.,1
+18,5,LIS,21,0.8,"The loop over j values depends on longest, which might already be miscomputed due to previous errors, propagating faults.",0
+18,6,LIS,27,0.7,"If prefix_lengths was incorrectly populated, the computed length here will propagate errors.",0
+18,7,LIS,18,0.6,"Iterating over arr values; if initialization before this loop is incorrect, it affects the entire LIS computation.",0
+18,8,LIS,19,0.4,"Declares prefix_lengths, which may not be populated correctly due to faulty prefix condition checking.",0
+18,9,LIS,20,0.35,Start of the inner loop; its correctness depends on the correct longest value and array boundary handling.,0
+18,10,LIS,23,0.3,"Adding j to prefix_lengths; although simple, it depends on the correctness of the condition on line 22.",0
+18,11,LIS,28,0.25,Computation of length; downstream effect based on previous population of prefix_lengths.,0
+18,12,LIS,17,0.2,Initializing index i; unlikely faulty by itself but required for correctly updating ends.,0
+18,13,LIS,34,0.15,Increments i; unlikely source of logical error but important for ends indexing.,0
+18,14,LIS,14,0.1,Initialization of ends map; may cause problems if not sized or cleared properly (unlikely here).,0
+18,15,LIS,15,0.05,Initialization of longest to 0; expected behavior.,0
+18,16,LIS,13,0.01,Method signature and input parameters; not suspicious.,0
+18,17,LIS,36,0.01,"Return longest; final step, but depends on previous computation.",0
+18,18,LIS,1,0.0,Package declaration; not relevant.,0
+18,19,LIS,2,0.0,Import statements; not suspicious.,0
+18,20,LIS,3,0.0,Comment start; not suspicious.,0
+18,21,LIS,4,0.0,Comment; not suspicious.,0
+18,22,LIS,5,0.0,Comment end; not suspicious.,0
+18,23,LIS,6,0.0,Empty line; no effect.,0
+18,24,LIS,8,0.0,JavaDoc comment start; not suspicious.,0
+18,25,LIS,9,0.0,JavaDoc content; not suspicious.,0
+18,26,LIS,10,0.0,JavaDoc content; not suspicious.,0
+18,27,LIS,11,0.0,JavaDoc content; not suspicious.,0
+18,28,LIS,12,0.0,Class definition; not suspicious.,0
+18,29,LIS,37,0.0,Method end; not suspicious.,0
+18,30,LIS,38,0.0,Class end; not suspicious.,0
+18,31,LIS,7,0.0,Blank,0
+18,32,LIS,16,0.0,Blank,0
+18,33,LIS,24,0.0,Blank,0
+18,34,LIS,25,0.0,Blank,0
+18,35,LIS,26,0.0,Blank,0
+18,36,LIS,32,0.0,Blank,0
+18,37,LIS,33,0.0,Blank,0
+18,38,LIS,35,0.0,Blank,0
+19,1,LONGEST_COMMON_SUBSEQUENCE,18,1.0,"Recursion when characters match incorrectly only advances a, not b, violating the SOFL specification for matching heads.",1
+19,2,LONGEST_COMMON_SUBSEQUENCE,17,0.95,The branch checking a.charAt(0) == b.charAt(0) is critical and leads directly to faulty recursion.,0
+19,3,LONGEST_COMMON_SUBSEQUENCE,20,0.7,"Recursive call for mismatched characters — although structurally correct, it propagates errors from faulty base cases.",0
+19,4,LONGEST_COMMON_SUBSEQUENCE,21,0.7,Same as Line 20 — wrong base recursion can taint these alternatives.,0
+19,5,LONGEST_COMMON_SUBSEQUENCE,22,0.5,Comparing the lengths of two subsequences may yield wrong results if upstream recursion is flawed.,0
+19,6,LONGEST_COMMON_SUBSEQUENCE,14,0.3,Function entry; handling base cases (`a.isEmpty(),0
+19,7,LONGEST_COMMON_SUBSEQUENCE,15,0.1,Correctly handles one of the base conditions by returning empty string when either input is empty.,0
+19,8,LONGEST_COMMON_SUBSEQUENCE,19,0.1,Else-branch setup for choosing between two alternative subsequences — structurally acceptable.,0
+19,9,LONGEST_COMMON_SUBSEQUENCE,16,0.05,"The correct comparison of charAt(0); no logical fault, but links to faulty recursion.",0
+19,10,LONGEST_COMMON_SUBSEQUENCE,23,0.05,Returning the longer of two subsequences — logic depends on correctness of fst and snd.,0
+19,11,LONGEST_COMMON_SUBSEQUENCE,13,0.01,Method signature; just defines the function longest_common_subsequence.,0
+19,12,LONGEST_COMMON_SUBSEQUENCE,25,0.0,Closing bracket of the method — not contributing to logic errors.,0
+19,13,LONGEST_COMMON_SUBSEQUENCE,26,0.0,Closing bracket of the class — no relevance to logic.,0
+19,14,LONGEST_COMMON_SUBSEQUENCE,1,0.0,Package declaration — irrelevant to bug.,0
+19,15,LONGEST_COMMON_SUBSEQUENCE,2,0.0,Import statement — irrelevant to bug.,0
+19,16,LONGEST_COMMON_SUBSEQUENCE,3,0.0,Start of comment block — documentation only.,0
+19,17,LONGEST_COMMON_SUBSEQUENCE,4,0.0,Comment continuation — documentation only.,0
+19,18,LONGEST_COMMON_SUBSEQUENCE,5,0.0,Comment continuation — documentation only.,0
+19,19,LONGEST_COMMON_SUBSEQUENCE,6,0.0,End of comment block — documentation only.,0
+19,20,LONGEST_COMMON_SUBSEQUENCE,7,0.0,Blank line.,0
+19,21,LONGEST_COMMON_SUBSEQUENCE,8,0.0,Start of class-level JavaDoc comment — documentation only.,0
+19,22,LONGEST_COMMON_SUBSEQUENCE,9,0.0,Comment line.,0
+19,23,LONGEST_COMMON_SUBSEQUENCE,10,0.0,Comment line.,0
+19,24,LONGEST_COMMON_SUBSEQUENCE,11,0.0,Author annotation in comment — not code logic.,0
+19,25,LONGEST_COMMON_SUBSEQUENCE,12,0.0,Class declaration start — structure only.,0
+19,26,LONGEST_COMMON_SUBSEQUENCE,24,0.0,Blank,0
+19,27,LONGEST_COMMON_SUBSEQUENCE,27,0.0,Blank,0
+20,1,MAX_SUBLIST_SUM,19,1.0,Updates max_ending_here without checking for negativity; critical flaw leading to wrong sublist sum.,1
+20,2,MAX_SUBLIST_SUM,20,0.95,"Updates max_so_far based on possibly negative max_ending_here, misaligned with the need to allow resetting sums.",0
+20,3,MAX_SUBLIST_SUM,18,0.8,"For-loop control; accumulation strategy is flawed, does not reset when encountering detrimental elements.",0
+20,4,MAX_SUBLIST_SUM,15,0.4,"Initial assignment max_ending_here = 0; while correct, no reset later diminishes its value.",0
+20,5,MAX_SUBLIST_SUM,16,0.4,Initial assignment max_so_far = 0; matches SOFL’s requirement of empty sublist being 0 but not dynamically corrected later.,0
+20,6,MAX_SUBLIST_SUM,14,0.2,"Method signature; correct setup, but indirectly responsible for misalignment of logic inside.",0
+20,7,MAX_SUBLIST_SUM,23,0.2,"Returns max_so_far, but as a consequence of incorrect accumulation.",0
+20,8,MAX_SUBLIST_SUM,24,0.1,Method closing; correct but relies on previous faulty computation.,0
+20,9,MAX_SUBLIST_SUM,3,0.05,Comment block start; irrelevant to computation.,0
+20,10,MAX_SUBLIST_SUM,4,0.05,Comment block continuation; irrelevant.,0
+20,11,MAX_SUBLIST_SUM,5,0.05,Comment block continuation; irrelevant.,0
+20,12,MAX_SUBLIST_SUM,6,0.05,Comment block continuation; irrelevant.,0
+20,13,MAX_SUBLIST_SUM,7,0.05,End of comment; irrelevant.,0
+20,14,MAX_SUBLIST_SUM,2,0.05,Import statement; correct and necessary.,0
+20,15,MAX_SUBLIST_SUM,8,0.05,Javadoc start; irrelevant to logic.,0
+20,16,MAX_SUBLIST_SUM,9,0.05,Javadoc continuation; irrelevant.,0
+20,17,MAX_SUBLIST_SUM,10,0.05,Javadoc continuation; irrelevant.,0
+20,18,MAX_SUBLIST_SUM,11,0.05,Javadoc author tag; irrelevant.,0
+20,19,MAX_SUBLIST_SUM,12,0.05,Class declaration start; correct and necessary.,0
+20,20,MAX_SUBLIST_SUM,13,0.05,Method declaration start; correct.,0
+20,21,MAX_SUBLIST_SUM,17,0.05,Initialization of loop variable i was omitted; not needed here but also not an error.,0
+20,22,MAX_SUBLIST_SUM,22,0.05,End of for-loop; neutral.,0
+20,23,MAX_SUBLIST_SUM,1,0.0,Blank,0
+20,24,MAX_SUBLIST_SUM,21,0.0,Blank,0
+20,25,MAX_SUBLIST_SUM,25,0.0,Blank,0
+21,1,MERGESORT,38,1.0,"The base case incorrectly checks only arr.size() == 0, missing arr.size() == 1, leading to infinite recursion.",1
+21,2,MERGESORT,43,0.95,"arr.subList(0, middle) can create empty sublists when arr.size() is 1, feeding invalid data into recursion.",0
+21,3,MERGESORT,46,0.95,"arr.subList(middle, arr.size()) similarly causes non-shrinking recursion with singleton lists.",0
+21,4,MERGESORT,44,0.9,"Recursive call on potentially empty left sublists, worsening stack growth.",0
+21,5,MERGESORT,47,0.9,"Recursive call on small right sublists without properly reducing size, deepens recursion unnecessarily.",0
+21,6,MERGESORT,14,0.4,"Merge function might process improperly divided lists, but less likely the root cause compared to faulty recursion logic.",0
+21,7,MERGESORT,24,0.2,Logic in merging left and right; less suspicious since bug occurs before merging stage.,0
+21,8,MERGESORT,33,0.2,"Sublist merge handling could misbehave, but primary infinite recursion is unrelated to this line.",0
+21,9,MERGESORT,20,0.05,Standard initialization of result list; no direct control flow problem.,0
+21,10,MERGESORT,21,0.05,"Index initialization; standard practice, unlikely fault point.",0
+21,11,MERGESORT,22,0.05,Index initialization; not controlling recursion.,0
+21,12,MERGESORT,25,0.05,"Basic merge comparison logic, unrelated to infinite recursion.",0
+21,13,MERGESORT,26,0.05,Standard element addition after comparison; unlikely the fault source.,0
+21,14,MERGESORT,27,0.05,Standard increment step; normal.,0
+21,15,MERGESORT,28,0.05,Adding right element; normal merge step.,0
+21,16,MERGESORT,29,0.05,Increment step after adding from right; normal.,0
+21,17,MERGESORT,30,0.05,Loop closure; expected.,0
+21,18,MERGESORT,31,0.05,Loop closure; expected.,0
+21,19,MERGESORT,32,0.05,Loop closure; expected.,0
+21,20,MERGESORT,34,0.05,Return result after merge; normal behavior.,0
+21,21,MERGESORT,35,0.0,Function closing; no logic.,0
+21,22,MERGESORT,37,0.0,Function declaration of mergesort; no logic fault here.,0
+21,23,MERGESORT,39,0.0,"Return when size is 0; although incomplete, by itself not causing StackOverflow.",0
+21,24,MERGESORT,40,0.0,"Else branch; structure is fine, problem lies inside.",0
+21,25,MERGESORT,41,0.0,middle = arr.size()/2; calculation is fine.,0
+21,26,MERGESORT,42,0.0,Creating new left list; normal.,0
+21,27,MERGESORT,45,0.0,Creating new right list; normal.,0
+21,28,MERGESORT,48,0.0,Merging left and right; merge function itself not the direct issue.,0
+21,29,MERGESORT,49,0.0,Returning merged result; normal.,0
+21,30,MERGESORT,50,0.0,Else block closure; fine.,0
+21,31,MERGESORT,51,0.0,mergesort method closure; fine.,0
+21,32,MERGESORT,52,0.0,Class closure; fine.,0
+21,33,MERGESORT,1,0.0,Package declaration; irrelevant to bug.,0
+21,34,MERGESORT,2,0.0,Imports; not influencing logic.,0
+21,35,MERGESORT,3,0.0,Comment start; no effect.,0
+21,36,MERGESORT,4,0.0,Comment text; no effect.,0
+21,37,MERGESORT,5,0.0,Comment text; no effect.,0
+21,38,MERGESORT,6,0.0,Comment end; no effect.,0
+21,39,MERGESORT,7,0.0,Blank line; no effect.,0
+21,40,MERGESORT,8,0.0,Comment block start; no effect.,0
+21,41,MERGESORT,9,0.0,Comment text; no effect.,0
+21,42,MERGESORT,10,0.0,Comment text; no effect.,0
+21,43,MERGESORT,11,0.0,Comment text; no effect.,0
+21,44,MERGESORT,12,0.0,Class definition start; no effect.,0
+21,45,MERGESORT,13,0.0,Class name; no logic fault here.,0
+21,46,MERGESORT,15,0.0,Commented print statement; inactive.,0
+21,47,MERGESORT,16,0.0,Commented print statement; inactive.,0
+21,48,MERGESORT,17,0.0,Commented print statement; inactive.,0
+21,49,MERGESORT,18,0.0,Commented print statement; inactive.,0
+21,50,MERGESORT,19,0.0,Blank,0
+21,51,MERGESORT,23,0.0,Blank,0
+21,52,MERGESORT,36,0.0,Blank,0
+22,1,MINIMUM_SPANNING_TREE,28,1.0,"Inside the iteration, modifies groupByNode by calling update, which changes the structure of the map.",1
+22,2,MINIMUM_SPANNING_TREE,27,1.0,Iterating over groupByNode.get(vertex_v) while modifying groupByNode inside the loop causes ConcurrentModificationException.,0
+22,3,MINIMUM_SPANNING_TREE,26,0.8,"Updates groupByNode directly before the loop; although safe here, indicates the same risky pattern of modification.",0
+22,4,MINIMUM_SPANNING_TREE,24,0.7,"Condition checking group equivalence relies on groupByNode state, prone to inconsistency if modifications are mishandled.",0
+22,5,MINIMUM_SPANNING_TREE,35,0.6,"update() method merges sets inside groupByNode, directly responsible for structure modification without cloning.",0
+22,6,MINIMUM_SPANNING_TREE,36,0.5,"Retrieves a mutable set reference; modifications propagate immediately to the map, dangerous without defensive copy.",0
+22,7,MINIMUM_SPANNING_TREE,37,0.5,"Performs addAll to the retrieved set, indirectly causing map mutation affecting iteration.",0
+22,8,MINIMUM_SPANNING_TREE,11,0.2,Collections.sort(weightedEdges) affects input order but is unrelated to concurrent modification issues.,0
+22,9,MINIMUM_SPANNING_TREE,13,0.2,"Standard iteration over weightedEdges, no direct fault but sets up the context where the bug later occurs.",0
+22,10,MINIMUM_SPANNING_TREE,25,0.2,"Adds an edge to minSpanningTree, normal operation; slight suspicion because it follows a risky condition block.",0
+22,11,MINIMUM_SPANNING_TREE,14,0.1,"Assigns vertex_u, only data preparation.",0
+22,12,MINIMUM_SPANNING_TREE,15,0.1,"Assigns vertex_v, only data preparation.",0
+22,13,MINIMUM_SPANNING_TREE,7,0.1,"Initializes groupByNode, correctly done.",0
+22,14,MINIMUM_SPANNING_TREE,8,0.1,"Initializes minSpanningTree, no error.",0
+22,15,MINIMUM_SPANNING_TREE,17,0.1,Safely checks if vertex_u exists; not directly faulty but part of pre-update setup.,0
+22,16,MINIMUM_SPANNING_TREE,18,0.1,"Creates a new set for vertex_u, correct logic.",0
+22,17,MINIMUM_SPANNING_TREE,19,0.1,Safe handling of missing node vertex_v.,0
+22,18,MINIMUM_SPANNING_TREE,20,0.1,Similar to Line 18; safe new node handling.,0
+22,19,MINIMUM_SPANNING_TREE,21,0.1,Similar to Line 19; safe.,0
+22,20,MINIMUM_SPANNING_TREE,29,0.1,"Moves to next node after adding from right or left; standard merge logic, low fault probability.",0
+22,21,MINIMUM_SPANNING_TREE,32,0.0,"return minSpanningTree; final return, no fault.",0
+22,22,MINIMUM_SPANNING_TREE,6,0.0,"Class definition line, not executable.",0
+22,23,MINIMUM_SPANNING_TREE,3,0.0,"Comment, no effect.",0
+22,24,MINIMUM_SPANNING_TREE,4,0.0,"Comment, no effect.",0
+22,25,MINIMUM_SPANNING_TREE,5,0.0,"Comment, no effect.",0
+22,26,MINIMUM_SPANNING_TREE,12,0.0,Blank line.,0
+22,27,MINIMUM_SPANNING_TREE,22,0.0,"Initializes index i, safe.",0
+22,28,MINIMUM_SPANNING_TREE,23,0.0,"Initializes index j, safe.",0
+22,29,MINIMUM_SPANNING_TREE,31,0.0,"End of for-each loop, no direct effect.",0
+22,30,MINIMUM_SPANNING_TREE,9,0.0,Empty line.,0
+22,31,MINIMUM_SPANNING_TREE,10,0.0,Empty line.,0
+22,32,MINIMUM_SPANNING_TREE,38,0.0,"End of update method, safe.",0
+22,33,MINIMUM_SPANNING_TREE,39,0.0,"Return updated groupByNode, no direct issue.",0
+22,34,MINIMUM_SPANNING_TREE,40,0.0,End of update method.,0
+22,35,MINIMUM_SPANNING_TREE,41,0.0,End of class.,0
+22,36,MINIMUM_SPANNING_TREE,1,0.0,Blank,0
+22,37,MINIMUM_SPANNING_TREE,2,0.0,Blank,0
+22,38,MINIMUM_SPANNING_TREE,16,0.0,Blank,0
+22,39,MINIMUM_SPANNING_TREE,30,0.0,Blank,0
+22,40,MINIMUM_SPANNING_TREE,33,0.0,Blank,0
+22,41,MINIMUM_SPANNING_TREE,34,0.0,Blank,0
+23,1,NEXT_PALINDROME,38,1.0,return String.valueOf(otherwise); wrongly converts the list to a string with array format rather than a proper digit string.,0
+23,2,NEXT_PALINDROME,29,0.95,return Arrays.toString(digit_list); also incorrectly formats the digits as a Java array string instead of concatenating digits.,0
+23,3,NEXT_PALINDROME,33,0.7,Constructs otherwise list but no immediate formatting/flattening is considered at construction time.,0
+23,4,NEXT_PALINDROME,35,0.5,"Adds zeroes to otherwise correctly, but again impacted by formatting later.",1
+23,5,NEXT_PALINDROME,34,0.5,"Adds initial 1 to otherwise — numerically correct, but combined with faulty output handling, contributes indirectly.",0
+23,6,NEXT_PALINDROME,36,0.4,"Adds final 1 to otherwise, fine numerically but linked to final faulty output structure.",0
+23,7,NEXT_PALINDROME,18,0.2,"Beginning of the while loop, setting up digit-by-digit processing. Overall control correct but contextually related.",0
+23,8,NEXT_PALINDROME,19,0.2,"Resets mid digits to 0 when they are 9 — logical, but contributes by leading flow toward faulty ""otherwise"" construction.",0
+23,9,NEXT_PALINDROME,25,0.1,"Increments high_mid digit — correct, but connected to flow reaching ""otherwise"" when 9 overflow happens.",0
+23,10,NEXT_PALINDROME,26,0.1,"Ensures that when low_mid ≠ high_mid, both sides are incremented — no direct fault but contextually related to wrong flow reaching fallback.",0
+23,11,NEXT_PALINDROME,1,0.0,"Package declaration, no relation to logic.",0
+23,12,NEXT_PALINDROME,2,0.0,"Import statement, no relation to logic.",0
+23,13,NEXT_PALINDROME,3,0.0,"Import statement, no relation to logic.",0
+23,14,NEXT_PALINDROME,4,0.0,"Comment block start, irrelevant.",0
+23,15,NEXT_PALINDROME,5,0.0,"Comment, no logic impact.",0
+23,16,NEXT_PALINDROME,6,0.0,"Comment block end, irrelevant.",0
+23,17,NEXT_PALINDROME,7,0.0,"Empty line, no logic impact.",0
+23,18,NEXT_PALINDROME,8,0.0,"Javadoc start, no logic impact.",0
+23,19,NEXT_PALINDROME,9,0.0,"Javadoc line, no logic impact.",0
+23,20,NEXT_PALINDROME,10,0.0,"Javadoc line, no logic impact.",0
+23,21,NEXT_PALINDROME,11,0.0,"Javadoc author, no logic impact.",0
+23,22,NEXT_PALINDROME,12,0.0,"Javadoc end, no logic impact.",0
+23,23,NEXT_PALINDROME,13,0.0,"Class declaration, no direct logic.",0
+23,24,NEXT_PALINDROME,14,0.0,"Method declaration, no direct logic.",0
+23,25,NEXT_PALINDROME,15,0.0,Compute high_mid index — correct calculation.,0
+23,26,NEXT_PALINDROME,16,0.0,Compute low_mid index — correct calculation.,0
+23,27,NEXT_PALINDROME,17,0.0,"Empty line, no logic impact.",0
+23,28,NEXT_PALINDROME,20,0.0,Sets high_mid and low_mid digits to 0 when overflow occurs — correct behavior.,0
+23,29,NEXT_PALINDROME,21,0.0,"Same as line 20, symmetric on low_mid.",0
+23,30,NEXT_PALINDROME,22,0.0,Moves high_mid pointer — correct.,0
+23,31,NEXT_PALINDROME,23,0.0,Moves low_mid pointer — correct.,0
+23,32,NEXT_PALINDROME,24,0.0,Else branch setup — correct.,0
+23,33,NEXT_PALINDROME,27,0.0,"If low_mid ≠ high_mid, also increment low_mid digit — correct and careful.",0
+23,34,NEXT_PALINDROME,28,0.0,End of else branch — correct structure.,0
+23,35,NEXT_PALINDROME,30,0.0,End of while loop block — fine.,0
+23,36,NEXT_PALINDROME,31,0.0,End of while loop — no issue.,0
+23,37,NEXT_PALINDROME,32,0.0,"Empty line, no logic impact.",0
+23,38,NEXT_PALINDROME,37,0.0,Empty line before fallback return — not suspicious.,0
+23,39,NEXT_PALINDROME,39,0.0,End of method — no issue.,0
+23,40,NEXT_PALINDROME,40,0.0,End of class — no issue.,0
+24,1,NEXT_PERMUTATION,19,1.0,CRITICAL: Wrong comparison direction (perm.get(j) < perm.get(i)) — should be > to find minimal larger element.,1
+24,2,NEXT_PERMUTATION,20,0.9,Severe aliasing: next_perm = perm modifies input directly without copying.,0
+24,3,NEXT_PERMUTATION,27,0.8,Suffix reversal logic: the range k != i is wrong — leads to missing or misordered elements.,0
+24,4,NEXT_PERMUTATION,28,0.8,Collects reversed elements; relies on wrong reversal logic.,0
+24,5,NEXT_PERMUTATION,29,0.8,Collects reversed elements; relies on wrong reversal logic.,0
+24,6,NEXT_PERMUTATION,21,0.7,"Assignment to temp variables, logically correct but depends on line 20 being wrong.",0
+24,7,NEXT_PERMUTATION,22,0.7,"Assignment to temp variables, logically correct but depends on line 20 being wrong.",0
+24,8,NEXT_PERMUTATION,23,0.7,Swapping; fine if no aliasing issue (but suffers here).,0
+24,9,NEXT_PERMUTATION,24,0.7,Swapping; fine if no aliasing issue (but suffers here).,0
+24,10,NEXT_PERMUTATION,37,0.7,Premature return after incomplete suffix fix: should ensure full correct sequence after swap.,0
+24,11,NEXT_PERMUTATION,32,0.6,Overwrites values with reversed; method wrong if reversal was wrong.,0
+24,12,NEXT_PERMUTATION,33,0.6,Overwrites values with reversed; method wrong if reversal was wrong.,0
+24,13,NEXT_PERMUTATION,26,0.4,"Initializes reversed list; fine, but later suffix reversal logic problematic.",0
+24,14,NEXT_PERMUTATION,31,0.4,Prepares index for suffix update; fine but indirectly affected.,0
+24,15,NEXT_PERMUTATION,43,0.4,Returns empty list if no permutation found; correct but shouldn't happen for non-maximal perms.,0
+24,16,NEXT_PERMUTATION,16,0.3,Loop setup is fine but starting from size-2 introduces dependency on correct inside logic.,0
+24,17,NEXT_PERMUTATION,17,0.3,"First-level comparison setup (perm.get(i) < perm.get(i+1)), necessary and correct.",0
+24,18,NEXT_PERMUTATION,18,0.3,Inner loop setup; fine unless swap condition is wrong.,0
+24,19,NEXT_PERMUTATION,15,0.1,Method start; initializes iteration; fine.,0
+24,20,NEXT_PERMUTATION,1,0.0,Package import; no logical issue.,0
+24,21,NEXT_PERMUTATION,2,0.0,Importing utilities; not faulty.,0
+24,22,NEXT_PERMUTATION,3,0.0,Import (unused); no impact.,0
+24,23,NEXT_PERMUTATION,4,0.0,Comment line; no effect.,0
+24,24,NEXT_PERMUTATION,5,0.0,Comment line; no effect.,0
+24,25,NEXT_PERMUTATION,6,0.0,Comment line; no effect.,0
+24,26,NEXT_PERMUTATION,7,0.0,Comment line; no effect.,0
+24,27,NEXT_PERMUTATION,8,0.0,Empty line; no effect.,0
+24,28,NEXT_PERMUTATION,9,0.0,Comment line; no effect.,0
+24,29,NEXT_PERMUTATION,10,0.0,Comment line; no effect.,0
+24,30,NEXT_PERMUTATION,11,0.0,Comment line; no effect.,0
+24,31,NEXT_PERMUTATION,12,0.0,Comment line; no effect.,0
+24,32,NEXT_PERMUTATION,13,0.0,Class definition; no issue itself.,0
+24,33,NEXT_PERMUTATION,14,0.0,Method signature; correct structure.,0
+24,34,NEXT_PERMUTATION,25,0.0,Empty line for clarity; no issue.,0
+24,35,NEXT_PERMUTATION,30,0.0,Empty line for clarity; no issue.,0
+24,36,NEXT_PERMUTATION,34,0.0,Empty line for clarity; no issue.,0
+24,37,NEXT_PERMUTATION,35,0.0,End of swap-reversal logic; return soon.,0
+24,38,NEXT_PERMUTATION,36,0.0,Empty line for clarity; no issue.,0
+24,39,NEXT_PERMUTATION,38,0.0,No action (closing inner loop); fine.,0
+24,40,NEXT_PERMUTATION,39,0.0,No action (closing inner loop); fine.,0
+24,41,NEXT_PERMUTATION,40,0.0,No action (closing outer loop); fine.,0
+24,42,NEXT_PERMUTATION,41,0.0,No action (closing outer loop); fine.,0
+24,43,NEXT_PERMUTATION,42,0.0,Empty line for clarity; no issue.,0
+24,44,NEXT_PERMUTATION,44,0.0,Method end.,0
+24,45,NEXT_PERMUTATION,45,0.0,Class end.,0
+25,1,PASCAL,27,1.0,"Loop c < r creates only r elements per row, but Pascal’s Triangle requires r+1 elements — causing incomplete rows and later crashes.",0
+25,2,PASCAL,30,1.0,"Accessing rows.get(r-1).get(c) assumes previous row has enough elements, but the previous row might be incomplete due to wrong loop bounds.",0
+25,3,PASCAL,31,0.9,Special case when c < r is not handled correctly; missing explicit initialization for the end of each row (row[r] = 1).,0
+25,4,PASCAL,18,0.6,While loop starting structure — sets up how many columns to fill; relies on outer structure correctness.,0
+25,5,PASCAL,21,0.5,Fetching upper-left value (upleft) assumes that the boundary case (c=0) is correctly managed; indirect cause of wrong sums if rows are short.,0
+25,6,PASCAL,23,0.5,Fetching upper-right value (upright); similar risk if row length mismatch occurs.,0
+25,7,PASCAL,15,0.4,"Function start, initial for setup; if perm is null or improperly initialized, downstream errors happen.",0
+25,8,PASCAL,14,0.2,"Function signature; if input n is incorrectly passed as ≤0, it could cause empty rows.",0
+25,9,PASCAL,16,0.2,"Creating an empty list row; no inherent problem here, but depends on later correct filling.",0
+25,10,PASCAL,22,0.1,Boundary check if (c > 0) for upleft; minor compared to main structural mistakes.,1
+25,11,PASCAL,19,0.1,Initializing rows list; structure is fine if later filled properly.,0
+25,12,PASCAL,20,0.1,Initializing init as [1] for first row; correctly done.,0
+25,13,PASCAL,5,0.0,Comment line; no effect.,0
+25,14,PASCAL,6,0.0,Comment line; no effect.,0
+25,15,PASCAL,7,0.0,Comment line; no effect.,0
+25,16,PASCAL,9,0.0,Javadoc start; no effect.,0
+25,17,PASCAL,10,0.0,Empty Javadoc line.,0
+25,18,PASCAL,11,0.0,Author line; no effect.,0
+25,19,PASCAL,12,0.0,Empty line; no effect.,0
+25,20,PASCAL,1,0.0,Package statement; no effect.,0
+25,21,PASCAL,2,0.0,Import statement; no effect.,0
+25,22,PASCAL,3,0.0,Import statement; no effect.,0
+25,23,PASCAL,4,0.0,Start of comment block.,0
+25,24,PASCAL,8,0.0,Empty line.,0
+25,25,PASCAL,13,0.0,Class definition; correct.,0
+25,26,PASCAL,17,0.0,"Loop setup for (r=1; r<n; r++); standard structure, no fault.",0
+25,27,PASCAL,24,0.0,Else branch assigning upleft = 0; correct.,0
+25,28,PASCAL,25,0.0,If checking for c < r; standard handling.,0
+25,29,PASCAL,26,0.0,Else branch assigning upright = 0; correct.,0
+25,30,PASCAL,28,0.0,row.add(upleft + upright); actual addition is fine if inputs are correct.,0
+25,31,PASCAL,29,0.0,rows.add(row); correctly adds new row.,0
+25,32,PASCAL,32,0.0,return rows; return statement itself is fine.,0
+25,33,PASCAL,33,0.0,Blank,0
+25,34,PASCAL,34,0.0,Blank,0
+25,35,PASCAL,35,0.0,Blank,0
+25,36,PASCAL,36,0.0,Blank,0
+25,37,PASCAL,37,0.0,Blank,0
+25,38,PASCAL,38,0.0,Blank,0
+25,39,PASCAL,39,0.0,Blank,0
+25,40,PASCAL,40,0.0,Blank,0
+25,41,PASCAL,41,0.0,Blank,0
+26,1,POSSIBLE_CHANGE,21,1.0,"Accesses coins[0] without checking if coins array is empty, causing ArrayIndexOutOfBoundsException",0
+26,2,POSSIBLE_CHANGE,23,0.9,Recursive call structure is correct but fails due to line 21 issue,0
+26,3,POSSIBLE_CHANGE,22,0.7,Array copy operation is correct but irrelevant if line 21 fails,0
+26,4,POSSIBLE_CHANGE,14,0.5,Base cases are correct but don't prevent the array access issue,0
+26,5,POSSIBLE_CHANGE,15,0.5,Base cases are correct but don't prevent the array access issue,0
+26,6,POSSIBLE_CHANGE,16,0.5,Base cases are correct but don't prevent the array access issue,0
+26,7,POSSIBLE_CHANGE,17,0.5,Base cases are correct but don't prevent the array access issue,1
+26,8,POSSIBLE_CHANGE,18,0.5,Base cases are correct but don't prevent the array access issue,0
+26,9,POSSIBLE_CHANGE,19,0.5,Base cases are correct but don't prevent the array access issue,0
+26,10,POSSIBLE_CHANGE,13,0.3,Method signature matches specification,0
+26,11,POSSIBLE_CHANGE,1,0.0,"Package, imports and comments have no effect",0
+26,12,POSSIBLE_CHANGE,2,0.0,"Package, imports and comments have no effect",0
+26,13,POSSIBLE_CHANGE,3,0.0,"Package, imports and comments have no effect",0
+26,14,POSSIBLE_CHANGE,4,0.0,"Package, imports and comments have no effect",0
+26,15,POSSIBLE_CHANGE,5,0.0,"Package, imports and comments have no effect",0
+26,16,POSSIBLE_CHANGE,6,0.0,"Package, imports and comments have no effect",0
+26,17,POSSIBLE_CHANGE,7,0.0,"Package, imports and comments have no effect",0
+26,18,POSSIBLE_CHANGE,8,0.0,"Package, imports and comments have no effect",0
+26,19,POSSIBLE_CHANGE,9,0.0,"Package, imports and comments have no effect",0
+26,20,POSSIBLE_CHANGE,10,0.0,"Package, imports and comments have no effect",0
+26,21,POSSIBLE_CHANGE,11,0.0,"Package, imports and comments have no effect",0
+26,22,POSSIBLE_CHANGE,12,0.0,"Package, imports and comments have no effect",0
+26,23,POSSIBLE_CHANGE,20,0.0,Blank,0
+26,24,POSSIBLE_CHANGE,24,0.0,Blank,0
+26,25,POSSIBLE_CHANGE,25,0.0,Blank,0
+27,1,POWERSET,17,1.0,"Modifies input array by removing first element, causing incorrect recursive processing",0
+27,2,POWERSET,18,0.9,Uses modified array directly without preserving original structure,0
+27,3,POWERSET,21,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,0
+27,4,POWERSET,22,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,0
+27,5,POWERSET,23,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,1
+27,6,POWERSET,24,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,0
+27,7,POWERSET,25,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,1
+27,8,POWERSET,26,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,0
+27,9,POWERSET,27,0.8,Power set construction logic is incorrect - only builds one subset instead of all combinations,0
+27,10,POWERSET,19,0.7,"Recursive call uses modified array, propagating the error",0
+27,11,POWERSET,15,0.6,Empty check is correct but doesn't prevent input modification,0
+27,12,POWERSET,31,0.5,Base case is correct but gets overshadowed by main logic issues,0
+27,13,POWERSET,32,0.5,Base case is correct but gets overshadowed by main logic issues,0
+27,14,POWERSET,33,0.5,Base case is correct but gets overshadowed by main logic issues,0
+27,15,POWERSET,14,0.3,Method signature matches specification,1
+27,16,POWERSET,1,0.0,"Package, imports and comments have no effect",0
+27,17,POWERSET,2,0.0,"Package, imports and comments have no effect",0
+27,18,POWERSET,3,0.0,"Package, imports and comments have no effect",0
+27,19,POWERSET,4,0.0,"Package, imports and comments have no effect",0
+27,20,POWERSET,5,0.0,"Package, imports and comments have no effect",0
+27,21,POWERSET,6,0.0,"Package, imports and comments have no effect",0
+27,22,POWERSET,7,0.0,"Package, imports and comments have no effect",0
+27,23,POWERSET,8,0.0,"Package, imports and comments have no effect",0
+27,24,POWERSET,9,0.0,"Package, imports and comments have no effect",0
+27,25,POWERSET,10,0.0,"Package, imports and comments have no effect",0
+27,26,POWERSET,11,0.0,"Package, imports and comments have no effect",0
+27,27,POWERSET,12,0.0,"Package, imports and comments have no effect",0
+27,28,POWERSET,13,0.0,"Package, imports and comments have no effect",0
+27,29,POWERSET,29,0.0,Base case is correct but gets overshadowed by main logic issues,1
+27,30,POWERSET,16,0.0,Blank,0
+27,31,POWERSET,20,0.0,Blank,0
+27,32,POWERSET,28,0.0,Blank,0
+27,33,POWERSET,30,0.0,Blank,0
+27,34,POWERSET,34,0.0,Blank,0
+27,35,POWERSET,35,0.0,Blank,0
+27,36,POWERSET,36,0.0,Blank,0
+28,1,QUICKSORT,26,1.0,"Only adds elements greater than pivot to 'greater' list, ignoring equal elements",1
+28,2,QUICKSORT,24,0.9,"Only adds elements less than pivot to 'lesser' list, correct but related to the main issue",0
+28,3,QUICKSORT,34,0.8,Merging logic is correct but works with incomplete partitions due to line 26 issue,0
+28,4,QUICKSORT,35,0.8,Merging logic is correct but works with incomplete partitions due to line 26 issue,0
+28,5,QUICKSORT,19,0.7,Pivot selection is correct but affected by partitioning issues,0
+28,6,QUICKSORT,23,0.6,Loop through sublist is correct but partitioning is flawed,0
+28,7,QUICKSORT,30,0.5,Middle list handling is correct but affected by main issue,0
+28,8,QUICKSORT,31,0.5,Middle list handling is correct but affected by main issue,0
+28,9,QUICKSORT,32,0.5,Middle list handling is correct but affected by main issue,0
+28,10,QUICKSORT,15,0.3,Base case handling is correct,0
+28,11,QUICKSORT,16,0.3,Base case handling is correct,0
+28,12,QUICKSORT,17,0.3,Base case handling is correct,0
+28,13,QUICKSORT,20,0.2,List initializations are correct,0
+28,14,QUICKSORT,21,0.2,List initializations are correct,0
+28,15,QUICKSORT,22,0.2,List initializations are correct,0
+28,16,QUICKSORT,1,0.0,"Package, imports and comments have no effect",0
+28,17,QUICKSORT,2,0.0,"Package, imports and comments have no effect",0
+28,18,QUICKSORT,3,0.0,"Package, imports and comments have no effect",0
+28,19,QUICKSORT,4,0.0,"Package, imports and comments have no effect",0
+28,20,QUICKSORT,5,0.0,"Package, imports and comments have no effect",0
+28,21,QUICKSORT,6,0.0,"Package, imports and comments have no effect",0
+28,22,QUICKSORT,7,0.0,"Package, imports and comments have no effect",0
+28,23,QUICKSORT,8,0.0,"Package, imports and comments have no effect",0
+28,24,QUICKSORT,9,0.0,"Package, imports and comments have no effect",0
+28,25,QUICKSORT,10,0.0,"Package, imports and comments have no effect",0
+28,26,QUICKSORT,11,0.0,"Package, imports and comments have no effect",0
+28,27,QUICKSORT,12,0.0,"Package, imports and comments have no effect",0
+28,28,QUICKSORT,13,0.0,"Package, imports and comments have no effect",0
+28,29,QUICKSORT,14,0.0,"Package, imports and comments have no effect",0
+28,30,QUICKSORT,18,0.0,Blank,0
+28,31,QUICKSORT,25,0.0,Blank,0
+28,32,QUICKSORT,27,0.0,Blank,0
+28,33,QUICKSORT,28,0.0,Blank,0
+28,34,QUICKSORT,29,0.0,Blank,0
+28,35,QUICKSORT,33,0.0,Blank,0
+28,36,QUICKSORT,36,0.0,Blank,0
+28,37,QUICKSORT,37,0.0,Blank,0
+28,38,QUICKSORT,38,0.0,Blank,0
+28,39,QUICKSORT,39,0.0,Blank,0
+29,1,REVERSE_LINKED_LIST,22,1.0,"Returns prevnode instead of node after loop completes, causing empty output",0
+29,2,REVERSE_LINKED_LIST,19,0.9,Updates successor pointer correctly but loses track of new head,0
+29,3,REVERSE_LINKED_LIST,17,0.7,While loop condition is correct but termination handling is wrong,0
+29,4,REVERSE_LINKED_LIST,15,0.5,Initialization of prevnode is correct but not properly maintained,0
+29,5,REVERSE_LINKED_LIST,20,0.5,Advances node pointer but doesn't update prevnode properly,1
+29,6,REVERSE_LINKED_LIST,16,0.4,Declaration of nextnode is correct,0
+29,7,REVERSE_LINKED_LIST,18,0.3,Getting successor node is correct,0
+29,8,REVERSE_LINKED_LIST,14,0.2,Method signature matches specification,0
+29,9,REVERSE_LINKED_LIST,1,0.0,"Package, imports and comments have no effect",0
+29,10,REVERSE_LINKED_LIST,2,0.0,"Package, imports and comments have no effect",0
+29,11,REVERSE_LINKED_LIST,3,0.0,"Package, imports and comments have no effect",0
+29,12,REVERSE_LINKED_LIST,4,0.0,"Package, imports and comments have no effect",0
+29,13,REVERSE_LINKED_LIST,5,0.0,"Package, imports and comments have no effect",0
+29,14,REVERSE_LINKED_LIST,6,0.0,"Package, imports and comments have no effect",0
+29,15,REVERSE_LINKED_LIST,7,0.0,"Package, imports and comments have no effect",0
+29,16,REVERSE_LINKED_LIST,8,0.0,"Package, imports and comments have no effect",0
+29,17,REVERSE_LINKED_LIST,9,0.0,"Package, imports and comments have no effect",0
+29,18,REVERSE_LINKED_LIST,10,0.0,"Package, imports and comments have no effect",0
+29,19,REVERSE_LINKED_LIST,11,0.0,"Package, imports and comments have no effect",0
+29,20,REVERSE_LINKED_LIST,12,0.0,"Package, imports and comments have no effect",0
+29,21,REVERSE_LINKED_LIST,13,0.0,"Package, imports and comments have no effect",0
+29,22,REVERSE_LINKED_LIST,21,0.0,Blank,0
+29,23,REVERSE_LINKED_LIST,23,0.0,Blank,0
+29,24,REVERSE_LINKED_LIST,24,0.0,Blank,0
+30,1,RPN_EVAL,30,1.0,Incorrect order of operands being popped from stack (a and b are reversed),0
+30,2,RPN_EVAL,31,1.0,Incorrect order of operands being popped from stack (a and b are reversed),0
+30,3,RPN_EVAL,34,0.9,Applies operator to operands in wrong order due to line 30-31 issue,1
+30,4,RPN_EVAL,25,0.7,Token processing logic is correct but affected by operand order issue,0
+30,5,RPN_EVAL,26,0.7,Token processing logic is correct but affected by operand order issue,0
+30,6,RPN_EVAL,27,0.7,Token processing logic is correct but affected by operand order issue,0
+30,7,RPN_EVAL,28,0.7,Token processing logic is correct but affected by operand order issue,0
+30,8,RPN_EVAL,29,0.7,Token processing logic is correct but affected by operand order issue,0
+30,9,RPN_EVAL,16,0.5,Operator definitions are correct but applied incorrectly,0
+30,10,RPN_EVAL,17,0.5,Operator definitions are correct but applied incorrectly,0
+30,11,RPN_EVAL,18,0.5,Operator definitions are correct but applied incorrectly,0
+30,12,RPN_EVAL,19,0.5,Operator definitions are correct but applied incorrectly,0
+30,13,RPN_EVAL,20,0.5,Operator definitions are correct but applied incorrectly,0
+30,14,RPN_EVAL,23,0.3,Stack initialization is correct,0
+30,15,RPN_EVAL,39,0.2,Final result return is correct but returns wrong value,0
+30,16,RPN_EVAL,1,0.0,"Package, imports and comments have no effect",0
+30,17,RPN_EVAL,2,0.0,"Package, imports and comments have no effect",0
+30,18,RPN_EVAL,3,0.0,"Package, imports and comments have no effect",0
+30,19,RPN_EVAL,4,0.0,"Package, imports and comments have no effect",0
+30,20,RPN_EVAL,5,0.0,"Package, imports and comments have no effect",0
+30,21,RPN_EVAL,6,0.0,"Package, imports and comments have no effect",0
+30,22,RPN_EVAL,7,0.0,"Package, imports and comments have no effect",0
+30,23,RPN_EVAL,8,0.0,"Package, imports and comments have no effect",0
+30,24,RPN_EVAL,9,0.0,"Package, imports and comments have no effect",0
+30,25,RPN_EVAL,10,0.0,"Package, imports and comments have no effect",0
+30,26,RPN_EVAL,11,0.0,"Package, imports and comments have no effect",0
+30,27,RPN_EVAL,12,0.0,"Package, imports and comments have no effect",0
+30,28,RPN_EVAL,13,0.0,"Package, imports and comments have no effect",0
+30,29,RPN_EVAL,14,0.0,"Package, imports and comments have no effect",0
+30,30,RPN_EVAL,15,0.0,"Package, imports and comments have no effect",0
+30,31,RPN_EVAL,21,0.0,Blank,0
+30,32,RPN_EVAL,22,0.0,Blank,0
+30,33,RPN_EVAL,24,0.0,Blank,0
+30,34,RPN_EVAL,32,0.0,Blank,0
+30,35,RPN_EVAL,33,0.0,Blank,0
+30,36,RPN_EVAL,35,0.0,Blank,0
+30,37,RPN_EVAL,36,0.0,Blank,0
+30,38,RPN_EVAL,37,0.0,Blank,0
+30,39,RPN_EVAL,38,0.0,Blank,0
+30,40,RPN_EVAL,40,0.0,Blank,0
+30,41,RPN_EVAL,41,0.0,Blank,0
+31,1,SHORTEST_PATH_LENGTH,38,1.0,Incorrect distance calculation - adds current node's distance to itself instead of using edge weight,1
+31,2,SHORTEST_PATH_LENGTH,37,0.9,Math.min operation is correct but works with wrong distance values,0
+31,3,SHORTEST_PATH_LENGTH,34,0.7,Initialization of unvisited nodes with MAX_VALUE is correct but affected by distance calculation issue,0
+31,4,SHORTEST_PATH_LENGTH,19,0.6,Node selection with min distance is correct but distances are wrong,0
+31,5,SHORTEST_PATH_LENGTH,20,0.5,Distance retrieval and node removal are correct,0
+31,6,SHORTEST_PATH_LENGTH,21,0.5,Distance retrieval and node removal are correct,0
+31,7,SHORTEST_PATH_LENGTH,23,0.4,Goal node check is correct,0
+31,8,SHORTEST_PATH_LENGTH,24,0.4,Goal node check is correct,0
+31,9,SHORTEST_PATH_LENGTH,25,0.4,Goal node check is correct,0
+31,10,SHORTEST_PATH_LENGTH,28,0.3,Successor processing and visited check are correct,0
+31,11,SHORTEST_PATH_LENGTH,29,0.3,Successor processing and visited check are correct,0
+31,12,SHORTEST_PATH_LENGTH,30,0.3,Successor processing and visited check are correct,0
+31,13,SHORTEST_PATH_LENGTH,31,0.3,Successor processing and visited check are correct,0
+31,14,SHORTEST_PATH_LENGTH,16,0.2,Start node initialization is correct,0
+31,15,SHORTEST_PATH_LENGTH,13,0.1,Data structure initialization is correct,0
+31,16,SHORTEST_PATH_LENGTH,14,0.1,Data structure initialization is correct,0
+31,17,SHORTEST_PATH_LENGTH,1,0.0,"Package, imports and comments have no effect",0
+31,18,SHORTEST_PATH_LENGTH,2,0.0,"Package, imports and comments have no effect",0
+31,19,SHORTEST_PATH_LENGTH,3,0.0,"Package, imports and comments have no effect",0
+31,20,SHORTEST_PATH_LENGTH,4,0.0,"Package, imports and comments have no effect",0
+31,21,SHORTEST_PATH_LENGTH,5,0.0,"Package, imports and comments have no effect",0
+31,22,SHORTEST_PATH_LENGTH,6,0.0,"Package, imports and comments have no effect",0
+31,23,SHORTEST_PATH_LENGTH,7,0.0,"Package, imports and comments have no effect",0
+31,24,SHORTEST_PATH_LENGTH,8,0.0,"Package, imports and comments have no effect",0
+31,25,SHORTEST_PATH_LENGTH,9,0.0,"Package, imports and comments have no effect",0
+31,26,SHORTEST_PATH_LENGTH,10,0.0,"Package, imports and comments have no effect",0
+31,27,SHORTEST_PATH_LENGTH,11,0.0,"Package, imports and comments have no effect",0
+31,28,SHORTEST_PATH_LENGTH,12,0.0,"Package, imports and comments have no effect",0
+31,29,SHORTEST_PATH_LENGTH,15,0.0,Blank,0
+31,30,SHORTEST_PATH_LENGTH,17,0.0,Blank,0
+31,31,SHORTEST_PATH_LENGTH,18,0.0,Blank,0
+31,32,SHORTEST_PATH_LENGTH,22,0.0,Blank,0
+31,33,SHORTEST_PATH_LENGTH,26,0.0,Blank,0
+31,34,SHORTEST_PATH_LENGTH,27,0.0,Blank,0
+31,35,SHORTEST_PATH_LENGTH,32,0.0,Blank,0
+31,36,SHORTEST_PATH_LENGTH,33,0.0,Blank,0
+31,37,SHORTEST_PATH_LENGTH,35,0.0,Blank,0
+31,38,SHORTEST_PATH_LENGTH,36,0.0,Blank,0
+31,39,SHORTEST_PATH_LENGTH,39,0.0,Blank,0
+31,40,SHORTEST_PATH_LENGTH,40,0.0,Blank,0
+31,41,SHORTEST_PATH_LENGTH,41,0.0,Blank,0
+31,42,SHORTEST_PATH_LENGTH,42,0.0,Blank,0
+31,43,SHORTEST_PATH_LENGTH,43,0.0,Blank,0
+31,44,SHORTEST_PATH_LENGTH,44,0.0,Blank,0
+31,45,SHORTEST_PATH_LENGTH,45,0.0,Blank,0
+31,46,SHORTEST_PATH_LENGTH,46,0.0,Blank,0
+31,47,SHORTEST_PATH_LENGTH,47,0.0,Blank,0
+31,48,SHORTEST_PATH_LENGTH,48,0.0,Blank,0
+31,49,SHORTEST_PATH_LENGTH,49,0.0,Blank,0
+31,50,SHORTEST_PATH_LENGTH,50,0.0,Blank,0
+31,51,SHORTEST_PATH_LENGTH,51,0.0,Blank,0
+31,52,SHORTEST_PATH_LENGTH,52,0.0,Blank,0
+31,53,SHORTEST_PATH_LENGTH,53,0.0,Blank,0
+31,54,SHORTEST_PATH_LENGTH,54,0.0,Blank,0
+31,55,SHORTEST_PATH_LENGTH,55,0.0,Blank,0
+31,56,SHORTEST_PATH_LENGTH,56,0.0,Blank,0
+31,57,SHORTEST_PATH_LENGTH,57,0.0,Blank,0
+32,1,SHORTEST_PATH_LENGTHS,37,1.0,"Incorrect path calculation - uses (j,k) instead of (k,j) for the second path segment",1
+32,2,SHORTEST_PATH_LENGTHS,35,0.9,Math.min operation is correct but works with wrong path segments,0
+32,3,SHORTEST_PATH_LENGTHS,36,0.9,Math.min operation is correct but works with wrong path segments,0
+32,4,SHORTEST_PATH_LENGTHS,32,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,5,SHORTEST_PATH_LENGTHS,33,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,6,SHORTEST_PATH_LENGTHS,34,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,7,SHORTEST_PATH_LENGTHS,35,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,8,SHORTEST_PATH_LENGTHS,36,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,9,SHORTEST_PATH_LENGTHS,37,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,10,SHORTEST_PATH_LENGTHS,38,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,11,SHORTEST_PATH_LENGTHS,39,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,12,SHORTEST_PATH_LENGTHS,40,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,13,SHORTEST_PATH_LENGTHS,41,0.8,Floyd-Warshall algorithm implementation is flawed due to incorrect indices,0
+32,14,SHORTEST_PATH_LENGTHS,22,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,15,SHORTEST_PATH_LENGTHS,23,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,16,SHORTEST_PATH_LENGTHS,24,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,17,SHORTEST_PATH_LENGTHS,25,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,18,SHORTEST_PATH_LENGTHS,26,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,19,SHORTEST_PATH_LENGTHS,27,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,20,SHORTEST_PATH_LENGTHS,28,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,21,SHORTEST_PATH_LENGTHS,29,0.6,Initial path length setup is correct but affected by main algorithm issue,0
+32,22,SHORTEST_PATH_LENGTHS,45,0.5,sumLengths helper method is correct but misused,0
+32,23,SHORTEST_PATH_LENGTHS,46,0.5,sumLengths helper method is correct but misused,0
+32,24,SHORTEST_PATH_LENGTHS,47,0.5,sumLengths helper method is correct but misused,0
+32,25,SHORTEST_PATH_LENGTHS,48,0.5,sumLengths helper method is correct but misused,0
+32,26,SHORTEST_PATH_LENGTHS,49,0.5,sumLengths helper method is correct but misused,0
+32,27,SHORTEST_PATH_LENGTHS,50,0.5,sumLengths helper method is correct but misused,0
+32,28,SHORTEST_PATH_LENGTHS,16,0.3,INF constant definition is correct,0
+32,29,SHORTEST_PATH_LENGTHS,17,0.2,Method signature and map initialization are correct,0
+32,30,SHORTEST_PATH_LENGTHS,18,0.2,Method signature and map initialization are correct,0
+32,31,SHORTEST_PATH_LENGTHS,1,0.0,"Package, imports and comments have no effect",0
+32,32,SHORTEST_PATH_LENGTHS,2,0.0,"Package, imports and comments have no effect",0
+32,33,SHORTEST_PATH_LENGTHS,3,0.0,"Package, imports and comments have no effect",0
+32,34,SHORTEST_PATH_LENGTHS,4,0.0,"Package, imports and comments have no effect",0
+32,35,SHORTEST_PATH_LENGTHS,5,0.0,"Package, imports and comments have no effect",0
+32,36,SHORTEST_PATH_LENGTHS,6,0.0,"Package, imports and comments have no effect",0
+32,37,SHORTEST_PATH_LENGTHS,7,0.0,"Package, imports and comments have no effect",0
+32,38,SHORTEST_PATH_LENGTHS,8,0.0,"Package, imports and comments have no effect",0
+32,39,SHORTEST_PATH_LENGTHS,9,0.0,"Package, imports and comments have no effect",0
+32,40,SHORTEST_PATH_LENGTHS,10,0.0,"Package, imports and comments have no effect",0
+32,41,SHORTEST_PATH_LENGTHS,11,0.0,"Package, imports and comments have no effect",0
+32,42,SHORTEST_PATH_LENGTHS,12,0.0,"Package, imports and comments have no effect",0
+32,43,SHORTEST_PATH_LENGTHS,13,0.0,"Package, imports and comments have no effect",0
+32,44,SHORTEST_PATH_LENGTHS,14,0.0,"Package, imports and comments have no effect",0
+32,45,SHORTEST_PATH_LENGTHS,15,0.0,"Package, imports and comments have no effect",0
+32,46,SHORTEST_PATH_LENGTHS,19,0.0,Blank,0
+32,47,SHORTEST_PATH_LENGTHS,20,0.0,Blank,0
+32,48,SHORTEST_PATH_LENGTHS,21,0.0,Blank,0
+32,49,SHORTEST_PATH_LENGTHS,30,0.0,Blank,0
+32,50,SHORTEST_PATH_LENGTHS,31,0.0,Blank,0
+32,51,SHORTEST_PATH_LENGTHS,42,0.0,Blank,0
+32,52,SHORTEST_PATH_LENGTHS,43,0.0,Blank,0
+32,53,SHORTEST_PATH_LENGTHS,44,0.0,Blank,0
+32,54,SHORTEST_PATH_LENGTHS,51,0.0,Blank,0
+32,55,SHORTEST_PATH_LENGTHS,52,0.0,Blank,0
+33,1,SHORTEST_PATHS,30,1.0,"This line updates edge weights instead of node distances, which directly contradicts the algorithm's purpose of finding shortest paths to nodes. The Bellman-Ford algorithm should update node distances, not edge weights.",1
+33,2,SHORTEST_PATHS,26,0.9,"The calculation of update_weight is correct for Bellman-Ford, but it's being applied incorrectly (to edges instead of nodes). The logic itself is sound but being used wrong.",0
+33,3,SHORTEST_PATHS,27,0.9,"The calculation of update_weight is correct for Bellman-Ford, but it's being applied incorrectly (to edges instead of nodes). The logic itself is sound but being used wrong.",0
+33,4,SHORTEST_PATHS,28,0.9,"The calculation of update_weight is correct for Bellman-Ford, but it's being applied incorrectly (to edges instead of nodes). The logic itself is sound but being used wrong.",0
+33,5,SHORTEST_PATHS,29,0.9,"The calculation of update_weight is correct for Bellman-Ford, but it's being applied incorrectly (to edges instead of nodes). The logic itself is sound but being used wrong.",0
+33,6,SHORTEST_PATHS,24,0.7,"The loop iteration count (weight_by_node.size()) is correct for Bellman-Ford, but the implementation inside is wrong.",0
+33,7,SHORTEST_PATHS,17,0.5,"Initialization of node distances to INF is correct, but there might be more efficient ways to ensure all nodes are covered.",0
+33,8,SHORTEST_PATHS,18,0.5,"Initialization of node distances to INF is correct, but there might be more efficient ways to ensure all nodes are covered.",0
+33,9,SHORTEST_PATHS,19,0.5,"Initialization of node distances to INF is correct, but there might be more efficient ways to ensure all nodes are covered.",0
+33,10,SHORTEST_PATHS,20,0.5,"Initialization of node distances to INF is correct, but there might be more efficient ways to ensure all nodes are covered.",0
+33,11,SHORTEST_PATHS,21,0.5,"Initialization of node distances to INF is correct, but there might be more efficient ways to ensure all nodes are covered.",0
+33,12,SHORTEST_PATHS,23,0.3,Setting source distance to 0 is correct and not suspicious.,0
+33,13,SHORTEST_PATHS,16,0.2,Method signature is correct and matches specification.,0
+33,14,SHORTEST_PATHS,34,0.1,"Return statement is correct, just returning the wrong values due to earlier errors.",0
+33,15,SHORTEST_PATHS,1,0.0,Blank,0
+33,16,SHORTEST_PATHS,2,0.0,Blank,0
+33,17,SHORTEST_PATHS,3,0.0,Blank,0
+33,18,SHORTEST_PATHS,4,0.0,Blank,0
+33,19,SHORTEST_PATHS,5,0.0,Blank,0
+33,20,SHORTEST_PATHS,6,0.0,Blank,0
+33,21,SHORTEST_PATHS,7,0.0,Blank,0
+33,22,SHORTEST_PATHS,8,0.0,Blank,0
+33,23,SHORTEST_PATHS,9,0.0,Blank,0
+33,24,SHORTEST_PATHS,10,0.0,Blank,0
+33,25,SHORTEST_PATHS,11,0.0,Blank,0
+33,26,SHORTEST_PATHS,12,0.0,Blank,0
+33,27,SHORTEST_PATHS,13,0.0,Blank,0
+33,28,SHORTEST_PATHS,14,0.0,Blank,0
+33,29,SHORTEST_PATHS,15,0.0,Blank,0
+33,30,SHORTEST_PATHS,22,0.0,Blank,0
+33,31,SHORTEST_PATHS,25,0.0,Blank,0
+33,32,SHORTEST_PATHS,31,0.0,Blank,0
+33,33,SHORTEST_PATHS,32,0.0,Blank,0
+33,34,SHORTEST_PATHS,33,0.0,Blank,0
+33,35,SHORTEST_PATHS,35,0.0,Blank,0
+33,36,SHORTEST_PATHS,36,0.0,Blank,0
+33,37,SHORTEST_PATHS,37,0.0,Blank,0
+33,38,SHORTEST_PATHS,38,0.0,Blank,0
+33,39,SHORTEST_PATHS,39,0.0,Blank,0
+33,40,SHORTEST_PATHS,40,0.0,Blank,0
+33,41,SHORTEST_PATHS,41,0.0,Blank,0
+33,42,SHORTEST_PATHS,42,0.0,Blank,0
+33,43,SHORTEST_PATHS,43,0.0,Blank,0
+33,44,SHORTEST_PATHS,44,0.0,Blank,0
+33,45,SHORTEST_PATHS,45,0.0,Blank,0
+33,46,SHORTEST_PATHS,46,0.0,Blank,0
+33,47,SHORTEST_PATHS,47,0.0,Blank,0
+33,48,SHORTEST_PATHS,48,0.0,Blank,0
+33,49,SHORTEST_PATHS,49,0.0,Blank,0
+33,50,SHORTEST_PATHS,50,0.0,Blank,0
+33,51,SHORTEST_PATHS,51,0.0,Blank,0
+33,52,SHORTEST_PATHS,52,0.0,Blank,0
+33,53,SHORTEST_PATHS,53,0.0,Blank,0
+33,54,SHORTEST_PATHS,54,0.0,Blank,0
+33,55,SHORTEST_PATHS,55,0.0,Blank,0
+33,56,SHORTEST_PATHS,56,0.0,Blank,0
+33,57,SHORTEST_PATHS,57,0.0,Blank,0
+33,58,SHORTEST_PATHS,58,0.0,Blank,0
+33,59,SHORTEST_PATHS,59,0.0,Blank,0
+33,60,SHORTEST_PATHS,60,0.0,Blank,0
+33,61,SHORTEST_PATHS,61,0.0,Blank,0
+33,62,SHORTEST_PATHS,62,0.0,Blank,0
+33,63,SHORTEST_PATHS,63,0.0,Blank,0
+34,1,SHUNTING_YARD,33,1.0,Critical bug: Missing operator handling - current operator is lost after while loop instead of being pushed to stack,1
+34,2,SHUNTING_YARD,30,0.9,While condition is correct but part of incomplete operator handling logic,0
+34,3,SHUNTING_YARD,31,0.9,Correctly pops higher precedence operators but current operator is lost,0
+34,4,SHUNTING_YARD,32,0.9,Closing brace of while loop where operator handling fails,0
+34,5,SHUNTING_YARD,26,0.7,"Only checks for Integer.class, missing Double case mentioned in comment",0
+34,6,SHUNTING_YARD,27,0.7,Comment suggests Double should be handled but isn't implemented,0
+34,7,SHUNTING_YARD,28,0.7,Else branch begins operator handling that ultimately fails,0
+34,8,SHUNTING_YARD,29,0.5,Correct operator casting but flow continues to broken logic,0
+34,9,SHUNTING_YARD,24,0.3,For loop structure is correct but contains incomplete handling,0
+34,10,SHUNTING_YARD,25,0.3,If statement begins correct number handling path,0
+34,11,SHUNTING_YARD,36,0.2,Final stack emptying while loop - correct but missing operators never reach here,0
+34,12,SHUNTING_YARD,37,0.2,Correctly pops remaining operators but missing many due to earlier bug,0
+34,13,SHUNTING_YARD,38,0.2,Closing brace of final stack emptying,0
+34,14,SHUNTING_YARD,21,0.1,Correct initialization of output list,0
+34,15,SHUNTING_YARD,22,0.1,Correct initialization of operator stack,0
+34,16,SHUNTING_YARD,39,0.1,Closing brace of method,0
+34,17,SHUNTING_YARD,40,0.1,Correct return statement,0
+34,18,SHUNTING_YARD,1,0.0,Package declaration - irrelevant,0
+34,19,SHUNTING_YARD,2,0.0,Import statement - irrelevant,0
+34,20,SHUNTING_YARD,3,0.0,Comment - irrelevant,0
+34,21,SHUNTING_YARD,4,0.0,Comment - irrelevant,0
+34,22,SHUNTING_YARD,5,0.0,Comment - irrelevant,0
+34,23,SHUNTING_YARD,6,0.0,Comment - irrelevant,0
+34,24,SHUNTING_YARD,7,0.0,Comment - irrelevant,0
+34,25,SHUNTING_YARD,8,0.0,Comment - irrelevant,0
+34,26,SHUNTING_YARD,9,0.0,Comment - irrelevant,0
+34,27,SHUNTING_YARD,10,0.0,Comment - irrelevant,0
+34,28,SHUNTING_YARD,11,0.0,Comment - irrelevant,0
+34,29,SHUNTING_YARD,12,0.0,Comment - irrelevant,0
+34,30,SHUNTING_YARD,13,0.0,Class declaration - correct,0
+34,31,SHUNTING_YARD,14,0.0,Method signature - correct,0
+34,32,SHUNTING_YARD,15,0.0,Precedence map initialization - correct,0
+34,33,SHUNTING_YARD,16,0.0,Precedence setting (+) - correct,0
+34,34,SHUNTING_YARD,17,0.0,Precedence setting (-) - correct,0
+34,35,SHUNTING_YARD,18,0.0,Precedence setting (*) - correct,0
+34,36,SHUNTING_YARD,19,0.0,Precedence setting (/) - correct,0
+34,37,SHUNTING_YARD,20,0.0,Closing brace of precedence initialization,0
+34,38,SHUNTING_YARD,23,0.0,Closing brace of method - correct,0
+34,39,SHUNTING_YARD,34,0.0,Closing brace of else block - correct but contains bug,0
+34,40,SHUNTING_YARD,35,0.0,Closing brace of for loop - correct,0
+34,41,SHUNTING_YARD,41,0.0,Blank,0
+34,42,SHUNTING_YARD,42,0.0,Blank,0
+34,43,SHUNTING_YARD,43,0.0,Blank,0
+35,1,SIEVE,41,1.0,Critical bug: Using?any()?when it should be?all()?- incorrectly adds composite numbers to primes list,1
+35,2,SIEVE,32,0.9,"Creates list of ""n not divisible by p"" conditions, but used incorrectly in sieve logic",0
+35,3,SIEVE,38,0.8,Main sieve method structure is correct but contains the core logic error,0
+35,4,SIEVE,46,0.8,Main sieve method structure is correct but contains the core logic error,0
+35,5,SIEVE,15,0.6,all()?method is correct but not being used where needed,0
+35,6,SIEVE,29,0.5,list_comp()?correctly generates divisibility conditions,0
+35,7,SIEVE,30,0.5,list_comp()?correctly generates divisibility conditions,0
+35,8,SIEVE,31,0.5,list_comp()?correctly generates divisibility conditions,0
+35,9,SIEVE,32,0.5,list_comp()?correctly generates divisibility conditions,0
+35,10,SIEVE,40,0.4,Loop structure is correct but contains wrong condition,0
+35,11,SIEVE,42,0.3,Prime adding would be correct if condition was fixed,0
+35,12,SIEVE,1,0.0,Package declaration - irrelevant,0
+35,13,SIEVE,2,0.0,Import statement - irrelevant,0
+35,14,SIEVE,3,0.0,Comment - irrelevant,0
+35,15,SIEVE,4,0.0,Comment - irrelevant,0
+35,16,SIEVE,5,0.0,Comment - irrelevant,0
+35,17,SIEVE,6,0.0,Comment - irrelevant,0
+35,18,SIEVE,7,0.0,Comment - irrelevant,0
+35,19,SIEVE,8,0.0,Comment - irrelevant,0
+35,20,SIEVE,9,0.0,Comment - irrelevant,0
+35,21,SIEVE,10,0.0,Comment - irrelevant,0
+35,22,SIEVE,11,0.0,Comment - irrelevant,0
+35,23,SIEVE,12,0.0,Comment - irrelevant,0
+35,24,SIEVE,13,0.0,Class declaration - correct,0
+35,25,SIEVE,14,0.0,Blank line - irrelevant,0
+35,26,SIEVE,16,0.0,For loop in all() - correct,0
+35,27,SIEVE,17,0.0,Condition in all() - correct,0
+35,28,SIEVE,18,0.0,Return false in all() - correct,0
+35,29,SIEVE,19,0.0,Return true in all() - correct,0
+35,30,SIEVE,20,0.0,Closing brace - correct,0
+35,31,SIEVE,23,0.0,For loop in any() - correct,0
+35,32,SIEVE,24,0.0,Condition in any() - correct,0
+35,33,SIEVE,25,0.0,Return true in any() - correct,0
+35,34,SIEVE,26,0.0,Return false in any() - correct,0
+35,35,SIEVE,27,0.0,Closing brace - correct,0
+35,36,SIEVE,30,0.0,List initialization - correct,0
+35,37,SIEVE,31,0.0,For loop in list_comp() - correct,0
+35,38,SIEVE,33,0.0,Closing brace - correct,0
+35,39,SIEVE,34,0.0,Return statement - correct,0
+35,40,SIEVE,35,0.0,Closing brace - correct,0
+35,41,SIEVE,37,0.0,Blank line - irrelevant,0
+35,42,SIEVE,39,0.0,Primes list initialization - correct,0
+35,43,SIEVE,43,0.0,Closing brace - correct,0
+35,44,SIEVE,44,0.0,Blank line - irrelevant,0
+35,45,SIEVE,45,0.0,Return statement - correct,0
+35,46,SIEVE,46,0.0,Closing brace - correct,0
+35,47,SIEVE,21,0.0,Blank,0
+35,48,SIEVE,22,0.0,Blank,0
+35,49,SIEVE,28,0.0,Blank,0
+35,50,SIEVE,36,0.0,Blank,0
+35,51,SIEVE,47,0.0,Blank,0
+36,1,SQRT,16,1.0,Critical bug: Loop condition checks absolute difference between x and approx rather than difference of squares (x - approx*approx),1
+36,2,SQRT,17,0.9,Newton-Raphson approximation step is correct but trapped in infinite loop due to wrong condition,0
+36,3,SQRT,14,0.8,Method signature and parameters are correct but implementation flawed,0
+36,4,SQRT,15,0.5,Initial approximation (x/2) is reasonable but could be improved,0
+36,5,SQRT,19,0.3,Return statement is correct but may never be reached due to infinite loop,0
+36,6,SQRT,1,0.0,Package declaration - irrelevant,0
+36,7,SQRT,2,0.0,Import statement - irrelevant,0
+36,8,SQRT,3,0.0,Comment - irrelevant,0
+36,9,SQRT,4,0.0,Comment - irrelevant,0
+36,10,SQRT,5,0.0,Comment - irrelevant,0
+36,11,SQRT,6,0.0,Comment - irrelevant,0
+36,12,SQRT,7,0.0,Comment - irrelevant,0
+36,13,SQRT,8,0.0,Comment - irrelevant,0
+36,14,SQRT,9,0.0,Comment - irrelevant,0
+36,15,SQRT,10,0.0,Comment - irrelevant,0
+36,16,SQRT,11,0.0,Comment - irrelevant,0
+36,17,SQRT,12,0.0,Comment - irrelevant,0
+36,18,SQRT,13,0.0,Class declaration - correct,0
+36,19,SQRT,18,0.0,Closing brace of while loop - correct,0
+36,20,SQRT,20,0.0,Closing brace of method - correct,0
+36,21,SQRT,21,0.0,Closing brace of class - correct,0
+37,1,SUBSEQUENCES,16,1.0,"Returns empty ArrayList when k=0, but should return ArrayList containing one empty ArrayList",1
+37,2,SUBSEQUENCES,22,0.9,Recursive call may not properly handle base cases and subsequence construction,0
+37,3,SUBSEQUENCES,23,0.8,Prepends current number to subsequences but may not handle empty case correctly,0
+37,4,SUBSEQUENCES,20,0.7,Loop bounds may be incorrect for generating subsequences of length k,0
+37,5,SUBSEQUENCES,14,0.6,Method signature is correct but implementation flawed,0
+37,6,SUBSEQUENCES,15,0.5,Base case condition is correct but return value is wrong,0
+37,7,SUBSEQUENCES,19,0.4,ArrayList initialization is correct but unused properly,0
+37,8,SUBSEQUENCES,21,0.3,Temporary ArrayList creation is correct but may not be used properly,0
+37,9,SUBSEQUENCES,24,0.2,Adding to base list is correct but may not get proper input,0
+37,10,SUBSEQUENCES,26,0.1,Adding subsequences to result is correct but may get empty input,0
+37,11,SUBSEQUENCES,30,0.1,Return statement is correct but returns wrong value due to earlier issues,0
+37,12,SUBSEQUENCES,1,0.0,Package declaration - irrelevant,0
+37,13,SUBSEQUENCES,2,0.0,Import statement - irrelevant,0
+37,14,SUBSEQUENCES,3,0.0,Comment - irrelevant,0
+37,15,SUBSEQUENCES,4,0.0,Comment - irrelevant,0
+37,16,SUBSEQUENCES,5,0.0,Comment - irrelevant,0
+37,17,SUBSEQUENCES,6,0.0,Comment - irrelevant,0
+37,18,SUBSEQUENCES,7,0.0,Comment - irrelevant,0
+37,19,SUBSEQUENCES,8,0.0,Comment - irrelevant,0
+37,20,SUBSEQUENCES,9,0.0,Comment - irrelevant,0
+37,21,SUBSEQUENCES,10,0.0,Comment - irrelevant,0
+37,22,SUBSEQUENCES,11,0.0,Comment - irrelevant,0
+37,23,SUBSEQUENCES,12,0.0,Comment - irrelevant,0
+37,24,SUBSEQUENCES,13,0.0,Class declaration - correct,0
+37,25,SUBSEQUENCES,17,0.0,Closing brace - correct,0
+37,26,SUBSEQUENCES,18,0.0,Blank line - irrelevant,0
+37,27,SUBSEQUENCES,25,0.0,Closing brace - correct,0
+37,28,SUBSEQUENCES,27,0.0,Blank line - irrelevant,0
+37,29,SUBSEQUENCES,28,0.0,Closing brace - correct,0
+37,30,SUBSEQUENCES,29,0.0,Blank line - irrelevant,0
+37,31,SUBSEQUENCES,31,0.0,Closing brace - correct,0
+37,32,SUBSEQUENCES,32,0.0,Closing brace - correct,0
+38,1,TO_BASE,21,1.0,Critical bug: Appends digits in reverse order (least significant digit first) instead of proper order,1
+38,2,TO_BASE,18,0.8,While loop condition is correct but works with reversed digit collection,0
+38,3,TO_BASE,19,0.6,Correctly calculates digit value but used in reversed order,0
+38,4,TO_BASE,20,0.5,Correctly updates num through division but part of reversed process,0
+38,5,TO_BASE,16,0.4,Alphabet string is correct but used in reversed order,0
+38,6,TO_BASE,15,0.3,Result initialization is correct but built incorrectly,0
+38,7,TO_BASE,14,0.2,Method signature is correct,0
+38,8,TO_BASE,24,0.1,Return statement is correct but returns reversed string,0
+38,9,TO_BASE,1,0.0,Package declaration - irrelevant,0
+38,10,TO_BASE,2,0.0,Import statement - irrelevant,0
+38,11,TO_BASE,3,0.0,Comment - irrelevant,0
+38,12,TO_BASE,4,0.0,Comment - irrelevant,0
+38,13,TO_BASE,5,0.0,Comment - irrelevant,0
+38,14,TO_BASE,6,0.0,Comment - irrelevant,0
+38,15,TO_BASE,7,0.0,Comment - irrelevant,0
+38,16,TO_BASE,8,0.0,Comment - irrelevant,0
+38,17,TO_BASE,9,0.0,Comment - irrelevant,0
+38,18,TO_BASE,10,0.0,Comment - irrelevant,0
+38,19,TO_BASE,11,0.0,Comment - irrelevant,0
+38,20,TO_BASE,12,0.0,Comment - irrelevant,0
+38,21,TO_BASE,13,0.0,Class declaration - correct,0
+38,22,TO_BASE,17,0.0,Variable declaration - correct,0
+38,23,TO_BASE,22,0.0,Closing brace - correct,0
+38,24,TO_BASE,23,0.0,Blank line - irrelevant,0
+38,25,TO_BASE,25,0.0,Closing brace - correct,0
+38,26,TO_BASE,26,0.0,Closing brace - correct,0
+39,1,TOPOLOGICAL_ORDERING,17,1.0,Critical bug: Checks successors instead of predecessors for topological ordering condition,1
+39,2,TOPOLOGICAL_ORDERING,16,0.9,Iterates through successors when it should consider node dependencies,0
+39,3,TOPOLOGICAL_ORDERING,14,0.8,Main topological sorting logic is flawed in its node selection criteria,0
+39,4,TOPOLOGICAL_ORDERING,7,0.7,Initial node selection (sources) is correct but incomplete for full ordering,0
+39,5,TOPOLOGICAL_ORDERING,13,0.5,List size tracking is correct but used in flawed algorithm,0
+39,6,TOPOLOGICAL_ORDERING,5,0.3,Method signature is correct,0
+39,7,TOPOLOGICAL_ORDERING,6,0.2,Result list initialization is correct,0
+39,8,TOPOLOGICAL_ORDERING,23,0.1,Return statement is correct but returns incomplete ordering,0
+39,9,TOPOLOGICAL_ORDERING,1,0.0,Package declaration - irrelevant,0
+39,10,TOPOLOGICAL_ORDERING,2,0.0,Import statement - irrelevant,0
+39,11,TOPOLOGICAL_ORDERING,3,0.0,Blank line - irrelevant,0
+39,12,TOPOLOGICAL_ORDERING,4,0.0,Class declaration - correct,0
+39,13,TOPOLOGICAL_ORDERING,12,0.0,Blank line - irrelevant,0
+39,14,TOPOLOGICAL_ORDERING,15,0.0,Node retrieval is correct,0
+39,15,TOPOLOGICAL_ORDERING,18,0.0,Node addition is correct but condition is wrong,0
+39,16,TOPOLOGICAL_ORDERING,19,0.0,List size increment is correct,0
+39,17,TOPOLOGICAL_ORDERING,20,0.0,Closing brace - correct,0
+39,18,TOPOLOGICAL_ORDERING,21,0.0,Closing brace - correct,0
+39,19,TOPOLOGICAL_ORDERING,22,0.0,Closing brace - correct,0
+39,20,TOPOLOGICAL_ORDERING,24,0.0,Closing brace - correct,0
+39,21,TOPOLOGICAL_ORDERING,25,0.0,Closing brace - correct,0
+39,22,TOPOLOGICAL_ORDERING,8,0.0,Blank,0
+39,23,TOPOLOGICAL_ORDERING,9,0.0,Blank,0
+39,24,TOPOLOGICAL_ORDERING,10,0.0,Blank,0
+39,25,TOPOLOGICAL_ORDERING,11,0.0,Blank,0
+40,1,WRAP,28,1.0,"Critical bug: Trims whitespace from remaining text, causing concatenation to fail",0
+40,2,WRAP,23,0.9,Space-finding logic may incorrectly split words when no space found,0
+40,3,WRAP,27,0.8,Substring operation may include/exclude wrong characters,0
+40,4,WRAP,22,0.7,Loop condition may exit prematurely before processing all text,0
+40,5,WRAP,31,0.5,Final text portion not being added to lines list,0
+40,6,WRAP,18,0.4,Method signature is correct but implementation flawed,0
+40,7,WRAP,19,0.3,Lines list initialization is correct,0
+40,8,WRAP,21,0.2,Line variable declaration is correct,0
+40,9,WRAP,32,0.1,Return statement is correct but returns incomplete result,1
+40,10,WRAP,1,0.0,Package declaration - irrelevant,0
+40,11,WRAP,2,0.0,Import statement - irrelevant,0
+40,12,WRAP,3,0.0,Comment - irrelevant,0
+40,13,WRAP,4,0.0,Comment - irrelevant,0
+40,14,WRAP,5,0.0,Comment - irrelevant,0
+40,15,WRAP,6,0.0,Comment - irrelevant,0
+40,16,WRAP,7,0.0,Comment - irrelevant,0
+40,17,WRAP,8,0.0,Comment - irrelevant,0
+40,18,WRAP,9,0.0,Comment - irrelevant,0
+40,19,WRAP,10,0.0,Comment - irrelevant,0
+40,20,WRAP,11,0.0,Comment - irrelevant,0
+40,21,WRAP,12,0.0,Comment - irrelevant,0
+40,22,WRAP,13,0.0,Class declaration - correct,0
+40,23,WRAP,14,0.0,Main method (unrelated to functionality),0
+40,24,WRAP,20,0.0,Blank line - irrelevant,0
+40,25,WRAP,24,0.0,Handle case when no space found - correct logic,0
+40,26,WRAP,25,0.0,Blank line - irrelevant,0
+40,27,WRAP,26,0.0,Blank line - irrelevant,0
+40,28,WRAP,29,0.0,Add line to result - correct operation,0
+40,29,WRAP,30,0.0,Blank line - irrelevant,0
+40,30,WRAP,33,0.0,Closing brace - correct,0
+40,31,WRAP,34,0.0,Closing brace - correct,0
+40,32,WRAP,15,0.0,Blank,0
+40,33,WRAP,16,0.0,Blank,0
+40,34,WRAP,17,0.0,Blank,0

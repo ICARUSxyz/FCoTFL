@@ -1,0 +1,214 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: import java.awt.*;
+2: import javax.swing.*;
+3: 
+4: public class RadarChart extends JPanel {
+5: 
+6:     private int[] values; // レーダーチャートの値
+7:     private String[] labels; // 各頂点のラベル
+8:     private int maxValue = 70; // 値の最大値（0からこの値までの範囲で指定）
+9: 
+10:     public RadarChart(int[] values, String[] labels) {
+11:         this.values = values;
+12:         this.labels = labels;
+13:         setPreferredSize(new Dimension(400, 400)); // パネルのサイズを設定
+14:     }
+15: 
+16:     @Override
+17:     protected void paintComponent(Graphics g) {
+18:         super.paintComponent(g);
+19:         Graphics2D g2d = (Graphics2D) g;
+20: 
+21:         int centerX = getWidth() / 2; // 中心のX座標
+22:         int centerY = getHeight() / 2; // 中心のY座標
+23: 
+24:         int numPoints = values.length; // 頂点の数
+25:         double angleStep = 2 * Math.PI / numPoints; // 各頂点の角度間隔
+26: 
+27:         // ポリゴンを描画するためのポイント配列
+28:         int[] xPoints = new int[numPoints];
+29:         int[] yPoints = new int[numPoints];
+30: 
+31:         // 各頂点の位置を計算してポイント配列に格納
+32:         for (int i = 0; i < numPoints; i++) {
+33:             double angle = i * angleStep - Math.PI / 2; // -90度（上方向）から開始
+34:             double radius = (double) values[i] / maxValue * centerY; // 値に応じた半径
+35: 
+36:             // 極座標を計算して、画面座標に変換
+37:             int x = centerX + (int) (Math.cos(angle) * radius);
+38:             int y = centerY + (int) (Math.sin(angle) * radius);
+39: 
+40:             xPoints[i] = x;
+41:             yPoints[i] = y;
+42: 
+43:             // 中心から各頂点に向けて線分を描画
+44:             g2d.setColor(Color.RED); // 線の色を赤に設定
+45:             g2d.drawLine(centerX, centerY, x, y);
+46:         }
+47: 
+48:         // レーダーチャートの外接円を描画
+49:         g2d.setColor(Color.BLACK); // 外接円の色を黒に設定
+50:         int maxRadius = centerX; // 外接円の半径は中心からの距離
+51:         g2d.drawOval(centerX - maxRadius, centerY - maxRadius, 2 * maxRadius, 2 * maxRadius);
+52: 
+53:         // ポリゴンを描画（塗りつぶし）
+54:         g2d.setColor(Color.BLUE); // ポリゴンの色を青に設定
+55:         g2d.fillPolygon(xPoints, yPoints);
+56: 
+57:         // 各頂点にラベルを描画
+58:         g2d.setColor(Color.BLACK); // ラベルの色を黒に設定
+59:         FontMetrics fm = g2d.getFontMetrics();
+60:         for (int i = 0; i < numPoints; i++) {
+61:             double angle = i * angleStep - Math.PI / 2;
+62:             int labelX = centerX + (int) ((Math.cos(angle) * 1.1) * centerX);
+63:             int labelY = centerY + (int) ((Math.sin(angle) * 1.1) * centerY);
+64: 
+65:             String label = labels[i];
+66:             int labelWidth = fm.stringWidth(label);
+67:             int labelHeight = fm.getHeight();
+68: 
+69:             g2d.drawString(label, labelX + labelWidth / 2, labelY + labelHeight / 2);
+70:         }
+71:     }
+72: 
+73:     public static void main(String[] args) {
+74:         int[] values = {60, 80, 50, 70, 90}; // 各頂点の値（0から80までの値）
+75:         String[] labels = {"A", "B", "C", "D", "E"}; // 各頂点のラベル
+76: 
+77:         JFrame frame = new JFrame("Radar Chart");
+78:         RadarChart radarChart = new RadarChart(values, labels);
+79:         frame.add(radarChart);
+80:         frame.pack();
+81:         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+82:         frame.setVisible(true);
+83:     }
+84: }]
+
+SOFL:[
+module UC40_RadarChart
+type
+  values: sequence of int
+  labels: sequence of string
+  numPoints: int
+  angleStep: real
+  angle: real
+  radius: real
+  centerX, centerY: int
+  xPoints, yPoints: sequence of int
+  maxValue: int
+  labelX, labelY: int
+  label: string
+  labelWidth, labelHeight: int
+
+var
+  maxValue = 80
+
+process paintRadarChart(values: sequence of int, labels: sequence of string) result: Boolean
+pre
+  |values| = |labels| ∧ |values| ≥ 3 ∧ ∀v ∈ values • 0 ≤ v ≤ maxValue
+post
+  result = true
+  ∧ numPoints = |values|
+  ∧ angleStep = 2 * PI / numPoints
+  ∧ centerX = panel.width / 2 ∧ centerY = panel.height / 2
+  ∧ xPoints = [centerX + int(cos(i * angleStep - PI/2) * (values[i] / maxValue * centerX)) | i ∈ [0 .. numPoints-1]]
+  ∧ yPoints = [centerY + int(sin(i * angleStep - PI/2) * (values[i] / maxValue * centerY)) | i ∈ [0 .. numPoints-1]]
+  ∧ polygon drawn connecting (xPoints[i], yPoints[i])
+  ∧ each label[i] displayed at position aligned with direction of angle i
+Functional Scenario Form
+(|values| = |labels| ∧ |values| ≥ 3 ∧ ∀v ∈ values • 0 ≤ v ≤ maxValue) &&
+  (polar coordinates computed for each point based on value/maxValue ratio
+   ∧ polygon filled with blue
+   ∧ red lines from center to each vertex
+   ∧ black circular outline
+   ∧ labels centered at extended radius positions)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: RadarChart Visualization – Symptom Summary**
+
+---
+
+### **Test Case 1: Initialization and Display**
+
+**Input:**
+
+```java
+int[] values = {60, 80, 50, 70, 90};
+String[] labels = {"A", "B", "C", "D", "E"};
+```
+
+**Expected Behavior:**
+A radar chart window is displayed showing five axes with values correctly plotted, labels aligned near each vertex, and the chart rendered proportionally within the panel.
+
+**Observed Output:**
+
+```
+[Window appears, but chart elements are misaligned or incorrect]
+- Radar polygon seems compressed or mis-scaled
+- Labels appear offset from their expected positions
+- Program fails to launch on some platforms with runtime error:
+  > Exception in thread "main" java.lang.Error: Unresolved compilation problem:
+  > EXIT_ON_CLOSE cannot be resolved to a variable
+```
+
+---
+
+### **Test Case 2: Polygon Rendering**
+
+**Observed Behavior:**
+
+```
+Exception in thread "AWT-EventQueue-0" java.lang.IllegalArgumentException: nPoints < 0
+	at java.awt.Polygon.<init>(Polygon.java:84)
+	at java.awt.Graphics.fillPolygon(Graphics.java:...)
+```
+
+---
+
+### **Test Case 3: Label Positioning**
+
+**Observed Behavior:**
+
+```
+Labels are drawn to the right of their expected positions.
+Some labels appear overlapping or misaligned from the vertices.
+```
+
+---
+
+### **Console Log (Simulated):**
+
+```
+[INFO] Launching radar chart window...
+[INFO] Drawing chart with 5 points
+[WARN] Label position adjustment may be inaccurate
+[ERROR] Unresolved symbol: EXIT_ON_CLOSE
+```]

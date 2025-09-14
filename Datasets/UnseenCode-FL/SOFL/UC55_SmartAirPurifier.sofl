@@ -1,0 +1,41 @@
+module UC55_SmartAirPurifier
+type
+  newAQI: real
+  currentAQI: real
+  normalAQIThreshold: real
+  hazardousAQIThreshold: real
+  fanSpeed: int  // 0=off, 1=normal, 2=high
+
+var
+  currentAQI: real
+  fanSpeed: int
+
+process updateAQI(newAQI: real)
+  result: Boolean
+pre
+  true
+post
+  currentAQI = newAQI ∧
+  (
+    (newAQI >= hazardousAQIThreshold) →
+      fanSpeed = 2 ∧ result = true
+  ) ∨
+  (
+    (newAQI > normalAQIThreshold ∧ newAQI < hazardousAQIThreshold) →
+      fanSpeed = 2 ∧ result = true
+  ) ∨
+  (
+    (newAQI ≤ normalAQIThreshold) →
+      fanSpeed = 1 ∧ result = true
+  )
+
+Functional Scenario Form
+  (currentAQI >= hazardousAQIThreshold) && fanSpeed = 2, output "ALERT: Hazardous air quality (" + currentAQI + "). Fan speed set to HIGH.", Fan speed set to HIGH; hazard alert issued.
+        OR
+        (currentAQI > normalAQIThreshold ∧ currentAQI < hazardousAQIThreshold) && fanSpeed = 2, output "WARNING: Poor air quality (" + currentAQI + "). Fan speed increased.", Fan speed increased.
+        OR
+        (currentAQI ≤ normalAQIThreshold) && fanSpeed = 1, output "Air quality is good (" + currentAQI + "). Operating at normal speed.", Fan speed remains normal.
+
+end_process
+
+end_module

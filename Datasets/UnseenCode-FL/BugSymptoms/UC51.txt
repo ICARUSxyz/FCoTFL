@@ -1,0 +1,42 @@
+// Test Case 1: trafficDensity < 0
+updateGreenTime(-21)
+→ Output:
+invalide input	
+Traffic Signal Log for Main St & 1st Ave:
+(empty)
+
+// Test Case 2: trafficDensity = 3
+updateGreenTime(3)
+→ Output:
+Green light at Main St & 1st Ave set to 15 seconds due to traffic density: 3%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 15 seconds (Traffic: 3)
+
+// Test Case 3: trafficDensity = 62
+updateGreenTime(62)
+→ Output:
+Green light at Main St & 1st Ave set to 30 seconds due to traffic density: 62%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 30 seconds (Traffic: 62)
+
+// Test Case 4: trafficDensity = 87
+updateGreenTime(87)
+→ Output:
+Green light at Main St & 1st Ave set to 45 seconds due to traffic density: 87%
+Traffic Signal Log for Main St & 1st Ave:
+Intersection Main St & 1st Ave: Green time updated to 45 seconds (Traffic: 87)
+
+// Test Case 5: trafficDensity = 134
+updateGreenTime(134)
+→ Output:
+invalide input	
+(no new log recorded)
+
+// Observation 1: Incorrect condition evaluation
+→ Output always prints "invalide input" regardless of actual greenTime update
+
+// Observation 2: Missing % symbol in log message
+→ Log entry: (Traffic: 62) instead of (Traffic: 62%)
+
+// Observation 3: Initial greenTime inconsistent with expectation
+→ Instantiated with 20, while scenario assumes default is 15

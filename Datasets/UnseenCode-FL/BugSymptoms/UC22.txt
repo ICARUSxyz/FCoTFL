@@ -1,0 +1,86 @@
+**Bug Report: Requirement Tree and UI Interaction Observations**
+
+---
+
+**Test Case 1: Retrieving Class Items from Tree**
+
+**Action:**
+User initiates an operation requiring all class-level nodes to be collected from the tree view.
+
+**Expected:**
+All top-level class nodes are retrieved and stored in a list.
+
+**Observed:**
+No items are retrieved. Operation appears to be skipped or stuck.
+
+**Log:**
+
+```plaintext
+[BEGIN] Collecting class items  
+[ERROR] Invalid loop condition, no iteration occurred  
+[RESULT] Collected items: 0  
+```
+
+---
+
+**Test Case 2: Extracting Tree Structure into Model**
+
+**Action:**
+User attempts to serialize the current tree view into a structured data format.
+
+**Expected:**
+Each class node and its associated child methods are properly extracted.
+
+**Observed:**
+Only the second child (or incorrect one) is repeatedly collected, resulting in incomplete or incorrect data mapping.
+
+**Log:**
+
+```plaintext
+[BEGIN] Tree traversal for export  
+[INFO] Found class node: "SampleClass"  
+[ERROR] Accessed child at fixed index  
+[RESULT] Collected methods: 1 (expected: 3)  
+```
+
+---
+
+**Test Case 3: UI Option Switching – First Option Selected**
+
+**Action:**
+User selects the first radio option.
+
+**Expected:**
+Corresponding panel should be displayed correctly.
+
+**Observed:**
+An unexpected panel is shown instead.
+
+**Log:**
+
+```plaintext
+[INPUT] Option selected: 1  
+[EXPECTED] View index: 0  
+[ACTUAL] View index: 1  
+```
+
+---
+
+**Test Case 4: UI Option Switching – Second Option Selected**
+
+**Action:**
+User selects the second radio option.
+
+**Expected:**
+Second panel should be activated and shown.
+
+**Observed:**
+An incorrect panel index is activated, causing display inconsistency.
+
+**Log:**
+
+```plaintext
+[INPUT] Option selected: 2  
+[EXPECTED] View index: 1  
+[ACTUAL] View index: 2  
+```

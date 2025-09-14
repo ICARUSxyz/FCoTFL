@@ -1,0 +1,157 @@
+module PearsonsCorrelation
+type
+nObs:int
+
+process ctor_default() result: PearsonsCorrelation
+pre
+true
+post
+self.correlationMatrix' = null ∧ self.nObs' = 0 ∧ result = self
+Functional Scenario Form
+called && self.correlationMatrix' = null ∧ self.nObs' = 0 ∧ result = self
+end_process
+
+process ctor_fromArray(data: sequence of sequence of double) result: PearsonsCorrelation
+pre
+data ≠ null ∧ |data| ≥ 2 ∧ (∀ i • 0 ≤ i < |data| ⇒ |data(i)| = |data(0)|) ∧ |data(0)| ≥ 2
+post
+let M == BlockRealMatrix(data) in
+self.nObs' = rowDimension(M) ∧
+self.correlationMatrix' = computeCorrelationMatrix(M) ∧
+result = self
+Functional Scenario Form
+valid rectangular with rows ≥ 2 ∧ cols ≥ 2 && self.nObs' = rowDimension(BlockRealMatrix(data)) ∧ self.correlationMatrix' = computeCorrelationMatrix(BlockRealMatrix(data)) ∧ result = self
+end_process
+
+process ctor_fromMatrix(matrix: RealMatrix) result: PearsonsCorrelation
+pre
+matrix ≠ null ∧ rowDimension(matrix) ≥ 2 ∧ columnDimension(matrix) ≥ 2
+post
+self.nObs' = rowDimension(matrix) ∧
+self.correlationMatrix' = computeCorrelationMatrix(matrix) ∧
+result = self
+Functional Scenario Form
+rows ≥ 2 ∧ cols ≥ 2 && self.nObs' = rowDimension(matrix) ∧ self.correlationMatrix' = computeCorrelationMatrix(matrix) ∧ result = self
+end_process
+
+process ctor_fromCovariance(covariance: Covariance) result: PearsonsCorrelation
+pre
+covariance ≠ null ∧ covariance.getCovarianceMatrix() ≠ null
+post
+self.nObs' = covariance.getN() ∧
+self.correlationMatrix' = covarianceToCorrelation(covariance.getCovarianceMatrix()) ∧
+result = self
+Functional Scenario Form
+covariance matrix ≠ null && self.nObs' = covariance.getN() ∧ self.correlationMatrix' = covarianceToCorrelation(covariance.getCovarianceMatrix()) ∧ result = self
+end_process
+
+process ctor_fromCovarianceMatrix(covarianceMatrix: RealMatrix, numberOfObservations: int) result: PearsonsCorrelation
+pre
+covarianceMatrix ≠ null ∧ numberOfObservations ≥ 0
+post
+self.nObs' = numberOfObservations ∧
+self.correlationMatrix' = covarianceToCorrelation(covarianceMatrix) ∧
+result = self
+Functional Scenario Form
+called && self.nObs' = numberOfObservations ∧ self.correlationMatrix' = covarianceToCorrelation(covarianceMatrix) ∧ result = self
+end_process
+
+process getCorrelationMatrix(self: PearsonsCorrelation) result: RealMatrix
+pre
+true
+post
+result = self.correlationMatrix
+Functional Scenario Form
+called && result = self.correlationMatrix
+end_process
+
+process getCorrelationStandardErrors(self: PearsonsCorrelation) result: RealMatrix
+pre
+self.correlationMatrix ≠ null ∧ self.nObs > 2
+post
+let nVars == columnDimension(self.correlationMatrix) in
+result = BlockRealMatrix( [ [ sqrt( (1 - r(i,j)^2) / (self.nObs - 2) ) | j ∈ [0..nVars-1] ] | i ∈ [0..nVars-1] ] )
+where
+r(i,j) = self.correlationMatrix.getEntry(i,j)
+Functional Scenario Form
+self.correlationMatrix ≠ null ∧ self.nObs > 2 && result(i,j) = sqrt((1 - r(i,j)^2)/(self.nObs - 2))
+end_process
+
+process getCorrelationPValues(self: PearsonsCorrelation) result: RealMatrix
+pre
+self.correlationMatrix ≠ null ∧ self.nObs > 2
+post
+let df == self.nObs - 2,
+nVars == columnDimension(self.correlationMatrix),
+T == TDistributionImpl(df) in
+result = BlockRealMatrix( [ [ p(i,j) | j ∈ [0..nVars-1] ] | i ∈ [0..nVars-1] ] )
+where
+r(i,j) = self.correlationMatrix.getEntry(i,j)
+t(i,j) = if i = j then 0 else | r(i,j) * sqrt( df / (1 - r(i,j)^2) ) |
+p(i,j) = if i = j then 0 else 2 * T.cumulativeProbability( - t(i,j) )
+Functional Scenario Form
+self.correlationMatrix ≠ null ∧ self.nObs > 2 && result(i,i) = 0 and result(i,j) = 2 * CDF_t(df, -|r(i,j)*sqrt(df/(1 - r(i,j)^2))|)
+end_process
+
+process computeCorrelationMatrix(matrix: RealMatrix) result: RealMatrix
+pre
+matrix ≠ null ∧ columnDimension(matrix) ≥ 1
+post
+let nVars == columnDimension(matrix) in
+result = BlockRealMatrix( [ [ val(i,j) | j ∈ [0..nVars-1] ] | i ∈ [0..nVars-1] ] )
+where
+val(i,i) = 1.0
+val(i,j) = correlation( matrix.getColumn(i), matrix.getColumn(j) ) for i > j
+val(i,j) = val(j,i) for i < j
+Functional Scenario Form
+called && result(i,i) = 1.0 and result(i,j) = correlation(col_i, col_j) with symmetry
+end_process
+
+process computeCorrelationMatrix_fromArray(data: sequence of sequence of double) result: RealMatrix
+pre
+data ≠ null ∧ |data| ≥ 1 ∧ (∀ i • 0 ≤ i < |data| ⇒ |data(i)| = |data(0)|)
+post
+result = computeCorrelationMatrix(BlockRealMatrix(data))
+Functional Scenario Form
+rectangular data && result = computeCorrelationMatrix(BlockRealMatrix(data))
+end_process
+
+process correlation(xArray: sequence of double, yArray: sequence of double) result: double
+pre
+xArray ≠ null ∧ yArray ≠ null ∧ |xArray| = |yArray| ∧ |xArray| > 1
+post
+let R == SimpleRegression() in
+(∀ i • 0 ≤ i < |xArray| ⇒ effect(R.addData(xArray(i), yArray(i)))) ∧
+result = R.getR()
+Functional Scenario Form
+|xArray| = |yArray| ∧ |xArray| > 1 && result = SimpleRegression.fitted_R(xArray,yArray)
+end_process
+
+process covarianceToCorrelation(covarianceMatrix: RealMatrix) result: RealMatrix
+pre
+covarianceMatrix ≠ null ∧ columnDimension(covarianceMatrix) = rowDimension(covarianceMatrix) ∧ columnDimension(covarianceMatrix) ≥ 1
+post
+let nVars == columnDimension(covarianceMatrix) in
+result = BlockRealMatrix( [ [ c(i,j) | j ∈ [0..nVars-1] ] | i ∈ [0..nVars-1] ] )
+where
+σ(i) = sqrt( covarianceMatrix.getEntry(i,i) )
+c(i,i) = 1.0
+c(i,j) = covarianceMatrix.getEntry(i,j) / ( σ(i) * σ(j) ) for i ≠ j
+Functional Scenario Form
+called && result(i,i) = 1.0 and result(i,j) = cov(i,j)/(sqrt(cov(i,i))*sqrt(cov(j,j)))
+end_process
+
+process checkSufficientData(matrix: RealMatrix) result: void
+pre
+matrix ≠ null
+post
+if rowDimension(matrix) < 2 ∨ columnDimension(matrix) < 2 then
+raise(IllegalArgumentException)
+else
+skip
+Functional Scenario Form
+rows < 2 or cols < 2 && raise(IllegalArgumentException) or
+rows ≥ 2 ∧ cols ≥ 2 && skip
+end_process
+
+end_module

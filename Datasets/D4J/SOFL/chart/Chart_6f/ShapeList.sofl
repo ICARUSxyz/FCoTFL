@@ -1,0 +1,111 @@
+module ShapeList
+
+process ShapeList_Init() : ShapeList
+post 
+  this' = new AbstractObjectList()
+Functional Scenario Form 
+defaultInitialization 
+end_process
+
+process getShape(
+    this: ShapeList,
+    index: int
+) result: Shape?
+post 
+  result = (Shape)this.get(index)
+Functional Scenario Form 
+validIndex&&shapeReturned 
+outOfBounds&&returnNull 
+end_process
+
+process setShape(
+    this: ShapeList,
+    index: int,
+    shape: Shape?
+)
+post 
+  this.set(index, shape)
+Functional Scenario Form 
+indexWithinBounds&&elementSet 
+indexBeyondSize&&listExpanded 
+end_process
+
+process clone(
+    this: ShapeList
+) result: ShapeList
+post 
+  result' = super.clone()
+Functional Scenario Form 
+validClone&&shallowCopy 
+end_process
+
+process equals(
+    this: ShapeList,
+    obj: Object
+) result: bool
+post 
+  (obj = this ⇒ result = true) ∨ 
+  (obj ∉ ShapeList ⇒ result = false) ∨ 
+  (that = (ShapeList)obj ∧ 
+   this.size() ≠ that.size() ⇒ result = false) ∨ 
+  (∀i ∈ 0..this.size()-1 | 
+    ¬ShapeUtilities.equal(this.getShape(i), that.getShape(i)) ⇒ result = false) ∨ 
+  result = true
+Functional Scenario Form 
+identicalInstance&&true 
+differentType&&false 
+sizeMismatch&&false 
+elementInequality&&false 
+allElementsMatch&&true 
+end_process
+
+process hashCode(
+    this: ShapeList
+) result: int
+post 
+  result = super.hashCode()
+Functional Scenario Form 
+baseHashCodePropagated 
+end_process
+
+process writeObject(
+    this: ShapeList,
+    stream: ObjectOutputStream
+)
+pre 
+  stream ≠ null
+post 
+  count = this.size() ∧ 
+  stream.writeInt(count) ∧ 
+  ∀i ∈ 0..count-1 | 
+    shape = this.getShape(i) ∧ 
+    (shape ≠ null ⇒ 
+      stream.writeInt(i) ∧ 
+      SerialUtilities.writeShape(shape, stream)
+    ) ∨ 
+    stream.writeInt(-1)
+Functional Scenario Form 
+validStream&&nonNullShapesWritten 
+nullShapesMarkedWithNegativeOne 
+end_process
+
+process readObject(
+    this: ShapeList,
+    stream: ObjectInputStream
+)
+pre 
+  stream ≠ null
+post 
+  count = stream.readInt() ∧ 
+  ∀i ∈ 0..count-1 | 
+    index = stream.readInt() ∧ 
+    (index ≠ -1 ⇒ 
+      shape = SerialUtilities.readShape(stream) ∧ 
+      this.setShape(index, shape)
+    )
+Functional Scenario Form 
+validStream&&shapesRestored 
+invalidIndexSkipped 
+end_process
+
+end_module

@@ -1,0 +1,217 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: // UserWelcomeScreen.java
+2: import javax.swing.*;
+3: import java.awt.*;
+4: import java.awt.event.ActionEvent;
+5: import java.awt.event.ActionListener;
+6: 
+7: public class UserWelcomeScreen extends JFrame {
+8:     private String userID;
+9:     private AccountManager accountManager;
+10: 
+11:     public UserWelcomeScreen(String userID, AccountManager accountManager) {
+12:         this.userID = userID;
+13:         this.accountManager = accountManager;
+14: 
+15:         setTitle("ようこそ！ " + userID + " さん");
+16:         setSize(400, 300);
+17:         setDefaultCloseOperation(EXIT_ON_CLOSE);
+18:         setLocationRelativeTo(null);
+19: 
+20:         // 上部パネル
+21:         JPanel topPanel = new JPanel();
+22:         JLabel welcomeLabel = new JLabel("ようこそ！ " + userID + " さん");
+23:         JButton logoutButton = new JButton("ログアウト");
+24: 
+25:         logoutButton.addActionListener(new ActionListener() {
+26:             @Override
+27:             public void actionPerformed(ActionEvent e) {
+28:                 int response = JOptionPane.showConfirmDialog(null, "ログアウトしますか？", "確認", JOptionPane.YES_NO_OPTION);
+29:                 if (response == JOptionPane.YES_OPTION) {
+30:                     JOptionPane.showMessageDialog(null, "ログアウトが完了しました。");
+31:                     new LoginScreen(accountManager).setVisible(true);
+32:                     dispose();
+33:                 }
+34:             }
+35:         });
+36: 
+37:         topPanel.add(welcomeLabel);
+38:         topPanel.add(logoutButton);
+39: 
+40:         // 中央パネル
+41:         JPanel centerPanel = new JPanel();
+42:         centerPanel.setLayout(new GridLayout(3, 1));
+43:         JButton genreSearchButton = new JButton("ジャンルから検索");
+44:         JButton keywordSearchButton = new JButton("キーワードから検索");
+45: 
+46:         genreSearchButton.addActionListener(new ActionListener() {
+47:             @Override
+48:             public void actionPerformed(ActionEvent e) {
+49:                 // ジャンル検索画面に遷移
+50:                 new GenreSearchScreen(accountManager).setVisible(true);
+51:                 dispose();
+52:             }
+53:         });
+54: 
+55:         // キーワード検索ボタンの動作は後ほど実装
+56:         centerPanel.add(genreSearchButton);
+57:         centerPanel.add(keywordSearchButton);
+58: 
+59:         // パネルをフレームに追加
+60:         add(topPanel, BorderLayout.NORTH);
+61:         add(centerPanel, BorderLayout.CENTER);
+62:     }
+63: }]
+
+SOFL:[
+module UC36_UserWelcomeScreen
+type
+  userID: string
+  userChoice: string   /* "genreSearch", "keywordSearch", "logout", "cancelLogout" */
+  result: string       /* "GenreSearchScreenOpened", "KeywordSearchNotImplemented", "LoggedOut", "Cancelled" */
+
+process handleUserAction(userID: string, userChoice: string) result: string
+pre
+  userChoice ∈ {"genreSearch", "keywordSearch", "logout", "cancelLogout"}
+post
+  (userChoice = "genreSearch") ⇒ (GenreSearchScreen(userID, AccountManager) is opened ∧ result = "GenreSearchScreenOpened")
+  ∧
+  (userChoice = "keywordSearch") ⇒ (result = "KeywordSearchNotImplemented")
+  ∧
+  (userChoice = "logout") ⇒ (LoginScreen(AccountManager) is opened ∧ result = "LoggedOut")
+  ∧
+  (userChoice = "cancelLogout") ⇒ (result = "Cancelled")
+Functional Scenario Form
+(userChoice = "genreSearch") && (result = "GenreSearchScreenOpened")
+or
+(userChoice = "keywordSearch") && (result = "KeywordSearchNotImplemented")
+or
+(userChoice = "logout") && (result = "LoggedOut")
+or
+(userChoice = "cancelLogout") && (result = "Cancelled")
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: UserWelcomeScreen Behavior Summary**
+
+---
+
+**Test Case 1: Launch Welcome Screen**
+
+**Action:**
+Open the welcome screen with valid userID and accountManager.
+
+**Expected:**
+Window displays with welcome message, logout button, and two search options.
+
+**Observed:**
+Screen opens successfully. UI layout appears as expected.
+
+---
+
+**Test Case 2: Click "ログアウト" and Confirm**
+
+**Action:**
+Click “ログアウト” button, then select “はい” in confirmation dialog.
+
+**Expected:**
+Logout message appears, login screen launches, current screen closes.
+
+**Observed:**
+Flow proceeds normally, confirmation and transition succeed.
+
+**Output:**
+
+```plaintext
+[INFO] Logout initiated  
+[INFO] User confirmed logout  
+[INFO] Login screen displayed  
+```
+
+---
+
+**Test Case 3: Click "ジャンルから検索"**
+
+**Action:**
+Click “ジャンルから検索” button.
+
+**Expected:**
+Transition to genre search screen with userID and accountManager passed.
+
+**Observed:**
+Application crashes or fails to open next screen.
+
+**Output:**
+
+```plaintext
+[INFO] Attempting to open GenreSearchScreen  
+[ERROR] Constructor call missing required parameter: userID  
+[FAIL] Transition to GenreSearchScreen failed  
+```
+
+---
+
+**Test Case 4: Click "キーワードから検索"**
+
+**Action:**
+Click “キーワードから検索” button.
+
+**Expected:**
+No action, feature not yet implemented.
+
+**Observed:**
+Button click has no effect, as expected.
+
+**Output:**
+
+```plaintext
+[INFO] Keyword search button clicked  
+[INFO] No action assigned  
+```
+
+---
+
+**Test Case 5: Application Exit Behavior**
+
+**Action:**
+Close window manually via OS window controls.
+
+**Expected:**
+Application terminates cleanly without errors.
+
+**Observed:**
+In some environments, an exception is thrown related to improper exit constant.
+
+**Output:**
+
+```plaintext
+[ERROR] EXIT_ON_CLOSE reference not recognized  
+[FAIL] Application did not shut down as expected  
+```]

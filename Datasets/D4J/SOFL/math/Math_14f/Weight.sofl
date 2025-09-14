@@ -1,0 +1,28 @@
+module Weight  
+
+// Diagonal weight constructor  
+process constructor_diagonal(weight: double[])  
+pre true  
+post  
+  dim = weight.length  
+  weightMatrix' = new DiagonalMatrix(weight)  
+end_process  
+
+// Full matrix weight constructor  
+process constructor_full(weight: RealMatrix)  
+pre true  
+post  
+  weight.getColumnDimension() ≠ weight.getRowDimension()  
+    → throw NonSquareMatrixException(weight.getColumnDimension(), weight.getRowDimension())  
+  weightMatrix' = weight.copy()  
+Functional Scenario Form  
+square matrix && creates weight  
+non-square matrix && throws exception  
+end_process  
+
+// Weight matrix accessor  
+process getWeight() result: RealMatrix  
+pre true  
+post  
+  result' = weightMatrix.copy()  
+end_process  

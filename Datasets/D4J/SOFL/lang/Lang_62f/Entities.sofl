@@ -1,0 +1,46 @@
+module Entities
+type
+    str: sequence of char
+    string: sequence of char
+    writer: Writer
+    result: sequence of char
+    entityContent: sequence of char
+    entityValue: int
+
+process unescape(str: sequence of char) result: sequence of char
+pre
+    true
+post
+    (str contains no '&') → result = str
+    or
+    (str contains '&' and has no well-formed ';') → result = str with all '&' kept as-is
+    or
+    (str contains valid entity like &name; or &#number;) →
+        result = str with entities replaced by corresponding characters
+Functional Scenario Form
+(str contains no '&') && (result = str) or
+(str contains '&' but no ';') && (result = str with '&' unchanged) or
+(str contains entity &name;) && (entityValue(name) ≠ -1) && (result replaces &name; with char(entityValue)) or
+(str contains entity &#number;) && (valid integer and ≤ 0xFFFF) && (result replaces &#number; with corresponding char) or
+(invalid entity) && (result leaves entity literal unchanged)
+end_process
+
+process unescapeToWriter(writer: Writer, string: sequence of char) result: Boolean
+pre
+    writer ≠ null ∧ string ≠ null
+post
+    (string contains no '&') → writer outputs string ∧ result = true
+    or
+    (string contains '&' and valid entity) → writer outputs entity value ∧ result = true
+    or
+    (string contains '&' and invalid entity) → writer outputs as literal ∧ result = true
+    or
+    (IOException thrown) → result = false
+Functional Scenario Form
+(string contains no '&') && (writer.write(string)) && (result = true) or
+(string contains valid entity) && (writer.write(resolved character)) && (result = true) or
+(string contains invalid entity) && (writer.write('&...;')) && (result = true) or
+(writer throws IOException) && (result = false)
+end_process
+
+end_module

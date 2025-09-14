@@ -1,0 +1,491 @@
+module BigFraction  
+var:  
+  serialVersionUID: long = -5630213147331578515L  
+
+type:  
+  numerator: BigInteger  
+  denominator: BigInteger  
+
+// BigInteger constructor
+process constructor(num: BigInteger)  
+pre num ≠ null  
+post  
+  invokes constructor(num, BigInteger.ONE)  
+Functional Scenario Form  
+num=BigInteger("5") && creates 5/1  
+end_process  
+
+// Fraction constructor
+process constructor(num: BigInteger, den: BigInteger)  
+pre num ≠ null ∧ den ≠ null  
+post  
+  den = BigInteger.ZERO  
+    ? throw ZeroException("Zero denominator")  
+  num = BigInteger.ZERO  
+    ? numerator' = BigInteger.ZERO  
+      denominator' = BigInteger.ONE  
+  else  
+    gcd = num.gcd(den)  
+    gcd > BigInteger.ONE  
+      ? num' = num.divide(gcd)  
+        den' = den.divide(gcd)  
+    den < BigInteger.ZERO  
+      ? num' = num.negate()  
+        den' = den.negate()  
+    numerator' = num'  
+    denominator' = den'  
+Functional Scenario Form  
+num=4 den=0 && throws exception  
+num=0 den=5 && creates 0/1  
+num=6 den=9 && creates 2/3  
+num=3 den=-4 && creates -3/4  
+num=-2 den=-4 && creates 1/2  
+end_process  
+
+// Double constructor (IEEE-754)
+process constructor_double(value: double)  
+pre true  
+post  
+  Double.isNaN(value)  
+    ? throw MathIllegalArgumentException("NaN value")  
+  Double.isInfinite(value)  
+    ? throw MathIllegalArgumentException("Infinite value")  
+  bits = Double.doubleToLongBits(value)  
+  sign = bits & 0x8000000000000000L  
+  exponent = bits & 0x7ff0000000000000L  
+  m = bits & 0x000fffffffffffffL  
+  exponent ≠ 0  
+    ? m = m | 0x0010000000000000L  // Add implicit bit  
+  sign ≠ 0  
+    ? m = -m  
+  k = (exponent >> 52) - 1075  
+  while (m & 0x001ffffffffffffeL) ≠ 0 ∧ (m & 0x1) = 0  
+    m = m >> 1  
+    k = k + 1  
+  k < 0  
+    ? numerator' = BigInteger.valueOf(m)  
+      denominator' = BigInteger.ZERO.flipBit(-k)  
+    : numerator' = BigInteger.valueOf(m).multiply(BigInteger.ZERO.flipBit(k))  
+      denominator' = BigInteger.ONE  
+Functional Scenario Form  
+value=0.5 && creates 1/2  
+value=NaN && throws exception  
+value=Double.POSITIVE_INFINITY && throws exception  
+value=0.1 && creates precise fraction  
+end_process  
+
+// Double constructor (epsilon + max iterations)
+process constructor_double_epsilon(value: double, epsilon: double, maxIter: int)  
+pre true  
+post  
+  invokes private constructor(value, epsilon, Integer.MAX_VALUE, maxIter)  
+Functional Scenario Form  
+value=0.333 epsilon=0.01 maxIter=50 && creates ≈1/3  
+end_process  
+
+// Private continued fraction constructor
+process constructor_private(value: double, epsilon: double, maxDen: int, maxIter: int)  
+pre epsilon ≥ 0 ∧ maxDen > 0 ∧ maxIter > 0  
+post  
+  overflow = Integer.MAX_VALUE  
+  a0 = floor(value)  
+  a0 > overflow  
+    ? throw FractionConversionException  
+  |a0 - value| < epsilon  
+    ? numerator' = BigInteger.valueOf(a0)  
+      denominator' = BigInteger.ONE  
+      return  
+  p0=1, q0=0, p1=a0, q1=1  
+  n=0, stop=false  
+  do  
+    n++  
+    r1 = 1/(r0 - a0)  
+    a1 = floor(r1)  
+    p2 = a1*p1 + p0  
+    q2 = a1*q1 + q0  
+    p2 > overflow ∨ q2 > overflow  
+      ? epsilon=0 ∧ |q1|<maxDen  
+          ? break  
+        : throw FractionConversionException  
+    convergent = (double)p2/(double)q2  
+    n<maxIter ∧ |convergent-value|>epsilon ∧ q2<maxDen  
+      ? p0=p1, p1=p2, q0=q1, q1=q2, a0=a1, r0=r1  
+      : stop=true  
+  while ¬stop  
+  n≥maxIter  
+    ? throw FractionConversionException  
+  q2<maxDen  
+    ? numerator' = BigInteger.valueOf(p2)  
+      denominator' = BigInteger.valueOf(q2)  
+    : numerator' = BigInteger.valueOf(p1)  
+      denominator' = BigInteger.valueOf(q1)  
+Functional Scenario Form  
+value=0.75 maxDen=4 && creates 3/4  
+p2=Integer.MAX_VALUE+1 && throws exception  
+q2=1001 maxDen=1000 && uses previous convergent  
+end_process  
+
+// Max denominator constructor
+process constructor_double_maxden(value: double, maxDen: int)  
+pre true  
+post  
+  invokes private constructor(value, 0, maxDen, 100)  
+Functional Scenario Form  
+value=0.666 maxDen=3 && creates 2/3  
+end_process  
+
+// Integer constructors
+process constructor_int(num: int)  
+pre true  
+post  
+  invokes constructor(BigInteger.valueOf(num), BigInteger.ONE)  
+Functional Scenario Form  
+num=5 && creates 5/1  
+end_process  
+
+process constructor_int_frac(num: int, den: int)  
+pre true  
+post  
+  invokes constructor(BigInteger.valueOf(num), BigInteger.valueOf(den))  
+Functional Scenario Form  
+num=3 den=4 && creates 3/4  
+end_process  
+
+// Long constructors
+process constructor_long(num: long)  
+pre true  
+post  
+  invokes constructor(BigInteger.valueOf(num), BigInteger.ONE)  
+Functional Scenario Form  
+num=10000000000L && creates fraction  
+end_process  
+
+process constructor_long_frac(num: long, den: long)  
+pre true  
+post  
+  invokes constructor(BigInteger.valueOf(num), BigInteger.valueOf(den))  
+Functional Scenario Form  
+num=1L den=2L && creates 1/2  
+end_process  
+
+// Reduced fraction factory
+process getReducedFraction(numerator: int, denominator: int) result: BigFraction  
+pre true  
+post  
+  numerator = 0  
+    ? result' = ZERO  
+    : result' = new BigFraction(numerator, denominator)  
+Functional Scenario Form  
+num=0 den=5 && returns ZERO  
+num=4 den=6 && returns 2/3  
+end_process  
+
+// Absolute value
+process abs() result: BigFraction  
+pre true  
+post  
+  BigInteger.ZERO.compareTo(numerator) ≤ 0  
+    ? result' = this  
+    : result' = negate()  
+Functional Scenario Form  
+fraction=-3/4 && returns 3/4  
+fraction=2/5 && returns itself  
+end_process  
+
+// BigInteger addition
+process add_bigint(bg: BigInteger) result: BigFraction  
+pre bg ≠ null  
+post  
+  num = numerator.add(denominator.multiply(bg))  
+  result' = new BigFraction(num, denominator)  
+Functional Scenario Form  
+this=1/3 bg=2 && returns 7/3  
+end_process  
+
+// Integer addition
+process add_int(i: int) result: BigFraction  
+pre true  
+post  
+  result' = add(BigInteger.valueOf(i))  
+Functional Scenario Form  
+this=1/2 i=3 && returns 7/2  
+end_process  
+
+// Long addition
+process add_long(l: long) result: BigFraction  
+pre true  
+post  
+  result' = add(BigInteger.valueOf(l))  
+Functional Scenario Form  
+this=1/4 l=10000000000L && returns fraction  
+end_process  
+
+// BigFraction addition
+process add_fraction(fraction: BigFraction) result: BigFraction  
+pre fraction ≠ null  
+post  
+  fraction = ZERO  
+    ? result' = this  
+  denominator.equals(fraction.denominator)  
+    ? num = numerator.add(fraction.numerator)  
+      result' = new BigFraction(num, denominator)  
+    : num = numerator.multiply(fraction.denominator).add(fraction.numerator.multiply(denominator))  
+      den = denominator.multiply(fraction.denominator)  
+      result' = new BigFraction(num, den)  
+Functional Scenario Form  
+this=1/2 other=1/2 && returns 2/2 → 1/1  
+this=1/3 other=1/6 && returns 3/6 → 1/2  
+end_process  
+
+// BigDecimal conversions
+process bigDecimalValue() result: BigDecimal  
+pre true  
+post  
+  result' = new BigDecimal(numerator).divide(new BigDecimal(denominator))  
+Functional Scenario Form  
+fraction=1/2 && returns 0.5  
+end_process  
+
+process bigDecimalValue_rounding(roundingMode: int) result: BigDecimal  
+pre true  
+post  
+  result' = new BigDecimal(numerator).divide(new BigDecimal(denominator), roundingMode)  
+Functional Scenario Form  
+roundingMode=ROUND_HALF_UP && returns rounded value  
+end_process  
+
+process bigDecimalValue_scale(scale: int, roundingMode: int) result: BigDecimal  
+pre true  
+post  
+  result' = new BigDecimal(numerator).divide(new BigDecimal(denominator), scale, roundingMode)  
+Functional Scenario Form  
+scale=2 roundingMode=ROUND_DOWN && returns truncated decimal  
+end_process  
+
+// Comparison
+process compareTo(other: BigFraction) result: int  
+pre true  
+post  
+  nOd = numerator.multiply(other.denominator)  
+  dOn = denominator.multiply(other.numerator)  
+  result' = nOd.compareTo(dOn)  
+Functional Scenario Form  
+this=1/2 other=1/3 && returns 1  
+this=1/3 other=1/3 && returns 0  
+end_process  
+
+// BigInteger division
+process divide_bigint(bg: BigInteger) result: BigFraction  
+pre bg ≠ null  
+post  
+  bg = BigInteger.ZERO  
+    ? throw MathArithmeticException("Division by zero")  
+  result' = new BigFraction(numerator, denominator.multiply(bg))  
+Functional Scenario Form  
+this=1/2 bg=BigInteger.TWO && returns 1/4  
+bg=BigInteger.ZERO && throws exception  
+end_process  
+
+// BigFraction division
+process divide_fraction(fraction: BigFraction) result: BigFraction  
+pre fraction ≠ null  
+post  
+  fraction.numerator = BigInteger.ZERO  
+    ? throw MathArithmeticException("Division by zero")  
+  result' = multiply(fraction.reciprocal())  
+Functional Scenario Form  
+this=3/4 fraction=1/2 && returns 3/2  
+fraction=0/1 && throws exception  
+end_process  
+
+// Double conversion with overflow handling
+process doubleValue() result: double  
+pre true  
+post  
+  result = numerator.doubleValue() / denominator.doubleValue()  
+  Double.isNaN(result)  
+    ? shift = max(numerator.bitLength(), denominator.bitLength()) - FastMath.getExponent(Double.MAX_VALUE)  
+      result' = numerator.shiftRight(shift).doubleValue() / denominator.shiftRight(shift).doubleValue()  
+    : result' = result  
+Functional Scenario Form  
+numerator=10^308 denominator=1 && returns 1e308  
+numerator=10^400 denominator=1 && handles overflow  
+end_process  
+
+// Equality check with reduction
+process equals(other: Object) result: boolean  
+pre true  
+post  
+  other = this  
+    ? result' = true  
+  other instanceof BigFraction  
+    ? thisReduced = this.reduce()  
+      otherReduced = (BigFraction)other.reduce()  
+      result' = thisReduced.numerator.equals(otherReduced.numerator) ∧  
+                thisReduced.denominator.equals(otherReduced.denominator)  
+    : result' = false  
+Functional Scenario Form  
+this=2/4 other=1/2 && returns true (after reduction)  
+this=3/4 other=3/5 && returns false  
+other=String && returns false  
+end_process  
+
+// Float conversion with overflow handling
+process floatValue() result: float  
+pre true  
+post  
+  result = numerator.floatValue() / denominator.floatValue()  
+  Float.isNaN(result)  
+    ? shift = max(numerator.bitLength(), denominator.bitLength()) - FastMath.getExponent(Float.MAX_VALUE)  
+      result' = numerator.shiftRight(shift).floatValue() / denominator.shiftRight(shift).floatValue()  
+    : result' = result  
+Functional Scenario Form  
+numerator=10^38 denominator=1 && returns 1e38f  
+numerator=10^50 denominator=1 && handles overflow  
+end_process
+
+// Fraction multiplication
+process multiply(fraction: BigFraction) result: BigFraction  
+pre fraction ≠ null  
+post  
+  numerator = BigInteger.ZERO ∨ fraction.numerator = BigInteger.ZERO  
+    ? result' = ZERO  
+    : result' = new BigFraction(numerator.multiply(fraction.numerator),  
+                               denominator.multiply(fraction.denominator))  
+Functional Scenario Form  
+this=1/2 other=1/3 && returns 1/6  
+this=0/1 other=5/6 && returns ZERO  
+end_process  
+
+// Negation
+process negate() result: BigFraction  
+pre true  
+post  
+  result' = new BigFraction(numerator.negate(), denominator)  
+Functional Scenario Form  
+fraction=3/4 && returns -3/4  
+end_process  
+
+// Percentage calculation
+process percentageValue() result: double  
+pre true  
+post  
+  result' = multiply(ONE_HUNDRED).doubleValue()  
+Functional Scenario Form  
+fraction=0.5 && returns 50.0  
+end_process  
+
+// Exponentiation (int exponent)
+process pow_int(exponent: int) result: BigFraction  
+pre true  
+post  
+  exponent < 0  
+    ? result' = new BigFraction(denominator.pow(-exponent), numerator.pow(-exponent))  
+    : result' = new BigFraction(numerator.pow(exponent), denominator.pow(exponent))  
+Functional Scenario Form  
+exponent=2 fraction=1/2 && returns 1/4  
+exponent=-2 fraction=1/2 && returns 4/1  
+end_process  
+
+// Exponentiation (long exponent)
+process pow_long(exponent: long) result: BigFraction  
+pre true  
+post  
+  exponent < 0  
+    ? result' = new BigFraction(ArithmeticUtils.pow(denominator, -exponent),  
+                               ArithmeticUtils.pow(numerator, -exponent))  
+    : result' = new BigFraction(ArithmeticUtils.pow(numerator, exponent),  
+                               ArithmeticUtils.pow(denominator, exponent))  
+Functional Scenario Form  
+exponent=3L fraction=1/3 && returns 1/27  
+exponent=-3L fraction=1/2 && returns 8/1  
+end_process  
+
+// Exponentiation (BigInteger exponent)
+process pow_bigint(exponent: BigInteger) result: BigFraction  
+pre true  
+post  
+  exponent.compareTo(BigInteger.ZERO) < 0  
+    ? eNeg = exponent.negate()  
+      result' = new BigFraction(ArithmeticUtils.pow(denominator, eNeg),  
+                               ArithmeticUtils.pow(numerator, eNeg))  
+    : result' = new BigFraction(ArithmeticUtils.pow(numerator, exponent),  
+                               ArithmeticUtils.pow(denominator, exponent))  
+Functional Scenario Form  
+exponent=BigInteger.TEN fraction=1/2 && returns 1/1024  
+exponent=BigInteger.valueOf(-2) fraction=3/1 && returns 1/9  
+end_process  
+
+// Exponentiation (double exponent)
+process pow_double(exponent: double) result: double  
+pre true  
+post  
+  result' = FastMath.pow(numerator.doubleValue(), exponent) /  
+            FastMath.pow(denominator.doubleValue(), exponent)  
+Functional Scenario Form  
+exponent=0.5 fraction=4/1 && returns 2.0  
+exponent=2.0 fraction=1/2 && returns 0.25  
+end_process  
+
+// BigInteger subtraction
+process subtract_bigint(bg: BigInteger) result: BigFraction  
+pre bg ≠ null  
+post  
+  num = numerator.subtract(denominator.multiply(bg))  
+  result' = new BigFraction(num, denominator)  
+Functional Scenario Form  
+this=5/3 bg=BigInteger.ONE && returns 2/3  
+end_process  
+
+// Integer subtraction
+process subtract_int(i: int) result: BigFraction  
+pre true  
+post  
+  result' = subtract(BigInteger.valueOf(i))  
+Functional Scenario Form  
+this=7/2 i=3 && returns 1/2  
+end_process  
+
+// Long subtraction
+process subtract_long(l: long) result: BigFraction  
+pre true  
+post  
+  result' = subtract(BigInteger.valueOf(l))  
+Functional Scenario Form  
+this=10000000001/1 l=1L && returns 10000000000/1  
+end_process  
+
+// BigFraction subtraction
+process subtract_fraction(fraction: BigFraction) result: BigFraction  
+pre fraction ≠ null  
+post  
+  fraction = ZERO  
+    ? result' = this  
+  denominator.equals(fraction.denominator)  
+    ? num = numerator.subtract(fraction.numerator)  
+      result' = new BigFraction(num, denominator)  
+    : num = numerator.multiply(fraction.denominator).subtract(fraction.numerator.multiply(denominator))  
+      den = denominator.multiply(fraction.denominator)  
+      result' = new BigFraction(num, den)  
+Functional Scenario Form  
+this=3/4 other=1/4 && returns 2/4 → 1/2  
+this=1/2 other=1/3 && returns 1/6  
+end_process  
+
+// String representation
+process toString() result: String  
+pre true  
+post  
+  denominator = BigInteger.ONE  
+    ? result' = numerator.toString()  
+  numerator = BigInteger.ZERO  
+    ? result' = "0"  
+  else  
+    result' = numerator + " / " + denominator  
+Functional Scenario Form  
+fraction=5/1 && returns "5"  
+fraction=0/1 && returns "0"  
+fraction=3/4 && returns "3 / 4"  
+end_process  
+
+end_module  

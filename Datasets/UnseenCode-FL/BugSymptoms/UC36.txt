@@ -1,0 +1,96 @@
+**Bug Report: UserWelcomeScreen Behavior Summary**
+
+---
+
+**Test Case 1: Launch Welcome Screen**
+
+**Action:**
+Open the welcome screen with valid userID and accountManager.
+
+**Expected:**
+Window displays with welcome message, logout button, and two search options.
+
+**Observed:**
+Screen opens successfully. UI layout appears as expected.
+
+---
+
+**Test Case 2: Click "ログアウト" and Confirm**
+
+**Action:**
+Click “ログアウト” button, then select “はい” in confirmation dialog.
+
+**Expected:**
+Logout message appears, login screen launches, current screen closes.
+
+**Observed:**
+Flow proceeds normally, confirmation and transition succeed.
+
+**Output:**
+
+```plaintext
+[INFO] Logout initiated  
+[INFO] User confirmed logout  
+[INFO] Login screen displayed  
+```
+
+---
+
+**Test Case 3: Click "ジャンルから検索"**
+
+**Action:**
+Click “ジャンルから検索” button.
+
+**Expected:**
+Transition to genre search screen with userID and accountManager passed.
+
+**Observed:**
+Application crashes or fails to open next screen.
+
+**Output:**
+
+```plaintext
+[INFO] Attempting to open GenreSearchScreen  
+[ERROR] Constructor call missing required parameter: userID  
+[FAIL] Transition to GenreSearchScreen failed  
+```
+
+---
+
+**Test Case 4: Click "キーワードから検索"**
+
+**Action:**
+Click “キーワードから検索” button.
+
+**Expected:**
+No action, feature not yet implemented.
+
+**Observed:**
+Button click has no effect, as expected.
+
+**Output:**
+
+```plaintext
+[INFO] Keyword search button clicked  
+[INFO] No action assigned  
+```
+
+---
+
+**Test Case 5: Application Exit Behavior**
+
+**Action:**
+Close window manually via OS window controls.
+
+**Expected:**
+Application terminates cleanly without errors.
+
+**Observed:**
+In some environments, an exception is thrown related to improper exit constant.
+
+**Output:**
+
+```plaintext
+[ERROR] EXIT_ON_CLOSE reference not recognized  
+[FAIL] Application did not shut down as expected  
+```

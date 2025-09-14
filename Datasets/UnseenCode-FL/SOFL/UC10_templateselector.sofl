@@ -1,0 +1,37 @@
+module UC10_templateselector
+type
+  title, templateText, result: String
+
+process addTemplateBlock(title: String, templateText: String) result: Void
+pre
+  title ≠ null ∧ templateText ≠ null
+post
+  frame = new QFrame(this)
+  frame.setFrameShape(QFrame::StyledPanel)
+  frameLayout = new QVBoxLayout(frame)
+
+  titleLabel = new QLabel("<b>" + title + "</b>", this)
+  frameLayout.addWidget(titleLabel)
+
+  templateLabel = new QLabel("<pre>" + templateText + "</pre>", this)
+  templateLabel.wordWrap = true
+  frameLayout.addWidget(templateLabel)
+
+  editButton = new QPushButton("Edit Template", this)
+  frameLayout.addWidget(editButton)
+
+  connect editButton.clicked to lambda:
+    this.close() executed
+    editor = new TemplateEditor(templateText, this)
+    if editor.exec() = QDialog::Accepted then
+      result = editor.getEditedTemplate()
+      emit templateSelected(result)
+    delete editor
+
+  mainLayout.addWidget(frame)
+Functional Scenario Form
+valid title and templateText && block with title/label/button added and editor launches on click or
+editor cancelled or rejected && block still created, no result emitted
+end_process
+
+end_module

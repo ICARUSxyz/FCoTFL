@@ -1,0 +1,80 @@
+module UC15_guidewizard
+type
+  result: int
+  message, lastHelpMessage: String
+  
+process GuideWizard(parent: QWidget) result: UC15_guidewizard
+pre
+  true
+post
+  setPage(Page_Intro, new IntroPage)
+  setPage(Page_CreateNewProject, new CreateProjectPage)
+  setPage(Page_OpenExistingProject, new OpenProjectPage)
+  setPage(Page_Conclusion, new ConclusionPage)
+  setStartId(Page_Intro)
+  if platform is not macOS then
+    setWizardStyle(ModernStyle)
+  setPixmap(QWizard::LogoPixmap, QPixmap(":/images/toolbar_images/hmpp.png"))
+  setWindowTitle("HMPP Tool Guide")
+Functional Scenario Form
+wizard initialized with all pages and style depending on platform
+end_process
+
+process done(result: int) result: Void
+pre
+  true
+post
+  if result = QDialog::Accepted then
+    createNewFlag = hasVisitedPage(Page_CreateNewProject)
+  QWizard.done(result) executed
+Functional Scenario Form
+wizard finished and user accepted && createNewFlag set based on visited page or
+user canceled && no change to createNewFlag
+end_process
+
+process showHelp() result: Void
+pre
+  true
+post
+  message = help content depending on currentId()
+  if message = lastHelpMessage then
+    message = "Sorry, I already gave what help I could. Maybe you should try asking a human?"
+  show QMessageBox with message
+  lastHelpMessage = message
+Functional Scenario Form
+user requests help && message shown according to current wizard page or
+repeated help request && fallback message shown
+end_process
+
+process IntroPage(parent: QWidget) result: IntroPage
+pre
+  true
+post
+  setTitle("Introduction")
+  setPixmap(QWizard::WatermarkPixmap, watermark image)
+  topLabel = new QLabel("... guide to create your own new project ...")
+  topLabel.wordWrap = true
+  createNewProjectButton = new QRadioButton("Create a new project")
+  openExistingProjectButton = new QRadioButton("Open an existing project")
+  createNewProjectButton.setChecked(true)
+  layout = new QVBoxLayout
+  layout.addWidgets([topLabel, createNewProjectButton, openExistingProjectButton])
+  setLayout(layout)
+Functional Scenario Form
+wizard intro page initialized with explanation label and project choice buttons
+end_process
+
+process nextId() result: int
+pre
+  true
+post
+  if createNewProjectButton.isChecked() then
+    result' = Page_CreateNewProject
+  else
+    result' = Page_OpenExistingProject
+Functional Scenario Form
+"create new" selected && go to Page_CreateNewProject or
+"open existing" selected && go to Page_OpenExistingProject
+end_process
+
+end_module

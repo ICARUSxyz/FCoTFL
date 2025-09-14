@@ -1,0 +1,31 @@
+module BooleanUtils
+type 
+    str: String
+    result: Boolean
+
+process toBoolean(str: String) result: Boolean
+pre  
+    true
+post 
+    (str = null → result = false) or
+    (str = "true" → result = true) or
+    ((str ≠ null ∧ str.length() = 2 ∧ 
+      ((str[0] = 'o' ∨ str[0] = 'O') ∧ (str[1] = 'n' ∨ str[1] = 'N'))) → result = true) or
+    ((str.length() = 3 ∧ 
+      (((str[0] = 'y' ∧ str[1] ∈ {'e','E'} ∧ str[2] ∈ {'s','S'}) ∨ 
+        (str[0] = 'Y' ∧ str[1] ∈ {'E','e'} ∧ str[2] ∈ {'S','s'}))) → result = true)) or
+    ((str.length() = 4 ∧ 
+      (((str[0] = 't' ∧ str[1] ∈ {'r','R'} ∧ str[2] ∈ {'u','U'} ∧ str[3] ∈ {'e','E'}) ∨
+        (str[0] = 'T' ∧ str[1] ∈ {'R','r'} ∧ str[2] ∈ {'U','u'} ∧ str[3] ∈ {'E','e'}))) → result = true)) or
+    (otherwise → result = false)
+
+Functional Scenario Form
+(str = null) && (result = false) or
+(str = "true") && (result = true) or
+(str = "on" or str = "ON" or str = "oN" or str = "On") && (result = true) or
+(str ∈ {"yes", "Yes", "yEs", "yeS", "YEs", "yES", "YeS", "YES"}) && (result = true) or
+(str ∈ {"true", "True", "tRue", "trUe", "truE", "TRUE", "TRue", "TrUE", "tRUE", ...}) && (result = true) or
+(all other cases) && (result = false)
+end_process
+
+end_module

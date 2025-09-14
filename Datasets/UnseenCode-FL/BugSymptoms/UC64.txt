@@ -1,0 +1,19 @@
+// Test Case 1: Effect Initialization with Valid Start and End
+→ Setup: Call createAbsorbEffect(owner, startObject, endObject)
+→ Expected Output: Effect spawns at startObject’s position and moves toward endObject
+→ Actual Output: Effect spawns at world origin or incorrect location
+// Suggests that the effect does not properly use startObject’s position.
+
+
+// Test Case 2: Effect Movement Toward End Object
+→ Setup: Let effect run for its full duration (e.g., 2 seconds)
+→ Expected Output: Effect moves from start to end smoothly and disappears
+→ Actual Output: Effect veers away or behaves erratically during movement
+// Indicates potential miscalculation in movement vector direction.
+
+
+// Test Case 3: Effect Duration
+→ Setup: Let effect play and observe timing
+→ Expected Output: Effect lasts exactly 2 seconds before destruction
+→ Actual Output: Effect ends noticeably earlier or later
+// Timing constant may not match expected value.

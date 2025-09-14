@@ -1,0 +1,144 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: ﻿using System.Collections;
+2: using System.Collections.Generic;
+3: using UnityEngine;
+4: using UnityEngine.UI;
+5: using UnityEngine.SceneManagement;
+6: 
+7: public class GameManager : MonoBehaviour
+8: {
+9:     static GameManager instance;
+10: 
+11:     public Text timeScore;
+12:     public GameObject gameOverUI;
+13: 
+14:     private void Awake()
+15:     {
+16:         if (instance != null)
+17:         {
+18:             Destroy(gameObject);
+19:         }
+20:         instance = this;
+21:     }
+22: 
+23:     void Update()
+24:     {
+25:         timeScore.text = Time.timeSinceLevelLoad.ToString("0");
+26:     }
+27: 
+28:     public void RestartGame()
+29:     {
+30:         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+31:         Time.timeScale = 1;
+32:     }
+33: 
+34:     public void Quit()
+35:     {
+36:         Application.Quit();
+37:     }
+38: 
+39:     public static void GameOver(bool dead)
+40:     {
+41:         if (dead)
+42:         {
+43:             instance.gameOverUI.SetActive(true);
+44:             Time.timeScale = 0;
+45:         }
+46:     }
+47: }]
+
+SOFL:[
+module UC61_GameManager
+type 
+  timeScore: String
+  dead: Boolean
+  result: Boolean
+
+process Awake() result: Boolean
+pre  
+  true
+post 
+  (instance ≠ null ∧ gameObject destroyed ∧ instance = this ∧ result = true) ∨ 
+  (instance = null ∧ instance = this ∧ result = true)
+Functional Scenario Form 
+(instance ≠ null) && (gameObject destroyed ∧ instance = this ∧ result = true) or 
+(instance = null) && (instance = this ∧ result = true)
+end_process
+
+process Update() result: Boolean
+pre  
+  timeScore ≠ null
+post 
+  timeScore.text = formatted string of Time.timeSinceLevelLoad ∧ result = true
+Functional Scenario Form 
+(timeScore ≠ null) && (timeScore.text = formatted string of Time.timeSinceLevelLoad ∧ result = true)
+end_process
+
+process RestartGame() result: Boolean
+pre  
+  true
+post 
+  SceneManager loads current scene again ∧ Time.timeScale = 1 ∧ result = true
+Functional Scenario Form 
+(true) && (SceneManager loads current scene again ∧ Time.timeScale = 1 ∧ result = true)
+end_process
+
+process Quit() result: Boolean
+pre  
+  true
+post 
+  Application.Quit() is called ∧ result = true
+Functional Scenario Form 
+(true) && (Application.Quit() is called ∧ result = true)
+end_process
+
+process GameOver(dead: Boolean) result: Boolean
+pre  
+  instance ≠ null
+post 
+  (dead = true ∧ instance.gameOverUI.SetActive(true) ∧ Time.timeScale = 0 ∧ result = true) ∨ 
+  (dead = false ∧ no action taken ∧ result = true)
+Functional Scenario Form 
+(dead = true ∧ instance ≠ null) && (instance.gameOverUI.SetActive(true) ∧ Time.timeScale = 0 ∧ result = true) or 
+(dead = false ∧ instance ≠ null) && (no action taken ∧ result = true)
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Timer Display Formatting
+→ Scene Start → Wait 9 seconds → Observe `timeScore` label
+→ Expected: "09"
+→ Actual: "9"
+// Single-digit times displayed without leading zero, inconsistent visual format.
+
+// Test Case 2: Game Over Handling
+→ Trigger: player dies
+→ Expected: game over UI appears, time stops
+→ Actual: game over UI appears, time stops
+// Behavior is consistent, though the use of integer time scale (0) instead of float (0f) may be noted in some engine configurations.]

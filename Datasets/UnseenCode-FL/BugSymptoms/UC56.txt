@@ -1,0 +1,24 @@
+// Test Case 1: Utils.readConfig("server", ".json")
+→ Output:  
+[Unhandled exception] SyntaxError: Unexpected token u in JSON at position 0  
+// When file is null, no proper check; JSON.parse fails.
+
+// Test Case 2: Utils.reverseMap(new Map([["a", 1], ["b", 2]]))
+→ Output:  
+Returned map still maps "a" to 1, not reversed.  
+// Reverse logic does not reflect in return value.
+
+// Test Case 3: Utils.readDir("./testDir", "xml")
+→ Output:  
+No .xml files returned from directory, even though they exist.  
+// File filter might not be working as expected with provided extension.
+
+// Test Case 4: Utils.randNumber(5, 10)
+→ Output examples:  
+4, 9, 8, 10  
+// Value 4 appears even though min is 5. Possible off-by-one issue.
+
+// Test Case 5: ifImpactExt with sphere.center.x < aabb.min.x and .y > aabb.max.y
+→ Output:  
+Distance not calculated correctly; unexpected small values returned.  
+// Overwrite of dist may ignore earlier accumulation.

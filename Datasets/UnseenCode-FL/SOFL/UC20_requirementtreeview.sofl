@@ -1,0 +1,76 @@
+module UC20_requirementtreeview
+type
+  indexValid: Boolean
+  stringList: sequence of String
+  str: String
+  index: int
+  result: Boolean
+
+process RequirementTreeView() result: RequirementTreeView
+pre
+  true
+post
+  this.contextMenuPolicy' = Qt::CustomContextMenu
+  connect customContextMenuRequested to showContextMenu
+Functional Scenario Form
+tree view initialized && context menu connection set
+end_process
+
+process showContextMenu(pos: QPoint) result: Void
+pre
+  pos ≠ null
+post
+  if indexAt(pos).isValid then
+    show menu with "Complete the Requirement"
+    if action selected then emit complete(indexAt(pos))
+Functional Scenario Form
+valid index right-clicked && user selects action && emit complete signal or
+valid index right-clicked && no action selected && do nothing
+end_process
+
+process addItemsFromStringList(stringList: sequence of String) result: Void
+pre
+  stringList ≠ null
+post
+  for each str in stringList:
+    create QTreeWidgetItem with str as text
+    set icon = class.svg
+    set UserRole = classUserRole
+    set UserRole+1 = true
+    add item to treeWidget
+Functional Scenario Form
+stringList processed && items added to tree as class nodes
+end_process
+
+process isItemFromExistingClassList(item: QTreeWidgetItem) result: Boolean
+pre
+  item ≠ null
+post
+  result' = item.data(UserRole+1).toBool()
+Functional Scenario Form
+item has UserRole+1 true && return true or
+otherwise && return false
+end_process
+
+process demoteToIndependentFunction() result: Void
+pre
+  treeWidget ≠ null
+post
+  if currentItem is null or from existing class list then return
+  if currentItem.UserRole = classUserRole then
+    change name to camelCase
+    set UserRole = globalFunctionUserRole
+    change icon to memberfunc.svg
+  else if UserRole = classFunctionUserRole then
+    remove from parent or top level
+    set UserRole = globalFunctionUserRole
+    set icon = memberfunc.svg
+    add as top-level item
+  set currentItem as selected
+Functional Scenario Form
+currentItem is class && demoted to global function or
+currentItem is class member && moved to top-level as global function or
+currentItem is from existing list && ignored
+end_process
+
+end_module

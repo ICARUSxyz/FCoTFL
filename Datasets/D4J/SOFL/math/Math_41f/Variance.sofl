@@ -1,0 +1,266 @@
+module Variance
+
+var
+  incMoment: Boolean = true
+  isBiasCorrected: Boolean = true
+
+process ctor_default() result: Variance
+pre
+  true
+post
+  moment' = SecondMoment() and
+  incMoment' = true and
+  isBiasCorrected' = true and
+  result' = this
+Functional Scenario Form
+  true && result' = this
+end_process
+
+process ctor_with_moment(m2: SecondMoment) result: Variance
+pre
+  m2 ≠ null
+post
+  moment' = m2 and
+  incMoment' = false and
+  result' = this
+Functional Scenario Form
+  m2 ≠ null && result' = this
+end_process
+
+process ctor_bias(biasFlag: Boolean) result: Variance
+pre
+  true
+post
+  moment' = SecondMoment() and
+  incMoment' = true and
+  isBiasCorrected' = biasFlag and
+  result' = this
+Functional Scenario Form
+  true && result' = this
+end_process
+
+process ctor_bias_moment(biasFlag: Boolean, m2: SecondMoment) result: Variance
+pre
+  m2 ≠ null
+post
+  moment' = m2 and
+  incMoment' = false and
+  isBiasCorrected' = biasFlag and
+  result' = this
+Functional Scenario Form
+  m2 ≠ null && result' = this
+end_process
+
+process copy_ctor(original: Variance) result: Variance
+pre
+  original ≠ null
+post
+  copy(original, this) and result' = this
+Functional Scenario Form
+  original ≠ null && result' = this
+end_process
+
+process increment(d: double) result: Void
+pre
+  true
+post
+  (incMoment = true → moment'.n = moment.n + 1) and
+  (incMoment = false → moment' = moment)
+Functional Scenario Form
+  incMoment = true && moment'.n = moment.n + 1 or
+  incMoment = false && moment' = moment
+end_process
+
+process getResult() result: double
+pre
+  moment ≠ null
+post
+  ((moment.n = 0) → isNaN(result')) and
+  ((moment.n = 1) → result' = 0.0) and
+  ((moment.n ≥ 2 ∧ isBiasCorrected = true) → result' = moment.m2 / (moment.n - 1.0)) and
+  ((moment.n ≥ 2 ∧ isBiasCorrected = false) → result' = moment.m2 / moment.n)
+Functional Scenario Form
+  moment.n = 0 && isNaN(result') or
+  moment.n = 1 && result' = 0.0 or
+  moment.n ≥ 2 and isBiasCorrected && result' = moment.m2 / (moment.n - 1.0) or
+  moment.n ≥ 2 and ¬isBiasCorrected && result' = moment.m2 / moment.n
+end_process
+
+process getN() result: long
+pre
+  moment ≠ null
+post
+  result' = moment.getN()
+Functional Scenario Form
+  true && result' = moment.getN()
+end_process
+
+process clear() result: Void
+pre
+  true
+post
+  (incMoment = true → moment' = moment.cleared()) and
+  (incMoment = false → moment' = moment)
+Functional Scenario Form
+  incMoment && moment cleared or
+  ¬incMoment && moment unchanged
+end_process
+
+process evaluate(values: sequence of double) result: double
+pre
+  values ≠ null
+post
+  result' = evaluate(values, 0, |values|)
+Functional Scenario Form
+  values ≠ null && result' = evaluate(values, 0, |values|)
+end_process
+
+process evaluate(values: sequence of double, begin: int, length: int) result: double
+pre
+  values ≠ null and 0 ≤ begin ≤ |values| and 0 ≤ length ≤ |values| - begin
+post
+  clear() and
+  (length = 0 → isNaN(result')) and
+  (length = 1 → result' = 0.0) and
+  (length > 1 →
+     let m = Mean().evaluate(values, begin, length) in
+       result' = evaluate(values, m, begin, length)
+  )
+Functional Scenario Form
+  length = 0 && isNaN(result') or
+  length = 1 && result' = 0.0 or
+  length > 1 && result' = evaluate(values, Mean().evaluate(values, begin, length), begin, length)
+end_process
+
+process evaluate_w(values: sequence of double, weights: sequence of double, begin: int, length: int) result: double
+pre
+  values ≠ null and weights ≠ null and
+  |values| = |weights| and
+  0 ≤ begin ≤ |values| and 0 ≤ length ≤ |values| - begin and
+  (∀ i ∈ begin..begin+length-1 • weights[i] ≥ 0.0)
+post
+  clear() and
+  (length = 0 → isNaN(result')) and
+  (length = 1 → result' = 0.0) and
+  (length > 1 →
+     let m = Mean().evaluate(values, weights, begin, length) in
+       result' = evaluate_w_m(values, weights, m, begin, length)
+  )
+Functional Scenario Form
+  length = 0 && isNaN(result') or
+  length = 1 && result' = 0.0 or
+  length > 1 && result' = evaluate_w_m(values, weights, Mean().evaluate(values, weights, begin, length), begin, length)
+end_process
+
+process evaluate_w(values: sequence of double, weights: sequence of double) result: double
+pre
+  values ≠ null and weights ≠ null and |values| = |weights|
+post
+  result' = evaluate_w(values, weights, 0, |values|)
+Functional Scenario Form
+  true && result' = evaluate_w(values, weights, 0, |values|)
+end_process
+
+process evaluate_m(values: sequence of double, mean: double, begin: int, length: int) result: double
+pre
+  values ≠ null and 0 ≤ begin ≤ |values| and 0 ≤ length ≤ |values| - begin
+post
+  (length = 0 → isNaN(result')) and
+  (length = 1 → result' = 0.0) and
+  (length > 1 →
+     let accum = Σ i∈begin..begin+length-1 • (values[i] - mean)^2,
+         accum2 = Σ i∈begin..begin+length-1 • (values[i] - mean),
+         len = double(length) in
+       result' =
+         if isBiasCorrected then (accum - (accum2 * accum2 / len)) / (len - 1.0)
+         else (accum - (accum2 * accum2 / len)) / len
+  )
+Functional Scenario Form
+  length = 0 && isNaN(result') or
+  length = 1 && result' = 0.0 or
+  length > 1 and isBiasCorrected && result' = ((Σ (vi-mean)^2) - (Σ (vi-mean))^2/len) / (len - 1.0) or
+  length > 1 and ¬isBiasCorrected && result' = ((Σ (vi-mean)^2) - (Σ (vi-mean))^2/len) / len
+end_process
+
+process evaluate_m(values: sequence of double, mean: double) result: double
+pre
+  values ≠ null
+post
+  result' = evaluate_m(values, mean, 0, |values|)
+Functional Scenario Form
+  true && result' = evaluate_m(values, mean, 0, |values|)
+end_process
+
+process evaluate_w_m(values: sequence of double, weights: sequence of double, mean: double, begin: int, length: int) result: double
+pre
+  values ≠ null and weights ≠ null and |values| = |weights| and
+  0 ≤ begin ≤ |values| and 0 ≤ length ≤ |values| - begin and
+  (∀ i ∈ begin..begin+length-1 • weights[i] ≥ 0.0)
+post
+  (length = 0 → isNaN(result')) and
+  (length = 1 → result' = 0.0) and
+  (length > 1 →
+     let accum = Σ i∈begin..begin+length-1 • weights[i] * (values[i] - mean)^2,
+         accum2 = Σ i∈begin..begin+length-1 • weights[i] * (values[i] - mean),
+         sumW  = Σ i∈begin..begin+length-1 • weights[i] in
+       result' =
+         if isBiasCorrected then (accum - (accum2 * accum2 / sumW)) / (sumW - 1.0)
+         else (accum - (accum2 * accum2 / sumW)) / sumW
+  )
+Functional Scenario Form
+  length = 0 && isNaN(result') or
+  length = 1 && result' = 0.0 or
+  length > 1 and isBiasCorrected && result' = ((Σ wi(vi-mean)^2) - (Σ wi(vi-mean))^2/Σwi) / (Σwi - 1.0) or
+  length > 1 and ¬isBiasCorrected && result' = ((Σ wi(vi-mean)^2) - (Σ wi(vi-mean))^2/Σwi) / Σwi
+end_process
+
+process evaluate_w_m(values: sequence of double, weights: sequence of double, mean: double) result: double
+pre
+  values ≠ null and weights ≠ null and |values| = |weights|
+post
+  result' = evaluate_w_m(values, weights, mean, 0, |values|)
+Functional Scenario Form
+  true && result' = evaluate_w_m(values, weights, mean, 0, |values|)
+end_process
+
+process isBiasCorrected() result: Boolean
+pre
+  true
+post
+  result' = isBiasCorrected
+Functional Scenario Form
+  true && result' = isBiasCorrected
+end_process
+
+process setBiasCorrected(biasFlag: Boolean) result: Void
+pre
+  true
+post
+  isBiasCorrected' = biasFlag
+Functional Scenario Form
+  true && isBiasCorrected' = biasFlag
+end_process
+
+process copy() result: Variance
+pre
+  true
+post
+  let out = Variance() in
+    copy(this, out) and result' = out
+Functional Scenario Form
+  true && result' = Variance() cloned from this
+end_process
+
+process copy_static(source: Variance, dest: Variance) result: Void
+pre
+  source ≠ null and dest ≠ null
+post
+  dest.setData(source.getDataRef()) and
+  dest.moment = source.moment.copy() and
+  dest.isBiasCorrected = source.isBiasCorrected and
+  dest.incMoment = source.incMoment
+Functional Scenario Form
+  valid inputs && dest reflects source fields
+end_process
+
+end_module

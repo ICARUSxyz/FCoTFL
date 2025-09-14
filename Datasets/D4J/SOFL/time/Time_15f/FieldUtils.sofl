@@ -1,0 +1,216 @@
+module FieldUtils  
+
+// Safe integer negation
+process safeNegate(value: int) result: int  
+pre true  
+post  
+  value = Integer.MIN_VALUE  
+    ? throw new ArithmeticException("Integer.MIN_VALUE cannot be negated")  
+    : result' = -value  
+Functional Scenario Form  
+value=Integer.MIN_VALUE && throws ArithmeticException  
+value=5 && returns -5  
+end_process  
+
+// Safe integer addition
+process safeAdd(val1: int, val2: int) result: int  
+pre true  
+post  
+  sum = val1 + val2  
+  (val1 ^ sum) < 0 ∧ (val1 ^ val2) ≥ 0  
+    ? throw new ArithmeticException("The calculation caused an overflow: " + val1 + " + " + val2)  
+    : result' = sum  
+Functional Scenario Form  
+val1=2147483647 val2=1 && throws overflow  
+val1=10 val2=20 && returns 30  
+end_process  
+
+// Safe long addition
+process safeAdd(val1: long, val2: long) result: long  
+pre true  
+post  
+  sum = val1 + val2  
+  (val1 ^ sum) < 0 ∧ (val1 ^ val2) ≥ 0  
+    ? throw new ArithmeticException("The calculation caused an overflow: " + val1 + " + " + val2)  
+    : result' = sum  
+Functional Scenario Form  
+val1=9223372036854775807 val2=1 && throws overflow  
+val1=100000 val2=200000 && returns 300000  
+end_process  
+
+// Safe long subtraction
+process safeSubtract(val1: long, val2: long) result: long  
+pre true  
+post  
+  diff = val1 - val2  
+  (val1 ^ diff) < 0 ∧ (val1 ^ val2) < 0  
+    ? throw new ArithmeticException("The calculation caused an overflow: " + val1 + " - " + val2)  
+    : result' = diff  
+Functional Scenario Form  
+val1=-9223372036854775808 val2=1 && throws overflow  
+val1=50 val2=30 && returns 20  
+end_process  
+
+// Safe integer multiplication
+process safeMultiply(val1: int, val2: int) result: int  
+pre true  
+post  
+  total = (long)val1 * (long)val2  
+  total < Integer.MIN_VALUE ∨ total > Integer.MAX_VALUE  
+    ? throw new ArithmeticException("Multiplication overflows an int: " + val1 + " * " + val2)  
+    : result' = (int)total  
+Functional Scenario Form  
+val1=2147483647 val2=2 && throws overflow  
+val1=100 val2=50 && returns 5000  
+end_process  
+
+// Safe long multiplication
+process safeMultiply(val1: long, val2: int) result: long  
+pre true  
+post  
+  val2 = -1  
+    ? val1 = Long.MIN_VALUE  
+        ? throw new ArithmeticException("Multiplication overflows a long: " + val1 + " * " + val2)  
+        : result' = -val1  
+  val2 = 0  
+    ? result' = 0L  
+  val2 = 1  
+    ? result' = val1  
+  else  
+    total = val1 * val2  
+    total / val2 ≠ val1  
+      ? throw new ArithmeticException("Multiplication overflows a long: " + val1 + " * " + val2)  
+      : result' = total  
+Functional Scenario Form  
+val1=Long.MIN_VALUE val2=-1 && throws overflow  
+val1=1000000 val2=0 && returns 0  
+val1=10 val2=5 && returns 50  
+val1=9223372036854775807 val2=2 && throws overflow  
+end_process  
+
+// Long multiplication (2 long params)
+process safeMultiply(val1: long, val2: long) result: long  
+pre true  
+post  
+  val2 = 1  
+    ? result' = val1  
+  val1 = 1  
+    ? result' = val2  
+  val1 = 0 ∨ val2 = 0  
+    ? result' = 0  
+  else  
+    total = val1 * val2  
+    (total / val2 ≠ val1) ∨  
+    (val1 = Long.MIN_VALUE ∧ val2 = -1) ∨  
+    (val2 = Long.MIN_VALUE ∧ val1 = -1)  
+      ? throw new ArithmeticException("Multiplication overflows a long: " + val1 + " * " + val2)  
+      : result' = total  
+Functional Scenario Form  
+val1=Long.MIN_VALUE val2=-1 && throws overflow  
+val1=5 val2=0 && returns 0  
+val1=10 val2=20 && returns 200  
+end_process  
+
+// Safe long to int conversion
+process safeToInt(value: long) result: int  
+pre true  
+post  
+  value ≥ Integer.MIN_VALUE ∧ value ≤ Integer.MAX_VALUE  
+    ? result' = (int)value  
+    : throw new ArithmeticException("Value cannot fit in an int: " + value)  
+Functional Scenario Form  
+value=2147483647 && returns int value  
+value=9223372036854775807 && throws exception  
+end_process  
+
+// Safe multiplication to int
+process safeMultiplyToInt(val1: long, val2: long) result: int  
+pre true  
+post  
+  product = safeMultiply(val1, val2)  
+  result' = safeToInt(product)  
+Functional Scenario Form  
+val1=100000 val2=100000 && returns int product  
+val1=Long.MAX_VALUE val2=2 && throws overflow  
+end_process  
+
+// Field value bounds verification (DateTimeField)
+process verifyValueBounds(field: DateTimeField, value: int, lower: int, upper: int)  
+pre true  
+post  
+  value < lower ∨ value > upper  
+    ? throw new IllegalFieldValueException(field.getType(), value, lower, upper)  
+Functional Scenario Form  
+value=15 lower=1 upper=12 && throws exception  
+value=5 lower=1 upper=12 && no exception  
+end_process  
+
+// Field value bounds verification (DateTimeFieldType)
+process verifyValueBounds(fieldType: DateTimeFieldType, value: int, lower: int, upper: int)  
+pre true  
+post  
+  value < lower ∨ value > upper  
+    ? throw new IllegalFieldValueException(fieldType, value, lower, upper)  
+Functional Scenario Form  
+value=0 lower=1 upper=12 && throws exception  
+value=7 lower=1 upper=12 && no exception  
+end_process  
+
+// Field value bounds verification (String name)
+process verifyValueBounds(fieldName: String, value: int, lower: int, upper: int)  
+pre true  
+post  
+  value < lower ∨ value > upper  
+    ? throw new IllegalFieldValueException(fieldName, value, lower, upper)  
+Functional Scenario Form  
+value=32 lower=1 upper=31 fieldName="dayOfMonth" && throws exception  
+value=15 fieldName="hour" lower=0 upper=23 && no exception  
+end_process  
+
+// Wrapped value calculation (with wrap value)
+process getWrappedValue(current: int, wrapValue: int, min: int, max: int) result: int  
+pre min < max  
+post  
+  value = current + wrapValue  
+  result' = getWrappedValue(value, min, max)  
+Functional Scenario Form  
+current=10 wrapValue=5 min=1 max=12 && returns 3  
+current=1 wrapValue=-2 min=1 max=12 && returns 11  
+end_process  
+
+// Wrapped value calculation (basic)
+process getWrappedValue(value: int, min: int, max: int) result: int  
+pre min < max  
+post  
+  range = max - min + 1  
+  normalized = value - min  
+  normalized ≥ 0  
+    ? result' = (normalized mod range) + min  
+  else  
+    rem = (-normalized) mod range  
+    rem = 0  
+      ? result' = min  
+      : result' = max - rem + 1  
+Functional Scenario Form  
+value=15 min=1 max=12 && returns 3  
+value=-5 min=1 max=12 && returns 8  
+normalized=-1 min=1 max=12 && returns 12  
+end_process  
+
+// Object equality check
+process equals(obj1: Object, obj2: Object) result: boolean  
+pre true  
+post  
+  obj1 = obj2  
+    ? result' = true  
+  obj1 = null ∨ obj2 = null  
+    ? result' = false  
+  else  
+    result' = obj1.equals(obj2)  
+Functional Scenario Form  
+same object reference && returns true  
+either null && returns false  
+different objects with same content && returns true  
+end_process  
+
+end_module  

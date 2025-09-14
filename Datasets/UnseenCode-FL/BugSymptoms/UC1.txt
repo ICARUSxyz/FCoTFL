@@ -1,0 +1,31 @@
+Bug Report: CodeAnalysis::analyzeCode
+
+Test Input:
+
+```cpp
+QString sampleCode = R"(class MyClass {
+    void doSomething() {
+        int x = 10;
+    }
+})";
+CodeAnalysis::analyzeCode(sampleCode);
+```
+
+Observed Behavior:
+
+* Compilation warning: missing ')' in regular expression for method matching.
+* Runtime error: cannot convert 'AnalysisResult' to 'AnalysisResult' in return statement.
+* Program terminated with segmentation fault.
+* Output counts:
+
+  * Classes: \["class MyClass"]
+  * Methods: \[]
+  * Variables: \[]
+
+Expected Behavior:
+
+* Output counts:
+
+  * Classes: \["MyClass"]
+  * Methods: \["doSomething"]
+  * Variables: \["x"]

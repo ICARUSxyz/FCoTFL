@@ -1,0 +1,98 @@
+module UC68_PlayerManager
+type
+  id: int
+  result: Boolean
+
+process HandleCreateEntity(sGUID: UInt64, campType: EntityCampTypeEnum) result: IEntity
+pre 
+  true
+post
+  (GameUserModel.Instance.IsLocalPlayer(sGUID) → 
+    result = new ISelfPlayer(sGUID, campType)) ∨
+  (¬GameUserModel.Instance.IsLocalPlayer(sGUID) → 
+    result = new IPlayer(sGUID, campType)) ∧
+  result.GameUserId = sGUID
+Functional Scenario Form
+(IsLocalPlayer) && (return ISelfPlayer) or
+(not LocalPlayer) && (return IPlayer)
+end_process
+
+process AddAccount(sGUID: UInt64, entity: IPlayer)
+pre  
+  true
+post 
+  (AccountDic contains sGUID → log error ∧ AccountDic unchanged) ∨
+  (AccountDic does not contain sGUID → AccountDic[sGUID] = entity)
+Functional Scenario Form
+(AccountDic contains sGUID) && (log error, do nothing) or
+(not contains) && (add to AccountDic)
+end_process
+
+process SetCommonProperty(entity: IEntity, id: int)
+pre 
+  true
+post 
+  base.SetCommonProperty(entity, id) ∧
+  info = ConfigReader.GetHeroInfo(id) ∧
+  entity.ColliderRadius = info.HeroCollideRadious / 100 ∧
+  (entity.GameUserNick = null ∨ entity.GameUserNick = "" → 
+    entity.GameUserNick = RandomNameData.Instance.GetRandName())
+Functional Scenario Form
+(nickname is null or empty) && (generate random nickname) or
+(else) && (keep original nickname)
+end_process
+
+process GetModeName(id: int) result: String
+pre 
+  true
+post 
+  result = ConfigReader.GetHeroInfo(id).HeroName
+Functional Scenario Form
+(always) && (return HeroName from ConfigReader)
+end_process
+
+process IsLocalSameType(entity: IEntity) result: Boolean
+pre  
+  true
+post 
+  (PlayerManager.Instance.LocalPlayer.EntityCamp ≠ entity.EntityCamp → result = false) ∨
+  (PlayerManager.Instance.LocalPlayer.EntityCamp = entity.EntityCamp → result = true)
+Functional Scenario Form
+(different camps) && (return false) or
+(same camp) && (return true)
+end_process
+
+process CleanAccount()
+pre 
+  true
+post 
+  ∀ i ∈ AccountDic:
+    (¬GameUserModel.Instance.IsLocalPlayer(AccountDic[i].GameObjGUID) → 
+      remove i from AccountDic)
+Functional Scenario Form
+(for all non-local players) && (remove them from AccountDic)
+end_process
+
+process RemoveAccountBySeat(seat: uint)
+pre  
+  true
+post 
+  ∃ i ∈ AccountDic:
+    (AccountDic[i].GameUserSeat = seat → 
+      remove i from AccountDic)
+Functional Scenario Form
+(find matching seat) && (remove account) or
+(no match) && (do nothing)
+end_process
+
+process CleanPlayerWhenGameOver()
+pre 
+  true
+post 
+  ∀ item ∈ AccountDic.Values:
+    item.CleanWhenGameOver() called
+Functional Scenario Form
+(for all players) && (call CleanWhenGameOver)
+end_process
+
+end_module

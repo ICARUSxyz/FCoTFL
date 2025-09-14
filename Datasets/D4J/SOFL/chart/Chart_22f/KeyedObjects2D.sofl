@@ -1,0 +1,363 @@
+module KeyedObjects2D  
+
+var:  
+  serialVersionUID: long = -1015873563138522374L  
+
+process constructor()  
+pre true  
+post  
+  rowKeys' = new ArrayList() ∧  
+  columnKeys' = new ArrayList() ∧  
+  rows' = new ArrayList()  
+
+Functional Scenario Form  
+default initialization  
+    && empty collections created  
+end_process  
+
+process getRowCount() result: int  
+pre true  
+post  
+  result' = rowKeys.size()  
+
+Functional Scenario Form  
+3 rows && returns 3  
+empty dataset && returns 0  
+end_process  
+
+process getColumnCount() result: int  
+pre true  
+post  
+  result' = columnKeys.size()  
+
+Functional Scenario Form  
+5 columns && returns 5  
+empty dataset && returns 0  
+end_process  
+
+process getObject(row: int, column: int) result: Object  
+pre true  
+post  
+  rowData = (KeyedObjects) rows.get(row) ∧  
+  (  
+    rowData = null ⇒ result' = null  
+    rowData ≠ null  
+      ⇒ colKey = (Comparable) columnKeys.get(column) ∧  
+        (  
+          colKey = null ⇒ result' = null  
+          colKey ≠ null  
+            ⇒ index = rowData.getIndex(colKey) ∧  
+              (  
+                index < 0 ⇒ result' = null  
+                index ≥ 0 ⇒ result' = rowData.getObject(colKey)  
+              )  
+        )  
+  )  
+
+Functional Scenario Form  
+rowData null && result = null  
+colKey null && result = null  
+index not found && result = null  
+valid row and column && result = object  
+end_process  
+
+process getRowKey(row: int) result: Comparable  
+pre true  
+post  
+  result' = (Comparable) rowKeys.get(row)  
+
+Functional Scenario Form  
+row=0 with keys ["A","B"]  
+    && returns "A"  
+invalid row index  
+    && throws IndexOutOfBoundsException  
+end_process  
+
+process getRowIndex(key: Comparable) result: int  
+pre true  
+post  
+  result' = rowKeys.indexOf(key)  
+
+Functional Scenario Form  
+key="Group1" present  
+    && returns index  
+key not found  
+    && returns -1  
+end_process  
+
+process getRowKeys() result: List  
+pre true  
+post  
+  result' = Collections.unmodifiableList(rowKeys)  
+
+Functional Scenario Form  
+non-empty rows  
+    && returns unmodifiable list  
+end_process  
+
+process getColumnKey(column: int) result: Comparable  
+pre true  
+post  
+  result' = (Comparable) columnKeys.get(column)  
+
+Functional Scenario Form  
+column=1 with keys ["X","Y"]  
+    && returns "Y"  
+invalid column index  
+    && throws IndexOutOfBoundsException  
+end_process  
+
+process getColumnIndex(key: Comparable) result: int  
+pre true  
+post  
+  result' = columnKeys.indexOf(key)  
+
+Functional Scenario Form  
+key="CategoryA" present  
+    && returns column index  
+key not found  
+    && returns -1  
+end_process  
+
+process getColumnKeys() result: List  
+pre true  
+post  
+  result' = Collections.unmodifiableList(columnKeys)  
+
+Functional Scenario Form  
+columns=["Jan","Feb","Mar"]  
+    && returns unmodifiable list  
+end_process  
+
+process getObject(rowKey: Comparable, columnKey: Comparable) result: Object  
+pre true  
+post  
+  rowKey = null  
+    ⇒ errorMsg = "Null 'rowKey' argument." ∧ result = IllegalArgumentException  
+  columnKey = null  
+    ⇒ errorMsg = "Null 'columnKey' argument." ∧ result = IllegalArgumentException  
+  rowKeys.indexOf(rowKey) < 0  
+    ⇒ errorMsg = "Row key (" + rowKey + ") not recognised." ∧ result = UnknownKeyException  
+  columnKeys.indexOf(columnKey) < 0  
+    ⇒ errorMsg = "Column key (" + columnKey + ") not recognised." ∧ result = UnknownKeyException  
+  else  
+    rowIndex = rowKeys.indexOf(rowKey) ∧  
+    rowData = (KeyedObjects) rows.get(rowIndex) ∧  
+    index = rowData.getIndex(columnKey) ∧  
+    (  
+      index ≥ 0 ⇒ result' = rowData.getObject(index)  
+      index < 0 ⇒ result' = null  
+    )  
+
+Functional Scenario Form  
+rowKey=null  
+    && throws IllegalArgumentException  
+columnKey="Unknown" not in columns  
+    && throws UnknownKeyException  
+valid keys but value missing  
+    && returns null  
+valid keys and value present  
+    && returns object  
+end_process  
+
+process addObject(object: Object, rowKey: Comparable, columnKey: Comparable)  
+pre true  
+post  
+  setObject(object, rowKey, columnKey)  
+
+Functional Scenario Form  
+any parameters  
+    && delegates to setObject  
+end_process  
+
+process setObject(object: Object, rowKey: Comparable, columnKey: Comparable)  
+pre true  
+post  
+  rowKey = null  
+    ⇒ errorMsg = "Null 'rowKey' argument." ∧ result = IllegalArgumentException  
+  columnKey = null  
+    ⇒ errorMsg = "Null 'columnKey' argument." ∧ result = IllegalArgumentException  
+  rowIndex = rowKeys.indexOf(rowKey) ∧  
+  (  
+    rowIndex ≥ 0  
+      ⇒ row = (KeyedObjects) rows.get(rowIndex)  
+    rowIndex < 0  
+      ⇒ rowKeys.add(rowKey) ∧  
+        row = new KeyedObjects() ∧  
+        rows.add(row)  
+  ) ∧  
+  row.setObject(columnKey, object) ∧  
+  columnKeys.indexOf(columnKey) < 0  
+    ⇒ columnKeys.add(columnKey)  
+
+Functional Scenario Form  
+new rowKey="GroupC"  
+    && adds row key ∧ creates new row data  
+existing rowKey="GroupA"  
+    && updates existing row data  
+new columnKey="Apr"  
+    && adds column key  
+end_process  
+
+process removeObject(rowKey: Comparable, columnKey: Comparable)  
+pre true  
+post  
+  setObject(null, rowKey, columnKey) ∧  
+  rowIndex = getRowIndex(rowKey) ∧  
+  row = (KeyedObjects) rows.get(rowIndex) ∧  
+  allNull = ∀ i ∈ [0, row.getItemCount()-1]: row.getObject(i) = null ∧  
+  (  
+    allNull  
+      ⇒ rowKeys.remove(rowIndex) ∧ rows.remove(rowIndex)  
+  ) ∧  
+  allNullCol = ∀ r ∈ rows:  
+    r.getIndex(columnKey) < 0 ∨ r.getObject(r.getIndex(columnKey)) = null ∧  
+  (  
+    allNullCol  
+      ⇒ (  
+          ∀ r ∈ rows:  
+            index = r.getIndex(columnKey) ∧  
+            index ≥ 0 ⇒ r.removeValue(columnKey)  
+        ) ∧  
+        columnKeys.remove(columnKey)  
+  )  
+
+Functional Scenario Form  
+set object to null  
+row becomes all null  
+    && removes entire row  
+column becomes all null  
+    && removes entire column  
+both conditions  
+    && removes row and column  
+neither condition  
+    && only sets value to null  
+end_process  
+
+process removeRow(rowIndex: int)  
+pre true  
+post  
+  rowKeys.remove(rowIndex) ∧  
+  rows.remove(rowIndex)  
+
+Functional Scenario Form  
+rowIndex=0 with 3 rows  
+    && becomes 2 rows  
+end_process  
+
+process removeRow(rowKey: Comparable)  
+pre true  
+post  
+  index = getRowIndex(rowKey) ∧  
+  (  
+    index < 0  
+      ⇒ errorMsg = "Row key (" + rowKey + ") not recognised." ∧ result = UnknownKeyException  
+    else  
+      removeRow(index)  
+  )  
+
+Functional Scenario Form  
+rowKey="ToRemove" present  
+    && removes corresponding row  
+rowKey="Unknown"  
+    && throws UnknownKeyException  
+end_process  
+
+process removeColumn(columnIndex: int)  
+pre true  
+post  
+  columnKey = getColumnKey(columnIndex) ∧  
+  removeColumn(columnKey)  
+
+Functional Scenario Form  
+columnIndex=1  
+    && removes corresponding column  
+end_process  
+
+process removeColumn(columnKey: Comparable)  
+pre true  
+post  
+  index = getColumnIndex(columnKey) ∧  
+  (  
+    index < 0  
+      ⇒ errorMsg = "Column key (" + columnKey + ") not recognised." ∧ result = UnknownKeyException  
+    else  
+      iterator = rows.iterator() ∧  
+      while iterator.hasNext() do  
+        rowData = (KeyedObjects) iterator.next() ∧  
+        colIndex = rowData.getIndex(columnKey) ∧  
+        (colIndex ≥ 0 ⇒ rowData.removeValue(colIndex))  
+      ) ∧  
+      columnKeys.remove(columnKey)  
+  )  
+
+Functional Scenario Form  
+columnKey="CatX" present  
+    && removes from all rows ∧ removes column key  
+columnKey="Unknown"  
+    && throws UnknownKeyException  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof KeyedObjects2D) ⇒ result' = false  
+    else  
+      that = (KeyedObjects2D) obj ∧  
+      (  
+        ¬getRowKeys().equals(that.getRowKeys()) ∨  
+        ¬getColumnKeys().equals(that.getColumnKeys()) ∨  
+        getRowCount() ≠ that.getRowCount() ∨  
+        getColumnCount() ≠ that.getColumnCount()  
+          ⇒ result' = false  
+        else  
+          ∀ r ∈ [0, getRowCount()-1], c ∈ [0, getColumnCount()-1]:  
+            v1 = getObject(r,c) ∧  
+            v2 = that.getObject(r,c) ∧  
+            (  
+              (v1 = null ∧ v2 ≠ null) ∨  
+              (v1 ≠ null ∧ ¬v1.equals(v2))  
+                ⇒ result' = false  
+            ) ∧  
+          result' = true  
+      )  
+  )  
+
+Functional Scenario Form  
+obj = this && returns true  
+obj different row keys && returns false  
+obj different column keys && returns false  
+same structure different values && returns false  
+identical structure && returns true  
+end_process  
+
+process hashCode() result: int  
+pre true  
+post  
+  result' = 29*(29*rowKeys.hashCode() + columnKeys.hashCode()) + rows.hashCode()  
+
+Functional Scenario Form  
+rowKeys.hash=1, columnKeys.hash=2, rows.hash=3  
+    && returns 29*(29*1 + 2) + 3 = 29*31 + 3 = 902  
+end_process  
+
+process clone() result: KeyedObjects2D  
+pre true  
+post  
+  result' = (KeyedObjects2D) super.clone() ∧  
+  result.columnKeys' = new ArrayList(this.columnKeys) ∧  
+  result.rowKeys' = new ArrayList(this.rowKeys) ∧  
+  result.rows' = new ArrayList(this.rows.size()) ∧  
+  iterator = this.rows.iterator() ∧  
+  while iterator.hasNext() do  
+    row = (KeyedObjects) iterator.next() ∧  
+    result.rows.add(row.clone())  
+
+Functional Scenario Form  
+original dataset  
+    && cloned dataset with deep copy of rows  
+end_process  
+
+end_module  

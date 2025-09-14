@@ -1,0 +1,881 @@
+module TimeSeries
+type
+  Series: <type>
+  Cloneable: <interface>
+  Serializable: <interface>
+  TimeSeries:  composed type of {
+    domain: String,
+    range: String,
+    timePeriodClass: Class,
+    data: List<Object>,
+    maximumItemCount: int,
+    maximumItemAge: long,
+    minY: double,
+    maxY: double
+  }
+  RegularTimePeriod: <type>
+  TimeSeriesDataItem: composed type of { getPeriod(): RegularTimePeriod }
+  INIT_MIN: double = Double.NaN
+  INIT_MAX: double = Double.NaN
+var
+  DEFAULT_DOMAIN_DESC: String = "Time"
+  DEFAULT_RANGE_DESC: String = "Value"
+  MAX_ITEM_COUNT: int = Integer.MAX_VALUE
+  MAX_ITEM_AGE: long = Long.MAX_VALUE
+
+process TimeSeries(
+    name: Comparable,
+    domain: String,
+    range: String
+) result: TimeSeries
+pre name ≠ null
+post 
+  result.domain = domain ≠ null ? domain : DEFAULT_DOMAIN_DESC ∧
+  result.range = range ≠ null ? range : DEFAULT_RANGE_DESC ∧
+  result.timePeriodClass = null ∧
+  result.data = new ArrayList() ∧
+  result.maximumItemCount = Integer.MAX_VALUE ∧
+  result.maximumItemAge = Long.MAX_VALUE ∧
+  result.minY = Double.NaN ∧
+  result.maxY = Double.NaN
+Functional Scenario Form 
+name ≠ null ∧ domain != null ∧ range != null && full parameter initialization ||
+name ≠ null ∧ domain = null && apply default domain description ||
+name ≠ null ∧ range = null && apply default range description
+end_process
+
+process setDomainDescription(
+    ts: TimeSeries,
+    description: String
+)
+post 
+  oldVal = ts.domain ∧
+  ts.domain' = description ∧
+  oldVal ≠ description && firePropertyChange("Domain", oldVal, description)
+Functional Scenario Form 
+description ≠ current domain && trigger property change event ||
+description = current domain && no action
+end_process
+
+process getDomainDescription(
+    ts: TimeSeries
+) result: String
+post result = ts.domain
+Functional Scenario Form 
+always returns current domain value
+end_process
+
+process baseConstructor(
+    name: Comparable
+) result: TimeSeries
+pre name ≠ null
+post 
+  result = TimeSeries(name, DEFAULT_DOMAIN_DESC, DEFAULT_RANGE_DESC)
+Functional Scenario Form 
+valid name && invoke with default domain/range parameters
+end_process
+
+process getRangeDescription(
+    ts: TimeSeries
+) result: String
+post result = ts.range
+Functional Scenario Form 
+always returns current range value
+end_process
+
+process setRangeDescription(
+    ts: TimeSeries,
+    description: String
+)
+post 
+  oldVal = ts.range ∧
+  ts.range' = description ∧
+  (oldVal ≠ description && firePropertyChange("Range", oldVal, description)) || 
+  (oldVal = description && NOP)
+Functional Scenario Form 
+description ≠ current range && trigger property change event || 
+values identical && no state update
+end_process
+
+process getItemCount(
+    ts: TimeSeries
+) result: int
+post result = ts.data.size()
+Functional Scenario Form 
+always returns current data item count
+end_process
+
+process getItems(
+    ts: TimeSeries
+) result: List<Object>
+post result = Collections.unmodifiableList(ts.data)
+Functional Scenario Form 
+returns read-only view of internal data list
+end_process
+
+process getMaximumItemCount(
+    ts: TimeSeries
+) result: int
+post result = ts.maximumItemCount
+Functional Scenario Form 
+always returns configured max item count
+end_process
+
+process setMaximumItemCount(
+    ts: TimeSeries,
+    maximum: int
+)
+pre maximum ≥ 0
+post 
+  ts.maximumItemCount' = maximum ∧
+  (ts.data.size() > maximum ⇒ 
+    delete(ts, 0, ts.data.size() - maximum - 1))
+Functional Scenario Form 
+valid maximum ≥0 && trim excess items from start || 
+negative parameter && throw IllegalArgumentException
+end_process
+
+process getMaximumItemAge(
+    ts: TimeSeries
+) result: long
+post result = ts.maximumItemAge
+Functional Scenario Form 
+always returns current maximum item age
+end_process
+
+process setMaximumItemAge(
+    ts: TimeSeries,
+    periods: long
+)
+pre periods ≥ 0
+post 
+  ts.maximumItemAge' = periods ∧
+  removeAgedItems(ts, true)
+Functional Scenario Form 
+valid periods ≥0 && trigger aged items cleanup || 
+negative parameter && throw exception
+end_process
+
+process getMinY(
+    ts: TimeSeries
+) result: double
+post result = ts.minY
+Functional Scenario Form 
+returns NaN if no valid data || 
+returns smallest tracked Y value
+end_process
+
+process getMaxY(
+    ts: TimeSeries
+) result: double
+post result = ts.maxY
+Functional Scenario Form 
+returns Double.NaN if series empty || 
+returns current tracked maximum Y value
+end_process
+
+process getTimePeriodClass(
+    ts: TimeSeries
+) result: Class
+post result = ts.timePeriodClass
+Functional Scenario Form 
+empty series && return null || 
+non-empty series && return registered time period class
+end_process
+
+process getDataItem(
+    ts: TimeSeries,
+    index: int
+) result: TimeSeriesDataItem
+pre index ≥ 0 ∧ index < ts.data.size()
+post result = (TimeSeriesDataItem) ts.data.get(index).clone()
+Functional Scenario Form 
+valid index && return cloned data item
+end_process
+
+process getDataItem(
+    ts: TimeSeries,
+    period: RegularTimePeriod
+) result: TimeSeriesDataItem
+post 
+  index = getIndex(ts, period) ≥ 0 ⇒ 
+    result = (TimeSeriesDataItem) ts.data.get(index).clone() ||
+  index < 0 ⇒ result = null
+Functional Scenario Form 
+period exists in series && return cloned item || 
+period not found && return null
+end_process
+
+process getRawDataItem(
+    ts: TimeSeries,
+    index: int
+) result: TimeSeriesDataItem
+pre index ≥ 0 ∧ index < ts.data.size()
+post result = (TimeSeriesDataItem) ts.data.get(index)
+Functional Scenario Form 
+valid index && return internal storage reference
+end_process
+
+process getRawDataItem(
+    ts: TimeSeries,
+    period: RegularTimePeriod
+) result: TimeSeriesDataItem
+post 
+  index = getIndex(ts, period) ≥ 0 ⇒ 
+    result = (TimeSeriesDataItem) ts.data.get(index) ||
+  index < 0 ⇒ result = null
+Functional Scenario Form 
+period found && direct item reference || 
+period missing && null return
+end_process
+
+process getTimePeriod(
+    ts: TimeSeries,
+    index: int
+) result: RegularTimePeriod
+pre index ≥ 0 ∧ index < ts.data.size()
+post result = getRawDataItem(ts, index).period
+Functional Scenario Form 
+valid index && retrieve attached time period
+end_process
+
+process getNextTimePeriod(
+    ts: TimeSeries
+) result: RegularTimePeriod
+pre ts.data.size() > 0
+post result = last(ts.data).period.next()
+where
+  last(items: List) ≜ items.get(items.size()-1)
+Functional Scenario Form 
+non-empty series && compute next period after last item
+end_process
+
+process getTimePeriods(
+    ts: TimeSeries
+) result: Collection<RegularTimePeriod>
+post 
+  result.size() = ts.data.size() ∧
+  ∀i ∈ 0..ts.data.size()-1 | 
+    result.get(i) = getTimePeriod(ts, i)
+Functional Scenario Form 
+non-empty series && collect all periods in order || 
+empty series && return empty collection
+end_process
+
+process getTimePeriodsUniqueToOtherSeries(
+    ts: TimeSeries,
+    other: TimeSeries
+) result: Collection<RegularTimePeriod>
+post 
+  result = { p ∈ other.getTimePeriods() | 
+    ts.getIndex(p) < 0 }
+Functional Scenario Form 
+other contains unique periods && return non-empty collection || 
+no unique periods && return empty set
+end_process
+
+process getIndex(
+    ts: TimeSeries,
+    period: RegularTimePeriod
+) result: int
+pre period ≠ null
+post 
+  result = ∃i ∈ 0..ts.data.size()-1 | 
+    getRawDataItem(ts, i).period.equals(period) ? i : 
+    -(insertionPoint) - 1
+Functional Scenario Form 
+period found && return valid index ≥0 || 
+period not found && return negative insertion mark
+end_process
+
+process getValue(
+    ts: TimeSeries,
+    index: int
+) result: Number
+pre index ≥0 ∧ index < ts.data.size()
+post result = getRawDataItem(ts, index).value
+Functional Scenario Form 
+valid index && return stored value || 
+invalid index && throw IndexOutOfBoundsException
+end_process
+
+process getValue(
+    ts: TimeSeries,
+    period: RegularTimePeriod
+) result: Number
+pre period ≠ null
+post 
+  idx = getIndex(ts, period) ∧
+  (idx ≥0 ⇒ result = getValue(ts, idx)) || 
+  (idx <0 ⇒ result = null)
+Functional Scenario Form 
+period exists && return associated value || 
+unknown period && return null
+end_process
+
+process add(
+    ts: TimeSeries,
+    item: TimeSeriesDataItem
+)
+pre item ≠ null
+post 
+  originalSize = ts.data.size() ∧
+  delegate add(ts, item, true) ∧ 
+  ts.data.size()' = originalSize + 1
+Functional Scenario Form 
+valid item && invoke add with notify flag || 
+null item && throw IllegalArgumentException
+end_process
+
+process add(
+    ts: TimeSeries,
+    item: TimeSeriesDataItem,
+    notify: bool
+)
+pre item ≠ null
+post 
+  clonedItem = (TimeSeriesDataItem) item.clone() ∧
+  newPeriodClass = clonedItem.period.getClass() ∧
+  (ts.timePeriodClass = null ⇒ 
+    ts.timePeriodClass' = newPeriodClass ∧ 
+    proceedAdd(clonedItem, notify)) ∨
+  (ts.timePeriodClass ≠ null ∧ 
+   ¬newPeriodClass.equals(ts.timePeriodClass) ⇒ 
+     throw SeriesException) ∨
+  (ts.timePeriodClass = newPeriodClass ∧ 
+   handleItemAdd(clonedItem, notify))
+where
+  proceedAdd(item: TimeSeriesDataItem, notify: bool) ≜ 
+    handleItemAdd(item, notify)
+  
+  handleItemAdd(item: TimeSeriesDataItem, notify: bool) ≜
+    (ts.data.size() = 0 ⇒ addFirstItem(item)) ∨
+    (ts.data.size() > 0 ⇒ insertByOrder(item)) ∧
+    postProcessAdd(item, notify)
+    
+  addFirstItem(item: TimeSeriesDataItem) ≜
+    ts.data' = ts.data.append(item)
+    
+  insertByOrder(item: TimeSeriesDataItem) ≜
+    lastItem = getRawDataItem(ts, ts.data.size()-1) ∧
+    (item.period > lastItem.period ⇒ 
+      ts.data' = ts.data.append(item)) ∨
+    (item.period ≤ lastItem.period ⇒ 
+      handleBinarySearchInsert(item))
+      
+  handleBinarySearchInsert(item: TimeSeriesDataItem) ≜
+    index = Collections.binarySearch(ts.data, item) ∧
+    (index < 0 ⇒ 
+      insertPos = -index -1 ∧ 
+      ts.data' = ts.data.insert(insertPos, item)) ∨
+    (index ≥ 0 ⇒ 
+      throw SeriesException)
+      
+  postProcessAdd(item: TimeSeriesDataItem, notify: bool) ≜
+    updateBoundsForAddedItem(ts, item) ∧
+    enforceMaxItems(ts) ∧
+    removeAgedItems(ts, false) ∧
+    (notify ⇒ fireSeriesChanged(ts))
+    
+  enforceMaxItems(ts: TimeSeries) ≜
+    (ts.data.size() > ts.maximumItemCount ⇒ 
+      removeHeadItem(ts))
+      
+  removeHeadItem(ts: TimeSeries) ≜
+    removed = ts.data.remove(0) ∧
+    updateBoundsForRemovedItem(ts, removed)
+
+Functional Scenario Form 
+ts.timePeriodClass=null && clonedItem.period.class=newPeriodClass && initialize time period class ||
+ts.timePeriodClass≠newPeriodClass && throw SeriesException with type mismatch ||
+data.size=0 && add first item to empty series ||
+item.period>last_period && append to end of list ||
+binary_search finds existing index && throw duplicate exception ||
+binary_search finds insert position && insert at calculated index ||
+data.size exceeds maximumItemCount && remove oldest item
+end_process
+
+process add(
+    ts: TimeSeries,
+    period: RegularTimePeriod,
+    value: Number
+)
+pre period ≠ null
+post add(ts, new TimeSeriesDataItem(period, value), true)
+Functional Scenario Form 
+valid parameters && delegate to core add process with notify=true
+end_process
+
+process add(
+    ts: TimeSeries,
+    period: RegularTimePeriod,
+    value: Number,
+    notify: bool
+)
+pre period ≠ null
+post add(ts, new TimeSeriesDataItem(period, value), notify)
+Functional Scenario Form 
+explicit notification control && wrap value in data item
+end_process
+
+process update(
+    ts: TimeSeries,
+    period: RegularTimePeriod,
+    value: Number
+)
+pre period ≠ null
+post 
+  tempItem = new TimeSeriesDataItem(period, value) ∧
+  index = Collections.binarySearch(ts.data, tempItem) ∧
+  (index < 0 ⇒ throw SeriesException) || 
+  (index ≥0 ⇒ 
+    update(ts, index, value) ∧ 
+    fireSeriesChanged(ts))
+Functional Scenario Form 
+non-existent period && throw exception || 
+valid index && update existing value
+end_process
+
+process update(
+    ts: TimeSeries,
+    index: int,
+    value: Number
+)
+pre index ≥0 ∧ index < ts.data.size()
+post 
+  oldItem = getRawDataItem(ts, index) ∧
+  oldY = oldItem.value.doubleValue() ∧
+  (requiresBoundsRecalculation(oldY) ⇒ 
+    findBoundsByIteration(ts)) || 
+  (value ≠ null ⇒ 
+    updateMinMax(ts, value.doubleValue())) ∧
+  fireSeriesChanged(ts)
+where
+  requiresBoundsRecalculation(y: double) ≜ 
+    Double.isNaN(y) || y = ts.minY || y = ts.maxY
+  
+  updateMinMax(ts: TimeSeries, y: double) ≜
+    ts.minY' = minIgnoreNaN(ts.minY, y) ∧
+    ts.maxY' = maxIgnoreNaN(ts.maxY, y)
+Functional Scenario Form 
+old value was boundary → recalculate full bounds ||
+new value affects boundaries → update min/max directly
+end_process
+
+process addAndOrUpdate(
+    ts: TimeSeries,
+    series: TimeSeries
+) result: TimeSeries
+post 
+  overwritten = new TimeSeries(...) ∧
+  ∀i ∈ 0..series.data.size()-1 |
+    item = series.getRawDataItem(i) ∧
+    oldItem = addOrUpdate(ts, item.period, item.value) ∧
+    (oldItem ≠ null ⇒ overwritten.add(oldItem)) ∧
+  result = overwritten
+Functional Scenario Form 
+merged items exist → collect overwritten values ||
+no overlaps → return empty series
+end_process
+
+process addOrUpdate(
+    ts: TimeSeries,
+    period: RegularTimePeriod,
+    value: Number
+) result: TimeSeriesDataItem
+pre period ≠ null
+post 
+  tempItem = new TimeSeriesDataItem(period, value) ∧
+  index = Collections.binarySearch(ts.data, tempItem) ∧
+  (index ≥0 ⇒ 
+    old = getRawDataItem(ts, index) ∧
+    update(ts, index, value) ∧ 
+    result = old.clone()) || 
+  (index <0 ⇒ 
+    add(ts, period, value, true) ∧ 
+    result = null)
+Functional Scenario Form 
+existing period → return overwritten item && update value ||
+new period → add fresh item && return null
+end_process
+
+process addOrUpdate(
+    ts: TimeSeries,
+    period: RegularTimePeriod,
+    value: Number
+) result: TimeSeriesDataItem
+pre period ≠ null
+post 
+  newItem = new TimeSeriesDataItem(period, value) ∧
+  result = addOrUpdate(ts, newItem)
+Functional Scenario Form 
+valid parameters && delegate to item-based addOrUpdate
+end_process
+
+process addOrUpdate(
+    ts: TimeSeries,
+    item: TimeSeriesDataItem
+) result: TimeSeriesDataItem
+pre item ≠ null
+post 
+  clonedItem = (TimeSeriesDataItem) item.clone() ∧
+  periodClass = clonedItem.period.getClass() ∧
+  (ts.timePeriodClass = null ⇒ ts.timePeriodClass' = periodClass) ∧
+  (ts.timePeriodClass ≠ null ∧ ¬ts.timePeriodClass.equals(periodClass) ⇒ throw SeriesException) ∧
+  index = Collections.binarySearch(ts.data, clonedItem) ∧
+  (index ≥0 ⇒ 
+    existing = getRawDataItem(ts, index) ∧
+    result = existing.clone() ∧
+    updateExistingValue(ts, existing, clonedItem.value)) ||
+  (index <0 ⇒ 
+    insertNewItem(ts, clonedItem) ∧ 
+    result = null) ∧
+  fireSeriesChanged(ts)
+where
+  updateExistingValue(ts: TimeSeries, target: TimeSeriesDataItem, value: Number) ≜
+    oldY = target.value.doubleValue() ∧
+    (needFullRecalc(oldY) ⇒ findBoundsByIteration(ts)) ||
+    (value ≠ null ⇒ 
+      yy = value.doubleValue() ∧
+      ts.minY' = minIgnoreNaN(ts.minY, yy) ∧
+      ts.maxY' = maxIgnoreNaN(ts.maxY, yy))
+  
+  needFullRecalc(y: double) ≜ 
+    ¬Double.isNaN(y) ∧ (y = ts.minY ∨ y = ts.maxY)
+    
+  insertNewItem(ts: TimeSeries, item: TimeSeriesDataItem) ≜
+    ts.data.add(-index-1, item) ∧
+    updateBoundsForAddedItem(ts, item) ∧
+    (ts.data.size() > ts.maximumItemCount ⇒ 
+      removed = ts.data.remove(0) ∧
+      updateBoundsForRemovedItem(ts, removed))
+Functional Scenario Form 
+ts.timePeriodClass=null && set initial period class ||
+existing item found && clone overwritten item && update value and bounds ||
+new item && insert at sorted position && enforce item limits ||
+boundary value updated && trigger full bounds recalculation
+end_process
+
+process removeAgedItems(
+    ts: TimeSeries,
+    notify: bool
+)
+post 
+  (ts.data.size() >1 ⇒ 
+    latest = getTimePeriod(ts, ts.data.size()-1).serialIndex ∧
+    removed = false' ∧
+    while(latest - getTimePeriod(ts,0).serialIndex > ts.maximumItemAge) (
+      ts.data.remove(0) ∧
+      removed' = true
+    ) ∧
+    (removed ⇒ 
+      findBoundsByIteration(ts) ∧
+      (notify ⇒ fireSeriesChanged(ts))
+    )
+  )
+Functional Scenario Form 
+series has aged items && remove oldest entries && update bounds ||
+no aging required && no changes made ||
+items removed && notify flag true && fire change event
+end_process
+
+process removeAgedItems(
+    ts: TimeSeries,
+    latest: long,
+    notify: bool
+)
+pre ts ≠ null
+post 
+  (ts.data ≠ ∅ ⇒ 
+    newestIndex = RegularTimePeriod.getSerialIndex(latest) ∧
+    removed = false' ∧
+    while(ts.data ≠ ∅ ∧ newestIndex - getTimePeriod(ts,0).serialIndex > ts.maximumItemAge) (
+      ts.data.remove(0) ∧ 
+      removed' = true
+    ) ∧
+    (removed ⇒ 
+      findBoundsByIteration(ts) ∧
+      (notify ⇒ fireSeriesChanged(ts))
+    )
+  )
+Functional Scenario Form 
+ts.data non-empty && aging items found && remove oldest entries ||
+newest index within age limit && no removal ||
+items removed && notify=true && trigger event
+end_process
+
+process clear(
+    ts: TimeSeries
+)
+post 
+  (ts.data.size() >0 ⇒ 
+    ts.data.clear() ∧ 
+    ts.timePeriodClass' = null ∧ 
+    ts.minY' = Double.NaN ∧ 
+    ts.maxY' = Double.NaN ∧ 
+    fireSeriesChanged(ts)
+  )
+Functional Scenario Form 
+non-empty series && reset all states && fire change ||
+empty series && no operation
+end_process
+
+process delete(
+    ts: TimeSeries,
+    period: RegularTimePeriod
+)
+pre period ≠ null
+post 
+  index = getIndex(ts, period) ∧
+  (index ≥0 ⇒ 
+    removedItem = ts.data.remove(index) ∧ 
+    updateBoundsForRemovedItem(ts, removedItem) ∧
+    (ts.data = ∅ ⇒ ts.timePeriodClass' = null) ∧ 
+    fireSeriesChanged(ts)
+  )
+Functional Scenario Form 
+period exists && delete item && update bounds ||
+period missing && no change
+end_process
+
+process delete(
+    ts: TimeSeries,
+    start: int,
+    end: int,
+    notify: bool
+)
+pre start ≥0 ∧ end ≥start ∧ end < ts.data.size()
+post 
+  itemsRemoved = end - start +1 ∧
+  ∀i ∈ 0..itemsRemoved-1 | 
+    ts.data.remove(start) ∧
+  findBoundsByIteration(ts) ∧
+  (ts.data = ∅ ⇒ ts.timePeriodClass' = null) ∧
+  (notify ⇒ fireSeriesChanged(ts))
+Functional Scenario Form 
+valid range && remove items && recalculate bounds ||
+resulting empty series && reset time period class
+end_process
+
+process clone(
+    ts: TimeSeries
+) result: TimeSeries
+post 
+  result = super.clone() ∧ 
+  result.data' = deepClone(ts.data) ∧ 
+  result.minY' = ts.minY ∧ 
+  result.maxY' = ts.maxY ∧ 
+  result.timePeriodClass' = ts.timePeriodClass
+Functional Scenario Form 
+successful cloning && deep copy of data list ||
+clone failure && throw CloneNotSupportedException
+end_process
+
+process createCopy(
+    ts: TimeSeries,
+    start: int,
+    end: int
+) result: TimeSeries
+pre 
+  start ≥0 ∧ 
+  end ≥start ∧ 
+  end < ts.data.size()
+post 
+  copy = super.clone() ∧ 
+  copy.data' = new ArrayList() ∧ 
+  copy.minY' = Double.NaN ∧ 
+  copy.maxY' = Double.NaN ∧ 
+  ∀i ∈ start..end | 
+    item = ts.data.get(i).clone() ∧ 
+    tryAdd(copy, item) ∧
+  result = copy
+where
+  tryAdd(copy: TimeSeries, item: TimeSeriesDataItem) ≜
+    try copy.add(item) catch SeriesException ⇒ noop
+Functional Scenario Form 
+valid range && populated subseries copy || 
+invalid start/end && throw IllegalArgumentException
+end_process
+
+process createCopy(
+    ts: TimeSeries,
+    startPeriod: RegularTimePeriod,
+    endPeriod: RegularTimePeriod
+) result: TimeSeries
+pre 
+  startPeriod ≠ null ∧ 
+  endPeriod ≠ null ∧ 
+  startPeriod ≤ endPeriod
+post 
+  (startIndex = adjustedIndex(ts, startPeriod) ∧ 
+   endIndex = adjustedIndex(ts, endPeriod) ∧ 
+   emptyRange = checkEmptyRange(startIndex, endIndex)) ⇒ 
+     (emptyRange ⇒ result = emptyCopy(ts)) || 
+     (¬emptyRange ⇒ result = createCopy(ts, startIndex, endIndex))
+where
+  adjustedIndex(ts: TimeSeries, period: RegularTimePeriod) ≜
+    idx = ts.getIndex(period) ≥0 ? idx : 
+         -(idx +1) adjusted for insertion point
+  
+  checkEmptyRange(sIdx: int, eIdx: int) ≜
+    sIdx > eIdx ∨ 
+    sIdx ≥ ts.data.size() ∨ 
+    eIdx <0
+  
+  emptyCopy(ts: TimeSeries) ≜
+    copy = super.clone() ∧ 
+    copy.data' = new ArrayList()
+Functional Scenario Form 
+valid period range && delegate to index-based copy || 
+no matching periods && return empty series || 
+adjusted indices out of bounds && return empty
+end_process
+
+process equals(
+    ts: TimeSeries,
+    obj: Object
+) result: bool
+post 
+  (obj = ts ⇒ result = true) ∨
+  (obj ∉ TimeSeries ⇒ result = false) ∨
+  (obj ∈ TimeSeries ⇒ 
+    that = (TimeSeries) obj ∧
+    checkDomainEquality(ts, that) ∧
+    checkRangeEquality(ts, that) ∧
+    checkTimePeriodClassEquality(ts, that) ∧
+    checkMaxAgeEquality(ts, that) ∧
+    checkMaxCountEquality(ts, that) ∧
+    checkItemCountEquality(ts, that) ∧
+    checkDataEquality(ts, that) ∧
+    super.equals(ts, that) ⇒ 
+    result = true)
+where
+  checkDomainEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ObjectUtilities.equal(ts.domain, that.domain)
+    
+  checkRangeEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ObjectUtilities.equal(ts.range, that.range)
+    
+  checkTimePeriodClassEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ObjectUtilities.equal(ts.timePeriodClass, that.timePeriodClass)
+    
+  checkMaxAgeEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ts.maximumItemAge = that.maximumItemAge
+    
+  checkMaxCountEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ts.maximumItemCount = that.maximumItemCount
+    
+  checkItemCountEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ts.data.size() = that.data.size()
+    
+  checkDataEquality(ts: TimeSeries, that: TimeSeries) ≜
+    ObjectUtilities.equal(ts.data, that.data)
+Functional Scenario Form 
+identity check && return true || 
+non-Timeseries type && return false || 
+critical field mismatch && return false || 
+full field match && return true
+end_process
+
+process hashCode(
+    ts: TimeSeries
+) result: int
+post 
+  result = superHashCode *29 + domainHash *29 + rangeHash *29 + 
+           timePeriodClassHash *29 + itemHashes *29 + maxCountHash *29 + maxAgeHash
+where
+  superHashCode = super.hashCode()
+  domainHash = ts.domain ≠ null ? ts.domain.hashCode() : 0
+  rangeHash = ts.range ≠ null ? ts.range.hashCode() : 0
+  timePeriodClassHash = ts.timePeriodClass ≠ null ? ts.timePeriodClass.hashCode() : 0
+  itemHashes = getSampledItemHashes(ts)
+  maxCountHash = ts.maximumItemCount
+  maxAgeHash = (int)ts.maximumItemAge
+  
+  getSampledItemHashes(ts: TimeSeries) ≜
+    count = ts.data.size()
+    hash = 0
+    (count >0 ⇒ hash += ts.data.get(0).hashCode()) 
+    (count >1 ⇒ hash += ts.data.get(count-1).hashCode()) 
+    (count >2 ⇒ hash += ts.data.get(count/2).hashCode())
+Functional Scenario Form 
+empty series && hash based on header fields || 
+non-empty series && include sampled item hashes
+end_process
+
+process updateBoundsForAddedItem(
+    ts: TimeSeries,
+    item: TimeSeriesDataItem
+)
+pre item ≠ null
+post 
+  yN = item.value ∧ 
+  (yN ≠ null ⇒ 
+    y = yN.doubleValue() ∧
+    ts.minY' = minIgnoreNaN(ts.minY, y) ∧
+    ts.maxY' = maxIgnoreNaN(ts.maxY, y)
+  )
+Functional Scenario Form 
+valid numeric value && update min/max y bounds || 
+null value && no state change
+end_process
+
+process updateBoundsForRemovedItem(
+    ts: TimeSeries,
+    item: TimeSeriesDataItem
+)
+pre item ≠ null
+post 
+  yN = item.value ∧ 
+  (yN ≠ null ⇒ 
+    y = yN.doubleValue() ∧
+    (¬Double.isNaN(y) ∧ (y ≤ ts.minY ∨ y ≥ ts.maxY) ⇒ 
+      findBoundsByIteration(ts)) 
+  )
+Functional Scenario Form 
+removed item was boundary marker && full bounds recalculation || 
+non-boundary item removed && keep existing bounds
+end_process
+
+process findBoundsByIteration(
+    ts: TimeSeries
+)
+post 
+  ts.minY' = INIT_MIN ∧ 
+  ts.maxY' = INIT_MAX ∧
+  ∀ item ∈ ts.data | 
+    updateBoundsForAddedItem(ts, item)
+Functional Scenario Form 
+data not empty && reset and recompute bounds || 
+empty data set && retain NaN values
+end_process
+
+function minIgnoreNaN(
+    a: double,
+    b: double
+) : double
+post 
+  (Double.isNaN(a) ⇒ result = b) || 
+  (Double.isNaN(b) ⇒ result = a) || 
+  (¬Double.isNaN(a) ∧ ¬Double.isNaN(b) ⇒ result = Math.min(a, b))
+Functional Scenario Form 
+a is NaN && return b || 
+b is NaN && return a || 
+both valid && return smaller value
+end_function
+
+function maxIgnoreNaN(
+    a: double,
+    b: double
+) : double
+post 
+  (Double.isNaN(a) ⇒ result = b) || 
+  (Double.isNaN(b) ⇒ result = a) || 
+  (¬Double.isNaN(a) ∧ ¬Double.isNaN(b) ⇒ result = Math.max(a, b))
+Functional Scenario Form 
+a is NaN && return b || 
+b is NaN && return a || 
+both valid && return larger value
+end_function
+
+end_module

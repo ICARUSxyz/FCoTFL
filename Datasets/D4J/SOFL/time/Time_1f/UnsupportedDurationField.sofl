@@ -1,0 +1,203 @@
+module UnsupportedDurationField  
+type:  
+
+var:  
+  serialVersionUID: long = -6390301302770925357L  
+
+
+process getDifference(minuendInstant: long, subtrahendInstant: long) result: int  
+pre true  
+post  
+  throw UnsupportedOperationException  
+
+Functional Scenario Form  
+any parameters && throws exception  
+end_process 
+
+process getDifferenceAsLong(minuendInstant: long, subtrahendInstant: long) result: long  
+pre true  
+post  
+  throw UnsupportedOperationException  
+
+Functional Scenario Form  
+any parameters && throws exception  
+end_process 
+
+process getUnitMillis() result: long  
+pre true  
+post  
+  throw UnsupportedOperationException  
+
+Functional Scenario Form  
+no parameters && throws exception  
+end_process 
+
+process compareTo(other: DurationField) result: int  
+pre true  
+post  
+  other ≠ null && other.isSupported()  
+    ⇒ result' = -1  
+  other ≠ null && ¬other.isSupported()  
+    ⇒ result' = compareNames(iType, other.getType())  
+  else  
+    result' = 1  
+
+Functional Scenario Form  
+supported field && returns -1  
+unsupported field with same name && returns 0  
+null field && returns 1  
+end_process 
+
+process compareNames(type1: DurationFieldType, type2: DurationFieldType) result: int  
+pre true  
+post  
+  name1 = type1.getName() ∧  
+  name2 = type2.getName() ∧  
+  result' = name1.compareTo(name2)  
+
+Functional Scenario Form  
+name1="century" name2="year" && returns negative  
+name1="era" name2="era" && returns 0  
+end_process 
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  obj = this  
+    ⇒ result' = true  
+  ¬(obj instanceof UnsupportedDurationField)  
+    ⇒ result' = false  
+  else  
+    other = (UnsupportedDurationField) obj ∧  
+    result' = iType.equals(other.iType)  
+
+Functional Scenario Form  
+same instance && returns true  
+different type && returns false  
+same field type && returns true  
+different field type && returns false  
+end_process 
+
+process hashCode() result: int  
+pre true  
+post  
+  result' = iType.hashCode() + 123  
+
+Functional Scenario Form  
+type=CENTURIES && returns corresponding hashcode  
+end_process 
+
+process toString() result: String  
+pre true  
+post  
+  result' = "UnsupportedDurationField[" + iType.getName() + "]"  
+
+Functional Scenario Form  
+type=ERAS && returns "UnsupportedDurationField[eras]"  
+end_process 
+
+private process readResolve() result: Object  
+pre true  
+post  
+  result' = getInstance(iType)  
+
+Functional Scenario Form  
+deserialization && returns cached instance  
+end_process 
+
+process add(instant: long, value: int) result: long  
+pre true  
+post  
+  throw UnsupportedOperationException  
+
+Functional Scenario Form  
+any parameters && throws exception  
+end_process  
+
+process add(instant: long, value: long) result: long  
+pre true  
+post  
+  throw UnsupportedOperationException  
+
+Functional Scenario Form  
+any parameters && throws exception  
+end_process  
+
+process getUnitMillis() result: long  
+pre true  
+post  
+  result' = 0  
+
+Functional Scenario Form  
+no parameters && returns 0  
+end_process  
+
+process compareTo(durationField: DurationField) result: int  
+pre true  
+post  
+  result' = 0  
+
+Functional Scenario Form  
+any parameters && returns 0  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  obj = this  
+    ⇒ result' = true  
+  obj instanceof UnsupportedDurationField  
+    ⇒ other = (UnsupportedDurationField) obj ∧  
+      (  
+        other.getName() = null  
+          ⇒ result' = (getName() = null)  
+        else  
+          result' = other.getName().equals(getName())  
+      )  
+  else  
+    ⇒ result' = false  
+
+Functional Scenario Form  
+same instance && returns true  
+other unsupported field same name && returns true  
+other unsupported field different name && returns false  
+non-unsupported field && returns false  
+end_process  
+
+process hashCode() result: int  
+pre true  
+post  
+  name = getName() ∧  
+  (  
+    name = null  
+      ⇒ result' = 0  
+    else  
+      result' = name.hashCode()  
+  )  
+
+Functional Scenario Form  
+name=null && returns 0  
+name="centuries" && returns hash of "centuries"  
+end_process  
+
+process toString() result: String  
+pre true  
+post  
+  name = getName() ∧  
+  result' = "UnsupportedDurationField[" + name + "]"  
+
+Functional Scenario Form  
+name=null && returns "UnsupportedDurationField[null]"  
+name="eras" && returns "UnsupportedDurationField[eras]"  
+end_process  
+
+private process unsupported() result: UnsupportedOperationException  
+pre true  
+post  
+  result' = new UnsupportedOperationException(iType + " field is unsupported")  
+
+Functional Scenario Form  
+no parameters && returns exception object  
+end_process  
+
+end_module  

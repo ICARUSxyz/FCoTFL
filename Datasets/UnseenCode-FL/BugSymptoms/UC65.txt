@@ -1,0 +1,33 @@
+// Test Case 1: BeatFly is triggered when character is already in motion
+→ Setup: Call BeatFly(...) while mEnable is already true and mCanBeRecover is 0
+→ Expected Output: No effect is applied; previous state is preserved
+→ Actual Output: Effect state is unexpectedly reset or overwritten
+// Indicates recovery logic may not work as intended.
+
+
+// Test Case 2: BeatFly initializes with null animation component
+→ Setup: Call BeatFly(...) on GameObject with no Animation component attached
+→ Expected Output: Null check handles absence gracefully
+→ Actual Output: NullReferenceException or animation call fails silently
+// Suggests null-check on animation component may be ineffective.
+
+
+// Test Case 3: Stay time set to 0
+→ Setup: Call BeatFly(...) with stayTime = 0
+→ Expected Output: System auto-corrects to a minimal non-zero value
+→ Actual Output: Character falls immediately or remains floating
+// Stay duration correction may not be functioning.
+
+
+// Test Case 4: Direction check for playing animation
+→ Setup: Call BeatFly(...) with action != "0"
+→ Expected Output: No animation is played
+→ Actual Output: Animation unexpectedly plays or fails
+// Action comparison may not behave logically as expected.
+
+
+// Test Case 5: Position capture for vertical motion
+→ Setup: Call BeatFly(...) and check mDefaultHeigt
+→ Expected Output: Stores character's current vertical position
+→ Actual Output: Stores horizontal (X-axis) position instead
+// Motion origin may be incorrectly initialized.

@@ -1,0 +1,106 @@
+**Bug Report: Display and UI Behavior Issues in Account History and Charging Panel**
+
+---
+
+**Test Case 1: Payment History Display**
+
+**Action:**
+Open page4 and check the list of past transactions.
+
+**Expected:**
+Each list item shows date, amount, and used points.
+
+**Observed:**
+List items display incorrect or missing point usage.
+
+**Log Output:**
+
+```plaintext
+[DEBUG] CSV line: 2025-08-01,1000,500,20  
+[DISPLAY] 2025-08-01, 金額: 1000円, 使用ポイント: 500pt  
+[WARN] Displayed value does not match expected "20pt" from CSV field
+```
+
+---
+
+**Test Case 2: Launching Balance Charge Panel**
+
+**Action:**
+Click the “チャージ” (Charge) button.
+
+**Expected:**
+Navigates to `page4_1` for charging input.
+
+**Observed:**
+Fails to load or triggers incorrect screen (`page4_2`).
+
+**Log Output:**
+
+```plaintext
+[INFO] Charge button clicked  
+[ERROR] page4_2.setVisible(true) - page4_2 is undefined  
+[WARN] Intended page4_1 not shown
+```
+
+---
+
+**Test Case 3: Updating Balance After Charge**
+
+**Action:**
+Charge balance from new panel and return.
+
+**Expected:**
+Balance label updates to reflect new amount.
+
+**Observed:**
+Balance remains unchanged or reflects stale value.
+
+**Log Output:**
+
+```plaintext
+[INFO] userData.setBalance(newBalance = 8000)  
+[INFO] Displayed balance: 0円  
+[WARN] UI not updated with new balance
+```
+
+---
+
+**Test Case 4: UI Misbehavior in Point Display**
+
+**Action:**
+Call `updateData()` after a transaction.
+
+**Expected:**
+Displays updated balance and point values.
+
+**Observed:**
+Point label shows the same value as balance.
+
+**Log Output:**
+
+```plaintext
+[INFO] Balance: 5000  
+[INFO] Point: 5000  
+[WARN] Point label shows balance instead of actual point total
+```
+
+---
+
+**Test Case 5: Compilation Check**
+
+**Action:**
+Attempt to compile project.
+
+**Expected:**
+Build completes without syntax errors.
+
+**Observed:**
+Compilation fails due to invalid button declaration.
+
+**Log Output:**
+
+```plaintext
+[ERROR] line 52: '==' used in variable declaration  
+[ERROR] Cannot find symbol: variable chargeButton  
+[FAIL] Compilation terminated
+```

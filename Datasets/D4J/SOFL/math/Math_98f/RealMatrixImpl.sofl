@@ -1,0 +1,570 @@
+module RealMatrixImpl
+type
+data: double[][]
+lu: double[][]
+permutation: int[]
+parity: int
+var
+TOO_SMALL: double = 1.0e-11
+
+process ctor_default()
+pre
+true
+post
+data' = null ∧ lu' = null ∧ permutation' = null ∧ parity' = 1
+Functional Scenario Form
+always && data'=null ∧ lu'=null ∧ permutation'=null ∧ parity'=1
+end_process
+
+process ctor_withDimensions(rowDimension: int, columnDimension: int)
+pre
+true
+post
+(rowDimension > 0 ∧ columnDimension > 0) ⇒
+(data' ≠ null ∧ |data'| = rowDimension ∧ |data'[0]| = columnDimension ∧
+(∀i:0..rowDimension-1 • (∀j:0..columnDimension-1 • data'[i][j] = 0.0)) ∧
+lu' = null ∧ permutation' = null ∧ parity' = 1)
+Functional Scenario Form
+rowDimension>0 ∧ columnDimension>0 && data' is a rowDimension×columnDimension zero matrix ∧ lu'=null ∧ permutation'=null ∧ parity'=1
+or rowDimension≤0 ∨ columnDimension≤0 && throw IllegalArgumentException
+end_process
+
+process ctor_withArrayCopy(d: double[][])
+pre
+true
+post
+(d ≠ null ∧ |d|>0 ∧ |d[0]|>0 ∧ (∀r:1..|d|-1 • |d[r]|=|d[0]|)) ⇒
+(data' ≠ d ∧ |data'|=|d| ∧ |data'[0]|=|d[0]| ∧
+(∀i,j • data'[i][j] = d[i][j]) ∧ lu' = null ∧ permutation' = null)
+Functional Scenario Form
+d≠null ∧ |d|>0 ∧ |d[0]|>0 ∧ rowsRectangular && data'=deepCopy(d) ∧ lu'=null ∧ permutation'=null
+or d=null ∨ |d|=0 ∨ |d[0]|=0 ∨ ¬rowsRectangular && throw IllegalArgumentException
+end_process
+
+process ctor_withArrayAndFlag(d: double[][], copyArray: boolean)
+pre
+true
+post
+copyArray = true ∧ d≠null ∧ |d|>0 ∧ |d[0]|>0 ∧ (∀r:1..|d|-1 • |d[r]|=|d[0]|) ⇒
+(data' ≠ d ∧ (∀i,j • data'[i][j]=d[i][j]) ∧ lu'=null ∧ permutation'=null)
+∧ copyArray = false ∧ d≠null ∧ |d|>0 ∧ |d[0]|>0 ∧ (∀r:1..|d|-1 • |d[r]|=|d[0]|) ⇒
+(data' = d ∧ lu'=null ∧ permutation'=null)
+Functional Scenario Form
+copyArray ∧ validRectangular(d) && data'=deepCopy(d) ∧ lu'=null ∧ permutation'=null
+or ¬copyArray ∧ validRectangular(d) && data'=d ∧ lu'=null ∧ permutation'=null
+or d=null && throw NullPointerException
+or invalidRectangular(d) && throw IllegalArgumentException
+end_process
+
+process ctor_withVector(v: double[])
+pre
+v ≠ null
+post
+data' ≠ null ∧ |data'| = |v| ∧ |data'[0]| = 1 ∧
+(∀i:0..|v|-1 • data'[i][0] = v[i]) ∧ lu' = null ∧ permutation' = null
+Functional Scenario Form
+v≠null && data' is |v|×1 with data'[i][0]=v[i] ∧ lu'=null ∧ permutation'=null
+end_process
+
+process copy() result: RealMatrix
+pre
+data ≠ null
+post
+result ≠ this ∧ result is RealMatrixImpl ∧
+|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j])
+Functional Scenario Form
+data≠null && result=deepCopyOf(this)
+end_process
+
+process add_RM(m: RealMatrix) result: RealMatrix
+pre
+true
+post
+(m.getRowDimension() = |data| ∧ m.getColumnDimension() = |data[0]|) ⇒
+(result is RealMatrixImpl ∧
+|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] + m.getEntry(i,j)))
+Functional Scenario Form
+dimsEqual(m,this) && result[i,j]=data[i][j]+m(i,j)
+or ¬dimsEqual(m,this) && throw IllegalArgumentException
+end_process
+
+process add_RMI(m: RealMatrixImpl) result: RealMatrixImpl
+pre
+true
+post
+(|m.data|=|data| ∧ |m.data[0]|=|data[0]|) ⇒
+(|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] + m.data[i][j]))
+Functional Scenario Form
+dimsEqual(m,this) && result[i,j]=data[i][j]+m.data[i][j]
+or ¬dimsEqual(m,this) && throw IllegalArgumentException
+end_process
+
+process subtract_RM(m: RealMatrix) result: RealMatrix
+pre
+true
+post
+(m.getRowDimension() = |data| ∧ m.getColumnDimension() = |data[0]|) ⇒
+(result is RealMatrixImpl ∧
+|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] - m.getEntry(i,j)))
+Functional Scenario Form
+dimsEqual(m,this) && result[i,j]=data[i][j]-m(i,j)
+or ¬dimsEqual(m,this) && throw IllegalArgumentException
+end_process
+
+process subtract_RMI(m: RealMatrixImpl) result: RealMatrixImpl
+pre
+true
+post
+(|m.data|=|data| ∧ |m.data[0]|=|data[0]|) ⇒
+(|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] - m.data[i][j]))
+Functional Scenario Form
+dimsEqual(m,this) && result[i,j]=data[i][j]-m.data[i][j]
+or ¬dimsEqual(m,this) && throw IllegalArgumentException
+end_process
+
+process scalarAdd(d: double) result: RealMatrix
+pre
+data ≠ null
+post
+result is RealMatrixImpl ∧
+|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] + d)
+Functional Scenario Form
+always && result[i,j]=data[i][j]+d
+end_process
+
+process scalarMultiply(d: double) result: RealMatrix
+pre
+data ≠ null
+post
+result is RealMatrixImpl ∧
+|result.data|=|data| ∧ |result.data[0]|=|data[0]| ∧
+(∀i,j • result.data[i][j] = data[i][j] * d)
+Functional Scenario Form
+always && result[i,j]=data[i][j]*d
+end_process
+
+process multiply_RM(m: RealMatrix) result: RealMatrix
+pre
+true
+post
+(|data[0]| = m.getRowDimension()) ⇒
+(result is RealMatrixImpl ∧
+|result.data| = |data| ∧ |result.data[0]| = m.getColumnDimension() ∧
+(∀i:0..|data|-1 • ∀j:0..m.getColumnDimension()-1 •
+result.data[i][j] = Σ k:0..|data[0]|-1 • data[i][k] * m.getEntry(k,j)))
+Functional Scenario Form
+this.cols=m.rows && result=A×M
+or this.cols≠m.rows && throw IllegalArgumentException
+end_process
+
+process multiply_RMI(m: RealMatrixImpl) result: RealMatrixImpl
+pre
+true
+post
+(|data[0]| = |m.data|) ⇒
+(|result.data| = |data| ∧ |result.data[0]| = |m.data[0]| ∧
+(∀i:0..|data|-1 • ∀j:0..|m.data[0]|-1 •
+result.data[i][j] = Σ k:0..|data[0]|-1 • data[i][k] * m.data[k][j]))
+Functional Scenario Form
+this.cols=m.rows && result=A×m
+or this.cols≠m.rows && throw IllegalArgumentException
+end_process
+
+process preMultiply_RM(m: RealMatrix) result: RealMatrix
+pre
+true
+post
+(m.getColumnDimension() = this.getRowDimension()) ⇒
+(result is RealMatrixImpl ∧
+|result.data| = m.getRowDimension() ∧ |result.data[0]| = this.getColumnDimension() ∧
+(∀i:0..m.getRowDimension()-1 • ∀j:0..this.getColumnDimension()-1 •
+result.data[i][j] = Σ k:0..m.getColumnDimension()-1 • m.getEntry(i,k) * this.data[k][j]))
+Functional Scenario Form
+m.cols=this.rows && result = m×this
+or m.cols≠this.rows && throw IllegalArgumentException
+end_process
+
+process getData() result: double[][]
+pre
+data ≠ null
+post
+result ≠ data ∧ |result|=|data| ∧ |result[0]|=|data[0]| ∧ (∀i,j • result[i][j]=data[i][j])
+Functional Scenario Form
+always && result is a deep copy of data
+end_process
+
+process getDataRef() result: double[][]
+pre
+true
+post
+result = data
+Functional Scenario Form
+always && result==data
+end_process
+
+process getNorm() result: double
+pre
+data ≠ null
+post
+result = max_{c∈[0..cols-1]} Σ_{r=0..rows-1} |data[r][c]|
+Functional Scenario Form
+always && result = maximum absolute column-sum norm
+end_process
+
+process getSubMatrix_range(startRow:int,endRow:int,startColumn:int,endColumn:int) result: RealMatrix
+pre
+true
+post
+(0 ≤ startRow ≤ endRow < |data| ∧ 0 ≤ startColumn ≤ endColumn < |data[0]|) ⇒
+(result is RealMatrixImpl ∧
+|result.data| = endRow-startRow+1 ∧ |result.data[0]| = endColumn-startColumn+1 ∧
+(∀i:0..endRow-startRow • ∀j:0..endColumn-startColumn •
+result.data[i][j] = data[startRow+i][startColumn+j]))
+Functional Scenario Form
+indices valid && result = rectangular slice [startRow..endRow]×[startColumn..endColumn]
+or indices invalid && throw MatrixIndexException
+end_process
+
+process getSubMatrix_indexSets(selectedRows:int, selectedColumns:int) result: RealMatrix
+pre
+true
+post
+(|selectedRows|>0 ∧ |selectedColumns|>0 ∧
+(∀i • 0≤selectedRows[i]<|data|) ∧ (∀j • 0≤selectedColumns[j]<|data[0]|)) ⇒
+(result is RealMatrixImpl ∧
+|result.data|=|selectedRows| ∧ |result.data[0]|=|selectedColumns| ∧
+(∀i:0..|selectedRows|-1 • ∀j:0..|selectedColumns|-1 •
+result.data[i][j]=data[selectedRows[i]][selectedColumns[j]]))
+Functional Scenario Form
+nonEmpty sets ∧ all indices in range && result = gathered submatrix by rows/cols
+or empty set(s) && throw MatrixIndexException
+or any index out of range && throw MatrixIndexException
+end_process
+
+process setSubMatrix(subMatrix: double[][], row:int, column:int)
+pre
+true
+post
+(row<0 ∨ column<0) ⇒ throw MatrixIndexException
+∧ (subMatrix=null) ⇒ throw NullPointerException
+∧ (|subMatrix|=0 ∨ |subMatrix[0]|=0) ⇒ throw IllegalArgumentException
+∧ (∃r • |subMatrix[r]|≠|subMatrix[0]|) ⇒ throw IllegalArgumentException
+∧ (data = null ∧ row=0 ∧ column=0) ⇒
+(data' created with |subMatrix|×|subMatrix[0]| ∧
+(∀i • data'[i] == subMatrix[i]) ∧ lu' = null)
+∧ (data ≠ null ∧ (row+|subMatrix| ≤ |data|) ∧ (column+|subMatrix[0]| ≤ |data[0]|)) ⇒
+(data' equals data except
+(∀i:0..|subMatrix|-1 • System.arraycopy(subMatrix[i],0,data'[row+i],column,|subMatrix[0]|)) ∧
+lu' = null)
+Functional Scenario Form
+row≥0 ∧ column≥0 ∧ rectangular(subMatrix) ∧ data=null ∧ row=0 ∧ column=0 && data' initialized to subMatrix copy ∧ lu'=null
+or row≥0 ∧ column≥0 ∧ rectangular(subMatrix) ∧ data≠null ∧ fitsInBounds && region [row..row+h-1]×[column..column+w-1] replaced; lu'=null
+or row<0 ∨ column<0 && throw MatrixIndexException
+or subMatrix null && throw NullPointerException
+or subMatrix empty or non-rectangular && throw IllegalArgumentException
+or does not fit in bounds && throw MatrixIndexException
+end_process
+
+process getRowMatrix(row:int) result: RealMatrix
+pre
+true
+post
+(0 ≤ row < |data|) ⇒
+(result is RealMatrixImpl ∧ |result.data|=1 ∧ |result.data[0]|=|data[0]| ∧
+(∀j:0..|data[0]|-1 • result.data[0][j]=data[row][j]))
+Functional Scenario Form
+valid row && result = 1×n row matrix equal to data[row,*]
+or invalid row && throw MatrixIndexException
+end_process
+
+process getColumnMatrix(column:int) result: RealMatrix
+pre
+true
+post
+(0 ≤ column < |data[0]|) ⇒
+(result is RealMatrixImpl ∧ |result.data|=|data| ∧ |result.data[0]|=1 ∧
+(∀i:0..|data|-1 • result.data[i][0]=data[i][column]))
+Functional Scenario Form
+valid column && result = n×1 column matrix equal to data[*,column]
+or invalid column && throw MatrixIndexException
+end_process
+
+process getRow(row:int) result: double[]
+pre
+true
+post
+(0 ≤ row < |data|) ⇒ (|result|=|data[0]| ∧ (∀j • result[j]=data[row][j]))
+Functional Scenario Form
+valid row && result = copy of data[row,*]
+or invalid row && throw MatrixIndexException
+end_process
+
+process getColumn(col:int) result: double[]
+pre
+true
+post
+(0 ≤ col < |data[0]|) ⇒ (|result|=|data| ∧ (∀i • result[i]=data[i][col]))
+Functional Scenario Form
+valid column && result = copy of data[*,col]
+or invalid column && throw MatrixIndexException
+end_process
+
+process getEntry(row:int,column:int) result: double
+pre
+true
+post
+(0 ≤ row < |data| ∧ 0 ≤ column < |data[0]|) ⇒ (result = data[row][column])
+Functional Scenario Form
+indices in range && result=data[row][column]
+or indices out of range && throw MatrixIndexException
+end_process
+
+process transpose() result: RealMatrix
+pre
+data ≠ null
+post
+result is RealMatrixImpl ∧
+|result.data|=|data[0]| ∧ |result.data[0]|=|data| ∧
+(∀i:0..|data|-1 • ∀j:0..|data[0]|-1 • result.data[j][i]=data[i][j])
+Functional Scenario Form
+always && result = Aᵀ
+end_process
+
+process inverse() result: RealMatrix
+pre
+true
+post
+(isSquare() ∧ ¬isSingular()) ⇒
+(result is RealMatrix ∧ this.multiply(result)=I ∧ result.multiply(this)=I)
+Functional Scenario Form
+square ∧ non-singular && result = A^{-1}
+or non-square ∨ singular && throw InvalidMatrixException
+end_process
+
+process getDeterminant() result: double
+pre
+true
+post
+isSquare() ⇒ (
+isSingular() ⇒ result = 0.0
+∧ ¬isSingular() ⇒ result = parity * Π i:0..rows-1 • lu[i][i]
+)
+Functional Scenario Form
+square ∧ non-singular && result = parity × product of LU diagonal
+or square ∧ singular && result = 0
+or non-square && throw InvalidMatrixException
+end_process
+
+process isSquare() result: boolean
+pre
+data ≠ null
+post
+result = (|data| = |data[0]|)
+Functional Scenario Form
+always && result ↔ rows==cols
+end_process
+
+process isSingular() result: boolean
+pre
+true
+post
+result = (luDecompose would fail) ∨ (lu = null ∧ luDecompose attempted and threw)
+∨ (lu ≠ null ⇒ false)
+Functional Scenario Form
+LU exists && result=false
+or LU fails (non-square or near-singular) && result=true
+end_process
+
+process getRowDimension() result: int
+pre
+data ≠ null
+post
+result = |data|
+Functional Scenario Form
+always && result=number of rows
+end_process
+
+process getColumnDimension() result: int
+pre
+data ≠ null
+post
+result = |data[0]|
+Functional Scenario Form
+always && result=number of columns
+end_process
+
+process getTrace() result: double
+pre
+true
+post
+isSquare() ⇒ (result = Σ i:0..rows-1 • data[i][i])
+Functional Scenario Form
+square && result=sum of diagonal
+or non-square && throw IllegalArgumentException
+end_process
+
+process operate_vector(v: double[]) result: double[]
+pre
+this.getColumnDimension() = |v|
+post
+|result| = this.getRowDimension() ∧
+(∀row:0..this.getRowDimension()-1 •
+result[row] = Σ i:0..this.getColumnDimension()-1 • data[row][i] * v[i])
+Functional Scenario Form
+|v|=cols && result = A·v
+or |v|≠cols && throw IllegalArgumentException
+end_process
+
+process preMultiply_vector(v: double[]) result: double[]
+pre
+this.getRowDimension() = |v|
+post
+|result| = this.getColumnDimension() ∧
+(∀col:0..this.getColumnDimension()-1 •
+result[col] = Σ i:0..this.getRowDimension()-1 • v[i] * data[i][col])
+Functional Scenario Form
+|v|=rows && result = vᵀ·A
+or |v|≠rows && throw IllegalArgumentException
+end_process
+
+process solve_vector(b: double[]) result: double[]
+pre
+|b| = this.getRowDimension()
+post
+isSquare() ∧ ¬isSingular() ⇒ (|result|=rows ∧ this.multiply(new RealMatrixImpl(result)).equals(new RealMatrixImpl(b)))
+Functional Scenario Form
+|b|=rows ∧ square ∧ non-singular && A·x=b with x=result
+or |b|≠rows && throw IllegalArgumentException
+or ¬square && throw InvalidMatrixException
+or singular && throw InvalidMatrixException
+end_process
+
+process solve_matrix(b: RealMatrix) result: RealMatrix
+pre
+b.getRowDimension() = this.getRowDimension()
+post
+isSquare() ∧ ¬isSingular() ⇒
+(result.getRowDimension()=rows ∧ result.getColumnDimension()=b.getColumnDimension() ∧
+this.multiply(result).equals(b))
+Functional Scenario Form
+b.rows=rows ∧ square ∧ non-singular && result solves A·X=B
+or b.rows≠rows && throw IllegalArgumentException
+or ¬square && throw InvalidMatrixException
+or singular && throw InvalidMatrixException
+end_process
+
+process luDecompose()
+pre
+this.getRowDimension() = this.getColumnDimension()
+post
+success ⇒
+(lu ≠ null ∧ |permutation|=rows ∧ parity∈{-1,1} ∧
+let P be permutation matrix from permutation in
+P·A = L·U where
+L is unit lower triangular with L[i][j] = (i>j ? lu[i][j] : (i=j ? 1 : 0)) and
+U is upper triangular with U[i][j] = (i≤j ? lu[i][j] : 0))
+Functional Scenario Form
+square ∧ pivots≥TOO_SMALL && LU, permutation, parity computed; P·A=L·U
+or ¬square && throw InvalidMatrixException
+or pivot<TOO_SMALL && lu=null ∧ throw InvalidMatrixException
+end_process
+
+process toString() result: String
+pre
+true
+post
+result is a textual representation of this matrix and does not modify state
+Functional Scenario Form
+always && returns "RealMatrixImpl{...}" string reflecting data
+end_process
+
+process equals_object(object: Object) result: boolean
+pre
+true
+post
+(object is RealMatrixImpl ∧ same dimensions ∧
+∀i,j • Double.doubleToLongBits(this.data[i][j]) = Double.doubleToLongBits(((RealMatrix)object).getEntry(i,j)))
+⇒ result=true
+∧ otherwise result=false
+Functional Scenario Form
+same type ∧ same dims ∧ all entries bit-equal && true
+or otherwise && false
+end_process
+
+process hashCode() result: int
+pre
+true
+post
+let rows = this.getRowDimension(), cols = this.getColumnDimension() in
+let r0 = 7,
+r1 = r0 * 31 + rows,
+r2 = r1 * 31 + cols,
+rF = fold (row=0..rows-1, col=0..cols-1) on ret with
+ret_next = ret * 31 + (11 * (row + 1) + 17 * (col + 1)) * MathUtils.hash(data[row][col])
+starting at r2
+in result = rF ∧ state unchanged
+Functional Scenario Form
+always && result equals the deterministic hash computed from dimensions and MathUtils.hash of entries
+end_process
+
+process getLUMatrix() result: RealMatrix
+pre
+true
+post
+success ⇒ (lu ≠ null ∧ result is a fresh RealMatrixImpl built from lu ∧
+result.getData() = lu ∧ result.getData() ≠ lu (deep copy))
+Functional Scenario Form
+lu ≠ null && return fresh copy of lu as RealMatrix
+or lu = null ∧ square ∧ non-singular && perform luDecompose then return fresh copy of lu
+or lu = null ∧ ¬square && throw InvalidMatrixException
+or lu = null ∧ singular && throw InvalidMatrixException
+end_process
+
+process getPermutation() result: int[]
+pre
+permutation ≠ null
+post
+|result| = |permutation| ∧ (∀i:0..|permutation|-1 • result[i] = permutation[i]) ∧ result ≠ permutation
+Functional Scenario Form
+permutation initialized && return a fresh copy of permutation
+end_process
+
+process copyOut() result: double[][]
+pre
+data ≠ null
+post
+|result| = |data| ∧ (∀i:0..rows-1 • |result[i]| = |data[i]| ∧ (∀j:0..cols-1 • result[i][j] = data[i][j])) ∧ result ≠ data ∧ (∀i • result[i] ≠ data[i]) ∧ state unchanged
+Functional Scenario Form
+data present && return deep copy of data
+end_process
+
+process copyIn(in: double[][])
+pre
+in ≠ null ∧ |in| > 0 ∧ |in[0]| > 0 ∧ (∀r:1..|in|-1 • |in[r]| = |in[0]|)
+post
+data ≠ null ∧ getRowDimension() = |in| ∧ getColumnDimension() = |in[0]| ∧
+(∀i:0..|in|-1, j:0..|in[0]|-1 • data[i][j] = in[i][j]) ∧ lu = null
+Functional Scenario Form
+rectangular non-empty input && data becomes a fresh copy of in ∧ lu=null
+or in = null && throw NullPointerException
+or |in|=0 or |in[0]|=0 or non-rectangular && throw IllegalArgumentException
+end_process
+
+process isValidCoordinate(row: int, col: int) result: boolean
+pre
+true
+post
+let rows = getRowDimension(), cols = getColumnDimension() in
+result = (0 ≤ row ∧ row ≤ rows - 1 ∧ 0 ≤ col ∧ col ≤ cols - 1)
+Functional Scenario Form
+0≤row<rows ∧ 0≤col<cols && true
+or otherwise && false
+end_process
+
+end_module

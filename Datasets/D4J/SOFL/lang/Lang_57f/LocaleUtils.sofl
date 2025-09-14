@@ -1,0 +1,97 @@
+module LocaleUtils
+type
+    str: String
+    locale: Locale
+    defaultLocale: Locale
+    countryCode: String
+    languageCode: String
+    resultLocale: Locale
+    localeList: sequence of Locale
+    localeSet: set of Locale
+    countryLangMap: Map
+    languageCountryMap: Map
+
+var
+    cAvailableLocaleList: sequence of Locale
+    cAvailableLocaleSet: set of Locale
+    cLanguagesByCountry: Map
+    cCountriesByLanguage: Map
+
+process toLocale(str: String) result: resultLocale: Locale
+pre
+    str = null ∨ 
+    (str.length = 2 ∨ str.length = 5 ∨ str.length ≥ 7) ∧
+    (∀i ∈ {0,1} • str[i] ∈ 'a'..'z') ∧
+    (str.length = 2 ∨ str[2] = '_') ∧
+    (str.length < 5 ∨ (str[3] ∈ 'A'..'Z' ∧ str[4] ∈ 'A'..'Z')) ∧
+    (str.length ≤ 5 ∨ str[5] = '_')
+post
+    (str = null ⇒ resultLocale = null) ∧
+    (str.length = 2 ⇒ resultLocale = Locale(str, "")) ∧
+    (str.length = 5 ⇒ resultLocale = Locale(str[0..1], str[3..4])) ∧
+    (str.length ≥ 7 ⇒ resultLocale = Locale(str[0..1], str[3..4], str[6..]))
+Functional Scenario Form
+(str = null) && (resultLocale = null) or
+(str.length = 2) && (resultLocale = Locale(str, "")) or
+(str.length = 5) && (resultLocale = Locale(str[0..1], str[3..4])) or
+(str.length ≥ 7) && (resultLocale = Locale(str[0..1], str[3..4], str[6..]))
+end_process
+
+process localeLookupList(locale: Locale, defaultLocale: Locale) result: localeList: sequence of Locale
+pre
+    true
+post
+    (locale ≠ null ⇒ 
+        (localeList[0] = locale ∧ 
+         (locale.getVariant() ≠ "" ⇒ localeList contains Locale(locale.getLanguage(), locale.getCountry())) ∧
+         (locale.getCountry() ≠ "" ⇒ localeList contains Locale(locale.getLanguage(), "")) ∧
+         (¬localeList contains defaultLocale ⇒ localeList contains defaultLocale))) ∧
+    (locale = null ⇒ localeList = ∅)
+Functional Scenario Form
+(locale = null) && (localeList = ∅) or
+(locale ≠ null ∧ locale.getVariant() = "") && (localeList contains Locale(locale.getLanguage(), "")) or
+(locale ≠ null ∧ locale.getVariant() ≠ "") && (localeList contains Locale(locale.getLanguage(), locale.getCountry()))
+end_process
+
+process availableLocaleSet() result: localeSet: set of Locale
+pre
+    true
+post
+    localeSet = set of cAvailableLocaleList
+Functional Scenario Form
+true && (localeSet = set of cAvailableLocaleList)
+end_process
+
+process isAvailableLocale(locale: Locale) result: result: Boolean
+pre
+    true
+post
+    result ⇔ locale ∈ cAvailableLocaleList
+Functional Scenario Form
+(locale ∈ cAvailableLocaleList) && (result = true) or
+(locale ∉ cAvailableLocaleList) && (result = false)
+end_process
+
+process languagesByCountry(countryCode: String) result: localeList: sequence of Locale
+pre
+    true
+post
+    (countryCode = null ⇒ localeList = ∅) ∧
+    (countryCode ≠ null ⇒ localeList = [l ∈ cAvailableLocaleList | l.getCountry() = countryCode ∧ l.getVariant() = ""])
+Functional Scenario Form
+(countryCode = null) && (localeList = ∅) or
+(countryCode ≠ null) && (localeList = all Locale where getCountry() = countryCode ∧ getVariant() = "")
+end_process
+
+process countriesByLanguage(languageCode: String) result: localeList: sequence of Locale
+pre
+    true
+post
+    (languageCode = null ⇒ localeList = ∅) ∧
+    (languageCode ≠ null ⇒ localeList = [l ∈ cAvailableLocaleList | l.getLanguage() = languageCode ∧ l.getCountry() ≠ "" ∧ l.getVariant() = ""])
+Functional Scenario Form
+(languageCode = null) && (localeList = ∅) or
+(languageCode ≠ null) && (localeList = all Locale where getLanguage() = languageCode ∧ getCountry() ≠ "" ∧ getVariant() = "")
+end_process
+
+end_module

@@ -1,0 +1,81 @@
+**Bug Report: Video Recording and Storage Anomalies**
+
+---
+
+**Test Case 1: Configure Video Settings**
+
+**Action:**
+Invoke `configureVideoSettings()` before starting recording.
+
+**Expected:**
+Video configuration is applied with valid parameters (e.g., integer frame rate).
+
+**Observed:**
+Compilation fails or runtime exception due to invalid frame rate syntax.
+
+**Log:**
+
+```plaintext
+[ERROR] Invalid argument '30fps' passed to setFrameRate()
+[FAIL] Video settings not applied
+```
+
+---
+
+**Test Case 2: Recorder Initialization Failure**
+
+**Action:**
+Trigger `startRecording()` without resolving dependencies.
+
+**Expected:**
+Recorder fails gracefully with clear error output to standard error.
+
+**Observed:**
+Error message printed to standard output instead of standard error.
+
+**Log:**
+
+```plaintext
+[INFO] Starting video recording...
+[ERROR] VideoRecorder instance could not be created.  // Printed to stdout
+```
+
+---
+
+**Test Case 3: Recording Completion Message**
+
+**Action:**
+Call `stopRecording()` after a successful recording session.
+
+**Expected:**
+Message confirms recording stopped and file path is shown.
+
+**Observed:**
+Output message format inconsistent with user expectation.
+
+**Log:**
+
+```plaintext
+[INFO] Recording stopped. File saved: /videos/output_20250808.enc
+```
+
+---
+
+**Test Case 4: Encrypted Storage Operation**
+
+**Action:**
+Call `encryptAndStoreVideo()` with video data.
+
+**Expected:**
+Encrypted data is written to secure storage path.
+
+**Observed:**
+Plain video data is written instead of encrypted content.
+
+**Log:**
+
+```plaintext
+[INFO] Encrypting video data...
+[INFO] Writing file: /encrypted/output_20250808.enc
+[WARN] Written content is not encrypted
+```

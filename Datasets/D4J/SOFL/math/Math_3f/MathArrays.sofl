@@ -1,0 +1,718 @@
+module MathArrays  
+var:  
+  SPLIT_FACTOR: int = 0x8000001  
+
+// Scaled array copy  
+process scale(val: double, arr: double[]) result: double[]  
+pre true  
+post  
+  newArr = new double[arr.length]  
+  for i=0 to arr.length-1  
+    newArr[i] = arr[i] * val  
+  result' = newArr  
+Functional Scenario Form  
+arr=[1,2,3] val=2 && result'=[2,4,6]  
+end_process  
+
+// In-place scaling  
+process scaleInPlace(val: double, arr: double[])  
+pre true  
+post  
+  for i=0 to arr.length-1  
+    arr[i] = arr[i] * val  
+Functional Scenario Form  
+arr=[1,2,3] val=3 && arr'=[3,6,9]  
+end_process  
+
+// Element-wise addition  
+process ebeAdd(a: double[], b: double[]) result: double[]  
+pre true  
+post  
+  a.length ≠ b.length  
+    ? throw DimensionMismatchException  
+  result = a.clone()  
+  for i=0 to a.length-1  
+    result[i] = result[i] + b[i]  
+  result' = result  
+Functional Scenario Form  
+a=[1,2] b=[3,4] && result'=[4,6]  
+a=[1] b=[2,3] && throws exception  
+end_process  
+
+// Element-wise subtraction  
+process ebeSubtract(a: double[], b: double[]) result: double[]  
+pre true  
+post  
+  a.length ≠ b.length  
+    ? throw DimensionMismatchException  
+  result = a.clone()  
+  for i=0 to a.length-1  
+    result[i] = result[i] - b[i]  
+  result' = result  
+Functional Scenario Form  
+a=[5,6] b=[2,3] && result'=[3,3]  
+a=[1,2,3] b=[1,2] && throws exception  
+end_process  
+
+// Element-wise multiplication  
+process ebeMultiply(a: double[], b: double[]) result: double[]  
+pre true  
+post  
+  a.length ≠ b.length  
+    ? throw DimensionMismatchException  
+  result = a.clone()  
+  for i=0 to a.length-1  
+    result[i] = result[i] * b[i]  
+  result' = result  
+Functional Scenario Form  
+a=[2,3] b=[4,5] && result'=[8,15]  
+a=[1] b=[] && throws exception  
+end_process  
+
+// Element-wise division  
+process ebeDivide(a: double[], b: double[]) result: double[]  
+pre true  
+post  
+  a.length ≠ b.length  
+    ? throw DimensionMismatchException  
+  result = a.clone()  
+  for i=0 to a.length-1  
+    result[i] = result[i] / b[i]  
+  result' = result  
+Functional Scenario Form  
+a=[4,9] b=[2,3] && result'=[2,3]  
+a=[1,2] b=[1,0] && result' contains Infinity  
+end_process  
+
+// L1 distance (double arrays)  
+process distance1(p1: double[], p2: double[]) result: double  
+pre true  
+post  
+  sum = 0  
+  for i=0 to p1.length-1  
+    sum = sum + FastMath.abs(p1[i] - p2[i])  
+  result' = sum  
+Functional Scenario Form  
+p1=[1,2] p2=[3,4] && result'=4.0  
+end_process  
+
+// L1 distance (int arrays)  
+process distance1_int(p1: int[], p2: int[]) result: int  
+pre true  
+post  
+  sum = 0  
+  for i=0 to p1.length-1  
+    sum = sum + FastMath.abs(p1[i] - p2[i])  
+  result' = sum  
+Functional Scenario Form  
+p1=[1,2] p2=[3,4] && result'=4  
+end_process  
+
+// Euclidean distance (double arrays)  
+process distance(p1: double[], p2: double[]) result: double  
+pre true  
+post  
+  sum = 0  
+  for i=0 to p1.length-1  
+    dp = p1[i] - p2[i]  
+    sum = sum + dp * dp  
+  result' = FastMath.sqrt(sum)  
+Functional Scenario Form  
+p1=[0,0] p2=[3,4] && result'=5.0  
+end_process  
+
+// Euclidean distance (int arrays)  
+process distance_int(p1: int[], p2: int[]) result: double  
+pre true  
+post  
+  sum = 0  
+  for i=0 to p1.length-1  
+    dp = p1[i] - p2[i]  
+    sum = sum + dp * dp  
+  result' = FastMath.sqrt(sum)  
+Functional Scenario Form  
+p1=[0,0] p2=[3,4] && result'=5.0  
+end_process  
+
+// L-infinity distance (double arrays)  
+process distanceInf(p1: double[], p2: double[]) result: double  
+pre true  
+post  
+  max = 0  
+  for i=0 to p1.length-1  
+    diff = FastMath.abs(p1[i] - p2[i])  
+    max = FastMath.max(max, diff)  
+  result' = max  
+Functional Scenario Form  
+p1=[1,5] p2=[4,2] && result'=3.0  
+end_process  
+
+// L-infinity distance (int arrays)  
+process distanceInf_int(p1: int[], p2: int[]) result: int  
+pre true  
+post  
+  max = 0  
+  for i=0 to p1.length-1  
+    diff = FastMath.abs(p1[i] - p2[i])  
+    max = FastMath.max(max, diff)  
+  result' = max  
+Functional Scenario Form  
+p1=[1,5] p2=[4,2] && result'=3  
+end_process
+
+// Generic monotonic check  
+process isMonotonic<T: Comparable>(val: T[], dir: OrderDirection, strict: boolean) result: boolean  
+pre val.length > 0  
+post  
+  previous = val[0]  
+  for i=1 to val.length-1  
+    switch dir  
+      case INCREASING:  
+        comp = previous.compareTo(val[i])  
+        strict  
+          ? comp ≥ 0 && result' = false  
+          : comp > 0 && result' = false  
+      case DECREASING:  
+        comp = val[i].compareTo(previous)  
+        strict  
+          ? comp ≥ 0 && result' = false  
+          : comp > 0 && result' = false  
+      default:  
+        throw MathInternalError  
+    previous = val[i]  
+  result' = true  
+Functional Scenario Form  
+val=[1,2,3] dir=INCREASING strict=true && result'=true  
+val=[3,2,1] dir=DECREASING strict=false && result'=true  
+val=[1,3,2] dir=INCREASING strict=true && result'=false  
+end_process  
+
+// Double array monotonic check  
+process isMonotonic_double(val: double[], dir: OrderDirection, strict: boolean) result: boolean  
+pre true  
+post  
+  result' = checkOrder(val, dir, strict, false)  
+Functional Scenario Form  
+val=[1.5,2.0,2.5] dir=INCREASING strict=false && result'=true  
+end_process  
+
+// Double array order validation  
+process checkOrder(val: double[], dir: OrderDirection, strict: boolean, abort: boolean) result: boolean  
+pre val.length > 0  
+post  
+  previous = val[0]  
+  index = 1  
+  while index < val.length  
+    switch dir  
+      case INCREASING:  
+        strict  
+          ? val[index] ≤ previous && break  
+          : val[index] < previous && break  
+      case DECREASING:  
+        strict  
+          ? val[index] ≥ previous && break  
+          : val[index] > previous && break  
+      default:  
+        throw MathInternalError  
+    previous = val[index]  
+    index = index + 1  
+  index = val.length  
+    ? result' = true  
+    : abort  
+        ? throw NonMonotonicSequenceException  
+        : result' = false  
+Functional Scenario Form  
+val=[5,4,3] dir=DECREASING strict=true abort=true && result'=true  
+val=[1,3,2] dir=INCREASING strict=false abort=false && result'=false  
+val=[1,0,2] dir=INCREASING strict=true abort=true && throws exception  
+end_process  
+
+// Order validation (3-parameter)  
+process checkOrder_3params(val: double[], dir: OrderDirection, strict: boolean)  
+pre true  
+post  
+  checkOrder(val, dir, strict, true)  
+Functional Scenario Form  
+val=[1,2,3] dir=INCREASING strict=true && no exception  
+val=[3,2,1] dir=DECREASING strict=false && no exception  
+val=[1,3,2] dir=INCREASING strict=true && throws NonMonotonicSequenceException  
+end_process  
+
+// Default order validation  
+process checkOrder_default(val: double[])  
+pre true  
+post  
+  checkOrder(val, OrderDirection.INCREASING, true, true)  
+Functional Scenario Form  
+val=[1.1,2.2,3.3] && no exception  
+val=[5,3,7] && throws NonMonotonicSequenceException  
+end_process  
+
+// Rectangular array check  
+process checkRectangular(in: long[][])  
+pre true  
+post  
+  in = null && throw NullArgumentException  
+  for i=1 to in.length-1  
+    in[i].length ≠ in[0].length  
+      && throw DimensionMismatchException  
+Functional Scenario Form  
+in=[[1,2],[3,4]] && no exception  
+in=[[1],[2,3]] && throws DimensionMismatchException  
+end_process  
+
+// Strictly positive check  
+process checkPositive(in: double[])  
+pre true  
+post  
+  for i=0 to in.length-1  
+    in[i] ≤ 0 && throw NotStrictlyPositiveException  
+Functional Scenario Form  
+in=[0.1, 1.5] && no exception  
+in=[2,0,-1] && throws NotStrictlyPositiveException  
+end_process  
+
+// Non-negative check (1D array)  
+process checkNonNegative_1D(in: long[])  
+pre true  
+post  
+  for i=0 to in.length-1  
+    in[i] < 0 && throw NotPositiveException  
+Functional Scenario Form  
+in=[0,1,2] && no exception  
+in=[5,-1] && throws NotPositiveException  
+end_process  
+
+// Non-negative check (2D array)  
+process checkNonNegative_2D(in: long[][])  
+pre true  
+post  
+  for i=0 to in.length-1  
+    for j=0 to in[i].length-1  
+      in[i][j] < 0 && throw NotPositiveException  
+Functional Scenario Form  
+in=[[0,1],[2,3]] && no exception  
+in=[[1,-1]] && throws NotPositiveException  
+end_process  
+
+// Safe Euclidean norm calculation  
+process safeNorm(v: double[]) result: double  
+pre true  
+post  
+  rdwarf = 3.834e-20  
+  rgiant = 1.304e19  
+  s1 = 0, s2 = 0, s3 = 0  
+  x1max = 0, x3max = 0  
+  floatn = v.length  
+  agiant = rgiant / floatn  
+  for i=0 to v.length-1  
+    xabs = FastMath.abs(v[i])  
+    xabs < rdwarf ∨ xabs > agiant  
+      ? xabs > rdwarf  
+          ? xabs > x1max  
+              ? r = x1max / xabs  
+                s1 = 1 + s1 * r * r  
+                x1max = xabs  
+              : r = xabs / x1max  
+                s1 = s1 + r * r  
+          : xabs > x3max  
+              ? r = x3max / xabs  
+                s3 = 1 + s3 * r * r  
+                x3max = xabs  
+              : xabs ≠ 0  
+                  ? r = xabs / x3max  
+                    s3 = s3 + r * r  
+      : s2 = s2 + xabs * xabs  
+  s1 ≠ 0  
+    ? norm = x1max * FastMath.sqrt(s1 + (s2/x1max)/x1max)  
+  s2 = 0  
+    ? norm = x3max * FastMath.sqrt(s3)  
+  s2 ≥ x3max  
+    ? norm = FastMath.sqrt(s2 * (1 + (x3max/s2)*(x3max*s3)))  
+  else  
+    norm = FastMath.sqrt(x3max * (s2/x3max + x3max*s3))  
+  result' = norm  
+Functional Scenario Form  
+v=[1e-30,1e20] && handles extreme values  
+v=[3,4] && returns 5.0  
+end_process  
+
+// In-place sorting with secondary arrays  
+process sortInPlace(x: double[], yList: double[][])  
+pre true  
+post  
+  sortInPlace(x, OrderDirection.INCREASING, yList)  
+Functional Scenario Form  
+x=[3,1,2] yList=[[6,2,4]] && sorts x=[1,2,3] yList'=[[2,4,6]]  
+end_process  
+
+// Full in-place sorting  
+process sortInPlace_full(x: double[], dir: OrderDirection, yList: double[][])  
+pre true  
+post  
+  x = null && throw NullArgumentException  
+  for j=0 to yList.length-1  
+    yList[j] = null && throw NullArgumentException  
+    yList[j].length ≠ x.length && throw DimensionMismatchException  
+  pairs = new ArrayList<Pair<Double, Integer>>(x.length)  
+  for i=0 to x.length-1  
+    pairs.add(new Pair(x[i], i))  
+  comp = (dir = INCREASING)  
+      ? new Comparator { compare(o1,o2) && o1.key.compareTo(o2.key) }  
+      : new Comparator { compare(o1,o2) && o2.key.compareTo(o1.key) }  
+  Collections.sort(pairs, comp)  
+  indices = new int[x.length]  
+  for i=0 to x.length-1  
+    e = pairs.get(i)  
+    x[i] = e.key  
+    indices[i] = e.value  
+  for j=0 to yList.length-1  
+    yOrig = yList[j].clone()  
+    for i=0 to x.length-1  
+      yList[j][i] = yOrig[indices[i]]  
+Functional Scenario Form  
+x=[3,1,2] dir=INCREASING yList=[[6,2,4]] && x'=[1,2,3] yList'=[[2,4,6]]  
+x=null && throws NullArgumentException  
+yList=[[1,2],[3]] && throws DimensionMismatchException  
+end_process  
+
+// Integer array copy (full)  
+process copyOf_int(source: int[]) result: int[]  
+pre true  
+post  
+  result' = copyOf(source, source.length)  
+Functional Scenario Form  
+source=[1,2,3] && result'=[1,2,3]  
+end_process  
+
+// Double array copy (full)  
+process copyOf_double(source: double[]) result: double[]  
+pre true  
+post  
+  result' = copyOf(source, source.length)  
+Functional Scenario Form  
+source=[1.5,2.5] && result'=[1.5,2.5]  
+end_process  
+
+// Integer array copy (length-specified)  
+process copyOf_int_len(source: int[], len: int) result: int[]  
+pre true  
+post  
+  output = new int[len]  
+  copyLen = FastMath.min(len, source.length)  
+  System.arraycopy(source, 0, output, 0, copyLen)  
+  // Remainder remains 0 (default initialization)  
+  result' = output  
+Functional Scenario Form  
+source=[1,2,3] len=2 && result'=[1,2]  
+source=[4,5] len=3 && result'=[4,5,0]  
+end_process  
+
+// Double array copy (length-specified)  
+process copyOf_double_len(source: double[], len: int) result: double[]  
+pre true  
+post  
+  output = new double[len]  
+  copyLen = FastMath.min(len, source.length)  
+  System.arraycopy(source, 0, output, 0, copyLen)  
+  result' = output  
+Functional Scenario Form  
+source=[1.1,2.2] len=2 && result'=[1.1,2.2]  
+source=[3.3] len=3 && result'=[3.3,0.0,0.0]  
+end_process  
+
+// High-precision vector dot product  
+process linearCombination_vectors(a: double[], b: double[]) result: double  
+pre true  
+post  
+  a.length ≠ b.length && throw DimensionMismatchException  
+  a.length = 1 && result' = a[0]*b[0]  
+  prodHigh = new double[a.length]  
+  prodLowSum = 0  
+  for i=0 to a.length-1  
+    // Split factors using SPLIT_FACTOR  
+    aHigh = splitHigh(a[i])  
+    aLow = a[i] - aHigh  
+    bHigh = splitHigh(b[i])  
+    bLow = b[i] - bHigh  
+    prodHigh[i] = a[i] * b[i]  
+    prodLow = aLow*bLow - (((prodHigh[i]-aHigh*bHigh) - aLow*bHigh) - aHigh*bLow)  
+    prodLowSum = prodLowSum + prodLow  
+  // Compensated summation  
+  sHighPrev = prodHigh[0] + prodHigh[1]  
+  sPrime = sHighPrev - prodHigh[1]  
+  sLowSum = (prodHigh[1] - (sHighPrev - sPrime)) + (prodHigh[0] - sPrime)  
+  for i=1 to a.length-2  
+    sHighCur = sHighPrev + prodHigh[i+1]  
+    sPrime = sHighCur - prodHigh[i+1]  
+    sLowSum = sLowSum + (prodHigh[i+1] - (sHighCur - sPrime)) + (sHighPrev - sPrime)  
+    sHighPrev = sHighCur  
+  result = sHighPrev + (prodLowSum + sLowSum)  
+  Double.isNaN(result)  
+    ? fallback = 0  
+      for i=0 to a.length-1  
+        fallback = fallback + a[i]*b[i]  
+      result' = fallback  
+    : result' = result  
+Functional Scenario Form  
+a=[1e100,1e-100] b=[1e100,1e-100] && handles precision  
+a=[1,2] b=[3,4] && returns 11.0  
+end_process  
+
+// High-precision scalar combination  
+process linearCombination_scalars(a1: double, b1: double, a2: double, b2: double) result: double  
+pre true  
+post  
+  // Split factors using SPLIT_FACTOR  
+  a1High = splitHigh(a1)  
+  a1Low = a1 - a1High  
+  b1High = splitHigh(b1)  
+  b1Low = b1 - b1High  
+  prod1High = a1*b1  
+  prod1Low = a1Low*b1Low - (((prod1High-a1High*b1High) - a1Low*b1High) - a1High*b1Low)  
+  a2High = splitHigh(a2)  
+  a2Low = a2 - a2High  
+  b2High = splitHigh(b2)  
+  b2Low = b2 - b2High  
+  prod2High = a2*b2  
+  prod2Low = a2Low*b2Low - (((prod2High-a2High*b2High) - a2Low*b2High) - a2High*b2Low)  
+  // Compensated addition  
+  s12High = prod1High + prod2High  
+  s12Prime = s12High - prod2High  
+  s12Low = (prod2High - (s12High - s12Prime)) + (prod1High - s12Prime)  
+  result = s12High + (prod1Low + prod2Low + s12Low)  
+  Double.isNaN(result)  
+    ? result' = a1*b1 + a2*b2  
+    : result' = result  
+Functional Scenario Form  
+a1=1e100 b1=1e100 a2=1e-100 b2=1e-100 && handles precision  
+a1=2 b1=3 a2=4 b2=5 && returns 26.0  
+end_process
+
+// High-precision triple scalar combination  
+process linearCombination_triple(a1: double, b1: double, a2: double, b2: double, a3: double, b3: double) result: double  
+pre true  
+post  
+  // Split a1 and b1  
+  a1High = splitHigh(a1)  
+  a1Low = a1 - a1High  
+  b1High = splitHigh(b1)  
+  b1Low = b1 - b1High  
+  prod1High = a1*b1  
+  prod1Low = a1Low*b1Low - (((prod1High-a1High*b1High) - a1Low*b1High) - a1High*b1Low)  
+
+  // Split a2 and b2  
+  a2High = splitHigh(a2)  
+  a2Low = a2 - a2High  
+  b2High = splitHigh(b2)  
+  b2Low = b2 - b2High  
+  prod2High = a2*b2  
+  prod2Low = a2Low*b2Low - (((prod2High-a2High*b2High) - a2Low*b2High) - a2High*b2Low)  
+
+  // Split a3 and b3  
+  a3High = splitHigh(a3)  
+  a3Low = a3 - a3High  
+  b3High = splitHigh(b3)  
+  b3Low = b3 - b3High  
+  prod3High = a3*b3  
+  prod3Low = a3Low*b3Low - (((prod3High-a3High*b3High) - a3Low*b3High) - a3High*b3Low)  
+
+  // Add first two products  
+  s12High = prod1High + prod2High  
+  s12Prime = s12High - prod2High  
+  s12Low = (prod2High - (s12High - s12Prime)) + (prod1High - s12Prime)  
+
+  // Add third product  
+  s123High = s12High + prod3High  
+  s123Prime = s123High - prod3High  
+  s123Low = (prod3High - (s123High - s123Prime)) + (s12High - s123Prime)  
+
+  // Final result with error compensation  
+  result = s123High + (prod1Low + prod2Low + prod3Low + s12Low + s123Low)  
+
+  // NaN fallback  
+  Double.isNaN(result)  
+    ? result' = a1*b1 + a2*b2 + a3*b3  
+    : result' = result  
+Functional Scenario Form  
+a1=1e100 b1=1e100 a2=1e-100 b2=1e-100 a3=1e200 b3=1e-200 && handles precision  
+a1=2 b1=3 a2=4 b2=5 a3=6 b3=7 && returns 2*3 + 4*5 + 6*7 = 6+20+42=68.0  
+end_process  
+
+// High-precision quadruple scalar combination  
+process linearCombination_quad(a1: double, b1: double, a2: double, b2: double, a3: double, b3: double, a4: double, b4: double) result: double  
+pre true  
+post  
+  // Split and compute products (similar pattern as triple)  
+  prod1High, prod1Low = computeProduct(a1, b1)  
+  prod2High, prod2Low = computeProduct(a2, b2)  
+  prod3High, prod3Low = computeProduct(a3, b3)  
+  prod4High, prod4Low = computeProduct(a4, b4)  
+
+  // Add first two products  
+  s12High = prod1High + prod2High  
+  s12Low = compensationTerms(prod1High, prod2High, s12High)  
+
+  // Add third product  
+  s123High = s12High + prod3High  
+  s123Low = compensationTerms(s12High, prod3High, s123High)  
+
+  // Add fourth product  
+  s1234High = s123High + prod4High  
+  s1234Low = compensationTerms(s123High, prod4High, s1234High)  
+
+  // Final result with all error terms  
+  result = s1234High + (prod1Low + prod2Low + prod3Low + prod4Low + s12Low + s123Low + s1234Low)  
+
+  // NaN fallback  
+  Double.isNaN(result)  
+    ? result' = a1*b1 + a2*b2 + a3*b3 + a4*b4  
+    : result' = result  
+Functional Scenario Form  
+a1=1e100 b1=1e100 a2=1e-100 b2=1e-100 a3=1e200 b3=1e-200 a4=1e300 b4=1e-300 && handles precision  
+a1=1 b1=2 a2=3 b2=4 a3=5 b3=6 a4=7 b4=8 && returns 2+12+30+56=100.0  
+end_process  
+
+// Float array equality  
+process equals_float(x: float[], y: float[]) result: boolean  
+pre true  
+post  
+  (x = null ∧ y = null) && result' = true  
+  (x = null ∨ y = null) && result' = false  
+  x.length ≠ y.length && result' = false  
+  for i=0 to x.length-1  
+    ¬Precision.equals(x[i], y[i]) && result' = false  
+  result' = true  
+Functional Scenario Form  
+x=null y=null && true  
+x=[1.0f] y=null && false  
+x=[1.0f,2.0f] y=[1.0f,3.0f] && false  
+x=[NaN] y=[NaN] && Precision.equals determines  
+end_process  
+
+// Float array equality (NaN included)  
+process equalsIncludingNaN_float(x: float[], y: float[]) result: boolean  
+pre true  
+post  
+  (x = null ∧ y = null) → result' = true  
+  (x = null ∨ y = null) → result' = false  
+  x.length ≠ y.length → result' = false  
+  for i=0 to x.length-1  
+    ¬Precision.equalsIncludingNaN(x[i], y[i]) → result' = false  
+  result' = true  
+Functional Scenario Form  
+x=null y=null && result'=true  
+x=[1f] y=null && result'=false  
+x=[NaN] y=[NaN] && result'=true  
+x=[1f,2f] y=[1f,3f] && result'=false  
+end_process  
+
+// Double array equality  
+process equals_double(x: double[], y: double[]) result: boolean  
+pre true  
+post  
+  (x = null ∧ y = null) → result' = true  
+  (x = null ∨ y = null) → result' = false  
+  x.length ≠ y.length → result' = false  
+  for i=0 to x.length-1  
+    ¬Precision.equals(x[i], y[i]) → result' = false  
+  result' = true  
+Functional Scenario Form  
+x=null y=null && result'=true  
+x=[1.0] y=null && result'=false  
+x=[0.0] y=[-0.0] && Precision.equals determines  
+end_process  
+
+// Double array equality (NaN included)  
+process equalsIncludingNaN_double(x: double[], y: double[]) result: boolean  
+pre true  
+post  
+  (x = null ∧ y = null) → result' = true  
+  (x = null ∨ y = null) → result' = false  
+  x.length ≠ y.length → result' = false  
+  for i=0 to x.length-1  
+    ¬Precision.equalsIncludingNaN(x[i], y[i]) → result' = false  
+  result' = true  
+Functional Scenario Form  
+x=[NaN] y=[NaN] && result'=true  
+x=[1.0] y=[NaN] && result'=false  
+x=[1.0,2.0] y=[1.0,2.0] && result'=true  
+end_process  
+
+// Array normalization  
+process normalizeArray(values: double[], normalizedSum: double) result: double[]  
+pre true  
+post  
+  Double.isInfinite(normalizedSum) → throw MathIllegalException  
+  Double.isNaN(normalizedSum) → throw MathIllegalException  
+  sum = 0  
+  out = new double[values.length]  
+  for i=0 to values.length-1  
+    Double.isInfinite(values[i]) → throw MathIllegalException  
+    ¬Double.isNaN(values[i]) → sum = sum + values[i]  
+  sum = 0 → throw MathArithmeticException  
+  for i=0 to values.length-1  
+    Double.isNaN(values[i])  
+      ? out[i] = Double.NaN  
+      : out[i] = values[i] * normalizedSum / sum  
+  result' = out  
+Functional Scenario Form  
+values=[1,1] normalizedSum=2 && result'=[1,1]  
+values=[NaN,2] normalizedSum=4 && result'=[NaN,4]  
+values=[Infinity] && throws exception  
+values=[0,0] && throws exception  
+end_process  
+
+// 1D array builder  
+process buildArray_1D<T>(field: Field<T>, length: int) result: T[]  
+pre true  
+post  
+  array = (T[]) Array.newInstance(field.getRuntimeClass(), length)  
+  Arrays.fill(array, field.getZero())  
+  result' = array  
+Functional Scenario Form  
+field=RealField length=2 && result'=[0.0,0.0]  
+field=ComplexField length=1 && result'=[0+0i]  
+end_process  
+
+// 2D array builder  
+process buildArray_2D<T>(field: Field<T>, rows: int, columns: int) result: T[][]  
+pre true  
+post  
+  columns < 0  
+    ? dummyRow = buildArray_1D(field, 0)  
+      array = (T[][]) Array.newInstance(dummyRow.getClass(), rows)  
+    : array = (T[][]) Array.newInstance(field.getRuntimeClass(), [rows, columns])  
+      for i=0 to rows-1  
+        Arrays.fill(array[i], field.getZero())  
+  result' = array  
+Functional Scenario Form  
+rows=2 columns=3 && 2x3 matrix of zeros  
+rows=3 columns=-1 && array of 3 empty rows  
+end_process  
+
+// Convolution  
+process convolve(x: double[], h: double[]) result: double[]  
+pre true  
+post  
+  x = null ∨ h = null → throw NullArgumentException  
+  x.length = 0 ∨ h.length = 0 → throw NoDataException  
+  totalLength = x.length + h.length - 1  
+  y = new double[totalLength]  
+  for n=0 to totalLength-1  
+    yn = 0  
+    k = FastMath.max(0, n+1-x.length)  
+    j = n - k  
+    while k < h.length ∧ j ≥ 0  
+      yn = yn + x[j] * h[k]  
+      j = j - 1  
+      k = k + 1  
+    y[n] = yn  
+  result' = y  
+Functional Scenario Form  
+x=[1,2] h=[3,4] && result'=[3,10,8]  
+x=[] h=[1] && throws NoDataException  
+x=null h=[1] && throws NullArgumentException  
+end_process  
+
+end_module

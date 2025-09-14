@@ -1,0 +1,37 @@
+module UC54_SmartBoiler
+type
+  changeAmount: real
+  currentTemp: real
+  maxTemp: real
+  minTemp: real
+
+var
+  currentTemp: real
+
+process updateTemperature(changeAmount: real)
+  result: Boolean
+pre
+  true
+post
+  currentTemp = currentTemp@entry + changeAmount ∧
+  (
+    (currentTemp > maxTemp) →
+      result = true
+  ) ∨
+  (
+    (currentTemp < minTemp) →
+      result = true
+  ) ∨
+  (
+    (minTemp ≤ currentTemp ∧ currentTemp ≤ maxTemp) →
+      result = true
+  )
+Functional Scenario Form
+   (currentTemperature < minTemperature) && heatingActive = true, output "ALERT: Water temperature too low (" + currentTemperature + "°C). Heating system activated.", Heating system activated.
+        OR
+        (currentTemperature > maxTemperature) && heatingActive = false, output "ALERT: Water temperature too high (" + currentTemperature + "°C). Heating system deactivated.", Heating system deactivated.
+        OR
+        (currentTemperature ≥ minTemperature ∧ currentTemperature ≤ maxTemperature) && output "Temperature optimal (" + currentTemperature + "°C). No action needed.", No control action required.
+end_process
+
+end_module

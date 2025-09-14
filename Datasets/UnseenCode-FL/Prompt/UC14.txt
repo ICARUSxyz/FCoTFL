@@ -1,0 +1,276 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "faultpromptdialog.h"
+2: #include "ui_faultpromptdialog.h"
+3: #include "ruledescriptdialog.h"
+4: #include "screenfactor.h"
+5: #include <QDebug>
+6: 
+7: void CustomButton::enterEvent(QEvent *event) {
+8:     // Handle enter event for the button
+9:     qDebug() << "Mouse entered the button!";
+10:     QPushButton::enterEvent(event);  // Call base class implementation
+11:     emit enterSignal();
+12: }
+13: 
+14: void CustomButton::leaveEvent(QEvent *event){
+15:     qDebug() << "Leave the button";
+16:     QPushButton::leaveEvent(event);
+17:     emit leaveSignal();
+18: }
+19: 
+20: 
+21: 
+22: FaultPromptDialog::FaultPromptDialog(QWidget *parent) :
+23:     QDialog(this),
+24:     ui(new Ui::FaultPromptDialog)
+25: {
+26: //    setWindowFlags(Qt::FramelessWindowHint);
+27: //    setWindowFlags(windowFlags() & ~Qt::WindowTitleHint);
+28:     setWindowFlags(Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint | Qt::CustomizeWindowHint);
+29:     ui->setupUi(this);
+30:     connect(ui->detailButton, &QPushButton::clicked, this, &FaultPromptDialog::showRuleDescript);
+31: 
+32: //    CustomButton *fixButton = new CustomButton(this);
+33: //    fixButton->setText("Quick fix");
+34: //    ui->horizontalLayout->replaceWidget(ui->fixButton, fixButton);
+35: //    delete ui->fixButton;
+36: 
+37:     connect(ui->fixButton, &QPushButton::clicked, this, &FaultPromptDialog::fixButtonClicked);
+38:     //connect(fixButton, &CustomButton::enterSignal, this, &FaultPromptDialog::fixButtonEntered);
+39:     connect(ui->fixButton, &QPushButton::released, this, &FaultPromptDialog::fixButtonEntered);
+40:     connect(ui->unfixButton, &QPushButton::clicked, this, &FaultPromptDialog::unfixButtonClicked);
+41:     connect(ui->okButton, &QPushButton::clicked, this, &FaultPromptDialog::okButtonClicked);
+42:     //connect(fixButton, &CustomButton::leaveSignal, this, &FaultPromptDialog::fixButtonLeft);
+43: }
+44: 
+45: FaultPromptDialog::~FaultPromptDialog()
+46: {
+47:     delete ui;
+48: }
+49: 
+50: void FaultPromptDialog::showRuleDescript()
+51: {
+52:     RuleDescriptDialog *ruleDescript = new RuleDescriptDialog(this);
+53:     ScreenFactor;
+54:     ruleDescript->resize(factor.getScreenFactor() * ruleDescript->width(), factor.getScreenFactor() * ruleDescript->height());
+55:     ruleDescript->show();
+56: }
+57: 
+58: void FaultPromptDialog::fixButtonClicked()
+59: {
+60:     emit clickedSignal();
+61: }
+62: 
+63: void FaultPromptDialog::fixButtonEntered()
+64: {
+65:     emit enteredSignal();
+66: }
+67: 
+68: void FaultPromptDialog::fixButtonReleased()
+69: {
+70:     emit releasedSignal();
+71: }
+72: 
+73: void FaultPromptDialog::fixButtonLeft()
+74: {
+75:     emit leftSignal();
+76: }
+77: 
+78: void FaultPromptDialog::unfixButtonClicked()
+79: {
+80:     emit fixSignal();
+81: }
+82: 
+83: void FaultPromptDialog::okButtonClicked()
+84: {
+85:     emit okclicked();
+86: }]
+
+SOFL:[
+module UC14_faultpromptdialog
+
+process enterEvent(event: QEvent) result: Void
+pre
+  event ≠ null
+post
+  QPushButton.enterEvent(event) executed
+  emit enterSignal() executed
+Functional Scenario Form
+mouse enters button && base enterEvent executed && enterSignal emitted
+end_process
+
+process leaveEvent(event: QEvent) result: Void
+pre
+  event ≠ null
+post
+  QPushButton.leaveEvent(event) executed
+  emit leaveSignal() executed
+Functional Scenario Form
+mouse leaves button && base leaveEvent executed && leaveSignal emitted
+end_process
+
+process FaultPromptDialog(parent: QWidget) result: UC14_faultpromptdialog
+pre
+  true
+post
+  this.ui = new Ui::FaultPromptDialog
+  ui.setupUi(this) executed
+  setWindowFlags(Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint | Qt::CustomizeWindowHint) executed
+  connect ui.detailButton.clicked to showRuleDescript
+  connect ui.fixButton.clicked to fixButtonClicked
+  connect ui.fixButton.released to fixButtonReleased
+  connect ui.unfixButton.clicked to unfixButtonClicked
+  connect ui.okButton.clicked to okButtonClicked
+Functional Scenario Form
+parent is valid && dialog initialized and buttons connected
+end_process
+
+process ~FaultPromptDialog() result: Void
+pre
+  true
+post
+  delete ui executed
+Functional Scenario Form
+destructor called && ui deleted
+end_process
+
+process showRuleDescript() result: Void
+pre
+  true
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  ruleDescript.resize(factor.getScreenFactor() * ruleDescript.width(), factor.getScreenFactor() * ruleDescript.height()) executed
+  ruleDescript.show() executed
+Functional Scenario Form
+detail button clicked && rule description dialog resized and shown
+end_process
+
+process fixButtonClicked() result: Void
+pre
+  true
+post
+  emit clickedSignal() executed
+Functional Scenario Form
+fix button clicked && clickedSignal emitted
+end_process
+
+process fixButtonEntered() result: Void
+pre
+  true
+post
+  emit enteredSignal() executed
+Functional Scenario Form
+mouse entered fix button && enteredSignal emitted
+end_process
+
+process fixButtonReleased() result: Void
+pre
+  true
+post
+  emit releasedSignal() executed
+Functional Scenario Form
+fix button released && releasedSignal emitted
+end_process
+
+process fixButtonLeft() result: Void
+pre
+  true
+post
+  emit leftSignal() executed
+Functional Scenario Form
+mouse left fix button && leftSignal emitted
+end_process
+
+process unfixButtonClicked() result: Void
+pre
+  true
+post
+  emit unfixSignal() executed
+Functional Scenario Form
+unfix button clicked && unfixSignal emitted
+end_process
+
+process okButtonClicked() result: Void
+pre
+  true
+post
+  emit okclicked() executed
+Functional Scenario Form
+ok button clicked && okclicked signal emitted
+end_process
+
+end_module]
+
+Bug symptoms: [
+#### Test Case 1: Initialize FaultPromptDialog with a parent
+
+**Expected:** Dialog inherits the correct parent from the argument.
+**Observed:** Dialog does not appear in the expected parent window hierarchy.
+
+```plaintext
+[DEBUG] Dialog created with incorrect parent context  
+[UI] Parent-child relationship not reflected in UI tree  
+```
+
+---
+
+#### Test Case 2: Clicking the "Fix" button
+
+**Expected:** Button emits a distinct "released" signal for handler.
+**Observed:** Unexpected behavior; "entered" signal triggered instead of "released".
+
+```plaintext
+[UI] Fix button clicked  
+[EVENT] enteredSignal emitted  
+[WARN] releasedSignal not triggered  
+```
+
+---
+
+#### Test Case 3: Showing rule description
+
+**Expected:** Rule description dialog resizes proportionally to screen factor.
+**Observed:** Application crashes or shows unexpected dialog size.
+
+```plaintext
+[ERROR] use of uninitialized variable 'factor'  
+[CRASH] FaultPromptDialog::showRuleDescript  
+```
+
+---
+
+#### Test Case 4: Clicking the "Unfix" button
+
+**Expected:** Emits a signal to reverse previous "fix" operation.
+**Observed:** Emits the same signal as "Fix" button.
+
+```plaintext
+[UI] Unfix button clicked  
+[SIGNAL] fixSignal emitted  
+[NOTE] Signal indistinguishable from Fix action  
+```]

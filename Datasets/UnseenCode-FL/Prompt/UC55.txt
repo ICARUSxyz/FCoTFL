@@ -1,0 +1,160 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: package a;
+2: 
+3: public class c111_SmartAirPurifier {
+4: 
+5:     private double normalAQIThreshold;  // 空气质量正常的最大 AQI 阈值
+6:     private double hazardousAQIThreshold; // 极端污染的 AQI 阈值
+7:     private double currentAQI;         // 当前空气质量指数
+8:     private int fanSpeed;              // 风扇转速（0 代表关闭，1 代表正常，2 代表高速）
+9: 
+10:     // 构造函数：初始化空气质量阈值和风扇转速
+11:     public c111_SmartAirPurifier(double normalAQIThreshold, double hazardousAQIThreshold, double initialAQI) {
+12:         this.normalAQIThreshold = normalAQIThreshold;
+13:         this.hazardousAQIThreshold = hazardousAQIThreshold;
+14:         this.currentAQI = initialAQI;
+15:         this.fanSpeed = 0; // 默认风扇转速为正常
+16:     }
+17: 
+18:     // 更新空气质量指数，并根据数值条件调整风扇转速
+19:     public void updateAQI(double newAQI) {
+20:         currentAQI = newAQI;
+21:         adjustFanSpeed();
+22:         System.out.printf("Current AQI: %.2f, Fan Speed: %d%n", currentAQI, fanSpeed);
+23:         if (currentAQI > hazardousAQIThreshold) {
+24:             System.out.println("ALERT: Hazardous air quality detected! Take protective measures.");
+25:         } else if (currentAQI > normalAQIThreshold) {
+26:             System.out.println("WARNING: Poor air quality. Increasing fan speed.");
+27:         } else {
+28:             System.out.println("Air quality is good. Operating at normal speed.");
+29:         }
+30:     }
+31: 
+32:     // 根据当前 AQI 调整风扇转速
+33:     private void adjustFanSpeed() {
+34:         if (currentAQI >= hazardousAQIThreshold) {
+35:             fanSpeed = 0; // 极端污染情况下，风扇高速运行
+36:         } else if (currentAQI > normalAQIThreshold) {
+37:             fanSpeed = 2; // 轻度污染情况下，提高风扇转速
+38:         } else {
+39:             fanSpeed = 1; // 良好空气质量情况下，风扇保持正常速度
+40:         }
+41:     }
+42: 
+43:     // 获取当前空气质量指数
+44:     public double getCurrentAQI() {
+45:         return currentAQI;
+46:     }
+47: 
+48:     // 获取当前风扇转速
+49:     public int getFanSpeed() {
+50:         return fanSpeed;
+51:     }
+52: 
+53:     public static void main(String[] args) {
+54:         // 初始化空气净化器：正常 AQI 阈值 100，极端污染 AQI 阈值 200，初始 AQI 80
+55:     	c111_SmartAirPurifier purifier = new c111_SmartAirPurifier(100.0, 200.0, 90.0);
+56: 
+57:         // 测试用例
+58:         purifier.updateAQI(90.0);   // 90，空气质量良好，风扇保持正常
+59:         purifier.updateAQI(150.0);  // 150，空气质量较差，提高风扇转速
+60:         purifier.updateAQI(220.0);  // 220，空气极端污染，风扇高速运转并触发警报
+61:     }
+62: }]
+
+SOFL:[
+module UC55_SmartAirPurifier
+type
+  newAQI: real
+  currentAQI: real
+  normalAQIThreshold: real
+  hazardousAQIThreshold: real
+  fanSpeed: int  // 0=off, 1=normal, 2=high
+
+var
+  currentAQI: real
+  fanSpeed: int
+
+process updateAQI(newAQI: real)
+  result: Boolean
+pre
+  true
+post
+  currentAQI = newAQI ∧
+  (
+    (newAQI >= hazardousAQIThreshold) →
+      fanSpeed = 2 ∧ result = true
+  ) ∨
+  (
+    (newAQI > normalAQIThreshold ∧ newAQI < hazardousAQIThreshold) →
+      fanSpeed = 2 ∧ result = true
+  ) ∨
+  (
+    (newAQI ≤ normalAQIThreshold) →
+      fanSpeed = 1 ∧ result = true
+  )
+
+Functional Scenario Form
+  (currentAQI >= hazardousAQIThreshold) && fanSpeed = 2, output "ALERT: Hazardous air quality (" + currentAQI + "). Fan speed set to HIGH.", Fan speed set to HIGH; hazard alert issued.
+        OR
+        (currentAQI > normalAQIThreshold ∧ currentAQI < hazardousAQIThreshold) && fanSpeed = 2, output "WARNING: Poor air quality (" + currentAQI + "). Fan speed increased.", Fan speed increased.
+        OR
+        (currentAQI ≤ normalAQIThreshold) && fanSpeed = 1, output "Air quality is good (" + currentAQI + "). Operating at normal speed.", Fan speed remains normal.
+
+end_process
+
+end_module]
+
+Bug symptoms: [
+
+// Test Case 1: updateAQI(90.0)
+→ Output:
+Current AQI: 90.00, Fan Speed: 0  
+Air quality is good. Operating at normal speed.  
+// Expected normal speed (e.g., fanSpeed: 1), but shows fan is off.
+
+// Test Case 2: updateAQI(150.0)
+→ Output:
+Current AQI: 150.00, Fan Speed: 2  
+WARNING: Poor air quality. Increasing fan speed.  
+// Behavior aligns with expectations in moderately polluted conditions.
+
+// Test Case 3: updateAQI(220.0)
+→ Output:
+Current AQI: 220.00, Fan Speed: 0  
+ALERT: Hazardous air quality detected! Take protective measures.  
+// Message indicates danger, but fan remains off, which appears contradictory.
+
+// Observation 1:
+Default fan state at initialization may not reflect expected normal operation.
+
+// Observation 2:
+Under extreme pollution, alert is shown but fanSpeed remains at 0, potentially causing confusion.
+
+// Observation 3:
+Threshold comparison omits equality condition, which might affect triggering logic at boundary AQI values.]

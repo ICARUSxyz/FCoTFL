@@ -1,0 +1,51 @@
+module UC3_codehistory
+type
+  fontFamily: String
+  fontSize: int
+  blockNumber, top, bottom: int
+  number: String
+ 
+process UC3_codehistory(parent: QWidget) result: UC3_codehistory
+pre
+  true
+post
+  this.parent = parent
+  this.lineNumberArea = new HistoryLineNumberArea(this)
+  this.highlighter = new SyntaxHighlighter(this.document())
+  this.blockCountChanged connected to updateLineNumberAreaWidth
+  this.updateRequest connected to updateLineNumberArea
+  this.cursorPositionChanged connected to highlightCurrentLine
+  updateLineNumberAreaWidth(0) executed
+  highlightCurrentLine() executed
+  setEditorFont("Courier", 10) executed
+Functional Scenario Form
+valid parent && initialized editor with line numbers, highlighter, and font
+end_process
+
+process lineNumberAreaPaintEvent(event: QPaintEvent) result: Void
+pre
+  event ≠ null
+post
+  QPainter bound to lineNumberArea
+  painter.fillRect(event.rect, QColor("#f0f0f0")) executed
+  iterate over visible QTextBlocks:
+    compute top and bottom positions
+    if block is visible and in paint region:
+      draw blockNumber+1 using right-aligned text
+Functional Scenario Form
+valid paint event with visible blocks && block numbers drawn in lineNumberArea or
+valid paint event with no visible blocks && only background is filled
+end_process
+
+process resizeEvent(event: QResizeEvent) result: Void
+pre
+  event ≠ null
+post
+  QPlainTextEdit.resizeEvent(event) executed
+  cr = contentsRect()
+  lineNumberArea geometry updated to QRect(cr.left, cr.top, lineNumberAreaWidth(), cr.height)
+Functional Scenario Form
+resize event received && editor and lineNumberArea resized accordingly
+end_process
+
+end_module

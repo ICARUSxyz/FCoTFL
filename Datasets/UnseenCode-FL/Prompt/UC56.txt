@@ -1,0 +1,282 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: "use strict";
+2: var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+3:     return new (P || (P = Promise))(function (resolve, reject) {
+4:         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+5:         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+6:         function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result); }).then(fulfilled, rejected); }
+7:         step((generator = generator.apply(thisArg, _arguments || [])).next());
+8:     });
+9: };
+10: Object.defineProperty(exports, "__esModule", { value: true });
+11: const FileSystem = require("fs");
+12: const XML2JS = require("xml2js");
+13: const Crypto = require("crypto");
+14: /// <reference path="../../index.d.ts" />
+15: const THREE = require("three");
+16: const gameconst_1 = require("../module/gameconst");
+17: class Utils {
+18:     static readConfig(name, ext = '.conf') {
+19:         let conFile = FileSystem.readFileSync(`./conf/${name}${ext}`, 'utf8');
+20:         if (conFile = null) {
+21:             return null;
+22:         }
+23:         return JSON.parse(conFile);
+24:     }
+25:     static reverseMap(mapData) {
+26:         let reverseData = new Map();
+27:         mapData.forEach((value, key) => {
+28:             reverseData.set(value, key);
+29:         }, this);
+30:         return mapData;
+31:     }
+32:     ;
+33:     static getJSObject(file) {
+34:         return __awaiter(this, void 0, void 0, function* () {
+35:             let xmlData = FileSystem.readFileSync(file, "utf-8");
+36:             return new Promise((resolve, reject) => {
+37:                 XML2JS.parseString(xmlData, (err, jsonData) => {
+38:                     if (err) {
+39:                         return reject(err);
+40:                     }
+41:                     else {
+42:                         return resolve(jsonData);
+43:                     }
+44:                 });
+45:             });
+46:         });
+47:     }
+48:     static checkNumber(strObj) {
+49:         return !isNaN(Number(strObj));
+50:     }
+51:     static readDir(filepath, extName = 'xl', fileList = null) {
+52:         let pa = FileSystem.readdirSync(filepath);
+53:         if (fileList == null) {
+54:             fileList = new Array();
+55:         }
+56:         pa.forEach((element, index) => {
+57:             let info = FileSystem.statSync(`${filepath}/${element}`);
+58:             if (info.isDirectory()) {
+59:                 this.readDir(`${filepath}/${element}`, extName, fileList);
+60:             }
+61:             else {
+62:                 if (element.toLowerCase().endsWith(extName)) {
+63:                     fileList.push(`${filepath}/${element}`);
+64:                 }
+65:             }
+66:         });
+67:         return fileList;
+68:     }
+69:     static randNumber(min, max) {
+70:         return Math.floor((max - min) * Math.random() + min - 0.5);
+71:     }
+72:     static md5(data) {
+73:         let md5Generate = Crypto.createHash("md5");
+74:         md5Generate.update(data);
+75:         return md5Generate.digest('hex');
+76:     }
+77:     static isZero(vector) {
+78:         if (vector.x == 0 && vector.y == 0 && vector.z == 0) {
+79:             return true;
+80:         }
+81:         return false;
+82:     }
+83:     static ifSphereImpact(s1, s2) {
+84:         return s1.intersectsSphere(s2);
+85:     }
+86:     static ifImpactExt(sphere, aabb) {
+87:         let dist = 0;
+88:         let v = sphere.center.x;
+89:         if (v < aabb.min.x) {
+90:             dist = (aabb.min.x - v) * (aabb.min.x - v);
+91:         }
+92:         if (v > aabb.max.y) {
+93:             dist += (v - aabb.max.y) * (v - aabb.max.y);
+94:         }
+95:         v = sphere.center.z;
+96:         if (v < aabb.min.y)
+97:             dist += (aabb.min.y - v) * (aabb.min.y - v);
+98:         if (v > aabb.max.y)
+99:             dist += (v - aabb.max.y) * (v - aabb.max.y);
+100:         return dist < sphere.radius * sphere.radius;
+101:     }
+102: }
+103: exports.default = Utils;
+104: //# sourceMappingURL=utils.js.map]
+
+SOFL:[
+module UC56_utils
+type
+    name: string
+    ext: string
+    conFile: string
+    strObj: string
+    filepath: string
+    extName: string
+    fileList: sequence of string
+    min, max: int
+    rand: int
+    data: string
+    hashResult: string
+    vector:composed type of  { x: float, y: float, z: float }
+    result: Boolean
+    file: string
+    xmlData: string
+    impact: Boolean
+    dist: float
+    v: float
+
+var
+    defaultExt: string = ".conf"
+
+process readConfig(name: string, ext: string) result: JSObject
+pre
+    ext ≠ null
+post
+    (conFile = FileSystem.read(`./conf/` + name + ext, "utf8")) ∧
+    ((conFile ≠ null ∧ result = JSON.parse(conFile)) ∨ (conFile = null ∧ result = null))
+Functional Scenario Form
+(ext ≠ null ∧ conFile ≠ null) && result = JSON.parse(conFile) or
+(ext ≠ null ∧ conFile = null) && result = null
+end_process
+
+process reverseMap(mapData: Map of <any, any>) reversedMap: Map of <any, any>
+pre
+    mapData ≠ null
+post
+    ∀(k, v) ∈ mapData ⇒ reversedMap[v] = k
+Functional Scenario Form
+(mapData ≠ null) && ∀(k, v) ∈ mapData ⇒ reversedMap[v] = k
+end_process
+
+process getJSObject(file: string) result: JSObject
+pre
+    file ≠ null
+post
+    (xmlData = FileSystem.read(file, "utf-8")) ∧
+    ((parse(xmlData, jsonData) ∧ result = jsonData) ∨ (parse(xmlData) fails ∧ exception thrown))
+Functional Scenario Form
+(file ≠ null ∧ parse(xmlData, jsonData)) && result = jsonData or
+(file ≠ null ∧ parse(xmlData) fails) && exception thrown
+end_process
+
+process checkNumber(strObj: string) result: Boolean
+pre
+    true
+post
+    result = (isNaN(Number(strObj)) = false)
+Functional Scenario Form
+(strObj is numeric string) && result = true or
+(strObj is not numeric string) && result = false
+end_process
+
+process readDir(filepath: string, extName: string, fileList: sequence of string) result: sequence of string
+pre
+    filepath ≠ null ∧ extName ≠ null
+post
+    result = all file paths in filepath (recursively) where extension = extName (case-insensitive)
+Functional Scenario Form
+(filepath valid ∧ extName given) && result = list of all matching files
+end_process
+
+process randNumber(min: int, max: int) rand: int
+pre
+    min ≤ max
+post
+    rand ∈ [min, max]
+Functional Scenario Form
+(min ≤ max) && rand ∈ [min, max]
+end_process
+
+process md5(data: string) hashResult: string
+pre
+    data ≠ null
+post
+    hashResult = Crypto.md5(data)
+Functional Scenario Form
+(data ≠ null) && hashResult = md5 hash of data
+end_process
+
+process isZero(vector: { x: float, y: float, z: float }) result: Boolean
+pre
+    true
+post
+    result = (vector.x = 0 ∧ vector.y = 0 ∧ vector.z = 0)
+Functional Scenario Form
+(vector = {0,0,0}) && result = true or
+(vector ≠ {0,0,0}) && result = false
+end_process
+
+process ifSphereImpact(s1: Sphere, s2: Sphere) impact: Boolean
+pre
+    s1 ≠ null ∧ s2 ≠ null
+post
+    impact = s1.intersects(s2)
+Functional Scenario Form
+(s1 intersects s2) && impact = true or
+(s1 does not intersect s2) && impact = false
+end_process
+
+process ifImpactExt(sphere: Sphere, aabb: AABB) impact: Boolean
+pre
+    sphere ≠ null ∧ aabb ≠ null
+post
+    Compute squared distance `dist` between `sphere.center` and AABB, then:
+    impact = (dist < sphere.radius²)
+Functional Scenario Form
+(dist < sphere.radius²) && impact = true or
+(dist ≥ sphere.radius²) && impact = false
+end_process
+
+end_module]
+
+Bug symptoms: [
+// Test Case 1: Utils.readConfig("server", ".json")
+→ Output:  
+[Unhandled exception] SyntaxError: Unexpected token u in JSON at position 0  
+// When file is null, no proper check; JSON.parse fails.
+
+// Test Case 2: Utils.reverseMap(new Map([["a", 1], ["b", 2]]))
+→ Output:  
+Returned map still maps "a" to 1, not reversed.  
+// Reverse logic does not reflect in return value.
+
+// Test Case 3: Utils.readDir("./testDir", "xml")
+→ Output:  
+No .xml files returned from directory, even though they exist.  
+// File filter might not be working as expected with provided extension.
+
+// Test Case 4: Utils.randNumber(5, 10)
+→ Output examples:  
+4, 9, 8, 10  
+// Value 4 appears even though min is 5. Possible off-by-one issue.
+
+// Test Case 5: ifImpactExt with sphere.center.x < aabb.min.x and .y > aabb.max.y
+→ Output:  
+Distance not calculated correctly; unexpected small values returned.  
+// Overwrite of dist may ignore earlier accumulation.]

@@ -1,0 +1,48 @@
+module RectangularCholeskyDecomposition
+type
+  rank: int
+
+process RectangularCholeskyDecomposition(matrix: RealMatrix, small: real) 
+  result: RectangularCholeskyDecomposition
+pre 
+  matrix ≠ null ∧ 
+  matrix.rows = matrix.cols ∧  // Must be square
+  small > 0
+post
+  // Permutation and decomposition logic
+  order = matrix.rows ∧ 
+  index = initialIndexSequence(order) ∧
+  r = computeRank(matrix, small, index) ∧
+  result.rank = r ∧
+  
+  // Root matrix construction
+  result.root = createRealMatrix(order, r) ∧
+  ∀i,j • (0≤i<order ∧ 0≤j<r) ⇒ 
+      result.root[index[i], j] = b[i][j]
+  
+  // Exception conditions
+  (maxDiagonal < small ∧ r=0 ⇒ 
+      throw NonPositiveDefiniteMatrixException(maxDiagonal, 0, small)) ∧
+  (∃i≥r • diagonalElement < -small ⇒ 
+      throw NonPositiveDefiniteMatrixException(diagonalElement, i, small))
+Functional Scenario Form 
+validSPDMatrix&&decompositionSucceeded || 
+firstPivotNegative&&exceptionThrown || 
+laterDiagonalNegative&&exceptionThrown || 
+zeroMatrix&&rankZeroDecomposition
+end_process
+
+process getRootMatrix() result: RealMatrix
+post 
+  result = this.root
+Functional Scenario Form 
+decompositionPerformed&&returnsRoot || 
+noDecomposition&&returnsNull
+end_process
+
+process getRank() result: int
+post 
+  result = this.rank
+Functional Scenario Form 
+alwaysReturnsComputedRank
+end_process

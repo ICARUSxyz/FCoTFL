@@ -1,0 +1,186 @@
+module LevenbergMarquardtOptimizer
+type
+LMState: composed type of {
+solvedCols: int,
+diagR: sequence of double,
+jacNorm: sequence of double,
+beta: sequence of double,
+permutation: sequence of int,
+rank: int,
+lmPar: double,
+lmDir: sequence of double,
+initialStepBoundFactor: double,
+costRelativeTolerance: double,
+parRelativeTolerance: double,
+orthoTolerance: double,
+qrRankingThreshold: double
+}
+
+process ctor_default() result: LevenbergMarquardtOptimizer
+pre
+true
+post
+// superclass configuration
+effect(setMaxIterations(self, 1000))
+effect(setConvergenceChecker(self, null))
+// defaults
+self.initialStepBoundFactor' = 100.0
+self.costRelativeTolerance' = 1.0e-10
+self.parRelativeTolerance' = 1.0e-10
+self.orthoTolerance' = 1.0e-10
+self.qrRankingThreshold' = MathUtils.SAFE_MIN
+Functional Scenario Form
+called && setMaxIterations(self, 1000) and setConvergenceChecker(self, null) and self.initialStepBoundFactor' = 100.0 and self.costRelativeTolerance' = 1.0e-10 and self.parRelativeTolerance' = 1.0e-10 and self.orthoTolerance' = 1.0e-10 and self.qrRankingThreshold' = MathUtils.SAFE_MIN
+end_process
+
+process setInitialStepBoundFactor(self: LevenbergMarquardtOptimizer, initialStepBoundFactor: double) result: void
+pre
+self ≠ null
+post
+self.initialStepBoundFactor' = initialStepBoundFactor
+Functional Scenario Form
+called && self.initialStepBoundFactor' = initialStepBoundFactor
+end_process
+
+process setCostRelativeTolerance(self: LevenbergMarquardtOptimizer, costRelativeTolerance: double) result: void
+pre
+self ≠ null
+post
+self.costRelativeTolerance' = costRelativeTolerance
+Functional Scenario Form
+called && self.costRelativeTolerance' = costRelativeTolerance
+end_process
+
+process setParRelativeTolerance(self: LevenbergMarquardtOptimizer, parRelativeTolerance: double) result: void
+pre
+self ≠ null
+post
+self.parRelativeTolerance' = parRelativeTolerance
+Functional Scenario Form
+called && self.parRelativeTolerance' = parRelativeTolerance
+end_process
+
+process setOrthoTolerance(self: LevenbergMarquardtOptimizer, orthoTolerance: double) result: void
+pre
+self ≠ null
+post
+self.orthoTolerance' = orthoTolerance
+Functional Scenario Form
+called && self.orthoTolerance' = orthoTolerance
+end_process
+
+process setQRRankingThreshold(self: LevenbergMarquardtOptimizer, threshold: double) result: void
+pre
+self ≠ null
+post
+self.qrRankingThreshold' = threshold
+Functional Scenario Form
+called && self.qrRankingThreshold' = threshold
+end_process
+
+// superclass facilities used here
+process setMaxIterations(self: LevenbergMarquardtOptimizer, maxIter: int) result: void
+pre
+true
+post
+// delegated to AbstractLeastSquaresOptimizer
+skip
+Functional Scenario Form
+called && skip
+end_process
+
+process setConvergenceChecker(self: LevenbergMarquardtOptimizer, checker: VectorialConvergenceChecker?) result: void
+pre
+true
+post
+// delegated to AbstractLeastSquaresOptimizer
+skip
+Functional Scenario Form
+called && skip
+end_process
+
+process determineLMParameter(self: LevenbergMarquardtOptimizer,
+qy: sequence of double,
+delta: double,
+diag: sequence of double,
+work1: sequence of double,
+work2: sequence of double,
+work3: sequence of double) result: void
+pre
+self ≠ null ∧ 0 ≤ self.rank ∧ self.rank ≤ self.solvedCols ∧ self.solvedCols ≤ self.cols
+∧ size(qy) ≥ self.solvedCols ∧ size(diag) = self.cols
+∧ size(work1) = self.cols ∧ size(work2) ≥ self.solvedCols ∧ size(work3) = self.cols
+post
+(∀ j • 0 ≤ j < self.rank ⇒ Σ i=0..j ( self.jacobian[i][self.permutation[j]] * self.lmDir'[self.permutation[i]] ) = qy[j])
+∧ (∀ j • self.rank ≤ j < self.cols ⇒ self.lmDir'[self.permutation[j]] = 0)
+∧ let dxGN == sqrt( Σ j=0..self.solvedCols-1 ( diag[self.permutation[j]] * self.lmDir'[self.permutation[j]] )^2 ),
+fp0 == dxGN - delta in
+( fp0 ≤ 0.1 * delta ∧ self.lmPar' = 0 )
+∨
+( ∃ parl, paru, dxOut •
+( (self.rank = self.solvedCols ∧ parl = fp0 / ( delta * Σ j=0..self.solvedCols-1 ( ((work1[self.permutation[j]] - Σ i=0..j-1 ( self.jacobian[i][self.permutation[j]] * work1[self.permutation[i]] )) / self.diagR[self.permutation[j]] )^2 ) ) )
+∨ (self.rank < self.solvedCols ∧ parl = 0) )
+∧ paru = ( let g2 == Σ j=0..self.solvedCols-1 ( ( (Σ i=0..j ( self.jacobian[i][self.permutation[j]] * qy[i] )) / diag[self.permutation[j]] )^2 ) in
+let gN == sqrt(g2) in
+if gN / delta ≠ 0 then gN / delta else 2.2251e-308 / min(delta, 0.1) )
+∧ self.lmPar' ≥ parl ∧ self.lmPar' ≤ paru
+∧ | dxOut - delta | ≤ 0.1 * delta )
+Functional Scenario Form
+fp0 ≤ 0.1delta && self.lmPar' = 0 or
+self.rank = self.solvedCols && self.lmPar' ∈ [parl, paru] && |dxOut - delta| ≤ 0.1delta or
+self.rank < self.solvedCols && self.lmPar' ∈ [0, paru] && |dxOut - delta| ≤ 0.1*delta
+end_process
+
+process determineLMDirection(self: LevenbergMarquardtOptimizer,
+qy: sequence of double,
+diag: sequence of double,
+lmDiag: sequence of double,
+work: sequence of double) result: void
+pre
+self ≠ null ∧ solvedCols ≥ 0 ∧ rank ≥ 0 ∧ rank ≤ solvedCols ∧ cols ≥ solvedCols
+∧ size(qy) ≥ solvedCols ∧ size(diag) = cols ∧ size(lmDiag) = cols ∧ size(work) = cols
+post
+(∀ j • 0 ≤ j < solvedCols ⇒ jacobian'[j][permutation[j]] = diagR[permutation[j]])
+∧ (∃ u: sequence of double • size(u) = solvedCols ∧
+(∀ j • 0 ≤ j < solvedCols ⇒ lmDir'[permutation[j]] = u[j]) ∧
+(∀ j • solvedCols ≤ j < cols ⇒ true) ∧
+u ∈ argmin { ‖ [R; D] · z − [qy; 0] ‖₂ | z ∈ ℝ^{solvedCols} } )
+where
+R(i,j) = if 0 ≤ i ≤ j < solvedCols then lmDiag[i] when i=j else jacobian[i][permutation[j]] else 0,
+D(j,j) = diag[permutation[j]]
+Functional Scenario Form
+all lmDiag[j] ≠ 0 on 0..solvedCols-1 && lmDir' solves R·u = qy with u[j] mapped back by permutation or
+some lmDiag[j] = 0 (singular) && lmDir' is least-squares solution of [R; D]·u ≈ [qy; 0]
+end_process
+
+process qrDecomposition(self: LevenbergMarquardtOptimizer) result: void
+pre
+self ≠ null ∧ rows ≥ 1 ∧ cols ≥ 1 ∧ size(permutation) = cols ∧ size(jacNorm) = cols ∧ size(beta) = cols ∧ size(diagR) = cols
+post
+(∀ k • 0 ≤ k < cols ⇒ jacNorm'[k] = sqrt( Σ i=0..rows-1 (jacobian@pre[i][k])^2 ))
+∧ ( (∃ k • 0 ≤ k ≤ solvedCols ∧
+(∀ i • k ≤ i < cols ⇒ let norm2 == Σ j=k..rows-1 (jacobian[j][permutation[i]])^2 in ¬isNaN(norm2) ∧ ¬isInfinite(norm2)) ∧
+(Σ j=k..rows-1 (jacobian[j][permutation[argmax i∈[k..cols-1] Σ t=k..rows-1 (jacobian[t][permutation[i]])^2 ]])^2) ≤ qrRankingThreshold ∧
+rank' = k )
+∨
+( (∀ i • 0 ≤ i < cols ⇒ let norm2 == Σ j=i..rows-1 (jacobian[j][permutation[i]])^2 in ¬isNaN(norm2) ∧ ¬isInfinite(norm2)) ∧
+rank' = solvedCols ) )
+Functional Scenario Form
+some active-column norm2 is NaN or Inf && raise(OptimizationException) or
+max active norm² ≤ qrRankingThreshold at step k && rank' = k or
+processed all columns with valid norms && rank' = solvedCols
+end_process
+
+process qTy(self: LevenbergMarquardtOptimizer, y: sequence of double) result: void
+pre
+self ≠ null ∧ size(y) = rows ∧ size(permutation) = cols ∧ size(beta) = cols
+post
+y' = Qᵀ · y@pre
+where
+Q = Π_{k=0..cols-1} (I − beta[permutation[k]] · v_k · v_kᵀ),
+v_k(i) = if i ≥ k then jacobian[i][permutation[k]] else 0
+Functional Scenario Form
+valid Householder data && y' equals Qᵀ·y@pre
+end_process
+
+end_module

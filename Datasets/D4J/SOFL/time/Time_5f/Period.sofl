@@ -1,0 +1,1166 @@
+module Period  
+type:  
+
+var:  
+  serialVersionUID: long = 741052353876488155L  
+  MINUTES_PER_HOUR: int = 60  
+  MINUTES_PER_DAY: int = 1440  
+  MINUTES_PER_WEEK: int = 10080  
+  SECONDS_PER_MINUTE: int = 60  
+  SECONDS_PER_HOUR: int = 3600  
+  SECONDS_PER_DAY: int = 86400  
+  SECONDS_PER_WEEK: int = 604800
+
+// Parsing methods
+process parse(str: String) result: Period  
+pre true  
+post  
+  formatter = ISOPeriodFormat.standard() ∧  
+  result' = formatter.parsePeriod(str)  
+
+Functional Scenario Form  
+str="P1Y2M3D" && parses 1 year, 2 months, 3 days  
+end_process  
+
+process parse(str: String, formatter: PeriodFormatter) result: Period  
+pre true  
+post  
+  result' = formatter.parsePeriod(str)  
+
+Functional Scenario Form  
+str="3:30:15" custom formatter && parses 3 hours, 30 minutes, 15 seconds  
+end_process  
+
+// Factory methods
+process years(years: int) result: Period  
+pre true  
+post  
+  values = [years, 0, 0, 0, 0, 0, 0, 0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+years=5 && creates 5-year period  
+end_process  
+
+process months(months: int) result: Period  
+pre true  
+post  
+  values = [0, months, 0, 0, 0, 0, 0, 0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+months=6 && creates 6-month period  
+end_process  
+
+process weeks(weeks: int) result: Period  
+pre true  
+post  
+  values = [0, 0, weeks, 0, 0, 0, 0, 0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+weeks=2 && creates 2-week period  
+end_process  
+
+process days(days: int) result: Period  
+pre true  
+post  
+  values = [0, 0, 0, days, 0, 0, 0, 0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+days=30 && creates 30-day period  
+end_process  
+
+process hours(hours: int) result: Period  
+pre true  
+post  
+  values = [0, 0, 0, 0, hours, 0, 0, 0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+hours=48 && creates 48-hour period  
+end_process  
+
+process minutes(minutes: int) result: Period  
+pre true  
+post  
+  values = [0,0,0,0,0,minutes,0,0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+minutes=90 && creates 90-minute period  
+end_process  
+
+process seconds(seconds: int) result: Period  
+pre true  
+post  
+  values = [0,0,0,0,0,0,seconds,0] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+seconds=3600 && creates 3600-second period  
+end_process  
+
+process millis(millis: int) result: Period  
+pre true  
+post  
+  values = [0,0,0,0,0,0,0,millis] ∧  
+  result' = new Period(values, PeriodType.standard())  
+
+Functional Scenario Form  
+millis=500 && creates 500-millisecond period  
+end_process  
+
+// Field difference calculation
+process fieldDifference(start: ReadablePartial, end: ReadablePartial) result: Period  
+pre true  
+post  
+  start = null ∨ end = null  
+    ⇒ errorMsg = "ReadablePartial objects must not be null" ∧  
+      result = IllegalArgumentException  
+  start.size() ≠ end.size()  
+    ⇒ errorMsg = "Objects must have same field set" ∧  
+      result = IllegalArgumentException  
+  else  
+    types = new DurationFieldType[start.size()] ∧  
+    values = new int[start.size()] ∧  
+    ∀i: 0..start.size()-1 • (  
+      start.getFieldType(i) ≠ end.getFieldType(i)  
+        ⇒ errorMsg = "Objects must have same fields" ∧  
+          result = IllegalArgumentException  
+      else  
+        types[i]' = start.getFieldType(i).getDurationType() ∧  
+        (i>0 ∧ types[i-1]=types[i])  
+          ⇒ errorMsg = "Fields must not overlap" ∧  
+            result = IllegalArgumentException  
+        else  
+          values[i]' = end.getValue(i) - start.getValue(i)  
+    ) ∧  
+    periodType = PeriodType.forFields(types) ∧  
+    result' = new Period(values, periodType)  
+
+Functional Scenario Form  
+start=LocalDate(2023,1,1) end=LocalDate(2024,3,15) → 1y2m14d  
+end=null → throws exception  
+end=LocalTime(12,0) → different size exception  
+end=YearMonth(2023,1) → same size but different field type exception  
+end=YearMonth(2023,1) start=YearMonth(2023,1) → 0 period  
+end=YearMonth(2024,3) → 1y2m  
+end_process  
+
+// Constructors
+process constructor()  
+pre true  
+post  
+  super(0L, null, null)  
+
+Functional Scenario Form  
+empty constructor → zero period  
+end_process  
+
+process constructor(hours: int, minutes: int, seconds: int, millis: int)  
+pre true  
+post  
+  super(0,0,0,0, hours,minutes,seconds,millis, PeriodType.standard())  
+
+Functional Scenario Form  
+hours=1 minutes=30 seconds=0 millis=0 → PT1H30M  
+end_process  
+
+process constructor(y: int, m: int, w: int, d: int, h: int, min: int, s: int, ms: int)  
+pre true  
+post  
+  super(y,m,w,d, h,min,s,ms, PeriodType.standard())  
+
+Functional Scenario Form  
+y=1 m=2 w=3 d=4 h=5 min=6 s=7 ms=8 → P1Y2M3W4DT5H6M7.008S  
+end_process  
+
+process constructor(y: int, m: int, w: int, d: int, h: int, min: int, s: int, ms: int, type: PeriodType)  
+pre true  
+post  
+  super(y,m,w,d, h,min,s,ms, type)  
+
+Functional Scenario Form  
+type=YearMonthDayType → only year/month/day fields  
+end_process  
+
+process constructor(duration: long)  
+pre true  
+post  
+  super(duration)  
+
+Functional Scenario Form  
+duration=86400000 → 1 day period  
+end_process  
+
+process constructor(duration: long, type: PeriodType)  
+pre true  
+post  
+  super(duration, type, null)  
+
+Functional Scenario Form  
+duration=3600000 type=HoursType → PT1H  
+end_process  
+
+process constructor(duration: long, chrono: Chronology)  
+pre true  
+post  
+  super(duration, null, chrono)  
+
+Functional Scenario Form  
+chrono=BuddhistChronology → uses Buddhist calendar  
+end_process  
+
+process constructor(duration: long, type: PeriodType, chrono: Chronology)  
+pre true  
+post  
+  super(duration, type, chrono)  
+
+Functional Scenario Form  
+type=MinutesType chrono=ISOChronology → period in minutes  
+end_process  
+
+process constructor(start: long, end: long)  
+pre true  
+post  
+  super(start, end, null, null)  
+
+Functional Scenario Form  
+start=0 end=86400000 → 1 day period  
+end_process  
+
+process constructor(start: long, end: long, type: PeriodType)  
+pre true  
+post  
+  super(start, end, type, null)  
+
+Functional Scenario Form  
+type=DaysType → period in days  
+end_process  
+
+process constructor(start: long, end: long, chrono: Chronology)  
+pre true  
+post  
+  super(start, end, null, chrono)  
+
+Functional Scenario Form  
+chrono=GregorianChronology → uses Gregorian calendar  
+end_process  
+
+process constructor(start: long, end: long, type: PeriodType, chrono: Chronology)  
+pre true  
+post  
+  super(start, end, type, chrono)  
+
+Functional Scenario Form  
+type=MonthsType chrono=IslamicChronology → Islamic months  
+end_process  
+
+process constructor(start: ReadableInstant, end: ReadableInstant)  
+pre true  
+post  
+  super(start, end, null)  
+
+Functional Scenario Form  
+start=DateTime(2023) end=DateTime(2024) → 1 year  
+end_process  
+
+process constructor(start: ReadableInstant, end: ReadableInstant, type: PeriodType)  
+pre true  
+post  
+  super(start, end, type)  
+
+Functional Scenario Form  
+type=WeeksType → period in weeks  
+end_process  
+
+process constructor(start: ReadablePartial, end: ReadablePartial)  
+pre true  
+post  
+  super(start, end, null)  
+
+Functional Scenario Form  
+start=YearMonth(2023,1) end=YearMonth(2024,3) → 1y2m  
+end_process  
+
+process constructor(start: ReadablePartial, end: ReadablePartial, type: PeriodType)  
+pre true  
+post  
+  super(start, end, type)  
+
+Functional Scenario Form  
+type=YearsType → only year difference  
+end_process  
+
+process constructor(start: ReadableInstant, duration: ReadableDuration)  
+pre true  
+post  
+  super(start, duration, null)  
+
+Functional Scenario Form  
+start=epoch duration=Duration.standardDays(30) → 30 days from epoch  
+end_process  
+
+process constructor(start: ReadableInstant, duration: ReadableDuration, type: PeriodType)  
+pre true  
+post  
+  super(start, duration, type)  
+
+Functional Scenario Form  
+type=HoursType → period in hours  
+end_process  
+
+process constructor(duration: ReadableDuration, end: ReadableInstant)  
+pre true  
+post  
+  super(duration, end, null)  
+
+Functional Scenario Form  
+duration=Duration.standardHours(48) end=now → last 48 hours  
+end_process  
+
+process constructor(duration: ReadableDuration, end: ReadableInstant, type: PeriodType)  
+pre true  
+post  
+  super(duration, end, type)  
+
+Functional Scenario Form  
+type=MinutesType → period in minutes  
+end_process  
+
+process constructor(period: Object)  
+pre true  
+post  
+  super(period, null, null)  
+
+Functional Scenario Form  
+period=Duration.standardDays(7) → 7 days  
+end_process  
+
+process constructor(period: Object, type: PeriodType)  
+pre true  
+post  
+  super(period, type, null)  
+
+Functional Scenario Form  
+period="P1Y2M" type=MonthsType → 14 months  
+end_process  
+
+// Instance methods
+process toPeriod() result: Period  
+pre true  
+post  
+  result' = this  
+
+Functional Scenario Form  
+always → returns self  
+end_process  
+
+process getYears() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.YEAR_INDEX)  
+
+Functional Scenario Form  
+period=P2Y3M → returns 2  
+period=PT1H → returns 0  
+end_process  
+
+process getMonths() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.MONTH_INDEX)  
+
+Functional Scenario Form  
+period=P1Y6M → returns 6  
+period=PT1H → returns 0  
+end_process  
+
+process getWeeks() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.WEEK_INDEX)  
+
+Functional Scenario Form  
+period=P2W → returns 2  
+period=P14D → returns 0  
+end_process  
+
+process getDays() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.DAY_INDEX)  
+
+Functional Scenario Form  
+period=P1M15D → returns 15  
+period=PT24H → returns 0  
+end_process  
+
+process getHours() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.HOUR_INDEX)  
+
+Functional Scenario Form  
+period=PT36H → returns 36  
+period=P3D → returns 0  
+end_process  
+
+process getMinutes() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.MINUTE_INDEX)  
+
+Functional Scenario Form  
+period=PT1H30M → returns 30  
+period=P1W → returns 0  
+end_process  
+
+process getSeconds() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.SECOND_INDEX)  
+
+Functional Scenario Form  
+period=PT5M30S → returns 30  
+period=PT1H → returns 0  
+end_process  
+
+process getMillis() result: int  
+pre true  
+post  
+  result' = getPeriodType().getIndexedField(this, PeriodType.MILLI_INDEX)  
+
+Functional Scenario Form  
+period=PT0.5S → returns 500  
+period=PT1S → returns 0  
+end_process  
+
+// Transformation methods
+process withPeriodType(type: PeriodType?) result: Period  
+pre true  
+post  
+  type = DateTimeUtils.getPeriodType(type) ∧  
+  type' = getPeriodType()  
+    ⇒ result' = this  
+  else  
+    result' = new Period(this, type')  
+
+Functional Scenario Form  
+type=same → returns this  
+type=HoursType → converts to hours-only period  
+end_process  
+
+process withFields(period: ReadablePeriod?) result: Period  
+pre true  
+post  
+  period = null  
+    ⇒ result' = this  
+  else  
+    newValues = getValues().clone() ∧  
+    mergedValues = super.mergePeriodInto(newValues, period) ∧  
+    result' = new Period(mergedValues, getPeriodType())  
+
+Functional Scenario Form  
+period=null → returns this  
+period=Hours.hours(3) → sets hours to 3  
+end_process  
+
+process withField(field: DurationFieldType, value: int) result: Period  
+pre true  
+post  
+  field = null  
+    ⇒ errorMsg = "Field must not be null" ∧  
+      result = IllegalArgumentException  
+  else  
+    newValues = getValues().clone() ∧  
+    super.setFieldInto(newValues, field, value) ∧  
+    result' = new Period(newValues, getPeriodType())  
+
+Functional Scenario Form  
+field=DurationFieldType.HOURS value=5 → sets hours to 5  
+field=null → throws exception  
+end_process  
+process withFieldAdded(field: DurationFieldType, value: int) result: Period  
+pre true  
+post  
+  field = null  
+    ⇒ errorMsg = "Field must not be null" ∧  
+      result = IllegalArgumentException  
+  value = 0  
+    ⇒ result' = this  
+  else  
+    newValues = getValues().clone() ∧  
+    super.addFieldInto(newValues, field, value) ∧  
+    result' = new Period(newValues, getPeriodType())  
+
+Functional Scenario Form  
+field=HOURS value=3 → adds 3 hours  
+value=0 → returns this  
+field=null → throws exception  
+end_process  
+
+// Field-specific setters
+process withYears(years: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.YEAR_INDEX, values, years) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+years=2025 → sets years to 2025  
+end_process  
+
+process withMonths(months: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.MONTH_INDEX, values, months) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+months=6 → sets months to 6  
+end_process  
+
+process withWeeks(weeks: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.WEEK_INDEX, values, weeks) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+weeks=52 → sets weeks to 52  
+end_process  
+
+process withDays(days: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.DAY_INDEX, values, days) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+days=31 → sets days to 31  
+end_process  
+
+process withHours(hours: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.HOUR_INDEX, values, hours) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+hours=23 → sets hours to 23  
+end_process  
+
+process withMinutes(minutes: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.MINUTE_INDEX, values, minutes) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+minutes=59 → sets minutes to 59  
+end_process  
+
+process withSeconds(seconds: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.SECOND_INDEX, values, seconds) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+seconds=59 → sets seconds to 59  
+end_process  
+
+process withMillis(millis: int) result: Period  
+pre true  
+post  
+  values = getValues().clone() ∧  
+  getPeriodType().setIndexedField(this, PeriodType.MILLI_INDEX, values, millis) ∧  
+  result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+millis=999 → sets millis to 999  
+end_process  
+
+process plus(period: ReadablePeriod?) result: Period  
+pre true  
+post  
+  period = null  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.YEAR_INDEX, values, period.get(DurationFieldType.YEARS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MONTH_INDEX, values, period.get(DurationFieldType.MONTHS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.WEEK_INDEX, values, period.get(DurationFieldType.WEEKS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.DAY_INDEX, values, period.get(DurationFieldType.DAYS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.HOUR_INDEX, values, period.get(DurationFieldType.HOURS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MINUTE_INDEX, values, period.get(DurationFieldType.MINUTES_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.SECOND_INDEX, values, period.get(DurationFieldType.SECONDS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MILLI_INDEX, values, period.get(DurationFieldType.MILLIS_TYPE)) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+period=Period.hours(3) → adds 3 hours  
+period=null → returns this  
+period=Period.days(1).withHours(6) → adds 1 day and 6 hours  
+end_process  
+
+// Unit-specific addition methods
+process plusYears(years: int) result: Period  
+pre true  
+post  
+  years = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.YEAR_INDEX, values, years) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+years=1 → adds 1 year  
+years=-5 → subtracts 5 years  
+end_process  
+
+process plusMonths(months: int) result: Period  
+pre true  
+post  
+  months = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MONTH_INDEX, values, months) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+months=3 → adds 3 months  
+months=-1 → subtracts 1 month  
+end_process  
+
+process plusWeeks(weeks: int) result: Period  
+pre true  
+post  
+  weeks = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.WEEK_INDEX, values, weeks) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+weeks=2 → adds 2 weeks  
+weeks=-52 → subtracts 52 weeks  
+end_process  
+
+process plusDays(days: int) result: Period  
+pre true  
+post  
+  days = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.DAY_INDEX, values, days) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+days=7 → adds 7 days  
+days=-31 → subtracts 31 days  
+end_process  
+
+process plusHours(hours: int) result: Period  
+pre true  
+post  
+  hours = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.HOUR_INDEX, values, hours) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+hours=24 → adds 24 hours  
+hours=-12 → subtracts 12 hours  
+end_process  
+
+process plusMinutes(minutes: int) result: Period  
+pre true  
+post  
+  minutes = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MINUTE_INDEX, values, minutes) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+minutes=90 → adds 90 minutes  
+minutes=-30 → subtracts 30 minutes  
+end_process  
+
+process plusSeconds(seconds: int) result: Period  
+pre true  
+post  
+  seconds = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.SECOND_INDEX, values, seconds) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+seconds=3600 → adds 1 hour  
+seconds=-15 → subtracts 15 seconds  
+end_process  
+
+process plusMillis(millis: int) result: Period  
+pre true  
+post  
+  millis = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MILLI_INDEX, values, millis) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+millis=500 → adds 500 milliseconds  
+millis=-1000 → subtracts 1 second  
+end_process  
+process plusMinutes(minutes: int) result: Period  
+pre true  
+post  
+  minutes = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MINUTE_INDEX, values, minutes) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+minutes=90 → adds 90 minutes  
+minutes=-30 → subtracts 30 minutes  
+end_process  
+
+// Seconds addition (complementary)
+process plusSeconds(seconds: int) result: Period  
+pre true  
+post  
+  seconds = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.SECOND_INDEX, values, seconds) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+seconds=3600 → adds 1 hour  
+seconds=-15 → subtracts 15 seconds  
+end_process  
+
+// Millis addition (complementary)
+process plusMillis(millis: int) result: Period  
+pre true  
+post  
+  millis = 0  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MILLI_INDEX, values, millis) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+millis=500 → adds 500 milliseconds  
+millis=-1000 → subtracts 1 second  
+end_process  
+
+// General subtraction method
+process minus(period: ReadablePeriod?) result: Period  
+pre true  
+post  
+  period = null  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    getPeriodType().addIndexedField(this, PeriodType.YEAR_INDEX, values, -period.get(DurationFieldType.YEARS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MONTH_INDEX, values, -period.get(DurationFieldType.MONTHS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.WEEK_INDEX, values, -period.get(DurationFieldType.WEEKS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.DAY_INDEX, values, -period.get(DurationFieldType.DAYS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.HOUR_INDEX, values, -period.get(DurationFieldType.HOURS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MINUTE_INDEX, values, -period.get(DurationFieldType.MINUTES_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.SECOND_INDEX, values, -period.get(DurationFieldType.SECONDS_TYPE)) ∧  
+    getPeriodType().addIndexedField(this, PeriodType.MILLI_INDEX, values, -period.get(DurationFieldType.MILLIS_TYPE)) ∧  
+    result' = new Period(values, getPeriodType())  
+
+Functional Scenario Form  
+period=Period.days(3) → subtracts 3 days  
+period=null → returns this  
+period=Period.hours(2).plusMinutes(30) → subtracts 2h30m  
+end_process  
+
+// Unit-specific subtraction methods
+process minusYears(years: int) result: Period  
+pre true  
+post  
+  result' = plusYears(-years)  
+
+Functional Scenario Form  
+years=5 → subtracts 5 years  
+years=-3 → adds 3 years  
+end_process  
+
+process minusMonths(months: int) result: Period  
+pre true  
+post  
+  result' = plusMonths(-months)  
+
+Functional Scenario Form  
+months=6 → subtracts 6 months  
+months=-2 → adds 2 months  
+end_process  
+
+process minusWeeks(weeks: int) result: Period  
+pre true  
+post  
+  result' = plusWeeks(-weeks)  
+
+Functional Scenario Form  
+weeks=4 → subtracts 4 weeks  
+weeks=-1 → adds 1 week  
+end_process  
+
+process minusDays(days: int) result: Period  
+pre true  
+post  
+  result' = plusDays(-days)  
+
+Functional Scenario Form  
+days=7 → subtracts 7 days  
+days=-1 → adds 1 day  
+end_process  
+
+process minusHours(hours: int) result: Period  
+pre true  
+post  
+  result' = plusHours(-hours)  
+
+Functional Scenario Form  
+hours=12 → subtracts 12 hours  
+hours=-6 → adds 6 hours  
+end_process  
+
+process minusMinutes(minutes: int) result: Period  
+pre true  
+post  
+  result' = plusMinutes(-minutes)  
+
+Functional Scenario Form  
+minutes=30 → subtracts 30 minutes  
+minutes=-15 → adds 15 minutes  
+end_process  
+
+process minusSeconds(seconds: int) result: Period  
+pre true  
+post  
+  result' = plusSeconds(-seconds)  
+
+Functional Scenario Form  
+seconds=45 → subtracts 45 seconds  
+seconds=-10 → adds 10 seconds  
+end_process  
+
+process minusMillis(millis: int) result: Period  
+pre true  
+post  
+  result' = plusMillis(-millis)  
+
+Functional Scenario Form  
+millis=500 → subtracts 500 ms  
+millis=-250 → adds 250 ms  
+end_process  
+
+process minusMonths(months: int) result: Period  
+pre true  
+post  
+  result' = plusMonths(-months)  
+
+Functional Scenario Form  
+months=3 → subtracts 3 months  
+months=-1 → adds 1 month  
+end_process  
+
+process minusWeeks(weeks: int) result: Period  
+pre true  
+post  
+  result' = plusWeeks(-weeks)  
+
+Functional Scenario Form  
+weeks=4 → subtracts 4 weeks  
+weeks=-1 → adds 1 week  
+end_process  
+
+process minusDays(days: int) result: Period  
+pre true  
+post  
+  result' = plusDays(-days)  
+
+Functional Scenario Form  
+days=30 → subtracts 30 days  
+days=-7 → adds 7 days  
+end_process  
+
+process minusHours(hours: int) result: Period  
+pre true  
+post  
+  result' = plusHours(-hours)  
+
+Functional Scenario Form  
+hours=48 → subtracts 48 hours  
+hours=-24 → adds 24 hours  
+end_process  
+
+process minusMinutes(minutes: int) result: Period  
+pre true  
+post  
+  result' = plusMinutes(-minutes)  
+
+Functional Scenario Form  
+minutes=90 → subtracts 90 minutes  
+minutes=-45 → adds 45 minutes  
+end_process  
+
+process minusSeconds(seconds: int) result: Period  
+pre true  
+post  
+  result' = plusSeconds(-seconds)  
+
+Functional Scenario Form  
+seconds=3600 → subtracts 1 hour  
+seconds=-10 → adds 10 seconds  
+end_process  
+
+process minusMillis(millis: int) result: Period  
+pre true  
+post  
+  result' = plusMillis(-millis)  
+
+Functional Scenario Form  
+millis=500 → subtracts 500 ms  
+millis=-250 → adds 250 ms  
+end_process  
+
+// Scalar multiplication
+process multipliedBy(scalar: int) result: Period  
+pre true  
+post  
+  this = ZERO ∨ scalar = 1  
+    ⇒ result' = this  
+  else  
+    values = getValues().clone() ∧  
+    ∀i: 0..values.length-1 • (  
+      values[i]' = FieldUtils.safeMultiply(values[i], scalar)  
+    ) ∧  
+    result' = new Period(values', getPeriodType())  
+
+Functional Scenario Form  
+scalar=3 → triples all fields  
+scalar=0 → returns ZERO  
+scalar=1 → returns this  
+scalar=-2 → negates and doubles  
+end_process  
+
+// Negation method
+process negated() result: Period  
+pre true  
+post  
+  result' = multipliedBy(-1)  
+
+Functional Scenario Form  
+P1Y2M → -P1Y-2M  
+PT3H → -PT3H  
+end_process  
+
+process toStandardWeeks() result: Weeks  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Weeks as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    millis = getMillis() +  
+             getSeconds() * MILLIS_PER_SECOND +  
+             getMinutes() * MILLIS_PER_MINUTE +  
+             getHours() * MILLIS_PER_HOUR +  
+             getDays() * MILLIS_PER_DAY ∧  
+    totalWeeks = getWeeks() + millis / MILLIS_PER_WEEK ∧  
+    result' = Weeks.weeks(FieldUtils.safeToInt(totalWeeks))  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=2 and getDays()=3 and getHours()=12 and getMinutes()=0 and getSeconds()=0 and getMillis()=0 && returns Weeks.weeks(2 + (3*24+12)*3600000/604800000)  
+getYears()=1 and getMonths()=0 && throws UnsupportedOperationException  
+end_process  
+
+// Days conversion
+process toStandardDays() result: Days  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Days as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    millis = getMillis() +  
+             getSeconds() * MILLIS_PER_SECOND +  
+             getMinutes() * MILLIS_PER_MINUTE +  
+             getHours() * MILLIS_PER_HOUR ∧  
+    totalDays = millis / MILLIS_PER_DAY +  
+                getDays() +  
+                getWeeks() * DAYS_PER_WEEK ∧  
+    result' = Days.days(FieldUtils.safeToInt(totalDays))  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=1 and getDays()=2 and getHours()=6 and getMinutes()=0 and getSeconds()=0 and getMillis()=0 && returns Days.days(7+2+0.25)  
+getYears()=0 and getMonths()=1 && throws UnsupportedOperationException  
+end_process  
+
+// Hours conversion
+process toStandardHours() result: Hours  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Hours as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    millis = getMillis() +  
+             getSeconds() * MILLIS_PER_SECOND +  
+             getMinutes() * MILLIS_PER_MINUTE ∧  
+    totalHours = millis / MILLIS_PER_HOUR +  
+                 getHours() +  
+                 getDays() * HOURS_PER_DAY +  
+                 getWeeks() * HOURS_PER_DAY * DAYS_PER_WEEK ∧  
+    result' = Hours.hours(FieldUtils.safeToInt(totalHours))  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=0 and getDays()=1 and getHours()=3 and getMinutes()=30 and getSeconds()=0 and getMillis()=0 && returns Hours.hours(24+3+0.5)  
+getYears()=1 and getMonths()=0 && throws UnsupportedOperationException  
+end_process  
+
+process toStandardMinutes() result: Minutes  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Minutes as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    millis = getMillis() +  
+             getSeconds() * MILLIS_PER_SECOND ∧  
+    minutes = millis / MILLIS_PER_MINUTE +  
+              getMinutes() +  
+              getHours() * MINUTES_PER_HOUR +  
+              getDays() * MINUTES_PER_DAY +  
+              getWeeks() * MINUTES_PER_WEEK ∧  
+    result' = Minutes.minutes(FieldUtils.safeToInt(minutes))  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=0 and getDays()=0 and getHours()=1 and getMinutes()=30 and getSeconds()=0 and getMillis()=0 && returns Minutes.minutes(90)  
+getYears()=1 and getMonths()=0 && throws UnsupportedOperationException  
+end_process  
+
+// Seconds conversion
+process toStandardSeconds() result: Seconds  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Seconds as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    seconds = getMillis() / MILLIS_PER_SECOND +  
+              getSeconds() +  
+              getMinutes() * SECONDS_PER_MINUTE +  
+              getHours() * SECONDS_PER_HOUR +  
+              getDays() * SECONDS_PER_DAY +  
+              getWeeks() * SECONDS_PER_WEEK ∧  
+    result' = Seconds.seconds(FieldUtils.safeToInt(seconds))  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=0 and getDays()=0 and getHours()=0 and getMinutes()=1 and getSeconds()=30 and getMillis()=500 && returns Seconds.seconds(90)  
+getMonths()=1 and getYears()=0 && throws UnsupportedOperationException  
+end_process  
+
+// Duration conversion
+process toStandardDuration() result: Duration  
+pre true  
+post  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ errorMsg = "Cannot convert to Duration as period contains years or months" ∧  
+      result = UnsupportedOperationException  
+  else  
+    millis = getMillis() +  
+             getSeconds() * MILLIS_PER_SECOND +  
+             getMinutes() * MILLIS_PER_MINUTE +  
+             getHours() * MILLIS_PER_HOUR +  
+             getDays() * MILLIS_PER_DAY +  
+             getWeeks() * MILLIS_PER_WEEK ∧  
+    result' = new Duration(millis)  
+
+Functional Scenario Form  
+getYears()=0 and getMonths()=0 and getWeeks()=1 and getDays()=0 and getHours()=0 and getMinutes()=0 and getSeconds()=0 and getMillis()=0 && returns Duration(604800000)  
+getYears()=1 and getMonths()=0 && throws UnsupportedOperationException  
+end_process  
+
+// Normalization method
+process normalizedStandard() result: Period  
+pre true  
+post  
+  result' = normalizedStandard(PeriodType.standard())  
+
+Functional Scenario Form  
+period=P1Y13M && returns Period(years=2, months=1)  
+period=PT36H && returns Period(days=1, hours=12)  
+end_process  
+
+process normalizedStandard(type: PeriodType?) result: Period  
+pre true  
+post  
+  type' = DateTimeUtils.getPeriodType(type) ∧  
+  totalMillis = getMillis() +  
+                getSeconds() * MILLIS_PER_SECOND +  
+                getMinutes() * MILLIS_PER_MINUTE +  
+                getHours() * MILLIS_PER_HOUR +  
+                getDays() * MILLIS_PER_DAY +  
+                getWeeks() * MILLIS_PER_WEEK ∧  
+  result = new Period(totalMillis, type', ISOChronology.getInstanceUTC()) ∧  
+  years = getYears() ∧ months = getMonths() ∧  
+  (years ≠ 0 ∨ months ≠ 0)  
+    ⇒ totalMonths = years * 12 + months ∧  
+      normalizedYears = FieldUtils.safeToInt(totalMonths / 12) ∧  
+      normalizedMonths = FieldUtils.safeToInt(totalMonths mod 12) ∧  
+      (type'.isSupported(DurationFieldType.YEARS_TYPE)  
+        ⇒ result' = result.withYears(normalizedYears)  
+      ) ∧  
+      (type'.isSupported(DurationFieldType.MONTHS_TYPE)  
+        ⇒ result' = result.withMonths(normalizedMonths)  
+      ) ∧  
+      (¬type'.isSupported(DurationFieldType.YEARS_TYPE) ∧ ¬type'.isSupported(DurationFieldType.MONTHS_TYPE) ∧ totalMonths ≠ 0  
+        ⇒ errorMsg = "Unable to normalize..." ∧  
+          result = UnsupportedOperationException  
+      )  
+
+Functional Scenario Form  
+type=PeriodType.standard() and getYears()=1 and getMonths()=13 && returns Period(years=2, months=1)  
+type=PeriodType.dayTime() and getYears()=1 and getMonths()=0 && throws UnsupportedOperationException  
+end_process  
+
+end_module  

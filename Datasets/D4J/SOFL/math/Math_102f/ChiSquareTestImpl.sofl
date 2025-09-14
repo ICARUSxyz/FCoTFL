@@ -1,0 +1,132 @@
+module ChiSquareTestImpl
+var
+EPS: Real = 1.0E-5
+
+process setDistribution(self: ChiSquareTestImpl, value: ChiSquaredDistribution)
+pre
+value ≠ null
+post
+self.distribution' = value
+Functional Scenario Form
+valid distribution && distribution'(self)=value
+end_process
+
+process chiSquare_expected_observed(self: ChiSquareTestImpl, expected: Seq<Real>, observed: Seq<Long>) result: Real
+pre
+|expected| = |observed| ∧ |expected| ≥ 2 ∧ (∀i • expected[i] > 0) ∧ (∀i • observed[i] ≥ 0)
+post
+let sumE = Σ(i:0..|expected|-1) expected[i],
+sumO = Σ(i:0..|observed|-1) observed[i],
+rescale = |sumE - sumO| > EPS,
+ratio = (rescale ? sumO / sumE : 1.0) in
+result = Σ(i:0..|observed|-1) ((observed[i] - ratioexpected[i])^2) / (ratioexpected[i])
+Functional Scenario Form
+sums equal && result=Σ((obs-exp)^2/exp)
+sums unequal && result=Σ((obs-ratioexp)^2/(ratioexp))
+end_process
+
+process chiSquareTest_expected_observed(self: ChiSquareTestImpl, expected: Seq<Real>, observed: Seq<Long>) result: Real
+pre
+|expected| = |observed| ∧ |expected| ≥ 2 ∧ (∀i • expected[i] > 0) ∧ (∀i • observed[i] ≥ 0)
+post
+let df = |expected|-1,
+x2 = chiSquare_expected_observed(self, expected, observed) in
+self.distribution.degreesOfFreedom' = df ∧
+result = 1.0 - CDF(self.distribution, x2)
+Functional Scenario Form
+valid inputs && result=1-CDF(df=|expected|-1, x2)
+end_process
+
+process chiSquareTest_expected_observed_with_alpha(self: ChiSquareTestImpl, expected: Seq<Real>, observed: Seq<Long>, alpha: Real) result: Bool
+pre
+|expected| = |observed| ∧ |expected| ≥ 2 ∧ (∀i • expected[i] > 0) ∧ (∀i • observed[i] ≥ 0) ∧ (0 < alpha ≤ 0.5)
+post
+let p = chiSquareTest_expected_observed(self, expected, observed) in
+result = (p < alpha)
+Functional Scenario Form
+p<alpha && result=true
+p≥alpha && result=false
+end_process
+
+process chiSquare_table(self: ChiSquareTestImpl, counts: Seq<Seq<Long>>) result: Real
+pre
+|counts| ≥ 2 ∧ |counts[0]| ≥ 2 ∧ (∀r • |counts[r]| = |counts[0]|) ∧ (∀r,c • counts[r][c] ≥ 0)
+post
+let nRows=|counts|, nCols=|counts[0]|,
+rowSum[r]=Σ(c:0..nCols-1) counts[r][c],
+colSum[c]=Σ(r:0..nRows-1) counts[r][c],
+total=Σ(r:0..nRows-1) Σ(c:0..nCols-1) counts[r][c] in
+result = Σ(r:0..nRows-1) Σ(c:0..nCols-1)
+( (counts[r][c] - (rowSum[r]*colSum[c]/total))^2 ) / (rowSum[r]colSum[c]/total)
+Functional Scenario Form
+valid table && result=Σ((obs-exp)^2/exp) with exp=rowSumcolSum/total
+end_process
+
+process chiSquareTest_table(self: ChiSquareTestImpl, counts: Seq<Seq<Long>>) result: Real
+pre
+|counts| ≥ 2 ∧ |counts[0]| ≥ 2 ∧ (∀r • |counts[r]| = |counts[0]|) ∧ (∀r,c • counts[r][c] ≥ 0)
+post
+let df = (|counts|-1)*(|counts[0]|-1),
+x2 = chiSquare_table(self, counts) in
+self.distribution.degreesOfFreedom' = df ∧
+result = 1.0 - CDF(self.distribution, x2)
+Functional Scenario Form
+valid table && result=1-CDF(df=(R-1)(C-1), x2)
+end_process
+
+process chiSquareTest_table_with_alpha(self: ChiSquareTestImpl, counts: Seq<Seq<Long>>, alpha: Real) result: Bool
+pre
+|counts| ≥ 2 ∧ |counts[0]| ≥ 2 ∧ (∀r • |counts[r]| = |counts[0]|) ∧ (∀r,c • counts[r][c] ≥ 0) ∧ (0 < alpha ≤ 0.5)
+post
+let p = chiSquareTest_table(self, counts) in
+result = (p < alpha)
+Functional Scenario Form
+p<alpha && result=true
+p≥alpha && result=false
+end_process
+
+process chiSquareDataSetsComparison(self: ChiSquareTestImpl, observed1: Seq<Long>, observed2: Seq<Long>) result: Real
+pre
+|observed1| = |observed2| ∧ |observed1| ≥ 2 ∧ (∀i • observed1[i] ≥ 0 ∧ observed2[i] ≥ 0) ∧
+(Σ(i) observed1[i] > 0) ∧ (Σ(i) observed2[i] > 0) ∧ (∀i • ¬(observed1[i]=0 ∧ observed2[i]=0))
+post
+let n=|observed1|,
+s1=Σ(i) observed1[i], s2=Σ(i) observed2[i],
+unequal = (s1 ≠ s2),
+w = (unequal ? sqrt(s1 / s2) : 1.0) in
+result = Σ(i:0..n-1) (
+let o1=observed1[i], o2=observed2[i],
+d = (unequal ? (o1/w - o2w) : (o1 - o2)) in
+(dd)/(o1+o2)
+)
+Functional Scenario Form
+equal totals && result=Σ((o1-o2)^2/(o1+o2))
+unequal totals && result=Σ((o1/w - o2*w)^2/(o1+o2))
+end_process
+
+process chiSquareTestDataSetsComparison(self: ChiSquareTestImpl, observed1: Seq<Long>, observed2: Seq<Long>) result: Real
+pre
+|observed1| = |observed2| ∧ |observed1| ≥ 2 ∧ (∀i • observed1[i] ≥ 0 ∧ observed2[i] ≥ 0) ∧
+(Σ(i) observed1[i] > 0) ∧ (Σ(i) observed2[i] > 0) ∧ (∀i • ¬(observed1[i]=0 ∧ observed2[i]=0))
+post
+let df=|observed1|-1,
+x2=chiSquareDataSetsComparison(self, observed1, observed2) in
+self.distribution.degreesOfFreedom' = df ∧
+result = 1.0 - CDF(self.distribution, x2)
+Functional Scenario Form
+valid datasets && result=1-CDF(df=|obs|-1, x2)
+end_process
+
+process chiSquareTestDataSetsComparison_with_alpha(self: ChiSquareTestImpl, observed1: Seq<Long>, observed2: Seq<Long>, alpha: Real) result: Bool
+pre
+|observed1| = |observed2| ∧ |observed1| ≥ 2 ∧ (∀i • observed1[i] ≥ 0 ∧ observed2[i] ≥ 0) ∧
+(Σ(i) observed1[i] > 0) ∧ (Σ(i) observed2[i] > 0) ∧ (∀i • ¬(observed1[i]=0 ∧ observed2[i]=0)) ∧ (0 < alpha ≤ 0.5)
+post
+let p = chiSquareTestDataSetsComparison(self, observed1, observed2) in
+result = (p < alpha)
+Functional Scenario Form
+p<alpha && result=true
+p≥alpha && result=false
+end_process
+
+end_module

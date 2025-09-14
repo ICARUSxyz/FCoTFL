@@ -1,0 +1,55 @@
+module UC37_DataUse
+type
+  id: string
+  name: string
+  csvFilePath: string
+  filename: string
+  data: sequence of string
+  fitnessData: sequence of int
+
+process getNameForID(id: string, csvFilePath: string) result: string
+pre
+  csvFilePath refers to a readable file with lines split by "/" and having at least 3 fields per line
+post
+  (∃ line ∈ lines(csvFilePath) • split(line, "/")[0] = id) ⇒ 
+    (result = split(line, "/")[2])
+  ∧
+  (¬∃ line ∈ lines(csvFilePath) • split(line, "/")[0] = id) ⇒ 
+    (result = null)
+Functional Scenario Form
+(∃ line ∈ lines(csvFilePath) ∧ split(line, "/")[0] = id) && (result = split(line, "/")[2])
+or
+(¬∃ line ∈ lines(csvFilePath) ∧ split(line, "/")[0] = id) && (result = null)
+end_process
+
+process getIDForName(name: string, csvFilePath: string) result: string
+pre
+  csvFilePath refers to a readable file with lines split by "/" and having at least 3 fields per line
+post
+  (∃ line ∈ lines(csvFilePath) • split(line, "/")[2] = name) ⇒ 
+    (result = split(line, "/")[0])
+  ∧
+  (¬∃ line ∈ lines(csvFilePath) • split(line, "/")[2] = name) ⇒ 
+    (result = null)
+Functional Scenario Form
+(∃ line ∈ lines(csvFilePath) ∧ split(line, "/")[2] = name) && (result = split(line, "/")[0])
+or
+(¬∃ line ∈ lines(csvFilePath) ∧ split(line, "/")[2] = name) && (result = null)
+end_process
+
+process readFitnessData(id: string, filename: string) fitnessData: sequence of int
+pre
+  filename refers to a readable file where each line has at least 11 fields split by "/" and index 0 is customer id
+post
+  (∃ line ∈ lines(filename) • split(line, "/")[0] = id) ⇒
+    (∀ i ∈ {0..4} • fitnessData[i] = parseInt(split(line, "/")[6 + i]))
+  ∧
+  (¬∃ line ∈ lines(filename) • split(line, "/")[0] = id) ⇒ 
+    (∀ i ∈ {0..4} • fitnessData[i] = 0)
+Functional Scenario Form
+(∃ line ∈ lines(filename) ∧ split(line, "/")[0] = id) && (∀ i ∈ {0..4} • fitnessData[i] = parseInt(split(line, "/")[6 + i]))
+or
+(¬∃ line ∈ lines(filename) ∧ split(line, "/")[0] = id) && (∀ i ∈ {0..4} • fitnessData[i] = 0)
+end_process
+
+end_module

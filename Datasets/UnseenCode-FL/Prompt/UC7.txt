@@ -1,0 +1,207 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: ﻿using UnityEngine;
+2: 
+3: public class SmoothFollow : MonoBehaviour {
+4: 
+5:     // The target we are following
+6:     public Transform target;
+7:     // The distance in the x-z plane to the target
+8:     public float distance = 10.0f;
+9:     // the height we want the camera to be above the target
+10:     public float height = 5.0f;
+11:     // How much we 
+12:     public float heightDamping = 2.0f;
+13:     public float rotationDamping = 2.0f;
+14: 
+15:     //当前帧数值,用来检测是否有重复更新 
+16:     private int curFrame = -1;
+17:     //是否优化动态建筑显示
+18:     public bool useOptimizeDynamicBuild = true;
+19: 
+20:     //相机视截体
+21:     public Plane[] planes;
+22:     private Camera mainCamera = null;
+23: 
+24:     public bool CameraMoving;
+25:     public Transform mTransform = null;
+26: 
+27: 
+28: 	// Use this for initialization
+29: 	void Start ()
+30:     {
+31:         mainCamera = Camera.main;
+32:         //Debug.Log("start camera name" + mainCamera.name);
+33: 	}
+34: 
+35:     //获取Transform
+36:     public Transform GetTransform()
+37:     {
+38:         if (mTransform = null)
+39:         {
+40:             mTransform = gameObject.transform;
+41:         }
+42:         return mTransform;
+43:     }
+44: 
+45: 
+46:     //创建视平截体
+47:     public void RefreshFrustumPlanes()
+48:     {
+49:         if (useOptimizeDynamicBuild)
+50:             return;
+51: 
+52:         if (mainCamera == null)
+53:             return;
+54: 
+55:         planes = GeometryUtility.CalculateFrustumPlanes(mainCamera);        
+56:     }
+57:   
+58:     //检测包围盒是否可见
+59:     public bool IsInFrustum(Plane[] planes,Bounds bound)
+60:     {
+61:         return GeometryUtility.TestPlanesAABB(planes, bound);
+62:     }
+63: 	
+64: 	// Update is called once per frame
+65:     public void FixedUpdatePosition()
+66:     {
+67:         // Early out if we don't have a target
+68:         if (target == null || CameraMoving)
+69:         {
+70:             return;
+71:         }
+72: 
+73:         //相机位置不随玩家位置高度，高度60固定
+74:         Vector3 targetPos = new Vector3(target.position.x, 60, target.position.z);
+75: 
+76:         // Calculate the current rotation angles
+77:         float wantedRotationAngle = target.eulerAngles.y;
+78:         float wantedHeight = targetPos.y + height; //60 +？
+79: 
+80:         float currentRotationAngle = transform.eulerAngles.y;
+81:         float currentHeight = transform.position.y;
+82: 
+83:         // Damp the rotation around the y-axis
+84:         currentRotationAngle = Mathf.LerpAngle(currentRotationAngle, wantedRotationAngle, rotationDamping * Time.deltaTime);
+85:         // Damp the height
+86:         currentHeight = Mathf.Lerp(currentHeight, wantedHeight, heightDamping * Time.deltaTime);
+87:         // Convert the angle into a rotation
+88:         Quaternion wantRotation = Quaternion.Euler(0, currentRotationAngle, 0);
+89:        
+90:         Vector3 wantPos = targetPos + wantRotation * Vector3.forward * distance;
+91:         wantPos.y = currentHeight;
+92:         Vector3 nowPos = GetTransform().position;
+93:         float mtoDis = Vector3.Distance(wantPos, nowPos);
+94:         GetTransform().position = wantPos;//给摄像机设置位置
+95:         Vector3 dir = targetPos - GetTransform().position;
+96:         dir.Normalize();//设置方向
+97:         GetTransform().rotation = Quaternion.LookRotation(dir);
+98:          
+99:         RefreshFrustumPlanes();
+100: 
+101:         //检测是否有重复更新
+102:         if (curFrame == Time.frameCount)
+103:         {
+104:             Debug.LogError("update more than once in one frame!");
+105:         }
+106:         curFrame = Time.frameCount;
+107:     }
+108: }]
+
+SOFL:[
+module UC70_SmoothFollow
+type
+  distance: float
+  height: float
+  heightDamping: float
+  rotationDamping: float
+  curFrame: int
+  useOptimizeDynamicBuild: Boolean
+  CameraMoving: Boolean
+  Time.deltaTime: float
+  Time.frameCount: int
+
+process FixedUpdatePosition()
+pre
+  true
+post
+  (target = null ∨ CameraMoving = true) →
+    (no change to camera position or rotation ∧ RefreshFrustumPlanes() not called) ∧
+
+  (target ≠ null ∧ CameraMoving = false) →
+    let
+      targetPos := (target.position.x, 60, target.position.z);
+      wantedRotationAngle := target.eulerAngles.y;
+      wantedHeight := targetPos.y + height;
+      currentRotationAngle := transform.eulerAngles.y;
+      currentHeight := transform.position.y;
+      updatedRotation := Mathf.LerpAngle(currentRotationAngle, wantedRotationAngle, rotationDamping * Time.deltaTime);
+      updatedHeight := Mathf.Lerp(currentHeight, wantedHeight, heightDamping * Time.deltaTime);
+      wantRotation := Quaternion.Euler(0, updatedRotation, 0);
+      wantPos := targetPos - (wantRotation × Vector3.forward × distance);
+      wantPos.y := updatedHeight;
+      dir := normalize(targetPos - wantPos)
+    in
+      GetTransform().position = wantPos ∧
+      GetTransform().rotation = Quaternion.LookRotation(dir) ∧
+      RefreshFrustumPlanes() executed (if useOptimizeDynamicBuild = true and mainCamera ≠ null) ∧
+      (curFrame = Time.frameCount → log error) ∧
+      curFrame := Time.frameCount
+Functional Scenario Form
+(target = null ∨ CameraMoving) && (do nothing) or
+(target ≠ null ∧ not CameraMoving) && (calculate target position, interpolate camera height/rotation, set camera transform, refresh frustum if needed, check for duplicate update)
+end_process
+
+end_module]
+
+Bug symptoms: [
+Bug Report SuggestionDialog
+
+Test Input
+
+```cpp
+dialog.setGeneratedResult(Sample output);
+```
+
+Observed Behavior
+
+ Calling `setGeneratedResult()` results in runtime error or no visible update.
+ Add Template context menu action fails to insert text into the edit area.
+ Right-clicking in the editor area does not show context menu or appears at incorrect position.
+
+Expected Behavior
+
+ Generated result should be correctly displayed in the result widget.
+ Adding a template should update both the list and the corresponding editor content.
+ Context menu should appear at the location of the cursor.
+
+Actual Behavior
+
+ No argument passed to `setGeneratedResult()`, causing missing content.
+ `editArea` not updated after template insertion due to missing closure capture.
+ Context menu opens at incorrect position due to `mapToGlobal()` missing argument.]

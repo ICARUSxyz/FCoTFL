@@ -1,0 +1,94 @@
+**Test Case 1: Standard Transfer**
+
+```java
+alice1.transfer(bob1, 120.87, logger);
+```
+
+**Expected Output:**
+
+```
+Transfer successful! Alice -> Bob: 120.87
+```
+
+**Observed Output:**
+
+```
+Transfer successful! Alice -> Bob: 120.87
+```
+
+---
+
+**Test Case 2: Excessive Transfer**
+
+```java
+alice2.transfer(bob2, 2640.44, logger);
+```
+
+**Expected Output:**
+
+```
+Transfer failed! Invalid amount or insufficient funds.
+```
+
+**Observed Output:**
+
+```
+Transfer failed! Invalid amount or insufficient funds.
+```
+
+---
+
+**Test Case 3: Negative Amount Transfer**
+
+```java
+alice3.transfer(bob3, -92, logger);
+```
+
+**Expected Output:**
+
+```
+Transfer failed! Invalid amount or insufficient funds.
+```
+
+**Observed Output:**
+
+```
+Transfer failed! Invalid amount or insufficient funds.
+```
+
+---
+
+**Test Case 4: Transaction Log Output**
+
+```java
+logger.printTransactionLog();
+```
+
+**Observed Output:**
+
+```
+Transaction History:
+Transaction: Alice -> Bob | Amount: 120.87Transaction History:
+```
+
+---
+
+**Test Case 5: Balance Update Issue (Implied from Behavior)**
+
+After a successful transfer:
+
+```java
+System.out.println(bob1.getBalance());
+```
+
+**Expected:**
+
+```
+620.87
+```
+
+**Observed:**
+
+```
+379.13
+```

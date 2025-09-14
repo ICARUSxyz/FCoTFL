@@ -1,0 +1,46 @@
+module UC41_file
+type
+  filePath: string
+  charge: string
+  message: string
+  data: string
+  formattedDate: string
+  result: Boolean
+
+process readFile(filePath: string) result: string
+pre
+  filePath ≠ ""
+  ∧ file at filePath exists and is readable
+post
+  result = first line of file at filePath
+Functional Scenario Form
+(filePath ≠ "" ∧ file is readable) &&
+(result = first line of the file)
+end_process
+
+process writeFile(charge: string, filePath: string) result: Boolean
+pre
+  filePath ≠ "" ∧ charge ≠ ""
+post
+  file at filePath is overwritten with charge
+  ∧ result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ charge ≠ "") &&
+(file at filePath is created or overwritten with charge ∧ result = true)
+end_process
+
+process writeFile2(charge: string, filePath: string, message: string) result: Boolean
+pre
+  filePath ≠ "" ∧ charge ≠ "" ∧ message ≠ ""
+post
+  current datetime is retrieved as formattedDate
+  ∧ file at filePath is appended with (formattedDate + ": " + charge + message), prefixed by newline
+  ∧ result = true
+Functional Scenario Form
+(filePath ≠ "" ∧ charge ≠ "" ∧ message ≠ "") &&
+(current time is formatted
+ ∧ (formattedDate + ": " + charge + message) is appended to filePath with newline
+ ∧ result = true)
+end_process
+
+end_module

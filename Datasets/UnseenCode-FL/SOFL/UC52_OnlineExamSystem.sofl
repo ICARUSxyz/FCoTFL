@@ -1,0 +1,31 @@
+module UC52_OnlineExamSystem
+type
+  name: string
+  score: real
+  logEntry: sequence of string
+
+process recordScore(name: string, score: real)
+  result: Boolean
+pre
+  true
+post
+  (
+    (score ≥ 0 ∧ score ≤ 100) →
+      result = true ∧
+      logEntry = 
+        <"Recorded: " + name + " - " + real_to_string(score, 1)>
+  ) ∨
+  (
+    (score < 0 ∨ score > 100) →
+      result = false ∧
+      logEntry = <>
+  )
+Functional Scenario Form
+        (score ≥ 0 ∧ score ≤ 90) && flag = true ∧ scores = scores ⨁ (name, score) ∧ rankingHistory = rankingHistory ⨁ ("Recorded: " + name + " - " + score), Valid score, recorded successfully
+        OR
+(score > 90 ∧ score ≤ 100) && flag = true ∧ scores = scores ⨁ (name, score) ∧ rankingHistory = rankingHistory ⨁ ("Recorded: " + name + " - " + score), Valid score, recorded successfully
+        OR
+        (score < 0) || (score > 100) && flag = false, Invalid score, rejected
+end_process
+
+end_module

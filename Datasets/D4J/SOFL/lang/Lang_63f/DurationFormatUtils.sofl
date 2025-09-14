@@ -1,0 +1,52 @@
+module DurationFormatUtils
+type 
+  startMillis: long
+  endMillis: long
+  format: sequence of char
+  padWithZeros: Boolean
+  timezone: TimeZone
+  result: String
+var
+    Object y = "y";
+    Object M = "M";
+    Object d = "d";
+    Object H = "H";
+    Object m = "m";
+    Object s = "s";
+    Object S = "S";
+
+process formatPeriod(startMillis: long, endMillis: long, format: sequence of char, padWithZeros: Boolean, timezone: TimeZone) result: String
+pre 
+  format ≠ null ∧ timezone ≠ null ∧ startMillis ≤ endMillis
+post 
+  result = formatted duration between startMillis and endMillis using format and padWithZeros within timezone
+
+Functional Scenario Form 
+(startMillis ≥ 0 ∧ endMillis - startMillis < 28 * 86400000) && (result = formatDuration(endMillis - startMillis, format, padWithZeros)) or
+(startMillis ≥ 0 ∧ endMillis - startMillis ≥ 28 * 86400000 ∧ format tokens contain 'y') && (result = format(tokens, years, months, days, hours, minutes, seconds, milliseconds, padWithZeros)) or
+(startMillis ≥ 0 ∧ endMillis - startMillis ≥ 28 * 86400000 ∧ ¬format tokens contain 'y') && (
+  ((format tokens contain 'M') ∧ months = months + 12 * years ∧ years = 0) or
+  ((¬format tokens contain 'M') ∧ days = days + 365 * years ∧ years = 0)
+)
+end_process
+
+process format(tokens: sequence of Token, years: int, months: int, days: int, hours: int, minutes: int, seconds: int, milliseconds: int, padWithZeros: Boolean) result: String
+pre 
+  tokens ≠ null
+post 
+  result = concatenation of formatted values of years, months, days, hours, minutes, seconds, and milliseconds according to tokens and padding setting
+
+Functional Scenario Form 
+(for each token in tokens:
+  (token.value = 'y' ⇒ result contains padded or raw string of years) or
+  (token.value = 'M' ⇒ result contains padded or raw string of months) or
+  (token.value = 'd' ⇒ result contains padded or raw string of days) or
+  (token.value = 'H' ⇒ result contains padded or raw string of hours) or
+  (token.value = 'm' ⇒ result contains padded or raw string of minutes) or
+  (token.value = 's' ⇒ result contains padded or raw string of seconds) or
+  (token.value = 'S' ∧ preceded by 's' ⇒ result contains padded substring of milliseconds+1000) or
+  (token.value = 'S' ∧ not preceded by 's' ⇒ result contains padded milliseconds)
+)
+end_process
+
+end_module

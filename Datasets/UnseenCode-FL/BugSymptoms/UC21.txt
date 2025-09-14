@@ -1,0 +1,86 @@
+**Bug Report: BuildProFromSpecDialog Functionality Observations**
+
+---
+
+**Test Case 1: Class Selection for Demotion**
+
+**Action:**
+User attempts to demote a function into a selected class via dialog interaction.
+
+**Expected:**
+After selecting a valid class, the function is moved under the chosen class node.
+
+**Observed:**
+Even when the user cancels the dialog, the demotion proceeds, possibly leading to misplacement.
+
+**Log:**
+
+```plaintext
+[INPUT] Dialog result: Cancelled  
+[LOGIC] Demotion still applied  
+[ACTION] Function moved under class: "ExampleClass"  
+```
+
+---
+
+**Test Case 2: Creating a New Class**
+
+**Action:**
+User adds a new class node to the tree structure.
+
+**Expected:**
+The new class node is editable and not mistaken as imported or locked.
+
+**Observed:**
+Newly created class nodes behave as if they are from an external source and cannot be modified.
+
+**Log:**
+
+```plaintext
+[ACTION] Created class "NewClass"  
+[STATUS] Modifiable: false  
+[CHECK] Skipped in edit due to external flag  
+```
+
+---
+
+**Test Case 3: Renaming a Tree Item**
+
+**Action:**
+User renames a function or class from the UI tree.
+
+**Expected:**
+The selected item is updated with the new name and remains selected.
+
+**Observed:**
+After renaming, the current selection disappears or resets.
+
+**Log:**
+\[INPUT] Rename "OldName" → "NewName"
+
+```plaintext
+[ACTION] Item renamed successfully  
+[UI] Selection lost after rename  
+[ERROR] setCurrentItem() called with no argument  
+```
+
+---
+
+**Test Case 4: Deleting an Item**
+
+**Action:**
+User tries to delete an item without selecting anything.
+
+**Expected:**
+A message prompts the user and safely exits the operation.
+
+**Observed:**
+The application attempts to return a value where none is expected, leading to build warnings or errors.
+
+**Log:**
+
+```plaintext
+[UI] No item selected for deletion  
+[INFO] MessageBox shown to user  
+[ERROR] Invalid return statement encountered  
+```

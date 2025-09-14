@@ -1,0 +1,26 @@
+Bug Report: CodeHistory
+
+Test Input:
+
+```cpp
+CodeHistory editor;
+editor.show();
+```
+
+Observed Behavior:
+
+* Compilation error: no matching function call to `setEditorFont(const char*)`.
+* Runtime warning: `lineNumberAreaPaintEvent()` called with missing argument.
+* Line numbers are not displayed correctly for documents with 10 or more lines.
+
+Expected Behavior:
+
+* Editor initializes with monospaced font (e.g., Courier, size 10).
+* Line number area paints correctly alongside text.
+* Line numbers adapt dynamically based on total line count.
+
+Actual Behavior:
+
+* Font initialization incomplete due to missing argument.
+* Line number paint event causes runtime warning or visual artifacts.
+* Line number area width does not increase at 10 lines, causing overlap or truncation.

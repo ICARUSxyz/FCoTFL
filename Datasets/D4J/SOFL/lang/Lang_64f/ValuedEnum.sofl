@@ -1,0 +1,65 @@
+module ValuedEnumModule
+type 
+  enumClass: Class
+  value: int
+  other: Object
+  shortName: String
+  result: int
+  resultStr: String
+
+var 
+  long serialVersionUID = -7129650521543789085
+
+process getEnum(enumClass: Class, value: int) result: Enum
+pre 
+  enumClass ≠ null
+post 
+  (∃e ∈ Enum.getEnumList(enumClass) • ((e as ValuedEnum).getValue() = value ∧ result = e)) ∨
+  (∀e ∈ Enum.getEnumList(enumClass) • (e as ValuedEnum).getValue() ≠ value ∧ result = null)
+Functional Scenario Form 
+(enumClass ≠ null ∧ ∃e ∈ Enum.getEnumList(enumClass) • ((e as ValuedEnum).getValue() = value)) && (result = e) or
+(enumClass ≠ null ∧ ∀e ∈ Enum.getEnumList(enumClass) • ((e as ValuedEnum).getValue() ≠ value)) && (result = null)
+end_process
+
+process getValue(): result: int
+pre true
+post result = iValue
+Functional Scenario Form 
+true && result = iValue
+end_process
+
+process compareTo(other: Object) result: int
+pre other ≠ null ∧ (other instanceof Enum)
+post 
+  (other = this ⇒ result = 0) ∧
+  (other.getClass() = this.getClass() ⇒ result = this.iValue - ((ValuedEnum) other).iValue) ∧
+  (other.getClass().getName() = this.getClass().getName() ∧ other.getClass() ≠ this.getClass() ⇒ result = this.iValue - getValueInOtherClassLoader(other)) ∧
+  (¬(other.getClass().getName() = this.getClass().getName()) ⇒ ClassCastException)
+Functional Scenario Form 
+(other = this) && (result = 0) or
+(other ≠ this ∧ other.getClass() = this.getClass()) && (result = iValue - ((ValuedEnum) other).iValue) or
+(other.getClass().getName() = this.getClass().getName() ∧ other.getClass() ≠ this.getClass()) && (result = iValue - getValueInOtherClassLoader(other)) or
+(other.getClass().getName() ≠ this.getClass().getName()) && (throw ClassCastException)
+end_process
+
+process getValueInOtherClassLoader(other: Object) result: int
+pre  other ≠ null ∧ (∃ mth: Method • mth ∈ other.getClass().getMethods() ∧ mth.getName() = "getValue" ∧ mth.getParameterTypes().length = 0)
+post ∃ mth: Method • mth = other.getClass().getMethod("getValue") ∧
+     ∃ val: Object • val = mth.invoke(other) ∧ val ∈ Integer ∧
+     result = val.intValue()
+Functional Scenario Form
+(other ≠ null ∧ method "getValue" with no parameters exists in other) && 
+(result is the integer value returned by invoking getValue on other) or
+(other is missing method or invocation fails) &&
+(throws IllegalStateException)
+end_process
+
+
+process toString(): resultStr: String
+pre true
+post resultStr = ClassUtils.getShortClassName(getEnumClass()) + "[" + getName() + "=" + getValue() + "]"
+Functional Scenario Form 
+true && resultStr = ClassUtils.getShortClassName(getEnumClass()) + "[" + getName() + "=" + getValue() + "]"
+end_process
+
+end_module

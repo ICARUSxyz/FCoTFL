@@ -1,0 +1,494 @@
+module ToStringStyle
+type 
+    object: Object, 
+    value: Object, 
+    m: Map of Object to Object,
+    REGISTRY: ThreadLocal of Map of Object to Object
+
+var
+    useFieldNames = true
+    useClassName = true
+    useShortClassName = false
+    useIdentityHashCode = true
+    contentStart = "["
+    contentEnd = "]"
+    fieldNameValueSeparator = "="
+    fieldSeparatorAtStart = false
+    fieldSeparatorAtEnd = false
+    fieldSeparator = ","
+    arrayStart = "{"
+    arraySeparator = ","
+    arrayContentDetail = true
+    arrayEnd = "}"
+    defaultFullDetail = true
+    nullText = "<null>"
+    sizeStartText = "<size="
+    sizeEndText = ">"
+    summaryObjectStartText = "<"
+    summaryObjectEndText = ">"
+
+process isRegistered(value: Object) result: Boolean
+pre 
+    true
+post 
+    ((getRegistry() = null) ⇒ result = false) ∧
+    ((getRegistry() ≠ null) ⇒ result = value ∈ dom(getRegistry()))
+Functional Scenario Form 
+(getRegistry() = null) && (result = false) or
+(getRegistry() ≠ null) && (result = value ∈ dom(getRegistry()))
+end_process
+
+process register(value: Object)
+pre 
+    value ≠ null
+post 
+    ∃ m': Map of Object to Object •
+        ((getRegistry() = null ⇒ REGISTRY.set(m')) ∧ (m' = {value ↦ null})) ∨
+        ((getRegistry() ≠ null ⇒ getRegistry()[value] = null))
+Functional Scenario Form 
+(value ≠ null && getRegistry() = null) && (REGISTRY.set({value ↦ null})) or
+(value ≠ null && getRegistry() ≠ null) && (getRegistry()[value] = null)
+end_process
+
+process unregister(value: Object)
+pre 
+    value ≠ null
+post 
+    ∃ m': Map of Object to Object •
+        (value ∈ dom(getRegistry()) ⇒ m' = getRegistry() \ {value}) ∧
+        (m' = ∅ ⇒ REGISTRY.remove())
+Functional Scenario Form 
+(value ≠ null && value ∈ dom(getRegistry())) && (getRegistry() \ {value} = m' && m' = ∅ ⇒ REGISTRY.remove())
+end_process
+
+process appendToString(buffer: StringBuffer, toString: String)
+pre 
+    true
+post 
+    (toString ≠ null ⇒ 
+        let pos1 = indexOf(toString, contentStart) + length(contentStart),
+            pos2 = lastIndexOf(toString, contentEnd)
+        in
+            (pos1 ≠ pos2 ∧ pos1 ≥ 0 ∧ pos2 ≥ 0 ⇒ 
+                let data = substring(toString, pos1, pos2) in
+                    (fieldSeparatorAtStart ⇒ ¬endsWith(buffer, fieldSeparator)) ∧
+                    buffer = buffer + data + fieldSeparator))
+Functional Scenario Form 
+(toString ≠ null ∧ valid range) && (buffer updated with middle content) or
+(toString = null or range invalid) && (buffer unchanged)
+end_process
+
+process appendStart(buffer: StringBuffer, object: Object)
+pre 
+    object ≠ null
+post 
+    buffer = buffer + className(object) + identityHashCode(object) + contentStart +
+             (fieldSeparatorAtStart ⇒ fieldSeparator)
+Functional Scenario Form 
+(object ≠ null ∧ fieldSeparatorAtStart) && (buffer = className + id + "[" + ",") or
+(object ≠ null ∧ ¬fieldSeparatorAtStart) && (buffer = className + id + "[")
+end_process
+
+process appendEnd(buffer: StringBuffer, object: Object)
+pre 
+    true
+post 
+    (¬fieldSeparatorAtEnd ⇒ last fieldSeparator removed from buffer) ∧
+    buffer = buffer + contentEnd ∧
+    object unregistered
+Functional Scenario Form 
+(¬fieldSeparatorAtEnd) && (remove last separator) or
+(fieldSeparatorAtEnd) && (leave separator as is) and (append "]" and unregister)
+end_process
+
+process append(buffer: StringBuffer, fieldName: String, value: Object, fullDetail: Boolean)
+pre 
+    true
+post 
+    buffer starts with fieldName ∧
+    (value = null ⇒ buffer contains nullText) ∧
+    (value ≠ null ⇒ buffer contains fullDetail ? detail(value) : summary(value)) ∧
+    buffer ends with field separator
+Functional Scenario Form 
+(value = null) && (append nullText) or
+(value ≠ null && fullDetail) && (append detail(value)) or
+(value ≠ null && ¬fullDetail) && (append summary(value))
+end_process
+
+process appendInternal(buffer: StringBuffer, fieldName: String, value: Object, detail: Boolean)
+pre 
+    value ≠ null
+post 
+    (isRegistered(value) ∧ not primitive ⇒ appendCyclicObject(buffer, fieldName, value)) ∨
+    (¬isRegistered(value) ⇒ 
+        (register(value) ∧
+        match type of value ⇒ append detail or summary accordingly ∧
+        unregister(value)))
+Functional Scenario Form 
+(cyclic detected) && (appendCyclicObject) or
+(non-cyclic) && (register then append based on type and detail then unregister)
+end_process
+
+process appendCyclicObject(buffer: StringBuffer, fieldName: String, value: Object)
+pre 
+    true
+post 
+    buffer = buffer + identityToString(value)
+Functional Scenario Form 
+always && (buffer append identityToString(value))
+end_process
+
+process appendDetail(buffer: StringBuffer, fieldName: String, value: Object)
+pre 
+    true
+post 
+    buffer = buffer + toString(value)
+Functional Scenario Form 
+always && (buffer += value.toString())
+end_process
+
+process appendDetail(buffer: StringBuffer, fieldName: String, coll: Collection of Object)
+pre 
+    true
+post 
+    buffer = buffer + coll.toString()
+Functional Scenario Form 
+always && (buffer += coll.toString())
+end_process
+
+process appendDetail_Map(buffer: StringBuffer, fieldName: String, map: Map) 
+result: StringBuffer
+pre 
+    true
+post 
+    result = buffer.append(map)
+Functional Scenario Form 
+true && (result = buffer.append(map))
+end_process
+
+process appendSummary(buffer: StringBuffer, fieldName: String, value: Object)
+result: StringBuffer
+pre 
+    value ≠ null
+post 
+    result = buffer.append(summaryObjectStartText)
+                    .append(getShortClassName(value.getClass()))
+                    .append(summaryObjectEndText)
+Functional Scenario Form 
+value ≠ null && result = buffer.append(summaryObjectStartText).append(getShortClassName(value.getClass())).append(summaryObjectEndText)
+end_process
+
+process appendDetail_ObjectArray(buffer: StringBuffer, fieldName: String, array: sequence of Object)
+result: StringBuffer
+pre 
+    array ≠ null
+post 
+    result = buffer.append(arrayStart)
+             .append(joined_array)
+             .append(arrayEnd)
+where 
+    joined_array = for i in 0..length(array)-1 join (
+        if array[i] = null then appendNullText(buffer, fieldName)
+        else appendInternal(buffer, fieldName, array[i], arrayContentDetail)
+    ) separated by arraySeparator
+Functional Scenario Form 
+array ≠ null && result = buffer.append(arrayStart) + (each element processed as above) + buffer.append(arrayEnd)
+end_process
+
+process reflectionAppendArrayDetail(buffer: StringBuffer, fieldName: String, array: Object) result: StringBuffer
+pre 
+    array ≠ null
+post 
+    result = buffer + arrayStart + sepBy(",", map(i ∈ [0..Array.getLength(array)-1] • 
+        if Array.get(array, i) = null then nullText else appendInternal(buffer, fieldName, Array.get(array, i), arrayContentDetail)
+    )) + arrayEnd
+Functional Scenario Form 
+(array ≠ null) && (result = buffer + arrayStart + elements + arrayEnd)
+end_process
+
+process appendSummary(buffer: StringBuffer, fieldName: String, array: sequence of Object) result: StringBuffer
+pre 
+    array ≠ null
+post 
+    result = appendSummarySize(buffer, fieldName, length(array))
+Functional Scenario Form 
+(array ≠ null) && (result = appendSummarySize(buffer, fieldName, length(array)))
+end_process
+
+process appendDetail_long(buffer: StringBuffer, fieldName: String, arrayL: sequence of long) result: StringBuffer
+pre 
+    arrayL ≠ null
+post 
+    result = buffer + arrayStart + sepBy(arraySeparator, map(i ∈ [0..length(arrayL)-1] • arrayL[i])) + arrayEnd
+Functional Scenario Form 
+(arrayL ≠ null) && (result = buffer + arrayStart + longValues + arrayEnd)
+end_process
+
+process appendSummary_long(buffer: StringBuffer, fieldName: String, arrayL: sequence of long) result: StringBuffer
+pre 
+    arrayL ≠ null
+post 
+    result = appendSummarySize(buffer, fieldName, length(arrayL))
+Functional Scenario Form 
+(arrayL ≠ null) && (result = appendSummarySize(buffer, fieldName, length(arrayL)))
+end_process
+
+process appendDetail_int(buffer: StringBuffer, fieldName: String, arrayI: sequence of int) result: StringBuffer
+pre 
+    arrayI ≠ null
+post 
+    result = buffer + arrayStart + sepBy(arraySeparator, map(i ∈ [0..length(arrayI)-1] • arrayI[i])) + arrayEnd
+Functional Scenario Form 
+(arrayI ≠ null) && (result = buffer + arrayStart + intValues + arrayEnd)
+end_process
+
+process appendSummary_int(buffer: StringBuffer, fieldName: String, arrayI: sequence of int) result: StringBuffer
+pre 
+    arrayI ≠ null
+post 
+    result = appendSummarySize(buffer, fieldName, length(arrayI))
+Functional Scenario Form 
+(arrayI ≠ null) && (result = appendSummarySize(buffer, fieldName, length(arrayI)))
+end_process
+
+process appendDetail_short(buffer: StringBuffer, fieldName: String, arrayS: sequence of short) result: StringBuffer
+pre 
+    arrayS ≠ null
+post 
+    result = buffer + arrayStart + sepBy(arraySeparator, map(i ∈ [0..length(arrayS)-1] • arrayS[i])) + arrayEnd
+Functional Scenario Form 
+(arrayS ≠ null) && (result = buffer + arrayStart + shortValues + arrayEnd)
+end_process
+
+process appendSummary_short(buffer: StringBuffer, fieldName: String, arrayS: sequence of short) result: StringBuffer
+pre 
+    arrayS ≠ null
+post 
+    result = appendSummarySize(buffer, fieldName, length(arrayS))
+Functional Scenario Form 
+(arrayS ≠ null) && (result = appendSummarySize(buffer, fieldName, length(arrayS)))
+end_process
+
+process appendDetail_byte(buffer: StringBuffer, fieldName: String, arrayB: sequence of byte) result: StringBuffer
+pre 
+    arrayB ≠ null
+post 
+    result = buffer + arrayStart + sepBy(arraySeparator, map(i ∈ [0..length(arrayB)-1] • arrayB[i])) + arrayEnd
+Functional Scenario Form 
+(arrayB ≠ null) && (result = buffer + arrayStart + byteValues + arrayEnd)
+end_process
+
+process appendSummary_byte(buffer: StringBuffer, fieldName: String, arrayB: sequence of byte) result: StringBuffer
+pre 
+    arrayB ≠ null
+post 
+    result = appendSummarySize(buffer, fieldName, length(arrayB))
+Functional Scenario Form 
+(arrayB ≠ null) && (result = appendSummarySize(buffer, fieldName, length(arrayB)))
+end_process
+
+process reflectionAppendArrayDetail(buffer: StringBuffer, fieldName: String, array: Object) 
+result: void
+pre 
+    array ≠ null ∧ length = Array.getLength(array)
+post 
+    buffer is appended with arrayStart +
+    for i in 0..length-1:
+        (if i > 0 then buffer is appended with arraySeparator) ∧
+        (if Array.get(array, i) = null then appendNullText(buffer, fieldName)
+         else appendInternal(buffer, fieldName, Array.get(array, i), arrayContentDetail)) +
+    arrayEnd is appended to buffer
+Functional Scenario Form 
+(array ≠ null) && (buffer is appended with formatted array content)
+end_process
+
+process appendSummary(buffer: StringBuffer, fieldName: String, array: sequence of Object) 
+result: void
+pre 
+    array ≠ null
+post 
+    buffer is appended with summary of array.length using appendSummarySize
+Functional Scenario Form 
+(array ≠ null) && (appendSummarySize is called with array.length)
+end_process
+
+process appendClassName(buffer: StringBuffer, object: Object) 
+result: void
+pre 
+    true
+post 
+    (object ≠ null ∧ useClassName) ⇒
+        register(object) ∧
+        (useShortClassName ⇒ buffer is appended with getShortClassName(object.getClass())
+         else buffer is appended with object.getClass().getName())
+Functional Scenario Form 
+(object ≠ null ∧ useClassName ∧ useShortClassName) && (buffer.append(getShortClassName(...))) or
+(object ≠ null ∧ useClassName ∧ ¬useShortClassName) && (buffer.append(fullClassName))
+end_process
+
+process appendIdentityHashCode(buffer: StringBuffer, object: Object)
+pre  object ≠ null ∧ isUseIdentityHashCode()
+post register(object) ∧ buffer' = buffer + "@" + Integer.toHexString(System.identityHashCode(object))
+Functional Scenario Form
+(object ≠ null ∧ isUseIdentityHashCode()) && (buffer' = buffer + "@" + Integer.toHexString(System.identityHashCode(object)))
+end_process
+
+process isFullDetail(fullDetailRequest: Boolean) result: Boolean
+pre  true
+post result = (fullDetailRequest = null ⇒ defaultFullDetail) ∧ (fullDetailRequest ≠ null ⇒ fullDetailRequest)
+Functional Scenario Form
+(fullDetailRequest = null) && (result = defaultFullDetail) or
+(fullDetailRequest ≠ null) && (result = fullDetailRequest)
+end_process
+
+process getShortClassName(cls: Class) shortClassName: String
+pre  true
+post shortClassName = ClassUtils.getShortClassName(cls)
+Functional Scenario Form
+true && (shortClassName = ClassUtils.getShortClassName(cls))
+end_process
+
+process appendSummarySize(buffer: StringBuffer, fieldName: String, size: int)
+pre  true
+post buffer' = buffer + sizeStartText + size + sizeEndText
+Functional Scenario Form
+true && (buffer' = buffer + sizeStartText + size + sizeEndText)
+end_process
+
+process isUseFieldNames() result: Boolean
+pre  true
+post result = useFieldNames
+Functional Scenario Form 
+true && (result = useFieldNames)
+end_process
+
+process setUseFieldNames(flag: Boolean)
+pre  true
+post useFieldNames' = flag
+Functional Scenario Form 
+true && (useFieldNames' = flag)
+end_process
+
+process isUseIdentityHashCode() result: Boolean
+pre  true
+post result = useIdentityHashCode
+Functional Scenario Form 
+true && (result = useIdentityHashCode)
+end_process
+
+process setUseIdentityHashCode(flag: Boolean)
+pre  true
+post useIdentityHashCode' = flag
+Functional Scenario Form 
+true && (useIdentityHashCode' = flag)
+end_process
+
+process isDefaultFullDetail() result: Boolean
+pre  true
+post result = defaultFullDetail
+Functional Scenario Form 
+true && (result = defaultFullDetail)
+end_process
+
+process setDefaultFullDetail(flag: Boolean)
+pre  true
+post defaultFullDetail' = flag
+Functional Scenario Form 
+true && (defaultFullDetail' = flag)
+end_process
+
+process setArrayStart(arrayStartInput: String)
+pre  true
+post arrayStart' = (arrayStartInput = null ⇒ "") ∧ (arrayStartInput ≠ null ⇒ arrayStartInput)
+Functional Scenario Form 
+(arrayStartInput = null) && (arrayStart' = "") or 
+(arrayStartInput ≠ null) && (arrayStart' = arrayStartInput)
+end_process
+
+process setArrayEnd(arrayEndInput: String)
+pre  true
+post arrayEnd' = (arrayEndInput = null ⇒ "") ∧ (arrayEndInput ≠ null ⇒ arrayEndInput)
+Functional Scenario Form 
+(arrayEndInput = null) && (arrayEnd' = "") or 
+(arrayEndInput ≠ null) && (arrayEnd' = arrayEndInput)
+end_process
+
+process setArraySeparator(arraySeparatorInput: String)
+pre  true
+post arraySeparator' = (arraySeparatorInput = null ⇒ "") ∧ (arraySeparatorInput ≠ null ⇒ arraySeparatorInput)
+Functional Scenario Form 
+(arraySeparatorInput = null) && (arraySeparator' = "") or 
+(arraySeparatorInput ≠ null) && (arraySeparator' = arraySeparatorInput)
+end_process
+
+process setContentStart(contentStartInput: String)
+pre  true
+post contentStart' = (contentStartInput = null ⇒ "") ∧ (contentStartInput ≠ null ⇒ contentStartInput)
+Functional Scenario Form 
+(contentStartInput = null) && (contentStart' = "") or 
+(contentStartInput ≠ null) && (contentStart' = contentStartInput)
+end_process
+
+process setContentEnd(contentEndInput: String)
+pre  true
+post contentEnd' = (contentEndInput = null ⇒ "") ∧ (contentEndInput ≠ null ⇒ contentEndInput)
+Functional Scenario Form 
+(contentEndInput = null) && (contentEnd' = "") or 
+(contentEndInput ≠ null) && (contentEnd' = contentEndInput)
+end_process
+
+process setFieldNameValueSeparator(fieldNameValueSeparatorInput: String)
+pre  true
+post fieldNameValueSeparator' = (fieldNameValueSeparatorInput = null ⇒ "") ∧ (fieldNameValueSeparatorInput ≠ null ⇒ fieldNameValueSeparatorInput)
+Functional Scenario Form 
+(fieldNameValueSeparatorInput = null) && (fieldNameValueSeparator' = "") or 
+(fieldNameValueSeparatorInput ≠ null) && (fieldNameValueSeparator' = fieldNameValueSeparatorInput)
+end_process
+process appendIdentityHashCode(buffer: StringBuffer, object: Object)
+pre 
+    object ≠ null ∧ useIdentityHashCode = true
+post 
+    object is registered ∧ buffer includes "@" ∧ buffer includes identityHashCode(object)
+Functional Scenario Form
+(object ≠ null ∧ useIdentityHashCode = true) && (buffer includes "@" ∧ buffer includes identityHashCode(object))
+end_process
+
+process appendSummarySize(buffer: StringBuffer, fieldName: String, size: int)
+pre 
+    true
+post 
+    buffer includes (sizeStartText + size + sizeEndText)
+Functional Scenario Form
+true && buffer includes (sizeStartText + size + sizeEndText)
+end_process
+
+process isFullDetail(fullDetailRequest: Boolean) result: Boolean
+pre 
+    true
+post 
+    (fullDetailRequest = null ⇒ result = defaultFullDetail) ∧ 
+    (fullDetailRequest ≠ null ⇒ result = fullDetailRequest)
+Functional Scenario Form
+(fullDetailRequest = null) && (result = defaultFullDetail) or
+(fullDetailRequest ≠ null) && (result = fullDetailRequest)
+end_process
+
+process getShortClassName(cls: Class) result: String
+pre 
+    cls ≠ null
+post 
+    result = ClassUtils.getShortClassName(cls)
+Functional Scenario Form
+(cls ≠ null) && (result = ClassUtils.getShortClassName(cls))
+end_process
+
+process setUseClassName(value: Boolean)
+pre 
+    true
+post 
+    useClassName = value
+Functional Scenario Form
+true && (useClassName = value)
+end_process
+
+end_module

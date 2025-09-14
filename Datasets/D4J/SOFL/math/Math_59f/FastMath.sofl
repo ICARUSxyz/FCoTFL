@@ -1,0 +1,2066 @@
+module FastMath  
+type:
+  LN_QUICK_COEF: double[][]  
+  LN_HI_PREC_COEF: double[][]  
+
+var:  
+  PI: double = 105414357.0 / 33554432.0 + 1.984187159361080883e-9  
+  E: double = 2850325.0 / 1048576.0 + 8.254840070411028747e-8  
+  EXP_INT_TABLE_MAX_INDEX: int = 750  
+  LN_MANT_LEN: int = 1024  
+  EXP_FRAC_TABLE_LEN: int = 1025  
+  RECOMPUTE_TABLES_AT_RUNTIME: boolean = false  
+  LN_2_A: double = 0.693147063255310059  
+  LN_2_B: double = 1.17304635250823482e-7  
+  SINE_TABLE_LEN: int = 14  
+
+
+// Precomputed tables initialization  
+process initializeTables()  
+pre true  
+post  
+  // Populate LN_QUICK_COEF  
+  LN_QUICK_COEF' = {  
+    {1.0, 5.669184079525E-24},  
+    {-0.25, -0.25},  
+    {0.3333333134651184, 1.986821492305628E-8},  
+    {-0.25, -6.663542893624021E-14},  
+    {0.19999998807907104, 1.1921056801463227E-8},  
+    {-0.1666666567325592, -7.800414592973399E-9},  
+    {0.1428571343421936, 5.650007086920087E-9},  
+    {-0.12502530217170715, -7.44321345601866E-11},  
+    {0.11113807559013367, 9.219544613762692E-9}  
+  }  
+  // Populate LN_HI_PREC_COEF  
+  LN_HI_PREC_COEF' = {  
+    {1.0, -6.032174644509064E-23},  
+    {-0.25, -0.25},  
+    {0.3333333134651184, 1.9868161777724352E-8},  
+    {-0.2499999701976776, -2.957007209750105E-8},  
+    {0.19999954104423523, 1.5830993332061267E-10},  
+    {-0.16624879837036133, -2.6033824355191673E-8}  
+  }  
+  // Populate sine/cosine tables  
+  SINE_TABLE_A' = [  
+    0.0d, 0.1246747374534607d, 0.24740394949913025d, 0.366272509098053d,  
+    0.4794255495071411d, 0.5850973129272461d, 0.6816387176513672d,  
+    0.7675435543060303d, 0.8414709568023682d, 0.902267575263977d,  
+    0.9489846229553223d, 0.9808930158615112d, 0.9974949359893799d,  
+    0.9985313415527344d  
+  ]  
+  SINE_TABLE_B' = [  
+    0.0d, -4.068233003401932E-9d, 9.755392680573412E-9d, 1.9987994582857286E-8d,  
+    -1.0902938113007961E-8d, -3.9986783938944604E-8d, 4.23719669792332E-8d,  
+    -5.207000323380292E-8d, 2.800552834259E-8d, 1.883511811213715E-8d,  
+    -3.5997360512765566E-9d, 4.116164446561962E-8d, 5.0614674548127384E-8d,  
+    -1.0129027912496858E-9d  
+  ]  
+  COSINE_TABLE_A' = [  
+    1.0d, 0.9921976327896118d, 0.9689123630523682d, 0.9305076599121094d,  
+    0.8775825500488281d, 0.8109631538391113d, 0.7316888570785522d,  
+    0.6409968137741089d, 0.5403022766113281d, 0.4311765432357788d,  
+    0.3153223395347595d, 0.19454771280288696d, 0.07073719799518585d,  
+    -0.05417713522911072d  
+  ]  
+Functional Scenario Form  
+RECOMPUTE_TABLES_AT_RUNTIME=false && initializes constants  
+end_process  
+
+// Core constant accessors  
+process getPI() result: double  
+pre true  
+post  
+  result' = PI  
+end_process  
+
+process getE() result: double  
+pre true  
+post  
+  result' = E  
+end_process  
+
+process getLn2() result: double  
+pre true  
+post  
+  result' = LN_2_A + LN_2_B  
+end_process  
+
+process initializeConstants()  
+pre true  
+post  
+  LN_QUICK_COEF' = new double[9][2]  
+  LN_QUICK_COEF[0] = {1.0, 5.669184079525E-24}  
+  LN_QUICK_COEF[1] = {-0.25, -0.25}  
+  LN_QUICK_COEF[2] = {0.3333333134651184, 1.986821492305628E-8}  
+  LN_QUICK_COEF[3] = {-0.25, -6.663542893624021E-14}  
+  LN_QUICK_COEF[4] = {0.19999998807907104, 1.1921056801463227E-8}  
+  LN_QUICK_COEF[5] = {-0.1666666567325592, -7.800414592973399E-9}  
+  LN_QUICK_COEF[6] = {0.1428571343421936, 5.650007086920087E-9}  
+  LN_QUICK_COEF[7] = {-0.12502530217170715, -7.44321345601866E-11}  
+  LN_QUICK_COEF[8] = {0.11113807559013367, 9.219544613762692E-9}  
+  
+  LN_HI_PREC_COEF' = new double[6][2]  
+  LN_HI_PREC_COEF[0] = {1.0, -6.032174644509064E-23}  
+  LN_HI_PREC_COEF[1] = {-0.25, -0.25}  
+  LN_HI_PREC_COEF[2] = {0.3333333134651184, 1.9868161777724352E-8}  
+  LN_HI_PREC_COEF[3] = {-0.2499999701976776, -2.957007209750105E-8}  
+  LN_HI_PREC_COEF[4] = {0.19999954104423523, 1.5830993332061267E-10}  
+  LN_HI_PREC_COEF[5] = {-0.16624879837036133, -2.6033824355191673E-8}  
+  
+  SINE_TABLE_A' = new double[SINE_TABLE_LEN]  
+  SINE_TABLE_A = {0.0, 0.1246747374534607, 0.24740394949913025, 0.366272509098053,  
+                  0.4794255495071411, 0.5850973129272461, 0.6816387176513672,  
+                  0.7675435543060303, 0.8414709568023682, 0.902267575263977,  
+                  0.9489846229553223, 0.9808930158615112, 0.9974949359893799,  
+                  0.9985313415527344}  
+  
+  SINE_TABLE_B' = new double[SINE_TABLE_LEN]  
+  SINE_TABLE_B = {0.0, -4.068233003401932E-9, 9.755392680573412E-9, 1.9987994582857286E-8,  
+                  -1.0902938113007961E-8, -3.9986783938944604E-8, 4.23719669792332E-8,  
+                  -5.207000323380292E-8, 2.800552834259E-8, 1.883511811213715E-8,  
+                  -3.5997360512765566E-9, 4.116164446561962E-8, 5.0614674548127384E-8,  
+                  -1.0129027912496858E-9}  
+  
+  COSINE_TABLE_A' = new double[SINE_TABLE_LEN]  
+  COSINE_TABLE_A = {1.0, 0.9921976327896118, 0.9689123630523682, 0.9305076599121094,  
+                    0.8775825500488281, 0.8109631538391113, 0.7316888570785522,  
+                    0.6409968137741089, 0.5403022766113281, 0.4311765432357788,  
+                    0.3153223395347595, 0.19454771280288696, 0.07073719799518585,  
+                    -0.05417713522911072}  
+Functional Scenario Form  
+RECOMPUTE_TABLES_AT_RUNTIME=false && initializes constants  
+end_process  
+
+// Core constant accessors  
+process getPI() result: double  
+pre true  
+post  
+  result' = PI  
+end_process  
+
+process getE() result: double  
+pre true  
+post  
+  result' = E  
+end_process  
+
+process getLn2() result: double  
+pre true  
+post  
+  result' = LN_2_A + LN_2_B  
+end_process  
+
+// Extract high 30 bits of double  
+process doubleHighPart(d: double) result: double  
+pre true  
+post  
+  d > -Precision.SAFE_MIN && d < Precision.SAFE_MIN  
+    ? result' = d  
+    : xl = Double.doubleToLongBits(d)  
+      xl' = xl & MASK_30BITS  
+      result' = Double.longBitsToDouble(xl)  
+Functional Scenario Form  
+subnormal d && returns original  
+normal d && returns high 30 bits  
+end_process  
+
+// Square root delegation  
+process sqrt(a: double) result: double  
+pre true  
+post  
+  result' = Math.sqrt(a)  
+end_process  
+
+// Hyperbolic cosine  
+process cosh(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = x  // NaN case  
+  x > 20  
+    ? x ≥ LOG_MAX_VALUE  
+        ? t = exp(0.5 * x)  
+          result' = (0.5 * t) * t  
+        : result' = 0.5 * exp(x)  
+  x < -20  
+    ? x ≤ -LOG_MAX_VALUE  
+        ? t = exp(-0.5 * x)  
+          result' = (0.5 * t) * t  
+        : result' = 0.5 * exp(-x)  
+  else  
+    xa = |x|  
+    hiPrec = new double[2]  
+    exp(xa, 0.0, hiPrec)  
+    ya = hiPrec[0] + hiPrec[1]  
+    yb = -(ya - hiPrec[0] - hiPrec[1])  
+    temp = ya * HEX_40000000  
+    yaa = ya + temp - temp  
+    yab = ya - yaa  
+    recip = 1.0 / ya  
+    temp = recip * HEX_40000000  
+    recipa = recip + temp - temp  
+    recipb = recip - recipa  
+    recipb += (1.0 - yaa*recipa - yaa*recipb - yab*recipa - yab*recipb) * recip  
+    recipb += -yb * recip * recip  
+    temp = ya + recipa  
+    yb += -(temp - ya - recipa)  
+    ya = temp  
+    temp = ya + recipb  
+    yb += -(temp - ya - recipb)  
+    ya = temp  
+    result' = (ya + yb) * 0.5  
+Functional Scenario Form  
+x=NaN && returns NaN  
+x=25 && returns 0.5*exp(25)  
+x=1000 && returns (0.5*exp(500))^2  
+x=0 && returns 1.0  
+end_process  
+
+// Hyperbolic sine  
+process sinh(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = x  // NaN case  
+  x > 20  
+    ? x ≥ LOG_MAX_VALUE  
+        ? t = exp(0.5 * x)  
+          result' = (0.5 * t) * t  
+        : result' = 0.5 * exp(x)  
+  x < -20  
+    ? x ≤ -LOG_MAX_VALUE  
+        ? t = exp(-0.5 * x)  
+          result' = (-0.5 * t) * t  
+        : result' = -0.5 * exp(-x)  
+  x = 0 → result' = 0  
+  else  
+    negate = false  
+    x_abs = |x|  
+    x < 0 → negate = true  
+    x_abs > 0.25  
+      ? hiPrec = new double[2]  
+        exp(x_abs, 0.0, hiPrec)  
+        ya = hiPrec[0] + hiPrec[1]  
+        yb = -(ya - hiPrec[0] - hiPrec[1])  
+        // ... same precision steps as cosh ...  
+        result' = (ya + yb) * 0.5  
+      : hiPrec = new double[2]  
+        expm1(x_abs, hiPrec)  
+        ya = hiPrec[0] + hiPrec[1]  
+        yb = -(ya - hiPrec[0] - hiPrec[1])  
+        denom = 1.0 + ya  
+        denomr = 1.0 / denom  
+        denomb = -(denom - 1.0 - ya) + yb  
+        ratio = ya * denomr  
+        // ... precision steps ...  
+        result' = (ya + yb) * 0.5  
+    negate → result' = -result'  
+Functional Scenario Form  
+x=NaN && returns NaN  
+x=25 && returns 0.5*exp(25)  
+x=-1000 && returns - (0.5*exp(500))^2  
+x=0.2 && uses expm1 method  
+x=-0.2 && returns negative  
+end_process  
+
+// Hyperbolic tangent  
+process tanh(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = x  // NaN case  
+  x > 20.0 → result' = 1.0  
+  x < -20 → result' = -1.0  
+  x = 0 → result' = 0  
+  negate = false  
+  x < 0 → x' = -x, negate' = true  
+  x ≥ 0.5  
+    ? hiPrec = new double[2]  
+      exp(x*2.0, 0.0, hiPrec)  
+      ya = hiPrec[0] + hiPrec[1]  
+      yb = -(ya - hiPrec[0] - hiPrec[1])  
+      // Numerator: na = -1 + ya, nb from precision  
+      // Denominator: da = 1 + ya, db from precision  
+      // Double-double division and compensation  
+      result' = ratioa + ratiob  
+  else  
+    hiPrec = new double[2]  
+    expm1(x*2.0, hiPrec)  
+    ya = hiPrec[0] + hiPrec[1]  
+    yb = -(ya - hiPrec[0] - hiPrec[1])  
+    // Numerator: na = ya  
+    // Denominator: da = 2.0 + ya  
+    // Double-double division and compensation  
+    result' = ratioa + ratiob  
+  negate → result' = -result'  
+Functional Scenario Form  
+x=NaN && returns NaN  
+x=25 && returns 1.0  
+x=-25 && returns -1.0  
+x=0.6 && uses exp method  
+x=0.4 && uses expm1 method  
+end_process  
+
+// Inverse hyperbolic sine  
+process asinh(a: double) result: double  
+pre true  
+post  
+  negative = false  
+  a < 0 → a' = -a, negative' = true  
+  a > 0.167  
+    ? result' = FastMath.log(FastMath.sqrt(a*a + 1) + a  
+  a > 0.097  
+    ? a2 = a*a  
+      result' = a * (1 - a2*(F_1_3 - a2*(F_1_5 - a2*(F_1_7 - a2*(F_1_9 - a2*(F_1_11 - a2*(F_1_13 - a2*(F_1_15 - a2*F_1_17*F_15_16)*F_13_14)*F_11_12)*F_9_10)*F_7_8)*F_5_6)*F_3_4)*F_1_2)  
+  a > 0.036  
+    ? a2 = a*a  
+      result' = a * (1 - a2*(F_1_3 - a2*(F_1_5 - a2*(F_1_7 - a2*(F_1_9 - a2*(F_1_11 - a2*F_1_13*F_11_12)*F_9_10)*F_7_8)*F_5_6)*F_3_4)*F_1_2)  
+  a > 0.0036  
+    ? a2 = a*a  
+      result' = a * (1 - a2*(F_1_3 - a2*(F_1_5 - a2*(F_1_7 - a2*F_1_9*F_7_8)*F_5_6)*F_3_4)*F_1_2)  
+  else  
+    a2 = a*a  
+    result' = a * (1 - a2*(F_1_3 - a2*F_1_5*F_3_4)*F_1_2)  
+  negative → result' = -result'  
+Functional Scenario Form  
+a=2.0 && uses log formula  
+a=0.1 && uses 7-term polynomial  
+a=0.02 && uses 5-term polynomial  
+a=0.001 && uses 3-term polynomial  
+a=-0.5 && returns negative  
+end_process  
+
+// Inverse hyperbolic tangent  
+process atanh(a: double) result: double  
+pre true  
+post  
+  negative = false  
+  a < 0 → a' = -a, negative' = true  
+  a > 0.15  
+    ? result' = 0.5 * FastMath.log((1 + a)/(1 - a))  
+  a > 0.087  
+    ? a2 = a*a  
+      result' = a * (1 + a2*(F_1_3 + a2*(F_1_5 + a2*(F_1_7 + a2*(F_1_9 + a2*(F_1_11 + a2*(F_1_13 + a2*(F_1_15 + a2*F_1_17))))))  
+  a > 0.031  
+    ? a2 = a*a  
+      result' = a * (1 + a2*(F_1_3 + a2*(F_1_5 + a2*(F_1_7 + a2*(F_1_9 + a2*(F_1_11 + a2*F_1_13)))))  
+  a > 0.003  
+    ? a2 = a*a  
+      result' = a * (1 + a2*(F_1_3 + a2*(F_1_5 + a2*(F_1_7 + a2*F_1_9)))  
+  else  
+    a2 = a*a  
+    result' = a * (1 + a2*(F_1_3 + a2*F_1_5))  
+  negative → result' = -result'  
+Functional Scenario Form  
+a=0.2 && uses log formula  
+a=0.09 && uses 7-term polynomial  
+a=0.03 && uses 5-term polynomial  
+a=0.002 && uses 2-term polynomial  
+a=-0.1 && returns negative  
+end_process  
+
+// Signum functions  
+process signum_double(a: double) result: double  
+pre true  
+post  
+  result' = a < 0.0 ? -1.0 : (a > 0.0 ? 1.0 : a)  
+end_process  
+
+process signum_float(a: float) result: float  
+pre true  
+post  
+  result' = a < 0.0f ? -1.0f : (a > 0.0f ? 1.0f : a)  
+end_process  
+
+// Next floating-point value  
+process nextUp_double(a: double) result: double  
+pre true  
+post  
+  result' = nextAfter(a, Double.POSITIVE_INFINITY)  
+end_process  
+
+process nextUp_float(a: float) result: float  
+pre true  
+post  
+  result' = nextAfter(a, Float.POSITIVE_INFINITY)  
+end_process  
+
+// Exponential function entry  
+process exp(x: double) result: double  
+pre true  
+post  
+  result' = exp(x, 0.0, null)  
+end_process  
+
+// Exponential function with precision control  
+process exp(x: double, extra: double, hiPrec: double[]) result: double  
+pre true  
+post  
+  intPartA: double  
+  intPartB: double  
+  intVal: int  
+
+  x < 0.0  
+    ? intVal = (int) -x  
+      intVal > 746  
+        ? result' = 0.0  
+          hiPrec ≠ null → hiPrec[0]' = 0.0, hiPrec[1]' = 0.0  
+      intVal > 709  
+        ? temp = exp(x+40.19140625, extra, hiPrec)  
+          result' = temp / 285040095144011776.0  
+          hiPrec ≠ null  
+            ? hiPrec[0]' /= 285040095144011776.0  
+              hiPrec[1]' /= 285040095144011776.0  
+      intVal = 709  
+        ? temp = exp(x+1.494140625, extra, hiPrec)  
+          result' = temp / 4.455505956692756620  
+          hiPrec ≠ null  
+            ? hiPrec[0]' /= 4.455505956692756620  
+              hiPrec[1]' /= 4.455505956692756620  
+      else  
+        intVal' = intVal + 1  
+        intPartA' = ExpIntTable.EXP_INT_TABLE_A[EXP_INT_TABLE_MAX_INDEX - intVal]  
+        intPartB' = ExpIntTable.EXP_INT_TABLE_B[EXP_INT_TABLE_MAX_INDEX - intVal]  
+        intVal' = -intVal  
+  else  
+    intVal = (int) x  
+    intVal > 709  
+      ? result' = Double.POSITIVE_INFINITY  
+        hiPrec ≠ null → hiPrec[0]' = Double.POSITIVE_INFINITY, hiPrec[1]' = 0.0  
+    else  
+      intPartA' = ExpIntTable.EXP_INT_TABLE_A[EXP_INT_TABLE_MAX_INDEX + intVal]  
+      intPartB' = ExpIntTable.EXP_INT_TABLE_B[EXP_INT_TABLE_MAX_INDEX + intVal]  
+
+  // Common processing for fractional part  
+  intFrac = (int) ((x - intVal) * 1024.0)  
+  fracPartA = ExpFracTable.EXP_FRAC_TABLE_A[intFrac]  
+  fracPartB = ExpFracTable.EXP_FRAC_TABLE_B[intFrac]  
+  epsilon = x - (intVal + intFrac / 1024.0)  
+
+  // Polynomial approximation  
+  z = 0.04168701738764507  
+  z' = z * epsilon + 0.1666666505023083  
+  z' = z * epsilon + 0.5000000000042687  
+  z' = z * epsilon + 1.0  
+  z' = z * epsilon + -3.940510424527919E-20  
+
+  // Result assembly  
+  tempA = intPartA * fracPartA  
+  tempB = intPartA * fracPartB + intPartB * fracPartA + intPartB * fracPartB  
+  tempC = tempA + tempB  
+
+  extra ≠ 0.0  
+    ? result' = tempC*extra*z + tempC*extra + tempC*z + tempB + tempA  
+    : result' = tempC*z + tempB + tempA  
+
+  hiPrec ≠ null  
+    ? hiPrec[0]' = tempA  
+      hiPrec[1]' = tempC*extra*z + tempC*extra + tempC*z + tempB  
+Functional Scenario Form  
+x=-800 && returns 0.0  
+x=-800, hiPrec≠null && sets hiPrec[0,1]=0.0  
+x=-720 && uses recursive scaling  
+x=710 && returns infinity  
+x=500 && uses lookup tables  
+x=0.5 && computes polynomial approximation  
+extra=0.5 && includes in calculation  
+hiPrec≠null && stores high-precision components  
+end_process  
+
+// Exponential minus one  
+process expm1(x: double, hiPrecOut: double[]) result: double  
+pre true  
+post  
+  x ≠ x ∨ x = 0.0 → result' = x  // NaN/zero  
+  |x| ≥ 1.0  
+    ? hiPrec = new double[2]  
+      exp(x, 0.0, hiPrec)  
+      x > 0.0  
+        ? result' = -1.0 + hiPrec[0] + hiPrec[1]  
+      : ra = -1.0 + hiPrec[0]  
+        rb = -(ra + 1.0 - hiPrec[0]) + hiPrec[1]  
+        result' = ra + rb  
+  else  
+    negative = false  
+    x < 0.0 → x' = -x, negative' = true  
+    intFrac = (int)(x * 1024.0)  
+    tempA = ExpFracTable.EXP_FRAC_TABLE_A[intFrac] - 1.0  
+    tempB = ExpFracTable.EXP_FRAC_TABLE_B[intFrac]  
+    temp = tempA + tempB  
+    tempB' = -(temp - tempA - tempB)  
+    tempA' = temp  
+    temp = tempA * HEX_40000000  
+    baseA = tempA + temp - temp  
+    baseB = tempB + (tempA - baseA)  
+    epsilon = x - intFrac/1024.0  
+
+    // Polynomial approximation  
+    zb = 0.008336750013465571  
+    zb' = zb * epsilon + 0.041666663879186654  
+    zb' = zb * epsilon + 0.16666666666745392  
+    zb' = zb * epsilon + 0.49999999999999994  
+    zb' = zb * epsilon  
+    zb' = zb * epsilon  
+    za = epsilon  
+    temp = za + zb  
+    zb' = -(temp - za - zb)  
+    za' = temp  
+    temp = za * HEX_40000000  
+    temp' = za + temp - temp  
+    zb' += za - temp  
+    za' = temp  
+
+    // Result assembly  
+    ya = za * baseA  
+    temp = ya + za * baseB  
+    yb = -(temp - ya - za * baseB)  
+    ya' = temp  
+    temp = ya + zb * baseA  
+    yb' += -(temp - ya - zb * baseA)  
+    ya' = temp  
+    temp = ya + zb * baseB  
+    yb' += -(temp - ya - zb * baseB)  
+    ya' = temp  
+    temp = ya + baseA  
+    yb' += -(temp - ya - baseA)  
+    ya' = temp  
+    temp = ya + za  
+    yb' += -(temp - ya - za)  
+    ya' = temp  
+    temp = ya + baseB  
+    yb' += -(temp - ya - baseB)  
+    ya' = temp  
+    temp = ya + zb  
+    yb' += -(temp - ya - zb)  
+    ya' = temp  
+
+    negative  
+      ? denom = 1.0 + ya  
+        denomr = 1.0 / denom  
+        denomb = -(denom - 1.0 - ya) + yb  
+        ratio = ya * denomr  
+        temp = ratio * HEX_40000000  
+        ra = ratio + temp - temp  
+        rb = ratio - ra  
+        temp = denom * HEX_40000000  
+        za = denom + temp - temp  
+        zb = denom - za  
+        rb += (ya - za*ra - za*rb - zb*ra - zb*rb) * denomr  
+        rb += yb * denomr  
+        rb += -ya * denomb * denomr * denomr  
+        ya' = -ra  
+        yb' = -rb  
+
+    hiPrecOut ≠ null → hiPrecOut[0]' = ya, hiPrecOut[1]' = yb  
+    result' = ya + yb  
+Functional Scenario Form  
+x=0.0 && returns 0.0  
+x=2.0 && uses exp-based calculation  
+x=-2.0 && uses double precision adjustment  
+x=0.5 && uses table and polynomial  
+x=-0.5 && computes negative transformation  
+hiPrecOut≠null && stores high-precision components  
+end_process  
+
+// Natural logarithm  
+process log_general(bits: long, exp: int, hiPrec: double[]) result: double  
+pre true  
+post  
+  lnm = lnMant.LN_MANT[(int)((bits & 0x000ffc0000000000L) >> 42)]  
+  epsilon = (bits & 0x3ffffffffffL) / (TWO_POWER_52 + (bits & 0x000ffc0000000000L))  
+
+  hiPrec ≠ null  
+    ? // High-precision epsilon refinement  
+      tmp = epsilon * HEX_40000000  
+      aa = epsilon + tmp - tmp  
+      ab = epsilon - aa  
+      xa = aa  
+      xb = ab  
+      numer = bits & 0x3ffffffffffL  
+      denom = TWO_POWER_52 + (bits & 0x000ffc0000000000L)  
+      aa = numer - xa*denom - xb*denom  
+      xb' = xb + aa / denom  
+
+      // Polynomial evaluation  
+      ya = LN_HI_PREC_COEF[5][0]  
+      yb = LN_HI_PREC_COEF[5][1]  
+      for i=4 downto 0  
+        aa = ya * xa  
+        ab = ya * xb + yb * xa + yb * xb  
+        tmp = aa * HEX_40000000  
+        ya = aa + tmp - tmp  
+        yb = aa - ya + ab  
+        aa = ya + LN_HI_PREC_COEF[i][0]  
+        ab = yb + LN_HI_PREC_COEF[i][1]  
+        tmp = aa * HEX_40000000  
+        ya = aa + tmp - tmp  
+        yb = aa - ya + ab  
+      end_for  
+      aa = ya * xa  
+      ab = ya * xb + yb * xa + yb * xb  
+      lnza = aa + ab  
+      lnzb = -(lnza - aa - ab)  
+  : // Standard polynomial  
+      lnza = -0.16624882440418567  
+      lnza' = lnza * epsilon + 0.19999954120254515  
+      lnza' = lnza * epsilon + -0.2499999997677497  
+      lnza' = lnza * epsilon + 0.3333333333332802  
+      lnza' = lnza * epsilon + -0.5  
+      lnza' = lnza * epsilon + 1.0  
+      lnza' = lnza * epsilon  
+      lnzb = 0.0  
+
+  // Result assembly  
+  a = LN_2_A * exp  
+  b = 0.0  
+  c = a + lnm[0]  
+  d = -(c - a - lnm[0])  
+  a' = c  
+  b' = b + d  
+
+  c = a + lnza  
+  d = -(c - a - lnza)  
+  a' = c  
+  b' = b + d  
+
+  c = a + LN_2_B * exp  
+  d = -(c - a - LN_2_B * exp)  
+  a' = c  
+  b' = b + d  
+
+  c = a + lnm[1]  
+  d = -(c - a - lnm[1])  
+  a' = c  
+  b' = b + d  
+
+  c = a + lnzb  
+  d = -(c - a - lnzb)  
+  a' = c  
+  b' = b + d  
+
+  hiPrec ≠ null → hiPrec[0]' = a, hiPrec[1]' = b  
+  result' = a + b  
+Functional Scenario Form  
+hiPrec≠null && uses high-precision polynomial  
+hiPrec=null && uses standard polynomial  
+exp=10 && combines ln(2) contributions  
+lnm[0]=0.5 && includes table value  
+end_process  
+
+// Logarithm of 1+x  
+process log1p(x: double) result: double  
+pre true  
+post  
+  x = -1 → result' = Double.NEGATIVE_INFINITY  
+  x = Double.POSITIVE_INFINITY → result' = Double.POSITIVE_INFINITY  
+  |x| > 1e-6  
+    ? xpa = 1 + x  
+      xpb = -(xpa - 1 - x)  
+      hiPrec = new double[2]  
+      lores = log(xpa, hiPrec)  
+      Double.isInfinite(lores) → result' = lores  
+      : fx1 = xpb / xpa  
+        epsilon = 0.5 * fx1 + 1  
+        result' = epsilon * fx1 + hiPrec[1] + hiPrec[0]  
+  else  
+    y = (x * F_1_3 - F_1_2) * x + 1  
+    result' = y * x  
+Functional Scenario Form  
+x=-1.0 && returns -infinity  
+x=1e9 && uses Taylor expansion  
+x=1e-7 && uses polynomial approximation  
+x=0.0 && returns 0.0  
+end_process  
+
+// Base-10 logarithm  
+process log10(x: double) result: double  
+pre true  
+post  
+  hiPrec = new double[2]  
+  lores = log(x, hiPrec)  
+  Double.isInfinite(lores) → result' = lores  
+  : temp = hiPrec[0] * HEX_40000000  
+    lna = hiPrec[0] + temp - temp  
+    lnb = hiPrec[0] - lna + hiPrec[1]  
+    result' = rln10b*lnb + rln10b*lna + rln10a*lnb + rln10a*lna  
+Functional Scenario Form  
+x=100.0 && returns 2.0  
+x=0.001 && returns -3.0  
+x=0.0 && returns -infinity  
+end_process  
+
+// General base logarithm  
+process log_base(base: double, x: double) result: double  
+pre true  
+post  
+  result' = log(x) / log(base)  
+end_process  
+
+// General power function  
+process pow(x: double, y: double) result: double  
+pre true  
+post  
+  y = 0.0 → result' = 1.0  
+  x ≠ x → result' = x  // NaN  
+  x = 0  
+    ? bits = Double.doubleToLongBits(x)  
+      (bits & 0x8000000000000000L) ≠ 0  // Negative zero  
+        ? y < 0 ∧ y == (long)y ∧ ((long)y & 1) = 1  
+            ? result' = Double.NEGATIVE_INFINITY  
+          y > 0 ∧ y == (long)y ∧ ((long)y & 1) = 1  
+            ? result' = -0.0  
+      y < 0 → result' = Double.POSITIVE_INFINITY  
+      y > 0 → result' = 0.0  
+      else → result' = Double.NaN  
+
+  x = Double.POSITIVE_INFINITY  
+    ? y ≠ y → result' = y  
+      y < 0.0 → result' = 0.0  
+      else → result' = Double.POSITIVE_INFINITY  
+
+  y = Double.POSITIVE_INFINITY  
+    ? x*x = 1.0 → result' = Double.NaN  
+      x*x > 1.0 → result' = Double.POSITIVE_INFINITY  
+      else → result' = 0.0  
+
+  x = Double.NEGATIVE_INFINITY  
+    ? y ≠ y → result' = y  
+      y < 0  
+        ? y == (long)y ∧ ((long)y & 1) = 1  
+            ? result' = -0.0  
+          else → result' = 0.0  
+      y > 0  
+        ? y == (long)y ∧ ((long)y & 1) = 1  
+            ? result' = Double.NEGATIVE_INFINITY  
+          else → result' = Double.POSITIVE_INFINITY  
+
+  y = Double.NEGATIVE_INFINITY  
+    ? x*x = 1.0 → result' = Double.NaN  
+      x*x < 1.0 → result' = Double.POSITIVE_INFINITY  
+      else → result' = 0.0  
+
+  x < 0  
+    ? |y| ≥ TWO_POWER_53  
+        ? result' = pow(-x, y)  
+      y == (long)y  
+        ? ((long)y & 1) = 0  
+            ? result' = pow(-x, y)  
+          else → result' = -pow(-x, y)  
+        : result' = Double.NaN  
+
+  else  // General case  
+    |y| < 8e298 ∧ |y| > -8e298  
+        ? tmp1 = y * HEX_40000000  
+          ya = y + tmp1 - tmp1  
+          yb = y - ya  
+      : tmp1 = y * 9.31322574615478515625E-10  
+        tmp2 = tmp1 * 9.31322574615478515625E-10  
+        ya = (tmp1 + tmp2 - tmp1) * HEX_40000000 * HEX_40000000  
+        yb = y - ya  
+
+    lns = new double[2]  
+    lores = log(x, lns)  
+    Double.isInfinite(lores) → result' = lores  
+    lna = lns[0]  
+    lnb = lns[1]  
+    tmp1 = lna * HEX_40000000  
+    tmp2 = lna + tmp1 - tmp1  
+    lnb' = lnb + lna - tmp2  
+    lna' = tmp2  
+
+    aa = lna * ya  
+    ab = lna * yb + lnb * ya + lnb * yb  
+    lna' = aa + ab  
+    lnb' = -(lna - aa - ab)  
+
+    z = 1.0 / 120.0  
+    z' = z * lnb + (1.0 / 24.0)  
+    z' = z * lnb + (1.0 / 6.0)  
+    z' = z * lnb + 0.5  
+    z' = z * lnb + 1.0  
+    z' = z * lnb  
+
+    result' = exp(lna, z, null)  
+Functional Scenario Form  
+y=0.0 && returns 1.0  
+x=NaN && returns NaN  
+x=-0.0, y=-3 && returns -infinity  
+x=0.0, y=2.5 && returns 0.0  
+x=Infinity, y=-1 && returns 0.0  
+y=Infinity, x=0.5 && returns 0.0  
+x=-Infinity, y=5 && returns -infinity  
+x=-4.0, y=3.5 && returns NaN  
+x=2.0, y=4.0 && returns 16.0  
+end_process  
+
+// Integer exponent power  
+process pow_int(d: double, e: int) result: double  
+pre true  
+post  
+  e = 0 → result' = 1.0  
+  e < 0 → e' = -e, d' = 1.0 / d  
+  splitFactor = 0x8000001  
+  cd = splitFactor * d  
+  d1High = cd - (cd - d)  
+  d1Low = d - d1High  
+  resultHigh = 1.0  
+  resultLow = 0.0  
+  d2p = d  
+  d2pHigh = d1High  
+  d2pLow = d1Low  
+  while e ≠ 0  
+    (e & 0x1) ≠ 0  
+      ? tmpHigh = resultHigh * d2p  
+        cRH = splitFactor * resultHigh  
+        rHH = cRH - (cRH - resultHigh)  
+        rHL = resultHigh - rHH  
+        tmpLow = rHL * d2pLow - ((tmpHigh - rHH*d2pHigh) - rHL*d2pHigh - rHH*d2pLow)  
+        resultHigh = tmpHigh  
+        resultLow = resultLow * d2p + tmpLow  
+    tmpHigh = d2pHigh * d2p  
+    cD2pH = splitFactor * d2pHigh  
+    d2pHH = cD2pH - (cD2pH - d2pHigh)  
+    d2pHL = d2pHigh - d2pHH  
+    tmpLow = d2pHL * d2pLow - ((tmpHigh - d2pHH*d2pHigh) - d2pHL*d2pHigh - d2pHH*d2pLow)  
+    cTmpH = splitFactor * tmpHigh  
+    d2pHigh = cTmpH - (cTmpH - tmpHigh)  
+    d2pLow = d2pLow * d2p + tmpLow + (tmpHigh - d2pHigh)  
+    d2p = d2pHigh + d2pLow  
+    e = e >> 1  
+  result' = resultHigh + resultLow  
+Functional Scenario Form  
+e=0 && returns 1.0  
+d=2.0,e=5 && returns 32.0  
+d=3.0,e=-2 && returns 0.111...  
+end_process  
+
+// Sine polynomial approximation  
+process polySine(x: double) result: double  
+pre true  
+post  
+  x2 = x*x  
+  p = 2.7553817452272217E-6  
+  p' = p * x2 + -1.9841269659586505E-4  
+  p' = p * x2 + 0.008333333333329196  
+  p' = p * x2 + -0.16666666666666666  
+  result' = p * x2 * x  
+end_process  
+
+// Cosine polynomial approximation  
+process polyCosine(x: double) result: double  
+pre true  
+post  
+  x2 = x*x  
+  p = 2.479773539153719E-5  
+  p' = p * x2 + -0.0013888888689039883  
+  p' = p * x2 + 0.041666666666621166  
+  p' = p * x2 + -0.49999999999999994  
+  result' = p * x2  
+end_process  
+
+// High-precision sine computation  
+process sinQ(xa: double, xb: double) result: double  
+pre true  
+post  
+  idx = (int)(xa * 8.0 + 0.5)  
+  epsilon = xa - EIGHTHS[idx]  
+  sintA = SINE_TABLE_A[idx]  
+  sintB = SINE_TABLE_B[idx]  
+  costA = COSINE_TABLE_A[idx]  
+  costB = COSINE_TABLE_B[idx]  
+  sinEpsA = epsilon  
+  sinEpsB = polySine(epsilon)  
+  cosEpsA = 1.0  
+  cosEpsB = polyCosine(epsilon)  
+  temp = sinEpsA * HEX_40000000  
+  temp2 = sinEpsA + temp - temp  
+  sinEpsB' = sinEpsB + sinEpsA - temp2  
+  sinEpsA' = temp2  
+  // Angle addition formula  
+  t = sintA  
+  c = a + t  // a starts at 0  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  // b starts at 0  
+  t = costA * sinEpsA  
+  c = a + t  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  
+  b' = b + sintA*cosEpsB + costA*sinEpsB  
+  b' = b + sintB + costB*sinEpsA + sintB*cosEpsB + costB*sinEpsB  
+  xb ≠ 0.0  
+    ? t = ((costA + costB)*(cosEpsA + cosEpsB) - (sintA + sintB)*(sinEpsA + sinEpsB)) * xb  
+      c = a + t  
+      d = -(c - a - t)  
+      a' = c  
+      b' = b + d  
+  result' = a + b  
+Functional Scenario Form  
+xa=0.3,xb=0.0 && computes sine  
+xa=0.0,xb=0.0 && returns 0.0  
+xa=1.0,xb=0.0 && uses table values  
+end_process  
+
+// High-precision cosine computation  
+process cosQ(xa: double, xb: double) result: double  
+pre true  
+post  
+  pi2a = 1.5707963267948966  
+  pi2b = 6.123233995736766E-17  
+  a = pi2a - xa  
+  b = -(a - pi2a + xa)  
+  b' = b + pi2b - xb  
+  result' = sinQ(a, b)  
+Functional Scenario Form  
+xa=0.3,xb=0.0 && computes cosine  
+xa=0.0,xb=0.0 && returns 1.0  
+end_process  
+
+// High-precision tangent computation  
+process tanQ(xa: double, xb: double, cotanFlag: boolean) result: double  
+pre true  
+post  
+  idx = (int)(xa * 8.0 + 0.5)  
+  epsilon = xa - EIGHTHS[idx]  
+  sintA = SINE_TABLE_A[idx]  
+  sintB = SINE_TABLE_B[idx]  
+  costA = COSINE_TABLE_A[idx]  
+  costB = COSINE_TABLE_B[idx]  
+  sinEpsA = epsilon  
+  sinEpsB = polySine(epsilon)  
+  cosEpsA = 1.0  
+  cosEpsB = polyCosine(epsilon)  
+  temp = sinEpsA * HEX_40000000  
+  temp2 = sinEpsA + temp - temp  
+  sinEpsB' = sinEpsB + sinEpsA - temp2  
+  sinEpsA' = temp2  
+
+  // Compute sine  
+  a = b = 0.0  
+  t = sintA  
+  c = a + t  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  
+  t = costA * sinEpsA  
+  c = a + t  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  
+  b' = b + sintA*cosEpsB + costA*sinEpsB  
+  b' = b + sintB + costB*sinEpsA + sintB*cosEpsB + costB*sinEpsB  
+  sina = a + b  
+  sinb = -(sina - a - b)  
+
+  // Compute cosine  
+  a = b = 0.0  
+  t = costA * cosEpsA  
+  c = a + t  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  
+  t = -sintA * sinEpsA  
+  c = a + t  
+  d = -(c - a - t)  
+  a' = c  
+  b' = b + d  
+  b' = b + costB*cosEpsA + costA*cosEpsB + costB*cosEpsB  
+  b' = b - (sintB*sinEpsA + sintA*sinEpsB + sintB*sinEpsB)  
+  cosa = a + b  
+  cosb = -(cosa - a - b)  
+
+  cotanFlag  
+    ? swap(sina, cosa)  
+      swap(sinb, cosb)  
+
+  est = sina/cosa  
+  temp = est * HEX_40000000  
+  esta = est + temp - temp  
+  estb = est - esta  
+  temp = cosa * HEX_40000000  
+  cosaa = cosa + temp - temp  
+  cosab = cosa - cosaa  
+
+  err = (sina - esta*cosaa - esta*cosab - estb*cosaa - estb*cosab)/cosa  
+  err' = err + sinb/cosa  
+  err' = err - sina*cosb/(cosa*cosa)  
+  xb ≠ 0.0  
+    ? xbadj = xb + est*est*xb  
+      cotanFlag → xbadj' = -xbadj  
+      err' = err + xbadj  
+  result' = est + err  
+Functional Scenario Form  
+xa=0.3,xb=0.0,cotanFlag=false && computes tangent  
+xa=0.3,xb=0.0,cotanFlag=true && computes cotangent  
+xa=0.0,xb=0.0,cotanFlag=false && returns 0.0  
+end_process  
+
+// Argument reduction for large inputs  
+process reducePayneHanek(x: double, result: double[])  
+pre true  
+post  
+  inbits = Double.doubleToLongBits(x)  
+  exponent = (int)((inbits >> 52) & 0x7ff) - 1023  
+  inbits' = inbits & 0x000fffffffffffffL | 0x0010000000000000L  // Normalize  
+  exponent' = exponent + 1  
+  inbits' = inbits << 11  
+
+  idx = exponent >> 6  
+  shift = exponent - (idx << 6)  
+  shift ≠ 0  
+    ? shpi0 = (idx=0 ? 0 : RECIP_2PI[idx-1] << shift) | RECIP_2PI[idx] >>> (64-shift)  
+      shpiA = (RECIP_2PI[idx] << shift) | RECIP_2PI[idx+1] >>> (64-shift)  
+      shpiB = (RECIP_2PI[idx+1] << shift) | RECIP_2PI[idx+2] >>> (64-shift)  
+  : shpi0 = (idx=0 ? 0 : RECIP_2PI[idx-1])  
+    shpiA = RECIP_2PI[idx]  
+    shpiB = RECIP_2PI[idx+1]  
+
+  // Multi-precision multiplication (inbits * shpiA)  
+  a = inbits >>> 32  
+  b = inbits & 0xffffffffL  
+  c = shpiA >>> 32  
+  d = shpiA & 0xffffffffL  
+  ac = a*c, bd = b*d, bc = b*c, ad = a*d  
+  prodB = bd + (ad << 32)  
+  prodA = ac + (ad >>> 32)  
+  // ... carry propagation steps ...  
+
+  // Add shpi0 contribution  
+  c = shpi0 >>> 32  
+  d = shpi0 & 0xffffffffL  
+  bd = b*d, bc = b*c, ad = a*d  
+  prodA' = prodA + bd + ((bc + ad) << 32)  
+
+  // Extract integer part  
+  intPart = (int)(prodA >>> 62)  
+  prodA' = prodA << 2  
+  prodA' = prodA | prodB >>> 62  
+  prodB' = prodB << 2  
+
+  // Multiply by π/4  
+  a = prodA >>> 32  
+  b = prodA & 0xffffffffL  
+  c = PI_O_4_BITS[0] >>> 32  
+  d = PI_O_4_BITS[0] & 0xffffffffL  
+  // ... multi-precision multiplication ...  
+
+  // Final conversion  
+  tmpA = (prod2A >>> 12) / TWO_POWER_52  
+  tmpB = (((prod2A & 0xfffL) << 40) + (prod2B >>> 24)) / TWO_POWER_52 / TWO_POWER_52  
+  sumA = tmpA + tmpB  
+  sumB = -(sumA - tmpA - tmpB)  
+
+  result[0]' = intPart  
+  result[1]' = sumA * 2.0  
+  result[2]' = sumB * 2.0  
+Functional Scenario Form  
+x=1e300 && reduces to [-π/4, π/4]  
+x=0.0 && returns [0,0,0]  
+end_process  
+
+// Sine function  
+process sin(x: double) result: double  
+pre true  
+post  
+  negative = false  
+  xa = x  
+  x < 0 → xa' = -xa, negative' = true  
+  xa = 0.0  
+    ? bits = Double.doubleToLongBits(x)  
+      bits < 0 → result' = -0.0  
+      else → result' = 0.0  
+  xa ≠ xa ∨ xa = Double.POSITIVE_INFINITY → result' = Double.NaN  
+  xa > 3294198.0  // Payne-Hanek reduction  
+    ? reduceResults = new double[3]  
+      reducePayneHanek(xa, reduceResults)  
+      quadrant = (int)reduceResults[0] & 3  
+      xa' = reduceResults[1]  
+      xb' = reduceResults[2]  
+  xa > 1.5707963267948966  // Cody-Waite reduction  
+    ? cw = new CodyWaite(xa, xb)  
+      quadrant = cw.getK() & 3  
+      xa' = cw.getRemA()  
+      xb' = cw.getRemB()  
+  negative → quadrant' = quadrant ^ 2  
+  quadrant = 0 → result' = sinQ(xa, xb)  
+  quadrant = 1 → result' = cosQ(xa, xb)  
+  quadrant = 2 → result' = -sinQ(xa, xb)  
+  quadrant = 3 → result' = -cosQ(xa, xb)  
+Functional Scenario Form  
+x=0.0 && returns 0.0  
+x=π/2 && returns 1.0  
+x=1e10 && uses Payne-Hanek  
+x=2.0 && uses Cody-Waite  
+x=-1.0 && handles negative  
+end_process  
+
+// Cosine function  
+process cos(x: double) result: double  
+pre true  
+post  
+  xa = x  
+  x < 0 → xa' = -xa  
+  xa ≠ xa ∨ xa = Double.POSITIVE_INFINITY → result' = Double.NaN  
+  xa > 3294198.0  
+    ? reduceResults = new double[3]  
+      reducePayneHanek(xa, reduceResults)  
+      quadrant = (int)reduceResults[0] & 3  
+      xa' = reduceResults[1]  
+      xb' = reduceResults[2]  
+  xa > 1.5707963267948966  
+    ? cw = new CodyWaite(xa, xb)  
+      quadrant = cw.getK() & 3  
+      xa' = cw.getRemA()  
+      xb' = cw.getRemB()  
+  quadrant = 0 → result' = cosQ(xa, xb)  
+  quadrant = 1 → result' = -sinQ(xa, xb)  
+  quadrant = 2 → result' = -cosQ(xa, xb)  
+  quadrant = 3 → result' = sinQ(xa, xb)  
+Functional Scenario Form  
+x=0.0 && returns 1.0  
+x=π && returns -1.0  
+x=1e10 && uses Payne-Hanek  
+end_process  
+
+// Tangent function  
+process tan(x: double) result: double  
+pre true  
+post  
+  negative = false  
+  xa = x  
+  x < 0 → xa' = -xa, negative' = true  
+  xa = 0.0  
+    ? bits = Double.doubleToLongBits(x)  
+      bits < 0 → result' = -0.0  
+      else → result' = 0.0  
+  xa ≠ xa ∨ xa = Double.POSITIVE_INFINITY → result' = Double.NaN  
+  xa > 3294198.0  
+    ? reduceResults = new double[3]  
+      reducePayneHanek(xa, reduceResults)  
+      quadrant = (int)reduceResults[0] & 3  
+      xa' = reduceResults[1]  
+      xb' = reduceResults[2]  
+  xa > 1.5707963267948966  
+    ? cw = new CodyWaite(xa, xb)  
+      quadrant = cw.getK() & 3  
+      xa' = cw.getRemA()  
+      xb' = cw.getRemB()  
+  xa > 1.5  
+    ? pi2a = 1.5707963267948966  
+      pi2b = 6.123233995736766E-17  
+      a = pi2a - xa  
+      b = -(a - pi2a + xa)  
+      b' = b + pi2b - xb  
+      xa' = a + b  
+      xb' = -(xa - a - b)  
+      quadrant' = quadrant ^ 1  
+      negative' = negative ^ true  
+  (quadrant & 1) = 0  
+    ? result' = tanQ(xa, xb, false)  
+    : result' = -tanQ(xa, xb, true)  
+  negative → result' = -result  
+Functional Scenario Form  
+x=0.0 && returns 0.0  
+x=π/4 && returns ≈1.0  
+x=1e10 && uses Payne-Hanek  
+x=2.0 && flips to complementary angle  
+x=-1.0 && handles negative  
+end_process  
+
+process atan(xa: double, xb: double, leftPlane: boolean) result: double  
+pre true  
+post  
+  xa = 0.0 → result' = (leftPlane ? copySign(PI, xa) : xa)  
+  xa < 0 → xa' = -xa, xb' = -xb, negate' = true  
+  xa > 1.633123935319537E16 → result' = (negate xor leftPlane) ? (-PI * F_1_2) : (PI * F_1_2)  
+  xa < 1 → idx' = (int)((-1.7168146928204136 * xa * xa + 8.0) * xa + 0.5)  
+  xa >= 1 → oneOverXa = 1 / xa, idx' = (int)(-((-1.7168146928204136 * oneOverXa * oneOverXa + 8.0) * oneOverXa) + 13.07)  
+  epsA' = xa - TANGENT_TABLE_A[idx]  
+  epsB' = -(epsA - xa + TANGENT_TABLE_A[idx]) + xb - TANGENT_TABLE_B[idx]  
+  temp' = epsA + epsB, epsB' = -(temp - epsA - epsB), epsA' = temp  
+  temp' = xa * HEX_40000000, ya' = xa + temp - temp, yb' = xb + xa - ya  
+  idx = 0 → denom = 1/(1 + (xa + xb)*(TANGENT_TABLE_A[idx] + TANGENT_TABLE_B[idx])), ya' = epsA * denom, yb' = epsB * denom  
+  idx != 0 →  
+    temp2 = xa * TANGENT_TABLE_A[idx], za = 1 + temp2, zb = -(za - 1 - temp2)  
+    temp2 = xb * TANGENT_TABLE_A[idx] + xa * TANGENT_TABLE_B[idx], temp = za + temp2, zb += -(temp - za - temp2), za = temp  
+    zb += xb * TANGENT_TABLE_B[idx], ya' = epsA / za  
+    temp = ya * HEX_40000000, yaa = ya + temp - temp, yab = ya - yaa  
+    temp = za * HEX_40000000, zaa = za + temp - temp, zab = za - zaa  
+    yb' = (epsA - yaa*zaa - yaa*zab - yab*zaa - yab*zab)/za - epsA*zb/(za*za) + epsB/za  
+  epsA' = ya, epsB' = yb  
+  epsA2 = epsA * epsA  
+  yb = 0.07490822288864472  
+  yb' = yb * epsA2 - 0.09088450866185192  
+  yb' = yb * epsA2 + 0.11111095942313305  
+  yb' = yb * epsA2 - 0.1428571423679182  
+  yb' = yb * epsA2 + 0.19999999999923582  
+  yb' = yb * epsA2 - 0.33333333333333287  
+  yb' = yb * epsA2 * epsA  
+  ya' = epsA  
+  temp' = ya + yb, yb' = -(temp - ya - yb), ya' = temp  
+  yb' += epsB / (1 + epsA*epsA)  
+  za' = EIGHTHS[idx] + ya, zb' = -(za - EIGHTHS[idx] - ya)  
+  temp' = za + yb, zb += -(temp - za - yb), za' = temp  
+  result0' = za + zb, resultb' = -(result0 - za - zb)  
+  leftPlane →  
+    pia = PI, pib = 0.0  
+    za' = pia - result0, zb' = -(za - pia + result0) + pib - resultb  
+    result0' = za + zb  
+  (negate xor leftPlane) → result0' = -result0  
+  result' = result0  
+Functional Scenario Form  
+xa=0.0 and leftPlane=true and Double.doubleToLongBits(xa)>=0 && result=PI  
+xa=0.0 and leftPlane=true and Double.doubleToLongBits(xa)<0 && result=-PI  
+xa=0.0 and leftPlane=false and Double.doubleToLongBits(xa)>=0 && result=0.0  
+xa=0.0 and leftPlane=false and Double.doubleToLongBits(xa)<0 && result=-0.0  
+xa=2e16 and negate=true and leftPlane=false && result=-PI*F_1_2  
+xa=2e16 and negate=false and leftPlane=true && result=PI*F_1_2  
+xa=0.5 and xb=0.0 and leftPlane=false && result≈0.463648  
+xa=1.0 and xb=0.0 and leftPlane=false && result≈0.785398  
+leftPlane=true and xa=1.0 and negate=false && result≈2.356194  
+end_process  
+
+// Four-quadrant arctangent  
+process atan2(y: double, x: double) result: double  
+pre true  
+post  
+  x ≠ x ∨ y ≠ y → result' = Double.NaN  
+  y = 0  
+    ? result0 = x * y  
+      invx = 1/x, invy = 1/y  
+      invx = 0  
+        ? x > 0 → result' = y  
+          else → result' = copySign(PI, y)  
+      x < 0 ∨ invx < 0  
+        ? y < 0 ∨ invy < 0 → result' = -PI  
+          else → result' = PI  
+        : result' = result0  
+  y = Double.POSITIVE_INFINITY  
+    ? x = Double.POSITIVE_INFINITY → result' = PI * F_1_4  
+      x = Double.NEGATIVE_INFINITY → result' = PI * F_3_4  
+      else → result' = PI * F_1_2  
+  y = Double.NEGATIVE_INFINITY  
+    ? x = Double.POSITIVE_INFINITY → result' = -PI * F_1_4  
+      x = Double.NEGATIVE_INFINITY → result' = -PI * F_3_4  
+      else → result' = -PI * F_1_2  
+  x = Double.POSITIVE_INFINITY  
+    ? y > 0 ∨ 1/y > 0 → result' = 0.0  
+      y < 0 ∨ 1/y < 0 → result' = -0.0  
+  x = Double.NEGATIVE_INFINITY  
+    ? y > 0 ∨ 1/y > 0 → result' = PI  
+      y < 0 ∨ 1/y < 0 → result' = -PI  
+  x = 0  
+    ? y > 0 ∨ 1/y > 0 → result' = PI * F_1_2  
+      y < 0 ∨ 1/y < 0 → result' = -PI * F_1_2  
+  else  
+    r = y/x  
+    Double.isInfinite(r) → result' = atan(r, 0, x < 0)  
+    : ra = doubleHighPart(r)  
+      rb = r - ra  
+      xa = doubleHighPart(x)  
+      xb = x - xa  
+      rb' = rb + (y - ra*xa - ra*xb - rb*xa - rb*xb)/x  
+      temp = ra + rb  
+      rb' = -(temp - ra - rb)  
+      ra' = temp  
+      ra = 0 → ra' = copySign(0d, y)  
+      result' = atan(ra, rb, x < 0)  
+Functional Scenario Form  
+y=NaN and x=1.0 && result=NaN  
+x=NaN and y=2.0 && result=NaN  
+y=0.0 and x=1.0 && result=0.0  
+y=0.0 and x=-1.0 and Double.doubleToLongBits(y)>=0 && result=PI  
+y=0.0 and x=-1.0 and Double.doubleToLongBits(y)<0 && result=-PI  
+y=Infinity and x=Infinity && result=PI*0.25  
+y=Infinity and x=-Infinity && result=PI*0.75  
+x=0.0 and y=1.0 && result=PI/2  
+x=0.0 and y=-1.0 && result=-PI/2  
+x=1.0 and y=1.0 && result≈0.785398  
+end_process  
+
+// Arcsine function  
+process asin(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = Double.NaN  
+  x > 1.0 ∨ x < -1.0 → result' = Double.NaN  
+  x = 1.0 → result' = PI/2.0  
+  x = -1.0 → result' = -PI/2.0  
+  x = 0.0 → result' = x  
+  else  
+    temp = x * HEX_40000000  
+    xa = x + temp - temp  
+    xb = x - xa  
+    ya = xa*xa  
+    yb = xa*xb*2.0 + xb*xb  
+    ya' = -ya  
+    yb' = -yb  
+    za = 1.0 + ya  
+    zb = -(za - 1.0 - ya)  
+    temp' = za + yb  
+    zb' = zb + -(temp - za - yb)  
+    za' = temp  
+    y = sqrt(za)  
+    temp = y * HEX_40000000  
+    ya_y = y + temp - temp  
+    yb_y = y - ya_y  
+    yb_y' = yb_y + (za - ya_y*ya_y - 2*ya_y*yb_y - yb_y*yb_y)/(2.0*y)  
+    dx = zb/(2.0*y)  
+    r = x/y  
+    temp = r * HEX_40000000  
+    ra = r + temp - temp  
+    rb = r - ra  
+    rb' = rb + (x - ra*ya_y - ra*yb_y - rb*ya_y - rb*yb_y)/y - x*dx/(y*y)  
+    temp' = ra + rb  
+    rb' = -(temp - ra - rb)  
+    ra' = temp  
+    result' = atan(ra, rb, false)  
+Functional Scenario Form  
+x=NaN && result=NaN  
+x=1.1 && result=NaN  
+x=1.0 && result=PI/2  
+x=-1.0 && result=-PI/2  
+x=0.0 && result=0.0  
+x=0.5 && result≈0.523599  
+end_process  
+
+// Arccosine function  
+process acos(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = Double.NaN  
+  x > 1.0 ∨ x < -1.0 → result' = Double.NaN  
+  x = -1.0 → result' = PI  
+  x = 1.0 → result' = 0.0  
+  x = 0.0 → result' = PI/2.0  
+  else  
+    temp = x * HEX_40000000  
+    xa = x + temp - temp  
+    xb = x - xa  
+    ya = xa*xa  
+    yb = xa*xb*2.0 + xb*xb  
+    ya' = -ya  
+    yb' = -yb  
+    za = 1.0 + ya  
+    zb = -(za - 1.0 - ya)  
+    temp' = za + yb  
+    zb' = zb + -(temp - za - yb)  
+    za' = temp  
+    y = sqrt(za)  
+    temp = y * HEX_40000000  
+    ya_y = y + temp - temp  
+    yb_y = y - ya_y  
+    yb_y' = yb_y + (za - ya_y*ya_y - 2*ya_y*yb_y - yb_y*yb_y)/(2.0*y)  
+    yb_y' += zb/(2.0*y)  
+    y' = ya_y + yb_y  
+    yb_y' = -(y - ya_y - yb_y)  
+    r = y/x  
+    Double.isInfinite(r) → result' = PI/2  
+    : ra = doubleHighPart(r)  
+      rb = r - ra  
+      rb' = rb + (y - ra*xa - ra*xb - rb*xa - rb*xb)/x + yb_y/x  
+      temp' = ra + rb  
+      rb' = -(temp - ra - rb)  
+      ra' = temp  
+      result' = atan(ra, rb, x < 0)  
+Functional Scenario Form  
+x=NaN && result=NaN  
+x=1.1 && result=NaN  
+x=-1.0 && result=PI  
+x=1.0 && result=0.0  
+x=0.0 && result=PI/2  
+x=0.5 && result≈1.047198  
+x=-0.5 && result≈2.094395  
+end_process  
+
+// Cube root function  
+process cbrt(x: double) result: double  
+pre true  
+post  
+  inbits = Double.doubleToLongBits(x)  
+  exponent = (int)((inbits >> 52) & 0x7ff) - 1023  
+  exponent = -1023  
+    ? x = 0 → result' = x  
+    : subnormal' = true, x' = x * 1.8014398509481984E16  
+      inbits' = Double.doubleToLongBits(x)  
+      exponent' = (int)((inbits >> 52) & 0x7ff) - 1023  
+  exponent = 1024 → result' = x  
+  exp3 = exponent / 3  
+  p2 = Double.longBitsToDouble((inbits & 0x8000000000000000L) | (long)((exp3 + 1023) & 0x7ff) << 52)  
+  mant = Double.longBitsToDouble((inbits & 0x000fffffffffffffL) | 0x3ff0000000000000L)  
+  est = -0.010714690733195933  
+  est' = est * mant + 0.0875862700108075  
+  est' = est * mant + -0.3058015757857271  
+  est' = est * mant + 0.7249995199969751  
+  est' = est * mant + 0.5039018405998233  
+  est' = est * CBRTTWO[exponent % 3 + 2]  
+  xs = x / (p2*p2*p2)  
+  est' = est + (xs - est*est*est)/(3*est*est)  
+  est' = est + (xs - est*est*est)/(3*est*est)  
+  temp = est * HEX_40000000  
+  ya = est + temp - temp  
+  yb = est - ya  
+  za = ya*ya  
+  zb = ya*yb*2.0 + yb*yb  
+  temp = za * HEX_40000000  
+  temp2 = za + temp - temp  
+  zb' = zb + za - temp2  
+  za' = temp2  
+  zb' = za*yb + ya*zb + zb*yb  
+  za' = za*ya  
+  na = xs - za  
+  nb = -(na - xs + za)  
+  nb' = nb - zb  
+  est' = est + (na + nb)/(3*est*est)  
+  est' = est * p2  
+  subnormal → est' = est * 3.814697265625E-6  
+  result' = est  
+Functional Scenario Form  
+x=NaN && result=NaN  
+x=0.0 && result=0.0  
+x=8.0 && result=2.0  
+x=-27.0 && result=-3.0  
+x=1.8014398509481984E-16 (subnormal) && result≈5.643803E-6  
+x=1.0e300 && result≈1.0e100  
+end_process  
+
+// Degree to radian conversion  
+process toRadians(x: double) result: double  
+pre true  
+post  
+  Double.isInfinite(x) ∨ x = 0.0 → result' = x  
+  else  
+    facta = 0.01745329052209854  
+    factb = 1.997844754509471E-9  
+    xa = doubleHighPart(x)  
+    xb = x - xa  
+    result' = xb*factb + xb*facta + xa*factb + xa*facta  
+    result = 0 → result' = result * x  // preserve sign  
+Functional Scenario Form  
+x=Double.POSITIVE_INFINITY && result=Infinity  
+x=0.0 && result=0.0  
+x=-0.0 && result=-0.0  
+x=180.0 && result≈3.141592653589793  
+x=1.0e-20 && result≈1.745329051949E-22  
+end_process  
+
+// Radian to degree conversion  
+process toDegrees(x: double) result: double  
+pre true  
+post  
+  Double.isInfinite(x) ∨ x = 0.0 → result' = x  
+  else  
+    facta = 57.2957763671875  
+    factb = 3.145894820876798E-6  
+    xa = doubleHighPart(x)  
+    xb = x - xa  
+    result' = xb*factb + xb*facta + xa*factb + xa*facta  
+Functional Scenario Form  
+x=Double.POSITIVE_INFINITY && result=Infinity  
+x=0.0 && result=0.0  
+x=Math.PI && result≈180.0  
+x=1.0e-10 && result≈5.729577951E-9  
+end_process  
+
+// Absolute value functions  
+process abs_int(x: int) result: int  
+pre true  
+post  
+  x < 0 → result' = -x  
+  else → result' = x  
+Functional Scenario Form  
+x=5 && result=5  
+x=-3 && result=3  
+end_process  
+
+process abs_long(x: long) result: long  
+pre true  
+post  
+  x < 0 → result' = -x  
+  else → result' = x  
+Functional Scenario Form  
+x=10000000000L && result=10000000000L  
+x=-9223372036854775808L && result=9223372036854775808L  
+end_process  
+
+process abs_float(x: float) result: float  
+pre true  
+post  
+  x < 0.0f → result' = -x  
+  x = 0.0f → result' = 0.0f  // handle -0.0  
+  else → result' = x  
+Functional Scenario Form  
+x=3.5f && result=3.5f  
+x=-2.1f && result=2.1f  
+x=-0.0f && result=0.0f  
+end_process  
+
+process abs_double(x: double) result: double  
+pre true  
+post  
+  x < 0.0 → result' = -x  
+  x = 0.0 → result' = 0.0  // handle -0.0  
+  else → result' = x  
+Functional Scenario Form  
+x=7.8 && result=7.8  
+x=-4.2 && result=4.2  
+x=-0.0 && result=0.0  
+end_process  
+
+// Unit in last place functions  
+process ulp_double(x: double) result: double  
+pre true  
+post  
+  Double.isInfinite(x) → result' = Double.POSITIVE_INFINITY  
+  else  
+    bits = Double.doubleToLongBits(x)  
+    result' = abs_double(x - Double.longBitsToDouble(bits ^ 1))  
+Functional Scenario Form  
+x=Double.POSITIVE_INFINITY && result=Infinity  
+x=1.0 && result≈2.220446049250313E-16  
+x=1.0e300 && result≈1.942668892225729E284  
+x=0.0 && result=Double.MIN_VALUE  
+end_process  
+
+process ulp_float(x: float) result: float  
+pre true  
+post  
+  Float.isInfinite(x) → result' = Float.POSITIVE_INFINITY  
+  else  
+    bits = Float.floatToIntBits(x)  
+    result' = abs_float(x - Float.intBitsToFloat(bits ^ 1))  
+Functional Scenario Form  
+x=Float.POSITIVE_INFINITY && result=Infinity  
+x=1.0f && result≈1.1920929E-7  
+x=1.0e20f && result≈1.34217728E13  
+x=0.0f && result=Float.MIN_VALUE  
+end_process  
+
+// Scale binary exponent  
+process scalb(d: double, n: int) result: double  
+pre true  
+post  
+  (n > -1023) ∧ (n < 1024) → result' = d * Double.longBitsToDouble((long)(n + 1023) << 52)  
+  Double.isNaN(d) ∨ Double.isInfinite(d) ∨ d = 0.0 → result' = d  
+  n < -2098 → result' = (d > 0) ? 0.0 : -0.0  
+  n > 2097 → result' = (d > 0) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY  
+  else  
+    bits = Double.doubleToLongBits(d)  
+    sign = bits & 0x8000000000000000L  
+    exponent = (int)(bits >>> 52) & 0x7ff  
+    mantissa = bits & 0x000fffffffffffffL  
+    scaledExponent = exponent + n  
+    n < 0  
+      ? scaledExponent > 0 → result' = Double.longBitsToDouble(sign | ((long)scaledExponent << 52) | mantissa)  
+        scaledExponent > -53  
+          ? mantissa' = mantissa | (1L << 52)  
+            mostSignificantLostBit = mantissa & (1L << (-scaledExponent))  
+            mantissa' = mantissa >>> (1 - scaledExponent)  
+            mostSignificantLostBit ≠ 0 → mantissa' = mantissa + 1  
+            result' = Double.longBitsToDouble(sign | mantissa)  
+        : result' = (sign = 0) ? 0.0 : -0.0  
+    : exponent = 0  
+        ? // Normalize subnormal input  
+          mantissa' = mantissa  
+          scaledExponent' = scaledExponent  
+          (mantissa >>> 52) ≠ 1 → mantissa' = mantissa << 1, scaledExponent' = scaledExponent - 1  
+          scaledExponent' = scaledExponent + 1  
+          mantissa' = mantissa & 0x000fffffffffffffL  
+          scaledExponent < 2047  
+            ? result' = Double.longBitsToDouble(sign | ((long)scaledExponent << 52) | mantissa)  
+            : result' = (sign = 0) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY  
+      scaledExponent < 2047  
+        ? result' = Double.longBitsToDouble(sign | ((long)scaledExponent << 52) | mantissa)  
+        : result' = (sign = 0) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY  
+Functional Scenario Form  
+d=1.5 and n=1 && result=3.0  
+d=Double.NaN and n=10 && result=NaN  
+d=0.0 and n=1000 && result=0.0  
+d=1.0 and n=-2099 && result=0.0  
+d=-1.0 and n=2098 && result=-Infinity  
+d=1.0e-300 and n=500 && result≈1.0  
+d=1.0e-300 and n=-500 && result=0.0  
+d=1.0e-300 and n=-50 && result≈8.881784197001252E-16  
+end_process  
+
+// Float scale binary exponent  
+process scalb_float(f: float, n: int) result: float  
+pre true  
+post  
+  (n > -127) ∧ (n < 128) → result' = f * Float.intBitsToFloat((n + 127) << 23)  
+  Float.isNaN(f) ∨ Float.isInfinite(f) ∨ f = 0.0f → result' = f  
+  n < -277 → result' = (f > 0) ? 0.0f : -0.0f  
+  n > 276 → result' = (f > 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY  
+  else  
+    bits = Float.floatToIntBits(f)  
+    sign = bits & 0x80000000  
+    exponent = (bits >>> 23) & 0xff  
+    mantissa = bits & 0x007fffff  
+    scaledExponent = exponent + n  
+    n < 0  
+      ? scaledExponent > 0 → result' = Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa)  
+        scaledExponent > -24  
+          ? mantissa' = mantissa | (1 << 23)  
+            mostSignificantLostBit = mantissa & (1 << (-scaledExponent))  
+            mantissa' = mantissa >>> (1 - scaledExponent)  
+            mostSignificantLostBit ≠ 0 → mantissa' = mantissa + 1  
+            result' = Float.intBitsToFloat(sign | mantissa)  
+        : result' = (sign = 0) ? 0.0f : -0.0f  
+    : exponent = 0  
+        ? // Normalize subnormal  
+          mantissa' = mantissa  
+          scaledExponent' = scaledExponent  
+          (mantissa >>> 23) ≠ 1 → mantissa' = mantissa << 1, scaledExponent' = scaledExponent - 1  
+          scaledExponent' = scaledExponent + 1  
+          mantissa' = mantissa & 0x007fffff  
+          scaledExponent < 255  
+            ? result' = Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa)  
+            : result' = (sign = 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY  
+      scaledExponent < 255  
+        ? result' = Float.intBitsToFloat(sign | (scaledExponent << 23) | mantissa)  
+        : result' = (sign = 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY  
+Functional Scenario Form  
+f=1.5f and n=1 && result=3.0f  
+f=Float.NaN and n=100 && result=NaN  
+f=0.0f and n=500 && result=0.0f  
+f=1.0f and n=-278 && result=0.0f  
+f=-1.0f and n=277 && result=-Infinity  
+f=1.0e-30f and n=50 && result≈1.0f  
+end_process  
+
+// Next floating-point value (double)  
+process nextAfter_double(d: double, direction: double) result: double  
+pre true  
+post  
+  Double.isNaN(d) ∨ Double.isNaN(direction) → result' = Double.NaN  
+  d = direction → result' = direction  
+  Double.isInfinite(d) → result' = (d < 0) ? -Double.MAX_VALUE : Double.MAX_VALUE  
+  d = 0.0 → result' = (direction < 0) ? -Double.MIN_VALUE : Double.MIN_VALUE  
+  else  
+    bits = Double.doubleToLongBits(d)  
+    sign = bits & 0x8000000000000000L  
+    (direction < d) xor (sign = 0)  
+      ? result' = Double.longBitsToDouble(sign | ((bits & 0x7fffffffffffffffL) + 1))  
+      : result' = Double.longBitsToDouble(sign | ((bits & 0x7fffffffffffffffL) - 1))  
+Functional Scenario Form  
+d=1.0 and direction=2.0 && result≈1.0000000000000002  
+d=1.0 and direction=0.5 && result≈0.9999999999999999  
+d=0.0 and direction=1.0 && result=Double.MIN_VALUE  
+d=0.0 and direction=-1.0 && result=-Double.MIN_VALUE  
+d=Double.POSITIVE_INFINITY and direction=0.0 && result=Double.MAX_VALUE  
+d=Double.NaN and direction=1.0 && result=NaN  
+end_process  
+
+// Next floating-point value (float)  
+process nextAfter_float(f: float, direction: double) result: float  
+pre true  
+post  
+  Double.isNaN(f) ∨ Double.isNaN(direction) → result' = Float.NaN  
+  f = direction → result' = (float)direction  
+  Float.isInfinite(f) → result' = (f < 0) ? -Float.MAX_VALUE : Float.MAX_VALUE  
+  f = 0.0f → result' = (direction < 0) ? -Float.MIN_VALUE : Float.MIN_VALUE  
+  else  
+    bits = Float.floatToIntBits(f)  
+    sign = bits & 0x80000000  
+    (direction < f) xor (sign = 0)  
+      ? result' = Float.intBitsToFloat(sign | ((bits & 0x7fffffff) + 1))  
+      : result' = Float.intBitsToFloat(sign | ((bits & 0x7fffffff) - 1))  
+Functional Scenario Form  
+f=1.0f and direction=2.0 && result≈1.0000001f  
+f=1.0f and direction=0.5 && result≈0.99999994f  
+f=0.0f and direction=1.0 && result=Float.MIN_VALUE  
+f=0.0f and direction=-1.0 && result=-Float.MIN_VALUE  
+f=Float.POSITIVE_INFINITY and direction=0.0 && result=Float.MAX_VALUE  
+f=Float.NaN and direction=1.0 && result=NaN  
+end_process  
+
+// Floor function  
+process floor(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = x  
+  x ≥ TWO_POWER_52 ∨ x ≤ -TWO_POWER_52 → result' = x  
+  y = (long)x  
+  x < 0 ∧ y ≠ x → y' = y - 1  
+  y = 0 → result' = x*y  // preserve sign  
+  else → result' = y  
+Functional Scenario Form  
+x=NaN && result=NaN  
+x=1.5 && result=1.0  
+x=-1.5 && result=-2.0  
+x=1.0e100 && result=1.0e100  
+x=0.0 && result=0.0  
+x=-0.0 && result=-0.0  
+end_process  
+
+// Ceiling function  
+process ceil(x: double) result: double  
+pre true  
+post  
+  x ≠ x → result' = x  
+  y = floor(x)  
+  y = x → result' = y  
+  else → y' = y + 1.0  
+  y = 0 → result' = x*y  // preserve sign  
+  else → result' = y  
+Functional Scenario Form  
+x=1.5 && result=2.0  
+x=-1.5 && result=-1.0  
+x=1.0 && result=1.0  
+x=0.0 && result=0.0  
+x=-0.0 && result=-0.0  
+end_process  
+
+// Round to nearest integer (IEEE 754)  
+process rint(x: double) result: double  
+pre true  
+post  
+  y = floor(x)  
+  d = x - y  
+  d > 0.5 ∧ y = -1.0 → result' = -0.0  
+  d > 0.5 → result' = y + 1.0  
+  d < 0.5 → result' = y  
+  else → z = (long)y, (z & 1) = 0 → result' = y, else → result' = y + 1.0  
+Functional Scenario Form  
+x=1.5 && result=2.0  
+x=2.5 && result=2.0  
+x=-1.5 && result=-2.0  
+x=-2.5 && result=-2.0  
+x=1.0 && result=1.0  
+x=-1.0 && result=-1.0  
+end_process  
+
+// Round to long  
+process round_double(x: double) result: long  
+pre true  
+post  
+  result' = (long)floor(x + 0.5)  
+Functional Scenario Form  
+x=1.3 && result=1  
+x=1.8 && result=2  
+x=-1.3 && result=-1  
+x=-1.8 && result=-2  
+end_process  
+
+// Round to int  
+process round_float(x: float) result: int  
+pre true  
+post  
+  result' = (int)floor(x + 0.5f)  
+Functional Scenario Form  
+x=1.3f && result=1  
+x=1.8f && result=2  
+x=-1.3f && result=-1  
+x=-1.8f && result=-2  
+end_process  
+
+// Integer min functions  
+process min_int(a: int, b: int) result: int  
+pre true  
+post  
+  a ≤ b → result' = a  
+  else → result' = b  
+Functional Scenario Form  
+a=5 b=3 && result=3  
+a=-2 b=2 && result=-2  
+end_process  
+
+process min_long(a: long, b: long) result: long  
+pre true  
+post  
+  a ≤ b → result' = a  
+  else → result' = b  
+Functional Scenario Form  
+a=10000000000L b=20000000000L && result=10000000000L  
+a=-5L b=-3L && result=-5L  
+end_process  
+
+// Float min with IEEE handling  
+process min_float(a: float, b: float) result: float  
+pre true  
+post  
+  a > b → result' = b  
+  a < b → result' = a  
+  a ≠ b → result' = Float.NaN  
+  else  
+    bits = Float.floatToRawIntBits(a)  
+    bits = 0x80000000 → result' = a  // preserve -0.0  
+    else → result' = b  
+Functional Scenario Form  
+a=5.0f b=3.0f && result=3.0f  
+a=NaN b=2.0f && result=NaN  
+a=0.0f b=-0.0f && result=-0.0f  
+a=-0.0f b=0.0f && result=-0.0f  
+a=-0.0f b=-0.0f && result=-0.0f  
+end_process  
+
+// Double min with IEEE handling  
+process min_double(a: double, b: double) result: double  
+pre true  
+post  
+  a > b → result' = b  
+  a < b → result' = a  
+  a ≠ b → result' = Double.NaN  
+  else  
+    bits = Double.doubleToRawLongBits(a)  
+    bits = 0x8000000000000000L → result' = a  // preserve -0.0  
+    else → result' = b  
+Functional Scenario Form  
+a=7.0 b=4.0 && result=4.0  
+a=0.0 b=-0.0 && result=-0.0  
+a=-0.0 b=0.0 && result=-0.0  
+a=NaN b=1.0 && result=NaN  
+end_process  
+
+// Integer max functions  
+process max_int(a: int, b: int) result: int  
+pre true  
+post  
+  a ≤ b → result' = b  
+  else → result' = a  
+Functional Scenario Form  
+a=3 b=5 && result=5  
+a=10 b=2 && result=10  
+end_process  
+
+process max_long(a: long, b: long) result: long  
+pre true  
+post  
+  a ≤ b → result' = b  
+  else → result' = a  
+Functional Scenario Form  
+a=100L b=200L && result=200L  
+a=-5L b=-10L && result=-5L  
+end_process  
+
+// Float max with IEEE handling  
+process max_float(a: float, b: float) result: float  
+pre true  
+post  
+  a > b → result' = a  
+  a < b → result' = b  
+  a ≠ b → result' = Float.NaN  
+  else  
+    bits = Float.floatToRawIntBits(a)  
+    bits = 0x80000000 → result' = b  // return non-negative  
+    else → result' = a  
+Functional Scenario Form  
+a=2.0f b=5.0f && result=5.0f  
+a=0.0f b=-0.0f && result=0.0f  
+a=-0.0f b=0.0f && result=0.0f  
+a=NaN b=3.0f && result=NaN  
+end_process  
+
+// Double max with IEEE handling  
+process max_double(a: double, b: double) result: double  
+pre true  
+post  
+  a > b → result' = a  
+  a < b → result' = b  
+  a ≠ b → result' = Double.NaN  
+  else  
+    bits = Double.doubleToRawLongBits(a)  
+    bits = 0x8000000000000000L → result' = b  // return non-negative  
+    else → result' = a  
+Functional Scenario Form  
+a=3.0 b=8.0 && result=8.0  
+a=0.0 b=-0.0 && result=0.0  
+a=-0.0 b=0.0 && result=0.0  
+a=NaN b=1.0 && result=NaN  
+end_process  
+
+// Euclidean norm  
+process hypot(x: double, y: double) result: double  
+pre true  
+post  
+  Double.isInfinite(x) ∨ Double.isInfinite(y) → result' = Double.POSITIVE_INFINITY  
+  Double.isNaN(x) ∨ Double.isNaN(y) → result' = Double.NaN  
+  else  
+    expX = getExponent_double(x)  
+    expY = getExponent_double(y)  
+    expX > expY + 27 → result' = abs_double(x)  
+    expY > expX + 27 → result' = abs_double(y)  
+    else  
+      middleExp = (expX + expY) / 2  
+      scaledX = scalb_double(x, -middleExp)  
+      scaledY = scalb_double(y, -middleExp)  
+      scaledH = sqrt(scaledX*scaledX + scaledY*scaledY)  
+      result' = scalb_double(scaledH, middleExp)  
+Functional Scenario Form  
+x=Infinity y=1.0 && result=Infinity  
+x=NaN y=2.0 && result=NaN  
+x=1.0e100 y=1.0e-100 && result≈1.0e100  
+x=3.0 y=4.0 && result=5.0  
+x=1.0e-50 y=1.0e-50 && result≈1.414213562373095e-50  
+end_process  
+
+// IEEE remainder  
+process IEEEremainder(dividend: double, divisor: double) result: double  
+pre true  
+post  
+  result' = StrictMath.IEEEremainder(dividend, divisor)  // TODO: Implement  
+Functional Scenario Form  
+dividend=10.0 divisor=3.0 && result≈1.0  
+dividend=11.0 divisor=2.5 && result≈1.0  
+end_process  
+
+// Copy sign functions  
+process copySign_double(magnitude: double, sign: double) result: double  
+pre true  
+post  
+  m = Double.doubleToLongBits(magnitude)  
+  s = Double.doubleToLongBits(sign)  
+  (m ≥ 0 ∧ s ≥ 0) ∨ (m < 0 ∧ s < 0) → result' = magnitude  
+  else → result' = -magnitude  
+Functional Scenario Form  
+magnitude=5.0 sign=1.0 && result=5.0  
+magnitude=5.0 sign=-1.0 && result=-5.0  
+magnitude=-0.0 sign=-1.0 && result=-0.0  
+magnitude=-0.0 sign=1.0 && result=0.0  
+end_process  
+
+process copySign_float(magnitude: float, sign: float) result: float  
+pre true  
+post  
+  m = Float.floatToIntBits(magnitude)  
+  s = Float.floatToIntBits(sign)  
+  (m ≥ 0 ∧ s ≥ 0) ∨ (m < 0 ∧ s < 0) → result' = magnitude  
+  else → result' = -magnitude  
+Functional Scenario Form  
+magnitude=3.0f sign=-2.0f && result=-3.0f  
+magnitude=0.0f sign=-1.0f && result=-0.0f  
+end_process  
+
+// Get unbiased exponent  
+process getExponent_double(d: double) result: int  
+pre true  
+post  
+  result' = ((int)(Double.doubleToLongBits(d) >>> 52) & 0x7ff) - 1023  
+Functional Scenario Form  
+d=1.0 && result=0  
+d=2.0 && result=1  
+d=0.5 && result=-1  
+d=Double.MIN_VALUE && result=-1022  
+end_process  
+
+process getExponent_float(f: float) result: int  
+pre true  
+post  
+  result' = ((Float.floatToIntBits(f) >>> 23) & 0xff) - 127  
+Functional Scenario Form  
+f=1.0f && result=0  
+f=4.0f && result=2  
+f=0.125f && result=-3  
+f=Float.MIN_VALUE && result=-126  
+end_process  
+
+// Exponential integer tables initialization  
+process initializeExpIntTables()  
+pre true  
+post  
+  RECOMPUTE_TABLES_AT_RUNTIME  
+    ? EXP_INT_TABLE_A' = new double[EXP_INT_TABLE_LEN]  
+      EXP_INT_TABLE_B' = new double[EXP_INT_TABLE_LEN]  
+      i = 0  
+      while i < EXP_INT_TABLE_MAX_INDEX  
+        tmp = FastMathCalc.expint(i)  // returns [high, low]  
+        EXP_INT_TABLE_A'[i + EXP_INT_TABLE_MAX_INDEX] = tmp[0]  
+        EXP_INT_TABLE_B'[i + EXP_INT_TABLE_MAX_INDEX] = tmp[1]  
+        i ≠ 0  
+          ? recip = FastMathCalc.splitReciprocal(tmp)  
+            EXP_INT_TABLE_A'[EXP_INT_TABLE_MAX_INDEX - i] = recip[0]  
+            EXP_INT_TABLE_B'[EXP_INT_TABLE_MAX_INDEX - i] = recip[1]  
+        i' = i + 1  
+    : EXP_INT_TABLE_A' = FastMathLiteralArrays.loadExpIntA()  
+      EXP_INT_TABLE_B' = FastMathLiteralArrays.loadExpIntB()  
+Functional Scenario Form  
+RECOMPUTE_TABLES_AT_RUNTIME=true && EXP_INT_TABLE_A[EXP_INT_TABLE_MAX_INDEX]≈1.0  
+RECOMPUTE_TABLES_AT_RUNTIME=false && EXP_INT_TABLE_A[0] loaded from literal  
+end_process  
+
+// Exponential fractional tables initialization  
+process initializeExpFracTables()  
+pre true  
+post  
+  RECOMPUTE_TABLES_AT_RUNTIME  
+    ? EXP_FRAC_TABLE_A' = new double[EXP_FRAC_TABLE_LEN]  
+      EXP_FRAC_TABLE_B' = new double[EXP_FRAC_TABLE_LEN]  
+      factor = 1/(EXP_FRAC_TABLE_LEN - 1)  
+      i = 0  
+      while i < EXP_FRAC_TABLE_LEN  
+        tmp = FastMathCalc.slowexp(i * factor)  
+        EXP_FRAC_TABLE_A'[i] = tmp[0]  
+        EXP_FRAC_TABLE_B'[i] = tmp[1]  
+        i' = i + 1  
+    : EXP_FRAC_TABLE_A' = FastMathLiteralArrays.loadExpFracA()  
+      EXP_FRAC_TABLE_B' = FastMathLiteralArrays.loadExpFracB()  
+Functional Scenario Form  
+RECOMPUTE_TABLES_AT_RUNTIME=true && EXP_FRAC_TABLE_A[0]≈1.0  
+RECOMPUTE_TABLES_AT_RUNTIME=false && EXP_FRAC_TABLE_A[EXP_FRAC_TABLE_LEN-1] loaded from literal  
+end_process  
+
+// Main table printing process  
+process main()  
+pre tables initialized  
+post  
+  FastMathCalc.printarray(out, "EXP_INT_TABLE_A", EXP_INT_TABLE_LEN, EXP_INT_TABLE_A)  
+  FastMathCalc.printarray(out, "EXP_INT_TABLE_B", EXP_INT_TABLE_LEN, EXP_INT_TABLE_B)  
+  FastMathCalc.printarray(out, "EXP_FRAC_TABLE_A", EXP_FRAC_TABLE_LEN, EXP_FRAC_TABLE_A)  
+  FastMathCalc.printarray(out, "EXP_FRAC_TABLE_B", EXP_FRAC_TABLE_LEN, EXP_FRAC_TABLE_B)  
+  // Other tables printed similarly...  
+Functional Scenario Form  
+All tables initialized && printarray called with correct parameters  
+end_process  
+
+// Logarithm mantissa table initialization  
+process initializeLnMantTable()  
+pre true  
+post  
+  RECOMPUTE_TABLES_AT_RUNTIME  
+    ? LN_MANT' = new double[LN_MANT_LEN][2]  
+      i = 0  
+      while i < LN_MANT_LEN  
+        d = Double.longBitsToDouble(( (long)i << 42 ) | 0x3ff0000000000000L)  
+        LN_MANT'[i] = FastMathCalc.slowLog(d)  // returns [high, low]  
+        i' = i + 1  
+    : LN_MANT' = FastMathLiteralArrays.loadLnMant()  
+Functional Scenario Form  
+RECOMPUTE_TABLES_AT_RUNTIME=true && LN_MANT[0][0]≈0.0  
+RECOMPUTE_TABLES_AT_RUNTIME=false && LN_MANT[LN_MANT_LEN-1] loaded from literal  
+end_process  
+
+// Cody-Waite argument reduction for trig functions  
+process CodyWaite_Reduction(xa: double, xb: double)  
+pre true  
+post  
+  k = (int)(xa * 0.6366197723675814)  // 2/π  
+  remA = xa  
+  remB = xb  
+  loop  
+    a = -k * 1.570796251296997  
+    temp = remA + a  
+    remB' = remB - (temp - remA - a)  
+    remA' = temp  
+
+    a = -k * 7.549789948768648E-8  
+    temp = remA + a  
+    remB' = remB - (temp - remA - a)  
+    remA' = temp  
+
+    a = -k * 6.123233995736766E-17  
+    temp = remA + a  
+    remB' = remB - (temp - remA - a)  
+    remA' = temp  
+
+    remA > 0 → break  
+    else → k' = k - 1  // Adjust for negative remainder  
+  finalK' = k  
+  finalRemA' = remA  
+  finalRemB' = remB  
+Functional Scenario Form  
+xa=Math.PI/2 xb=0.0 && finalK=1 finalRemA≈0.0  
+xa=100.0*Math.PI xb=0.0 && finalK=200 finalRemA≈0.0  
+xa=1.0e100 xb=0.0 && finalRemA≈-0.5210400863401878  
+end_process  
+
+
+end_module
+

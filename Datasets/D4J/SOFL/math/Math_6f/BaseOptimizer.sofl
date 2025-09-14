@@ -1,0 +1,100 @@
+module BaseOptimizer<PAIR>  
+
+// Constructor  
+process constructor(checker: ConvergenceChecker<PAIR>)  
+pre true  
+post  
+  this.checker' = checker  
+  this.evaluations' = new Incrementor(0, MaxEvalCallback)  
+  this.iterations' = new Incrementor(Integer.MAX_VALUE, MaxIterCallback)  
+Functional Scenario Form  
+valid checker && creates instance  
+end_process  
+
+// Max evaluations getter  
+process getMaxEvaluations() result: int  
+pre true  
+post  
+  result' = evaluations.getMaximalCount()  
+end_process  
+
+// Current evaluations getter  
+process getEvaluations() result: int  
+pre true  
+post  
+  result' = evaluations.getCount()  
+end_process  
+
+// Max iterations getter  
+process getMaxIterations() result: int  
+pre true  
+post  
+  result' = iterations.getMaximalCount()  
+end_process  
+
+// Current iterations getter  
+process getIterations() result: int  
+pre true  
+post  
+  result' = iterations.getCount()  
+end_process  
+
+// Convergence checker getter  
+process getConvergenceChecker() result: ConvergenceChecker<PAIR>  
+pre true  
+post  
+  result' = checker  
+end_process  
+
+// Optimization entry point  
+process optimize(optData: OptimizationData[]) result: PAIR  
+pre true  
+post  
+  parseOptimizationData(optData)  
+  evaluations.resetCount()  
+  iterations.resetCount()  
+  result' = doOptimize()  
+Functional Scenario Form  
+valid optData && returns optimized result  
+exceeds max evaluations && throws TooManyEvaluationsException  
+exceeds max iterations && throws TooManyIterationsException  
+end_process  
+
+// Abstract optimization core  
+abstract process doOptimize() result: PAIR  
+
+// Increment evaluation count  
+process incrementEvaluationCount()  
+pre true  
+post  
+  evaluations.incrementCount()  
+Functional Scenario Form  
+below max && increments count  
+at max && throws TooManyEvaluationsException  
+end_process  
+
+// Increment iteration count  
+process incrementIterationCount()  
+pre true  
+post  
+  iterations.incrementCount()  
+Functional Scenario Form  
+below max && increments count  
+at max && throws TooManyIterationsException  
+end_process  
+
+// Parse optimization data  
+process parseOptimizationData(optData: OptimizationData[])  
+pre true  
+post  
+  for each data in optData  
+    data instanceof MaxEval  
+      ? evaluations.setMaximalCount(data.getMaxEval())  
+    data instanceof MaxIter  
+      ? iterations.setMaximalCount(data.getMaxIter())  
+Functional Scenario Form  
+optData=[MaxEval(100)] && sets max evaluations=100  
+optData=[MaxIter(50)] && sets max iterations=50  
+end_process
+
+end_module

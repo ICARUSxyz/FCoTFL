@@ -1,0 +1,141 @@
+module EmbeddedRungeKuttaIntegrator
+type
+  fsal: Boolean
+  c: sequence of double
+  b: sequence of double
+  exp: double
+  safety: double
+  minReduction: double
+  maxGrowth: double
+
+process EmbeddedRungeKuttaIntegrator_ctor1(
+    name: String,
+    fsal: Boolean,
+    c: sequence of double,
+    a: sequence of sequence of double,
+    b: sequence of double,
+    prototype: RungeKuttaStepInterpolator,
+    minStep: double,
+    maxStep: double,
+    scalAbsoluteTolerance: double,
+    scalRelativeTolerance: double
+) result: EmbeddedRungeKuttaIntegrator
+pre
+  minStep > 0 and maxStep > 0 and |c| > 0 and |a| > 0 and |b| > 0
+post
+  result'.fsal = fsal and
+  result'.c = c and
+  result'.a = a and
+  result'.b = b and
+  result'.prototype = prototype and
+  result'.exp = -1.0 / result'.getOrder() and
+  result'.safety = 0.9 and
+  result'.minReduction = 0.2 and
+  result'.maxGrowth = 10.0
+Functional Scenario Form
+  true && (result'.fsal = fsal and result'.c = c and result'.a = a and result'.b = b and result'.prototype = prototype)
+end_process
+
+process EmbeddedRungeKuttaIntegrator_ctor2(
+    name: String,
+    fsal: Boolean,
+    c: sequence of double,
+    a: sequence of sequence of double,
+    b: sequence of double,
+    prototype: RungeKuttaStepInterpolator,
+    minStep: double,
+    maxStep: double,
+    vecAbsoluteTolerance: sequence of double,
+    vecRelativeTolerance: sequence of double
+) result: EmbeddedRungeKuttaIntegrator
+pre
+  minStep > 0 and maxStep > 0 and |c| > 0 and |a| > 0 and |b| > 0 and |vecAbsoluteTolerance| > 0 and |vecRelativeTolerance| > 0
+post
+  result'.fsal = fsal and
+  result'.c = c and
+  result'.a = a and
+  result'.b = b and
+  result'.prototype = prototype and
+  result'.exp = -1.0 / result'.getOrder() and
+  result'.safety = 0.9 and
+  result'.minReduction = 0.2 and
+  result'.maxGrowth = 10.0
+Functional Scenario Form
+  true && (result'.fsal = fsal and result'.c = c and result'.a = a and result'.b = b and result'.prototype = prototype)
+end_process
+
+process getSafety() result: double
+pre
+  true
+post
+  result' = safety
+Functional Scenario Form
+  true && result' = safety
+end_process
+
+process setSafety(safety: double) result: Void
+pre
+  true
+post
+  safety' = safety
+Functional Scenario Form
+  true && safety' = safety
+end_process
+
+process integrate(equations: ExpandableStatefulODE, t: double) result: Void
+pre
+  equations ≠ null
+post
+  equations'.time = t and
+  equations'.completeState = computed_state_at_t
+Functional Scenario Form
+  valid_input && equations'.time = t or invalid_input && exception_thrown
+end_process
+
+process getMinReduction() result: double
+pre
+  true
+post
+  result' = minReduction
+Functional Scenario Form
+  true && result' = minReduction
+end_process
+
+process setMinReduction(minReduction: double) result: Void
+pre
+  true
+post
+  minReduction' = minReduction
+Functional Scenario Form
+  true && minReduction' = minReduction
+end_process
+
+process getMaxGrowth() result: double
+pre
+  true
+post
+  result' = maxGrowth
+Functional Scenario Form
+  true && result' = maxGrowth
+end_process
+
+process setMaxGrowth(maxGrowth: double) result: Void
+pre
+  true
+post
+  maxGrowth' = maxGrowth
+Functional Scenario Form
+  true && maxGrowth' = maxGrowth
+end_process
+
+process estimateError(yDotK: sequence of sequence of double, y0: sequence of double, y1: sequence of double, h: double) result: double
+pre
+  |yDotK| > 0 and |y0| > 0 and |y1| > 0 and h ≠ 0
+post
+  result' = computed_error_ratio and
+  (result' > 1.0 ⇒ step_should_be_rejected)
+Functional Scenario Form
+  result' ≤ 1.0 && step_accepted or result' > 1.0 && step_rejected
+end_process
+
+end_module

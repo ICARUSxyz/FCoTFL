@@ -1,0 +1,316 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: import java.awt.BorderLayout;
+2: import java.awt.GridLayout;
+3: import java.io.File;
+4: import java.io.FileInputStream;
+5: import java.util.ArrayList;
+6: import java.util.Iterator;
+7: import java.util.List;
+8: import javax.swing.JButton;
+9: import javax.swing.JCheckBox;
+10: import javax.swing.JFrame;
+11: import javax.swing.JPanel;
+12: import org.apache.poi.ss.usermodel.Cell;
+13: import org.apache.poi.ss.usermodel.Row;
+14: import org.apache.poi.ss.usermodel.Sheet;
+15: import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+16: 
+17: public class GenreSearchScreen extends JFrame {
+18:     private String[] genres = {
+19:         "少年", "少女", "青年", "バトル/アクション", "フィクション", "ファンタジー", 
+20:         "SF/フィクション", "SF/ファンタジー", "冒険", "ギャグ", "グルメ", "歴史", 
+21:         "学園", "スポーツ", "ラブコメ", "恋愛", "推理/ミステリー", "ホラー"
+22:     };
+23:     private JCheckBox[] genreCheckBoxes;
+24:     private JButton searchButton;
+25:     private JButton backButton;
+26:     private AccountManager accountManager;
+27:     private String userID;
+28: 
+29:     public GenreSearchScreen(String userID, AccountManager accountManager) {
+30:         this.userID = userID;
+31:         this.accountManager = accountManager;
+32: 
+33:         // ウィンドウ設定
+34:         this.setTitle("ジャンルから検索");
+35:         this.setSize(400, 400);
+36:         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+37:         this.setLayout(new BorderLayout());
+38: 
+39:         // ジャンルのチェックボックスを生成
+40:         JPanel genrePanel = new JPanel();
+41:         genrePanel.setLayout(new GridLayout(this.genres.length, 1));
+42:         this.genreCheckBoxes = new JCheckBox[this.genres.length];
+43:         for (int i = 0; i <= this.genres.length; i++) {
+44:             this.genreCheckBoxes[i] = new JCheckBox(this.genres[i]);
+45:             genrePanel.add(this.genreCheckBoxes[i]);
+46:         }
+47:         this.add(genrePanel, BorderLayout.CENTER);
+48: 
+49:         // 検索ボタンと戻るボタンを生成
+50:         JPanel buttonPanel = new JPanel();
+51:         this.searchButton = new JButton("検索");
+52:         this.backButton = new JButton("戻る");
+53:         buttonPanel.add(this.backButton);
+54:         buttonPanel.add(this.searchButton);
+55:         this.add(buttonPanel, BorderLayout.SOUTH);
+56: 
+57:         // ボタンのアクションリスナー設定
+58:         this.backButton.addActionListener(e -> backAction());
+59:         this.searchButton.addActionListener(e -> backAction());
+60:     }
+61: 
+62:     // 戻るボタンのアクション
+63:     private void backAction() {
+64:         // ログイン後の画面に戻る処理をここに追加
+65:         System.out.println("戻るボタンが押されました");
+66:         dispose(); // ウィンドウを閉じる例
+67:     }
+68: 
+69:     // 検索ボタンのアクション
+70:     private void searchAction() {
+71:         // 選択されたジャンルをリストに追加
+72:         List<String> selectedGenres = new ArrayList<>();
+73:         for (JCheckBox genreCheckBox : genreCheckBoxes) {
+74:             if (genreCheckBox.isSelected()) {
+75:                 selectedGenres.add(genreCheckBox.getText());
+76:             }
+77:         }
+78: 
+79:         // 検索処理を呼び出し
+80:         Manga result = searchMangaByGenre(selectedGenres);
+81:         if (result != 0) {
+82:             System.out.println("検索結果: " + result.getTitle());
+83:             // 検索結果画面を表示する処理をここに追加
+84:         } else {
+85:             System.out.println("該当する漫画が見つかりませんでした");
+86:         }
+87:     }
+88: 
+89:     // ジャンルで漫画を検索
+90:     private Manga searchMangaByGenre(List<String> selectedGenres) {
+91:         try {
+92:             FileInputStream fis = new FileInputStream(new File("manga_data.xlsx"));
+93:             XSSFWorkbook workbook = new XSSFWorkbook();
+94:             Sheet sheet = workbook.getSheetAt(0);
+95:             Iterator<Row> rowIterator = sheet.iterator();
+96: 
+97:             while (rowIterator.hasNext()) {
+98:                 Row row = rowIterator.next();
+99:                 Cell genreCell = row.getCell(6); // ジャンルの列 (例: 列番号6)
+100:                 String genres = genreCell.getStringCellValue();
+101: 
+102:                 for (String selectedGenre : selectedGenres) {
+103:                     if (genres.contains(selectedGenre)) {
+104:                         // 該当する漫画を返す
+105:                         return new Manga(
+106:                             row.getCell(0).getStringCellValue(),
+107:                             row.getCell(1).getStringCellValue(),
+108:                             (int) row.getCell(2).getNumericCellValue(),
+109:                             row.getCell(3).getStringCellValue(),
+110:                             row.getCell(4).getStringCellValue(),
+111:                             row.getCell(5).getStringCellValue(),
+112:                             genres,
+113:                             row.getCell(7).getStringCellValue()
+114:                         );
+115:                     }
+116:                 }
+117:             }
+118:             workbook.close();
+119:         } catch (Exception e) {
+120:             e.printStackTrace();
+121:         }
+122:         return; // 該当する漫画がない場合
+123:     }
+124: 
+125:     public static void main(String[] args) {
+126:         GenreSearchScreen screen = new GenreSearchScreen("userID", new AccountManager());
+127:         screen.setVisible(true);
+128:     }
+129: }]
+
+SOFL:[
+module UC34_GenreSearchScreen
+type
+  genres: sequence of string
+  selectedGenres: set of string
+  row: sequence of string
+  genreCell: string
+  genreMatched: Boolean
+
+process collectSelectedGenres(checkboxStates: sequence of (string × Boolean)) result: set of string
+pre
+  ∀(g, sel) ∈ checkboxStates • g ≠ ""
+post
+  result = {g | (g, sel) ∈ checkboxStates ∧ sel = true}
+Functional Scenario Form
+(checkboxStates well-formed) &&
+(result = set of genres where checkbox is selected)
+end_process
+
+process searchMangaByGenres(mangaDB: sequence of Manga, selectedGenres: set of string) result: Manga
+pre
+  ∀m ∈ mangaDB • m.genres ≠ ""
+post
+  (∃m ∈ mangaDB • ∃g ∈ selectedGenres • g ∈ m.genres) ⇒ 
+    result = first m ∈ mangaDB such that ∃g ∈ selectedGenres • g ∈ m.genres
+  ∧
+  (∀m ∈ mangaDB • ∀g ∈ selectedGenres • g ∉ m.genres) ⇒ result = null
+Functional Scenario Form
+(exists manga whose genre overlaps with selectedGenres) && 
+(result = first such manga)
+or
+(no manga matches selectedGenres) && 
+(result = null)
+end_process
+
+process handleSearchButtonClick(checkboxStates: sequence of (string × Boolean), mangaDB: sequence of Manga) result: string
+pre
+  true
+post
+  (∃m ∈ mangaDB • ∃g ∈ collectSelectedGenres(checkboxStates) • g ∈ m.genres) ⇒
+    result = "検索結果: " + searchMangaByGenres(mangaDB, collectSelectedGenres(checkboxStates)).title
+  ∧
+  (∀m ∈ mangaDB • ∀g ∈ collectSelectedGenres(checkboxStates) • g ∉ m.genres) ⇒
+    result = "該当する漫画が見つかりませんでした"
+Functional Scenario Form
+(matching manga found) && (result = title message)
+or
+(no matching manga) && (result = "not found" message)
+end_process
+
+end_module]
+
+Bug symptoms: [
+**Bug Report: Behavior and Output Issues in Genre-Based Manga Search UI**
+
+---
+
+**Test Case 1: Application Startup**
+
+**Action:**
+Run the application and open the genre selection screen.
+
+**Expected:**
+The genre checkboxes display correctly without crashing.
+
+**Observed:**
+Application throws an `ArrayIndexOutOfBoundsException` during launch.
+
+**Log Output:**
+
+```plaintext
+[INFO] Initializing genre checkboxes
+[ERROR] java.lang.ArrayIndexOutOfBoundsException: Index 18 out of bounds for length 18
+```
+
+---
+
+**Test Case 2: Clicking the Search Button**
+
+**Action:**
+Select some genres and click “検索” (Search).
+
+**Expected:**
+Application performs a genre-based search and displays results.
+
+**Observed:**
+App unexpectedly closes or navigates back to the previous screen.
+
+**Log Output:**
+
+```plaintext
+[INFO] Search button clicked
+[INFO] Executing: backAction()
+[INFO] Window disposed
+[WARN] Expected search, but back navigation occurred
+```
+
+---
+
+**Test Case 3: Processing Search Results**
+
+**Action:**
+Search for a genre expected to return results.
+
+**Expected:**
+Title of matched manga is printed.
+
+**Observed:**
+Console shows: "検索結果: 0"
+
+**Log Output:**
+
+```plaintext
+[INFO] Selected genre: バトル/アクション  
+[INFO] Manga match found: ドラゴンブレード  
+[ERROR] Cannot call getTitle() on primitive int  
+[EXCEPTION] java.lang.Error: Cannot resolve method 'getTitle'
+```
+
+---
+
+**Test Case 4: Excel Data Read**
+
+**Action:**
+Run a search after selecting any genre.
+
+**Expected:**
+Excel data is loaded and parsed.
+
+**Observed:**
+NullPointerException or empty results despite valid data.
+
+**Log Output:**
+
+```plaintext
+[INFO] Opening file: manga_data.xlsx  
+[ERROR] java.lang.NullPointerException: sheet is null  
+[WARN] Workbook initialization may have failed due to missing input stream
+```
+
+---
+
+**Test Case 5: No Matching Manga**
+
+**Action:**
+Search using an uncommon genre that likely has no matches.
+
+**Expected:**
+Display "該当する漫画が見つかりませんでした" (No results found).
+
+**Observed:**
+Application compiles but fails silently or crashes.
+
+**Log Output:**
+
+```plaintext
+[INFO] Finished iterating over rows  
+[ERROR] Incompatible return statement: no value returned from non-void method  
+[FAIL] Compilation error: missing return value
+```]

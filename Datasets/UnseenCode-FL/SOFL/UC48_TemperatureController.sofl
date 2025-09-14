@@ -1,0 +1,27 @@
+module UC48_TemperatureController
+type
+  temperature: real
+  newTemp: real
+  message: string
+
+var
+  MIN_TEMP: real = 16.0
+  MAX_TEMP: real = 23.0
+
+process setTemperature(newTemp: real) message: string
+pre
+  true
+post
+  temperature = newTemp ∧
+  ((newTemp < MIN_TEMP) → message = "Warning: Temperature too low! Activating heating system...") ∧
+  ((newTemp > MAX_TEMP) → message = "Warning: Temperature too high! Activating cooling system...") ∧
+  ((MIN_TEMP ≤ newTemp ≤ MAX_TEMP) → message = "Temperature is stable. No action required.")
+Functional Scenario Form
+(newTemp < 16) && Warning: Temperature too low! Activating heating system... 
+OR 
+(newTemp > 23) && Warning: Temperature too high! Activating cooling system... 
+OR 
+(newTemp >= 16 && newTemp <= 23) && Temperature is stable. No action required.	
+end_process
+
+end_module

@@ -1,0 +1,97 @@
+module DiscreteDistribution
+type:  
+  probabilities: double[]  
+
+// Primary constructor  
+process constructor(samples: List<Pair<T, Double>>)  
+pre true  
+post  
+  this' = constructor(new Well19937c(), samples)  
+Functional Scenario Form  
+valid samples && creates instance  
+end_process  
+
+// Full constructor  
+process constructor_full(rng: RandomGenerator, samples: List<Pair<T, Double>>)  
+pre true  
+post  
+  random' = rng  
+  singletons' = new ArrayList<T>(samples.size())  
+  probs = new double[samples.size()]  
+  for i=0 to samples.size()-1  
+    pair = samples.get(i)  
+    singletons'.add(pair.getKey())  
+    pair.getValue() < 0 → throw NotPositiveException(pair.getValue())  
+    probs[i] = pair.getValue()  
+  probabilities' = MathArrays.normalizeArray(probs, 1.0)  
+Functional Scenario Form  
+valid rng and samples && creates instance  
+negative weight in samples && throws NotPositiveException  
+end_process  
+
+// Reseed RNG  
+process reseedRandomGenerator(seed: long)  
+pre true  
+post  
+  random.setSeed(seed)  
+Functional Scenario Form  
+seed=12345 && reseeds RNG  
+end_process  
+
+// Probability of value  
+process probability(x: T) result: double  
+pre true  
+post  
+  probability = 0  
+  for i=0 to probabilities.length-1  
+    (x = null ∧ singletons.get(i) = null) ∨  
+    (x ≠ null ∧ x.equals(singletons.get(i)))  
+      → probability = probability + probabilities[i]  
+  result' = probability  
+Functional Scenario Form  
+x=valueInSingletons && returns corresponding probability  
+x=null with null singleton && sums probabilities of null  
+x=notInSingletons && result'=0.0  
+end_process  
+
+// Get samples  
+process getSamples() result: List<Pair<T, Double>>  
+pre true  
+post  
+  samples = new ArrayList<Pair<T, Double>>(probabilities.length)  
+  for i=0 to probabilities.length-1  
+    samples.add(new Pair<T, Double>(singletons.get(i), probabilities[i]))  
+  result' = samples  
+Functional Scenario Form  
+three singletons && returns list of three pairs  
+end_process  
+
+// Single sample  
+process sample() result: T  
+pre true  
+post  
+  randomValue = random.nextDouble()  
+  sum = 0  
+  for i=0 to probabilities.length-1  
+    sum = sum + probabilities[i]  
+    randomValue < sum → result' = singletons.get(i)  
+  probabilities.length > 0 ∧ ¬resultSet → result' = singletons.last()  
+Functional Scenario Form  
+uniform distribution && returns one singleton  
+end_process  
+
+// Multiple samples  
+process sample(sampleSize: int) result: Object[]  
+pre true  
+post  
+  sampleSize ≤ 0 → throw NotStrictlyPositiveException(sampleSize)  
+  out = new Object[sampleSize]  
+  for i=0 to sampleSize-1  
+    out[i] = sample()  
+  result' = out  
+Functional Scenario Form  
+sampleSize=5 && returns array of 5 samples  
+sampleSize=0 && throws exception  
+end_process  
+
+end_module

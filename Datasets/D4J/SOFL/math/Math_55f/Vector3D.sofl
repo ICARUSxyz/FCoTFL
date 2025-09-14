@@ -1,0 +1,286 @@
+module Vector3D
+type
+x: double
+y: double
+z: double
+
+process Vector3D_Constructor1(x: double, y: double, z: double) result: Vector3D
+pre
+true
+post
+result.x = x
+result.y = y
+result.z = z
+Functional Scenario Form
+true && (result.x = x && result.y = y && result.z = z)
+end_process
+
+process Vector3D_Constructor2(alpha: double, delta: double) result: Vector3D
+pre
+true
+post
+let cosDelta = FastMath.cos(delta) in
+result.x = FastMath.cos(alpha) * cosDelta &&
+result.y = FastMath.sin(alpha) * cosDelta &&
+result.z = FastMath.sin(delta)
+Functional Scenario Form
+true && (result.x = FastMath.cos(alpha) * FastMath.cos(delta) && result.y = FastMath.sin(alpha) * FastMath.cos(delta) && result.z = FastMath.sin(delta))
+end_process
+
+process Vector3D_Constructor3(a: double, u: Vector3D) result: Vector3D
+pre
+true
+post
+result.x = a * u.x &&
+result.y = a * u.y &&
+result.z = a * u.z
+Functional Scenario Form
+true && (result.x = a * u.x && result.y = a * u.y && result.z = a * u.z)
+end_process
+
+process Vector3D_Constructor4(a1: double, u1: Vector3D, a2: double, u2: Vector3D) result: Vector3D
+pre
+true
+post
+result.x = a1 * u1.x + a2 * u2.x &&
+result.y = a1 * u1.y + a2 * u2.y &&
+result.z = a1 * u1.z + a2 * u2.z
+Functional Scenario Form
+true && (result.x = a1 * u1.x + a2 * u2.x && result.y = a1 * u1.y + a2 * u2.y && result.z = a1 * u1.z + a2 * u2.z)
+end_process
+
+process Vector3D_Constructor5(a1: double, u1: Vector3D, a2: double, u2: Vector3D, a3: double, u3: Vector3D) result: Vector3D
+pre
+true
+post
+result.x = a1 * u1.x + a2 * u2.x + a3 * u3.x &&
+result.y = a1 * u1.y + a2 * u2.y + a3 * u3.y &&
+result.z = a1 * u1.z + a2 * u2.z + a3 * u3.z
+Functional Scenario Form
+true && (result.x = a1 * u1.x + a2 * u2.x + a3 * u3.x && result.y = a1 * u1.y + a2 * u2.y + a3 * u3.y && result.z = a1 * u1.z + a2 * u2.z + a3 * u3.z)
+end_process
+
+process Vector3D_Constructor6(a1: double, u1: Vector3D, a2: double, u2: Vector3D, a3: double, u3: Vector3D, a4: double, u4: Vector3D) result: Vector3D
+pre
+true
+post
+result.x = a1 * u1.x + a2 * u2.x + a3 * u3.x + a4 * u4.x &&
+result.y = a1 * u1.y + a2 * u2.y + a3 * u3.y + a4 * u4.y &&
+result.z = a1 * u1.z + a2 * u2.z + a3 * u3.z + a4 * u4.z
+Functional Scenario Form
+true && (result.x = a1 * u1.x + a2 * u2.x + a3 * u3.x + a4 * u4.x && result.y = a1 * u1.y + a2 * u2.y + a3 * u3.y + a4 * u4.y && result.z = a1 * u1.z + a2 * u2.z + a3 * u3.z + a4 * u4.z)
+end_process
+
+process getX() result: double
+pre
+true
+post
+result = x
+Functional Scenario Form
+true && (result = x)
+end_process
+
+process getY() result: double
+pre
+true
+post
+result = y
+Functional Scenario Form
+true && (result = y)
+end_process
+
+process getZ() result: double
+pre
+true
+post
+result = z
+Functional Scenario Form
+true && (result = z)
+end_process
+
+process getNorm1() result: double
+pre
+true
+post
+result = FastMath.abs(x) + FastMath.abs(y) + FastMath.abs(z)
+Functional Scenario Form
+true && (result = FastMath.abs(x) + FastMath.abs(y) + FastMath.abs(z))
+end_process
+
+process getNorm() result: double
+pre
+true
+post
+result = FastMath.sqrt(x * x + y * y + z * z)
+Functional Scenario Form
+true && (result = FastMath.sqrt(x * x + y * y + z * z))
+end_process
+
+process getNormSq() result: double
+pre
+true
+post
+result = x * x + y * y + z * z
+Functional Scenario Form
+true && (result = x * x + y * y + z * z)
+end_process
+
+process getNormInf() result: double
+pre
+true
+post
+result = FastMath.max(FastMath.max(FastMath.abs(x), FastMath.abs(y)), FastMath.abs(z))
+Functional Scenario Form
+true && (result = FastMath.max(FastMath.max(FastMath.abs(x), FastMath.abs(y)), FastMath.abs(z)))
+end_process
+
+process getAlpha() result: double
+pre
+true
+post
+result = FastMath.atan2(y, x)
+Functional Scenario Form
+true && (result = FastMath.atan2(y, x))
+end_process
+
+process getDelta() result: double
+pre
+getNorm() != 0
+post
+result = FastMath.asin(z / getNorm())
+Functional Scenario Form
+getNorm() != 0 && (result = FastMath.asin(z / getNorm()))
+end_process
+
+process equals(other: Object) result: boolean
+pre
+true
+post
+if this = other then
+result = true
+else if other instanceof Vector3D then
+let rhs = (Vector3D) other in
+if rhs.isNaN() then
+result = this.isNaN()
+else
+result = (x = rhs.x) && (y = rhs.y) && (z = rhs.z)
+else
+result = false
+Functional Scenario Form
+(this = other) && (result = true) or
+(other instanceof Vector3D && rhs.isNaN()) && (result = this.isNaN()) or
+(other instanceof Vector3D && !rhs.isNaN()) && (result = (x = rhs.x) && (y = rhs.y) && (z = rhs.z)) or
+(!(other instanceof Vector3D) && this != other) && (result = false)
+end_process
+
+process hashCode() result: int
+pre
+true
+post
+if isNaN() then
+result = 8
+else
+result = 31 * (23 * MathUtils.hash(x) + 19 * MathUtils.hash(y) + MathUtils.hash(z))
+Functional Scenario Form
+isNaN() && (result = 8) or
+!isNaN() && (result = 31 * (23 * MathUtils.hash(x) + 19 * MathUtils.hash(y) + MathUtils.hash(z)))
+end_process
+
+process dotProduct(v1: Vector3D, v2: Vector3D) result: double
+pre
+true
+post
+result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+Functional Scenario Form
+true && (result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z)
+end_process
+
+process crossProduct(v1: Vector3D, v2: Vector3D) result: Vector3D
+pre
+true
+post
+let n1 = v1.getNormSq(), n2 = v2.getNormSq() in
+if (n1 * n2) < MathUtils.SAFE_MIN then
+result = ZERO
+else
+let deltaExp = (FastMath.getExponent(n1) - FastMath.getExponent(n2)) / 4,
+x1 = FastMath.scalb(v1.x, -deltaExp),
+y1 = FastMath.scalb(v1.y, -deltaExp),
+z1 = FastMath.scalb(v1.z, -deltaExp),
+x2 = FastMath.scalb(v2.x, deltaExp),
+y2 = FastMath.scalb(v2.y, deltaExp),
+z2 = FastMath.scalb(v2.z, deltaExp),
+ratio = (x1 * x2 + y1 * y2 + z1 * z2) / FastMath.scalb(n2, 2 * deltaExp),
+rho = FastMath.rint(256 * ratio) / 256,
+x3 = x1 - rho * x2,
+y3 = y1 - rho * y2,
+z3 = z1 - rho * z2
+in
+result = new Vector3D(y3 * z2 - z3 * y2, z3 * x2 - x3 * z2, x3 * y2 - y3 * x2)
+Functional Scenario Form
+((n1 * n2) < MathUtils.SAFE_MIN) && (result = ZERO) or
+((n1 * n2) >= MathUtils.SAFE_MIN) && (result = new Vector3D(y3 * z2 - z3 * y2, z3 * x2 - x3 * z2, x3 * y2 - y3 * x2))
+end_process
+
+process distance1(v1: Vector3D, v2: Vector3D) result: double
+pre
+true
+post
+let dx = FastMath.abs(v2.x - v1.x),
+dy = FastMath.abs(v2.y - v1.y),
+dz = FastMath.abs(v2.z - v1.z)
+in
+result = dx + dy + dz
+Functional Scenario Form
+true && (result = FastMath.abs(v2.x - v1.x) + FastMath.abs(v2.y - v1.y) + FastMath.abs(v2.z - v1.z))
+end_process
+
+process distance(v1: Vector3D, v2: Vector3D) result: double
+pre
+true
+post
+let dx = v2.x - v1.x,
+dy = v2.y - v1.y,
+dz = v2.z - v1.z
+in
+result = FastMath.sqrt(dx * dx + dy * dy + dz * dz)
+Functional Scenario Form
+true && (result = FastMath.sqrt((v2.x - v1.x)^2 + (v2.y - v1.y)^2 + (v2.z - v1.z)^2))
+end_process
+
+process distanceInf(v1: Vector3D, v2: Vector3D) result: double
+pre
+true
+post
+let dx = FastMath.abs(v2.x - v1.x),
+dy = FastMath.abs(v2.y - v1.y),
+dz = FastMath.abs(v2.z - v1.z)
+in
+result = FastMath.max(FastMath.max(dx, dy), dz)
+Functional Scenario Form
+true && (result = FastMath.max(FastMath.max(FastMath.abs(v2.x - v1.x), FastMath.abs(v2.y - v1.y)), FastMath.abs(v2.z - v1.z)))
+end_process
+
+process distanceSq(v1: Vector3D, v2: Vector3D) result: double
+pre
+true
+post
+let dx = v2.x - v1.x,
+dy = v2.y - v1.y,
+dz = v2.z - v1.z
+in
+result = dx * dx + dy * dy + dz * dz
+Functional Scenario Form
+true && (result = (v2.x - v1.x)^2 + (v2.y - v1.y)^2 + (v2.z - v1.z)^2)
+end_process
+
+process toString() result: String
+pre
+true
+post
+result = DEFAULT_FORMAT.format(this)
+Functional Scenario Form
+true && (result = DEFAULT_FORMAT.format(this))
+end_process
+
+end_module

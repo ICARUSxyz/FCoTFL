@@ -1,0 +1,81 @@
+**Bug Report: Syntax Highlighter Malfunctions**
+
+---
+
+**Test Case 1: Keyword Highlighting**
+**Input:** A line containing `int main()`
+**Expected Output:** `int` should be highlighted as a keyword
+**Observed Output:** No highlighting applied
+**Log:**
+
+```plaintext
+[HIGHLIGHT] Checking pattern: \bint\b  
+[HIGHLIGHT] index = -1  
+[RESULT] No formatting applied to keyword  
+```
+
+---
+
+**Test Case 2: Multi-line Comment Highlighting**
+**Input:**
+
+```c++
+/* This is  
+a multi-line  
+comment */
+```
+
+**Expected Output:** All lines are highlighted as comments
+**Observed Output:** Only the first line is highlighted
+**Log:**
+
+```plaintext
+[COMMENT] Start index = 0  
+[COMMENT] End index = -1  
+[COMMENT] Block state set to 0  
+[RESULT] Comment not highlighted across blocks  
+```
+
+---
+
+**Test Case 3: Parenthesis Tagging**
+**Input:** `{ some code }`
+**Expected Output:** Both `{` and `}` should be recognized and stored
+**Observed Output:** Ending bracket misaligned, shows wrong position
+**Log:**
+
+```plaintext
+[MARK] Found '{' at position 5  
+[MARK] Found '}' at position -1  
+[RESULT] End marker position incorrect  
+```
+
+---
+
+**Test Case 4: Nested Brackets Processing**
+**Input:** `{ { } }`
+**Expected Output:** All brackets tagged and ordered correctly
+**Observed Output:** Order of stored positions is incorrect
+**Log:**
+
+```plaintext
+[INSERT] { at position 0  
+[INSERT] { at position 2  
+[INSERT] } at position 2  
+[INSERT] } at position 0  
+[RESULT] Unexpected order in stored MarkInfo list  
+```
+
+---
+
+**Test Case 5: Requirement Note Tagging**
+**Input:** `/* todo: fix this */`
+**Expected Output:** Note marked and stored
+**Observed Output:** Entire note not highlighted, or tag duplicated
+**Log:**
+
+```plaintext
+[MARK] Found '/* todo:' at position 0  
+[MARK] Found '*/' at position 18  
+[RESULT] Incomplete or misaligned note formatting  
+```

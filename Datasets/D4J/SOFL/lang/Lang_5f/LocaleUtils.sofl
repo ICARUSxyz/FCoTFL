@@ -1,0 +1,114 @@
+module LocaleUtils
+
+type
+  str sequence of char,
+  locale Locale,
+  defaultLocale Locale,
+  countryCode sequence of char,
+  languageCode sequence of char,
+  locales sequence of Locale,
+  resultList sequence of Locale,
+  resultSet set of Locale,
+  result Locale,
+  result Boolean
+
+process toLocale(str sequence of char) result Locale
+pre
+  true
+post
+  (str = null) → result = null &&
+  (str ≠ null ∧ invalidFormat(str)) → throws IllegalArgumentException &&
+  (validLangOnly(str)) → result = new Locale(lang(str)) &&
+  (validLangCountry(str)) → result = new Locale(lang(str), country(str)) &&
+  (validLangCountryVariant(str)) → result = new Locale(lang(str), country(str), variant(str)) &&
+  (validUnderscoreCountry(str)) → result = new Locale(, country(str)) &&
+  (validUnderscoreCountryVariant(str)) → result = new Locale(, country(str), variant(str))
+Functional Scenario Form
+  (str = null) && result = null or
+  (invalidFormat(str)) && throws IllegalArgumentException or
+  (str matches ll) && result = Locale(lang = str) or
+  (str matches ll_CC) && result = Locale(lang, country) or
+  (str matches ll_CC_variant) && result = Locale(lang, country, variant) or
+  (str matches _CC) && result = Locale(, country) or
+  (str matches _CC_variant) && result = Locale(, country, variant)
+end_process
+
+process localeLookupList(locale Locale) result sequence of Locale
+pre
+  true
+post
+  result = localeLookupList(locale, locale)
+Functional Scenario Form
+  (locale ≠ null) && result = localeLookupList(locale, locale)
+end_process
+
+process localeLookupList(locale Locale, defaultLocale Locale) result sequence of Locale
+pre
+  true
+post
+  (locale = null) → result = [] &&
+  (locale ≠ null) → result = ordered list of fallback locales from locale plus defaultLocale, no duplicates
+Functional Scenario Form
+  (locale = null) && result = [] or
+  (locale = Locale(l,c,v)) && result = [l_c_v, l_c, l, defaultLocale] with no duplicates
+end_process
+
+process availableLocaleList() result sequence of Locale
+pre
+  true
+post
+  result = SyncAvoid.AVAILABLE_LOCALE_LIST
+Functional Scenario Form
+  (always true) && result = predefined list of available locales
+end_process
+
+process availableLocaleSet() result set of Locale
+pre
+  true
+post
+  result = SyncAvoid.AVAILABLE_LOCALE_SET
+Functional Scenario Form
+  (always true) && result = predefined set of available locales
+end_process
+
+process isAvailableLocale(locale Locale) result Boolean
+pre
+  true
+post
+  result = (locale ∈ availableLocaleList())
+Functional Scenario Form
+  (locale ∈ availableLocaleList()) && result = true or
+  (locale ∉ availableLocaleList()) && result = false
+end_process
+
+process languagesByCountry(countryCode sequence of char) result sequence of Locale
+pre
+  true
+post
+  (countryCode = null) → result = [] &&
+  (countryCode ≠ null ∧ exists cache) → result = cache[countryCode] &&
+  (countryCode ≠ null ∧ not in cache) →
+    result = [l ∈ availableLocaleList()  l.country = countryCode ∧ l.variant = ] &&
+    cache updated
+Functional Scenario Form
+  (countryCode = null) && result = [] or
+  (countryCode cached) && result = cached[countryCode] or
+  (countryCode not cached) && result = locales with matching country and no variant
+end_process
+
+process countriesByLanguage(languageCode sequence of char) result sequence of Locale
+pre
+  true
+post
+  (languageCode = null) → result = [] &&
+  (languageCode ≠ null ∧ exists cache) → result = cache[languageCode] &&
+  (languageCode ≠ null ∧ not in cache) →
+    result = [l ∈ availableLocaleList()  l.language = languageCode ∧ l.country ≠  ∧ l.variant = ] &&
+    cache updated
+Functional Scenario Form
+  (languageCode = null) && result = [] or
+  (languageCode cached) && result = cached[languageCode] or
+  (languageCode not cached) && result = locales with matching language, country ≠ , no variant
+end_process
+
+end_module

@@ -1,0 +1,59 @@
+module LocaleUtils
+type 
+  str: String
+  result_locale: Locale
+  countryCode: String
+  languageCode: String
+  langs: sequence of Locale
+  countries: sequence of Locale
+
+process toLocale(str: String) result: Locale
+pre  
+  true
+post 
+  (str = null -> result = null) and
+  (str ≠ null and (str.length() = 2) ->
+      result = new Locale(str, "")
+  ) and
+  (str ≠ null and (str.length() = 5) and (str.charAt(2) = '_') ->
+      result = new Locale(str.substring(0, 2), str.substring(3, 5))
+  ) and
+  (str ≠ null and (str.length() > 5) and (str.charAt(2) = '_') and (str.charAt(5) = '_') ->
+      result = new Locale(str.substring(0, 2), str.substring(3, 5), str.substring(6))
+  )
+Functional Scenario Form 
+(str = null) && (result = null) or
+(str ≠ null and str.length() = 2) && (result = new Locale(str, "")) or
+(str.length() = 5 and str.charAt(2) = '_') && 
+    (result = new Locale(str.substring(0, 2), str.substring(3, 5))) or
+(str.length() > 5 and str.charAt(2) = '_' and str.charAt(5) = '_') && 
+    (result = new Locale(str.substring(0, 2), str.substring(3, 5), str.substring(6)))
+end_process
+
+process languagesByCountry(countryCode: String) langs: sequence of Locale
+pre 
+  true
+post 
+  (countryCode = null -> langs = empty_sequence) or
+  (countryCode ≠ null -> 
+    langs = all l in availableLocaleList() |
+            (l.getCountry() = countryCode and l.getVariant().length() = 0))
+Functional Scenario Form 
+(countryCode = null) && (langs = empty_sequence) or
+(countryCode ≠ null) && (langs = locales where country = countryCode and variant = "")
+end_process
+
+process countriesByLanguage(languageCode: String) countries: sequence of Locale
+pre 
+  true
+post 
+  (languageCode = null -> countries = empty_sequence) or
+  (languageCode ≠ null -> 
+    countries = all l in availableLocaleList() |
+                (l.getLanguage() = languageCode and l.getCountry() ≠ "" and l.getVariant() = ""))
+Functional Scenario Form 
+(languageCode = null) && (countries = empty_sequence) or
+(languageCode ≠ null) && (countries = locales where language = languageCode and country ≠ "" and variant = "")
+end_process
+
+end_module

@@ -1,0 +1,195 @@
+module GaussianFitter
+type
+WeightedObservedPoint: composed type of {
+x: double,
+y: double,
+weight: double
+}
+
+process GaussianFitter_ctor(optimizer: DifferentiableMultivariateVectorialOptimizer) result: GaussianFitter
+pre
+optimizer ≠ null
+post
+// Construct and initialize via super(optimizer)
+result ≠ null
+// The created instance delegates to CurveFitter with the same optimizer.
+end_process
+
+process fit_withInitialGuess(initialGuess: sequence of double) result: sequence of double
+pre
+initialGuess ≠ null ∧ size(initialGuess) = 3
+post
+// Define f(x, p) that wraps Gaussian.Parametric with guards:
+// value(x,p) = Gaussian(x; p) unless sigma ≤ 0, in which case +∞
+// gradient(x,p) = ∇Gaussian(x; p) unless sigma ≤ 0, in which case {+∞,+∞,+∞}
+// Then delegate to CurveFitter.fit(f, initialGuess)
+result = super_fit_with_function_and_guess(
+guardedGaussianFunction, initialGuess)
+// guardedGaussianFunction.value(x,p):
+// if p[2] > 0 then GaussianParametric.value(x,p) else +∞
+// guardedGaussianFunction.gradient(x,p):
+// if p[2] > 0 then GaussianParametric.gradient(x,p) else <+∞,+∞,+∞>
+end_process
+
+process fit_auto() result: sequence of double
+pre
+// Need enough observations to guess parameters
+size(getObservations()) ≥ 3
+post
+let obs == getObservations() in
+let guess == ParameterGuesser_guess(new ParameterGuesser_ctor(obs)) in
+result = fit_withInitialGuess(guess)
+end_process
+
+process ParameterGuesser_ctor(observations: sequence of WeightedObservedPoint) result: ParameterGuesser
+pre
+observations ≠ null ∧ size(observations) ≥ 3
+post
+result ≠ null
+// Store a clone/copy of observations internally
+result.observations = clone(observations)
+// parameters field unset at construction
+not defined(result.parameters)
+Functional Scenario Form
+observations ≠ null && result ≠ null or
+observations = null && raise(NullArgumentException) or
+size(observations) < 3 && raise(NumberIsTooSmallException)
+end_process
+
+process ParameterGuesser_guess(self: ParameterGuesser) result: sequence of double
+pre
+self ≠ null
+post
+if not defined(self.parameters)
+then self.parameters' = ParameterGuesser_basicGuess(self.observations)
+else self.parameters' = self.parameters
+// Return a clone of the internal parameter array [norm, mean, sigma]
+result = clone(self.parameters')
+Functional Scenario Form
+not defined(self.parameters) && result = ParameterGuesser_basicGuess(self.observations) or
+defined(self.parameters) && result = self.parameters
+end_process
+
+process ParameterGuesser_basicGuess(points: sequence of WeightedObservedPoint) result: sequence of double
+pre
+points ≠ null ∧ size(points) ≥ 3
+post
+// Sort by x asc, then y asc, then weight asc
+let pts == sort(points, createWeightedObservedPointComparator()) in
+let maxYIdx == findMaxY(pts) in
+let norm == pts[maxYIdx].y in
+let mean == pts[maxYIdx].x in
+// Approximate FWHM level
+let halfY == norm + ((mean - norm) / 2.0) in
+let fwhmApprox ==
+try (
+interpolateXAtY(pts, maxYIdx, -1, halfY),
+interpolateXAtY(pts, maxYIdx, +1, halfY)
+) as (x1, x2)
+catch OutOfRangeException -> (last(pts).x - first(pts).x)
+in
+let sigma == fwhmApprox / (2.0 * sqrt(2.0 * ln(2.0))) in
+result = <norm, mean, sigma>
+Functional Scenario Form
+halfY within observed Y range && result = <pts[maxYIdx].y, pts[maxYIdx].x, ( (interpolateXAtY_left_right_distance)/ (2sqrt(2ln(2))) )> or
+halfY out of observed Y range && result = <pts[maxYIdx].y, pts[maxYIdx].x, ( (lastX - firstX)/(2sqrt(2ln(2))) )>
+end_process
+
+process findMaxY(points: sequence of WeightedObservedPoint) result: int
+pre
+points ≠ null ∧ size(points) ≥ 1
+post
+// Return index of element with maximum y (first index in case of ties)
+0 ≤ result < size(points)
+∀ i • 0 ≤ i < size(points) ⇒ points[result].y ≥ points[i].y
+Functional Scenario Form
+size(points) ≥ 1 && result is index with maximal y
+end_process
+
+process interpolateXAtY(points: sequence of WeightedObservedPoint, startIdx: int, idxStep: int, y: double) result: double
+pre
+points ≠ null ∧ size(points) ≥ 2
+post
+if idxStep = 0 then raise(ZeroException)
+else
+let pair == getInterpolationPointsForY(points, startIdx, idxStep, y) in
+let A == pair[0], B == pair[1] in
+if A.y = y then result = A.x
+else if B.y = y then result = B.x
+else result = A.x + ((y - A.y) * (B.x - A.x)) / (B.y - A.y)
+Functional Scenario Form
+idxStep = 0 && raise(ZeroException) or
+y between some adjacent Y values && result = linear_interpolation_x or
+y equals an endpoint Y && result = endpoint_x or
+y not in [minY,maxY] && raise(OutOfRangeException)
+end_process
+
+process getInterpolationPointsForY(points: sequence of WeightedObservedPoint, startIdx: int, idxStep: int, y: double) result: sequence of WeightedObservedPoint
+pre
+points ≠ null ∧ size(points) ≥ 2
+post
+if idxStep = 0 then raise(ZeroException)
+else
+// Scan outward from startIdx by idxStep to find adjacent pair whose Y bounds contain y
+if ∃ i • scanable(i, startIdx, idxStep, size(points)) ∧ isBetween(y, points[i].y, points[i+idxStep].y)
+then
+if idxStep < 0 then result = <points[i+idxStep], points[i]>
+else result = <points[i], points[i+idxStep]>
+else
+let minY == min({p.y | p ∈ points}), maxY == max({p.y | p ∈ points}) in
+raise(OutOfRangeException) where y ∉ [minY, maxY]
+Functional Scenario Form
+idxStep = 0 && raise(ZeroException) or
+∃ adjacent pair bounding y && result = that ordered pair or
+y outside overall Y range && raise(OutOfRangeException)
+end_process
+
+process isBetween(value: double, boundary1: double, boundary2: double) result: Boolean
+pre
+true
+post
+result = ((value ≥ boundary1 ∧ value ≤ boundary2) ∨ (value ≥ boundary2 ∧ value ≤ boundary1))
+Functional Scenario Form
+boundary1 ≤ value ≤ boundary2 && result = true or
+boundary2 ≤ value ≤ boundary1 && result = true or
+otherwise && result = false
+end_process
+
+process createWeightedObservedPointComparator() result: ComparatorWOP
+pre
+true
+post
+// Comparator ordering:
+// 1) By x ascending
+// 2) If x equal, by y ascending
+// 3) If y equal, by weight ascending
+// (Null handling is implementation-defined; inputs are assumed non-null in sorting)
+result ≠ null
+Functional Scenario Form
+called && result ≠ null
+end_process
+
+// Parent references
+process getObservations() result: Observations
+pre
+true
+post
+// Provided by CurveFitter; here declared for completeness.
+result = observations_from_parent
+Functional Scenario Form
+called && result = observations_from_parent
+end_process
+
+// Superclass delegation placeholder
+process super_fit_with_function_and_guess(f: ParametricUnivariateRealFunction, initialGuess: sequence of double) result: sequence of double
+pre
+f ≠ null ∧ initialGuess ≠ null ∧ size(initialGuess) = 3
+post
+// CurveFitter solves least squares for parameters using optimizer
+result = optimized_parameters
+Functional Scenario Form
+valid function and guess && result = optimized_parameters
+end_process
+
+end_module
+

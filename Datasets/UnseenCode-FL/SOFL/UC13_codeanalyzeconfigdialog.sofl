@@ -1,0 +1,71 @@
+module UC13_codeanalyzeconfigdialog
+type
+  screenFactor: float
+
+
+process UC13_codeanalyzeconfigdialog(parent: QWidget) result: UC13_codeanalyzeconfigdialog
+pre
+  true
+post
+  this.ui = new Ui::CodeAnalyzeConfigDialog
+  ui.setupUi(this) executed
+  m_parent = cast to MainWindow from parentWidget()
+  connect ui.manageButton.clicked to managePropertySet
+  connect ui.ruleTree.itemDoubleClicked to showRuleDescript(QTreeWidgetItem*, int)
+  connect ui.startAnalysisButton.clicked to startAnalysis
+
+  Model = new QStandardItemModel
+  Item1 = new QStandardItem("All Files", unchecked, checkable)
+  Item2 = new QStandardItem("File1", unchecked, checkable)
+  Model.insertRow(0, Item1)
+  Model.insertRow(1, Item2)
+  Items = [Item1, Item2]
+  ui.fileSelectBox.model = Model
+Functional Scenario Form
+valid parent && dialog initialized with connected buttons and populated file model
+end_process
+
+process ~CodeAnalyzeConfigDialog() result: Void
+pre
+  true
+post
+  delete ui executed
+Functional Scenario Form
+destructor called && ui deleted
+end_process
+
+process managePropertySet() result: Void
+pre
+  true
+post
+  manageSet = new ManagePropertySetDialog(this)
+  screenFactor = ScreenFactor.getScreenFactor()
+  manageSet.resize(manageSet.width * screenFactor, manageSet.height * screenFactor)
+  manageSet.modal = true
+  manageSet.show() executed
+Functional Scenario Form
+manage button clicked && property set dialog resized and shown
+end_process
+
+process showRuleDescript(item: QTreeWidgetItem, column: int) result: Void
+pre
+  item ≠ null
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  screenFactor = ScreenFactor.getScreenFactor()
+  ruleDescript.resize(ruleDescript.width * screenFactor, ruleDescript.height * screenFactor)
+  ruleDescript.show() executed
+Functional Scenario Form
+tree item double-clicked && rule description dialog resized and shown
+end_process
+
+process startAnalysis() result: Void
+pre
+  true
+post
+  accept() executed
+Functional Scenario Form
+start analysis button clicked && dialog accepted
+end_process
+
+end_module

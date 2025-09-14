@@ -1,0 +1,34 @@
+module NumericEntityUnescaper
+type
+    input: CharSequence
+    index: int
+    out: Writer
+    result: int
+
+process translate(input: CharSequence, index: int, out: Writer) result: int
+pre  index >= 0 ∧ index < |input| ∧ out ≠ null
+post if input[index] ≠ '&' ∨ input[index + 1] ≠ '#' then result = 0
+     else
+         let start = index + 2,
+             isHex = (input[start] = 'x' ∨ input[start] = 'X'),
+             valueStart = if isHex then start + 1 else start,
+             end = first position ≥ valueStart such that input[end] = ';',
+             valueStr = input[valueStart .. end-1],
+             entityValue = parseInt(valueStr, 16 if isHex else 10)
+         in
+         if parse fails then result = 0
+         else
+             if entityValue > 0xFFFF then
+                 out.write(Character.toChars(entityValue)[0])
+                 out.write(Character.toChars(entityValue)[1])
+             else
+                 out.write(entityValue)
+             result = end - index + 1
+Functional Scenario Form
+(input[index] ≠ '&' ∨ input[index+1] ≠ '#') && (result = 0) or
+(input contains invalid numeric entity) && (result = 0) or
+(valid decimal entity &#ddd;) && (writes corresponding char) && (result = length of entity) or
+(valid hex entity &#xhhh;) && (writes corresponding char(s)) && (result = length of entity)
+end_process
+
+end_module

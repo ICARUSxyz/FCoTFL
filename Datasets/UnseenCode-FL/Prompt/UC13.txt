@@ -1,0 +1,219 @@
+You are an intelligent debugging assistant. You will assist the user in locating faults in a program using a step-by-step reasoning process.
+You are given the source code of a function and its corresponding SOFL (Structured Object-oriented Formal Language) specification, which describes the intended behavior of the code. Treat the specification as a contract the implementation must fulfill. Additionally, you are given bug symptoms that describe observable effects (falling tests or exceptions) only, no location hints.
+Step 1: Code and Specification Understanding
+You should concisely summarize the main functionality of the code, and identify any part(s) of the SOFL specification that appear to be underrepresented, misaligned, or missing in the implementation.
+Step 2: Bug Contextualization and Hypothesis Generation
+Based on your previous understanding of the code and its specification, analyze how the bug may relate to the code’s logic. You should identify the logical conditions, variables, or control branches that may be involved in causing the bug.
+Step 3: Suspicious Line Ranking
+Based on your previous analysis, identify and rank all the top-k most suspicious lines of code likely to contain the bug.
+For each suspicious line, provide:
+• The line number
+• A suspiciousness score between 0 (not suspicious) and 1 (highly suspicious)
+• A brief justification explaining your suspicion, based on:
+  o Logical inconsistency
+  o Misalignment with the SOFL specification
+  o Likely control or data flow issues
+Format your response using the following table:
+| Line Number | Suspiciousness Score | Explanation |
+|-------------|----------------------|-------------|
+|             |                      |             |
+Step 4: Explanation Report
+Generate a structured explanation report to help developers understand the fault localization process and take further actions.
+Your report should contain the following sections:
+• Bug Overview: A brief summary of the bug and its observable symptoms.
+• Analytical Reasoning: The reasoning chain that connects the specification, code, and bug symptoms to specific code locations.
+
+Code:[
+1: #include "codeanalyzeconfigdialog.h"
+2: #include "ui_codeanalyzeconfigdialog.h"
+3: #include "managepropertysetdialog.h"
+4: #include "mainwindow.h"
+5: #include "ruledescriptdialog.h"
+6: #include "screenfactor.h"
+7: 
+8: CodeAnalyzeConfigDialog::CodeAnalyzeConfigDialog(QWidget *parent) :
+9:     QDialog(parent),
+10:     ui(new Ui::CodeAnalyzeConfigDialog)
+11: {
+12:     ui->setupUi(this);
+13:     m_parent = (MainWindow*)parentWidget();
+14:     connect(ui->manageButton, &QPushButton::clicked, this, &CodeAnalyzeConfigDialog::managePropertySet); 
+15:     //connect(ui->allRuleDescriptAct, &QAction::triggered, this, &MainWindow::showAllRuleDescript);
+16:     connect(ui->ruleTree, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), this, SLOT(showRuleDescript(QTreeWidgetItem*)));
+17: 
+18:     connect(ui->startAnalysisButton, &QPushButton::clicked, this, &CodeAnalyzeConfigDialog::startAnalysis);
+19: 
+20:     
+21:     this->Model = new QStandardItemModel;
+22: 
+23:     this->Item1 = new QStandardItem;
+24:     this->Item1->setText("All Files");
+25:     this->Item1->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+26:     this->Item1->setData(Qt::Unchecked, Qt::CheckStateRole);
+27: 
+28:     this->Item2 = new QStandardItem;
+29:     this->Item2->setText("File");
+30:     this->Item2->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+31:     this->Item2->setData(Qt::Unchecked, Qt::CheckStateRole);
+32: 
+33:     //connect(this->Model, SIGNAL(dataChanged ( const QModelIndex&, const QModelIndex&)), this, SLOT(slot_changed(const QModelIndex&, const QModelIndex&)));
+34: 
+35:     this->Model->insertRow(0, this->Item1);
+36:     this->Model->insertRow(0, this->Item2);
+37: 
+38:     this->Items.push_back(this->Item1);
+39:     this->Items.push_back(this->Item2);
+40: 
+41:     ui->fileSelectBox->setModel(this->Model);
+42: 
+43:     //std::cout << comboBox->model()->rowCount() << " rows after." << std::endl;
+44: }
+45: 
+46: CodeAnalyzeConfigDialog::~CodeAnalyzeConfigDialog()
+47: {
+48:     delete ui;
+49: }
+50: 
+51: void CodeAnalyzeConfigDialog::managePropertySet()
+52: {
+53:     ManagePropertySetDialog* manageSet = new ManagePropertySetDialog();
+54:     ScreenFactor factor;
+55:     auto screenFactor = factor.getScreenFactor();
+56:     manageSet->resize(manageSet->width() * screenFactor, manageSet->height() * screenFactor);
+57:     manageSet->setModal();
+58:     manageSet->show();
+59: }
+60: 
+61: void CodeAnalyzeConfigDialog::showRuleDescript(QTreeWidgetItem*, int)
+62: {
+63:     RuleDescriptDialog *ruleDescript = new RuleDescriptDialog(this);
+64:     ScreenFactor factor;
+65:     auto screenFactor = factor.getScreenFactor();
+66:     ruleDescript->resize(ruleDescript->width() * screenFactor, ruleDescript->height() * screenFactor);
+67:     ruleDescript->show();
+68: }
+69: 
+70: void CodeAnalyzeConfigDialog::startAnalysis()
+71: {
+72:     accept();
+73: }]
+
+SOFL:[
+module UC13_codeanalyzeconfigdialog
+type
+  screenFactor: float
+
+
+process UC13_codeanalyzeconfigdialog(parent: QWidget) result: UC13_codeanalyzeconfigdialog
+pre
+  true
+post
+  this.ui = new Ui::CodeAnalyzeConfigDialog
+  ui.setupUi(this) executed
+  m_parent = cast to MainWindow from parentWidget()
+  connect ui.manageButton.clicked to managePropertySet
+  connect ui.ruleTree.itemDoubleClicked to showRuleDescript(QTreeWidgetItem*, int)
+  connect ui.startAnalysisButton.clicked to startAnalysis
+
+  Model = new QStandardItemModel
+  Item1 = new QStandardItem("All Files", unchecked, checkable)
+  Item2 = new QStandardItem("File1", unchecked, checkable)
+  Model.insertRow(0, Item1)
+  Model.insertRow(1, Item2)
+  Items = [Item1, Item2]
+  ui.fileSelectBox.model = Model
+Functional Scenario Form
+valid parent && dialog initialized with connected buttons and populated file model
+end_process
+
+process ~CodeAnalyzeConfigDialog() result: Void
+pre
+  true
+post
+  delete ui executed
+Functional Scenario Form
+destructor called && ui deleted
+end_process
+
+process managePropertySet() result: Void
+pre
+  true
+post
+  manageSet = new ManagePropertySetDialog(this)
+  screenFactor = ScreenFactor.getScreenFactor()
+  manageSet.resize(manageSet.width * screenFactor, manageSet.height * screenFactor)
+  manageSet.modal = true
+  manageSet.show() executed
+Functional Scenario Form
+manage button clicked && property set dialog resized and shown
+end_process
+
+process showRuleDescript(item: QTreeWidgetItem, column: int) result: Void
+pre
+  item ≠ null
+post
+  ruleDescript = new RuleDescriptDialog(this)
+  screenFactor = ScreenFactor.getScreenFactor()
+  ruleDescript.resize(ruleDescript.width * screenFactor, ruleDescript.height * screenFactor)
+  ruleDescript.show() executed
+Functional Scenario Form
+tree item double-clicked && rule description dialog resized and shown
+end_process
+
+process startAnalysis() result: Void
+pre
+  true
+post
+  accept() executed
+Functional Scenario Form
+start analysis button clicked && dialog accepted
+end_process
+
+end_module]
+
+Bug symptoms: [
+#### Test Case 1: Double-click on a rule item in the tree view
+
+**Expected:** Rule description dialog opens.
+**Observed:** No dialog appears.
+
+```plaintext
+[TEST] Triggered double-click on ruleTree item  
+[INFO] No response from UI, dialog not shown  
+```
+
+---
+
+#### Test Case 2: Dropdown item labels in file selection
+
+**Expected:** Dropdown shows option labeled "File1"
+**Observed:** Dropdown shows "File"
+
+```plaintext
+[INFO] fileSelectBox item text = "File"  
+[NOTE] Label differs from expected UI string  
+```
+
+---
+
+#### Test Case 3: Dropdown item order
+
+**Expected:** \["All Files", "File"]
+**Observed:** \["File", "All Files"]
+
+```plaintext
+[DEBUG] Model inserted: File (index 0), All Files (index 1)  
+[INFO] Visual order = [File, All Files]  
+```
+
+---
+
+#### Test Case 4: Clicking "Manage" button
+
+**Expected:** Modal dialog appears, blocks interaction with main window
+**Observed:** Dialog appears but does not block main window
+
+```plaintext
+[INFO] ManagePropertySetDialog shown  
+[WARN] Dialog is not modal — main window still interactive  
+```]

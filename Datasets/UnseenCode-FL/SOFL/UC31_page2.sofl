@@ -1,0 +1,44 @@
+module UC31_page2
+type
+  paymentAmount: int
+  couponRate: int
+  discountedAmount: int
+  usePoint: Boolean
+  balance: int
+var
+  COUPON_RATES: sequence of int = <0, 10, 20, 30, 40, 50>
+
+process calculateDiscountedAmount(paymentAmount: int, couponRate: int) result: int
+pre
+  paymentAmount ≥ 0 ∧ couponRate ∈ COUPON_RATES
+post
+  result = paymentAmount - (paymentAmount * couponRate div 100)
+Functional Scenario Form
+(paymentAmount ≥ 0 ∧ couponRate ∈ COUPON_RATES) && (result = paymentAmount - (paymentAmount * couponRate div 100))
+end_process
+
+process validateBalance(discountedAmount: int, balance: int) result: Boolean
+pre
+  discountedAmount ≥ 0 ∧ balance ≥ 0
+post
+  if discountedAmount > balance then result = false else result = true
+Functional Scenario Form
+(discountedAmount > balance) && (result = false) or
+(discountedAmount ≤ balance) && (result = true)
+end_process
+
+process executePayment(paymentAmount: int, usePoint: Boolean, couponRate: int, balance: int) result: string
+pre
+  paymentAmount ≥ 0 ∧ couponRate ∈ COUPON_RATES ∧ balance ≥ 0
+post
+  let discountedAmount = paymentAmount - (paymentAmount * couponRate div 100) in
+    if discountedAmount > balance then
+      result = "残高が不足しています。"
+    else
+      result = "割引後金額: " + discountedAmount + "円"
+Functional Scenario Form
+(discountedAmount > balance) && (result = "残高が不足しています。") or
+(discountedAmount ≤ balance) && (result = "割引後金額: " + discountedAmount + "円")
+end_process
+
+end_module

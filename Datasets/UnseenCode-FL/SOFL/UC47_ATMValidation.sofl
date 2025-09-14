@@ -1,0 +1,23 @@
+module UC47_ATMValidation
+type
+  amount: real
+  accountBalance: real
+  result: Boolean
+
+process isValidWithdrawal(amount: real, accountBalance: real) result: Boolean
+pre
+  true
+post
+  ((amount > 0) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance) → result = true) ∧
+  (¬((amount > 0) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance)) → result = false)
+Functional Scenario Form
+(amount > 0 ) ∧ (accountBalance > 0) ∧ (amount ≤ accountBalance) && flag =true, Valid withdrawal, amount meets all conditions 
+OR 
+(amount > accountBalance) && flag = false, Invalid withdrawal, insufficient account balance 
+OR 
+(amount ≤ 0) && flag = false, Invalid withdrawal, amount must be greater than zero
+OR 
+(accountBalance≤ 0) && flag = false, Invalid withdrawal, balance must be greater than zero
+end_process
+
+end_module

@@ -1,0 +1,47 @@
+module UC24_syntaxrule
+type
+  target: String
+  words: sequence of String
+  i: int
+  lowerCamel: String
+  upperCamel: String
+  word: String
+  result: String
+
+var
+  basicType: sequence of String = {"\\bint\\b", "\\bbool\\b", "\\bchar\\b", "\\bfloat\\b", "\\bdouble\\b", "\\bvoid\\b", "\\bstd::string\\b"}
+  basicVarStr: String = "\\b(" + join(basicType, "|") + ")(\\*|&?)[^\\S\\n]+([A-Za-z_][A-Za-z0-9_]*)\\b(\\[?\\]?)[^\\S\\n]*[;\\):=,](?!:)"
+  classVarInHeaderStr: String = "\\b([A-Za-z_][A-Za-z0-9_]*)"(\\*|&?)[^\\S\\n]+%1\\b(\\[?\\]?)[^\\S\\n]*;"
+  globalVarStr: String = "\\b([A-Za-z_][A-Za-z0-9_]*)"(\\*|&?)[^\\S\\n]+([A-Za-z_][A-Za-z0-9_]*)(\\[?\\]?)[^\\S\\n]*[=;]"
+  varStr: String = "\\b([A-Za-z_][A-Za-z0-9_]*)[^\\S\\n]*(\\*|&?)[^\\S\\n]*([A-Za-z_][A-Za-z0-9_]*)"
+
+process toLowerCamelCase(target: String) result: String
+pre
+  true
+post
+  words = split(target, " ") ∧
+  words = [] → result = "" ∧
+  words ≠ [] →
+    result = lowercase(words[0]) + 
+             concat for i in 1..length(words)-1: uppercase(words[i][0]) + lowercase(words[i][1..])
+Functional Scenario Form
+(target has no words) && (result = "")
+or
+(target has words) && (first word lowercased + others camelized)
+end_process
+
+process toUpperCamelCase(target: String) result: String
+pre
+  true
+post
+  words = split(target, " ") ∧
+  words = [] → result = "" ∧
+  words ≠ [] →
+    result = concat for word in words: uppercase(word[0]) + lowercase(word[1..])
+Functional Scenario Form
+(target has no words) && (result = "")
+or
+(target has words) && (all words capitalized and concatenated)
+end_process
+
+end_module

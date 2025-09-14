@@ -1,0 +1,40 @@
+module UC69_ReadSkillArea
+type
+  xmlFilePath: String
+  i: int
+  name: String
+  effect: String
+  sound: String
+  aoeType: int
+  lifeTime: float
+
+process ReadSkillAreaConfig(xmlFilePath: String)
+pre 
+  xmlFilePath ≠ null
+post
+  xmlfile = cast(ResourcesManager.Instance.loadImmediate(xmlFilePath, ResourceType.ASSET).Asset, TextAsset) ∧
+  (xmlfile ≠ null →
+    xmlDoc.LoadXml(xmlfile.text) ∧
+    infoNodeList = xmlDoc.SelectSingleNode("SkillCfg_area ").ChildNodes ∧
+    ∀ i ∈ [0..infoNodeList.length - 1]:
+      (
+        (infoNodeList[i] has attribute "un32ID") →
+          skillinfo.id = Convert.ToUInt32(infoNodeList[i].GetAttribute("un32ID")) ∧
+          ∀ xEle ∈ infoNodeList[i].ChildNodes:
+            (
+              (xEle.Name = "szName:") → skillinfo.name = xEle.InnerText ∨
+              (xEle.Name = "eLifeTime") → skillinfo.lifeTime = Convert.ToInt32(xEle.InnerText) ∨
+              (xEle.Name = "attackEffect") → skillinfo.effect = xEle.InnerText ∨
+              (xEle.Name = "FlySound") → skillinfo.sound = xEle.InnerText ∨
+              (xEle.Name = "eAoeType") → skillinfo.aoeType = Convert.ToInt32(xEle.InnerText)
+            ) ∧
+          ConfigReader.skillAreaInfoDic.Add(skillinfo, skillinfo.id)
+      )
+  ) ∨
+  (xmlfile = null → no effect)
+Functional Scenario Form
+(xml file found) && (parse XML, extract each skill node, populate SkillAreaConfig, add to skillAreaInfoDic) or
+(xml file not found) && (skip parsing, do nothing)
+end_process
+
+end_module

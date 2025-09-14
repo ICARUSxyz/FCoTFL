@@ -1,0 +1,109 @@
+module StopWatch
+type 
+    runningState: int
+    splitState: int
+    startTime: long
+    stopTime: long
+var
+    STATE_UNSTARTED = 0
+    STATE_RUNNING = 1
+    STATE_STOPPED = 2
+    STATE_SUSPENDED = 3
+    STATE_UNSPLIT = 10
+    STATE_SPLIT = 11
+
+process start() result: Boolean
+pre  runningState = STATE_UNSTARTED
+post runningState = STATE_RUNNING ∧ stopTime = -1 ∧ startTime = current_time ∧ result = true
+     or ¬(runningState = STATE_UNSTARTED) ∧ result = false
+Functional Scenario Form 
+(runningState = STATE_UNSTARTED) && (runningState = STATE_RUNNING ∧ stopTime = -1 ∧ startTime = current_time ∧ result = true) or
+(¬(runningState = STATE_UNSTARTED)) && (result = false)
+end_process
+
+process stop() result: Boolean
+pre  runningState = STATE_RUNNING ∨ runningState = STATE_SUSPENDED
+post runningState = STATE_STOPPED ∧ 
+     ((old runningState = STATE_RUNNING ⇒ stopTime = current_time) ∧ result = true)
+     or ¬(runningState = STATE_RUNNING ∨ runningState = STATE_SUSPENDED) ∧ result = false
+Functional Scenario Form 
+((runningState = STATE_RUNNING ∨ runningState = STATE_SUSPENDED)) && (runningState = STATE_STOPPED ∧ result = true) or
+¬(runningState = STATE_RUNNING ∨ runningState = STATE_SUSPENDED) && (result = false)
+end_process
+
+process reset()
+pre  true
+post runningState = STATE_UNSTARTED ∧ splitState = STATE_UNSPLIT ∧ startTime = -1 ∧ stopTime = -1
+Functional Scenario Form 
+(true) && (runningState = STATE_UNSTARTED ∧ splitState = STATE_UNSPLIT ∧ startTime = -1 ∧ stopTime = -1)
+end_process
+
+process split() result: Boolean
+pre  runningState = STATE_RUNNING
+post stopTime = current_time ∧ splitState = STATE_SPLIT ∧ result = true
+     or ¬(runningState = STATE_RUNNING) ∧ result = false
+Functional Scenario Form 
+(runningState = STATE_RUNNING) && (stopTime = current_time ∧ splitState = STATE_SPLIT ∧ result = true) or
+¬(runningState = STATE_RUNNING) && (result = false)
+end_process
+
+process unsplit() result: Boolean
+pre  splitState = STATE_SPLIT
+post stopTime = -1 ∧ splitState = STATE_UNSPLIT ∧ result = true
+     or ¬(splitState = STATE_SPLIT) ∧ result = false
+Functional Scenario Form 
+(splitState = STATE_SPLIT) && (stopTime = -1 ∧ splitState = STATE_UNSPLIT ∧ result = true) or
+¬(splitState = STATE_SPLIT) && (result = false)
+end_process
+
+process suspend() result: Boolean
+pre  runningState = STATE_RUNNING
+post stopTime = current_time ∧ runningState = STATE_SUSPENDED ∧ result = true
+     or ¬(runningState = STATE_RUNNING) ∧ result = false
+Functional Scenario Form 
+(runningState = STATE_RUNNING) && (stopTime = current_time ∧ runningState = STATE_SUSPENDED ∧ result = true) or
+¬(runningState = STATE_RUNNING) && (result = false)
+end_process
+
+process resume() result: Boolean
+pre  runningState = STATE_SUSPENDED
+post startTime = startTime + (current_time - stopTime) ∧ stopTime = -1 ∧ runningState = STATE_RUNNING ∧ result = true
+     or ¬(runningState = STATE_SUSPENDED) ∧ result = false
+Functional Scenario Form 
+(runningState = STATE_SUSPENDED) && (startTime = startTime + (current_time - stopTime) ∧ stopTime = -1 ∧ runningState = STATE_RUNNING ∧ result = true) or
+¬(runningState = STATE_SUSPENDED) && (result = false)
+end_process
+
+process getTime() elapsed: long
+pre  true
+post (runningState = STATE_STOPPED ∨ runningState = STATE_SUSPENDED ⇒ elapsed = stopTime - startTime) ∨
+     (runningState = STATE_RUNNING ⇒ elapsed = current_time - startTime) ∨
+     (runningState = STATE_UNSTARTED ⇒ elapsed = 0)
+Functional Scenario Form 
+(runningState = STATE_STOPPED ∨ runningState = STATE_SUSPENDED) && (elapsed = stopTime - startTime) or
+(runningState = STATE_RUNNING) && (elapsed = current_time - startTime) or
+(runningState = STATE_UNSTARTED) && (elapsed = 0)
+end_process
+
+process getSplitTime() splitElapsed: long
+pre  splitState = STATE_SPLIT
+post splitElapsed = stopTime - startTime
+Functional Scenario Form 
+(splitState = STATE_SPLIT) && (splitElapsed = stopTime - startTime)
+end_process
+
+process toString() timeStr: String
+pre  true
+post timeStr = DurationFormatUtils.formatDurationHMS(getTime())
+Functional Scenario Form 
+(true) && (timeStr = DurationFormatUtils.formatDurationHMS(getTime()))
+end_process
+
+process toSplitString() timeStr: String
+pre  splitState = STATE_SPLIT
+post timeStr = DurationFormatUtils.formatDurationHMS(getSplitTime())
+Functional Scenario Form 
+(splitState = STATE_SPLIT) && (timeStr = DurationFormatUtils.formatDurationHMS(getSplitTime()))
+end_process
+
+end_module

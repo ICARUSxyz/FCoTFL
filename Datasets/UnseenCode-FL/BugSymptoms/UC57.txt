@@ -1,0 +1,24 @@
+// Test Case 1: Long period of inactivity
+→ Simulated log:
+[INFO] Initializing client...
+[WARN] lost heartbeat.
+[ERROR] Connection lost due to inactivity.
+// The heartbeat timeout appears too aggressive; connection is closed unexpectedly even under normal pause.
+
+// Test Case 2: Receiving partial socket data
+→ Simulated input: Two consecutive socket buffers arriving, but partial
+→ Expected: Buffer concatenated, complete message reconstructed
+→ Actual: [TypeError] buf.copy is not a function or copy target misaligned
+// Buffer copy operation fails or results in corrupted message assembly due to invalid buffer handling.
+
+// Test Case 3: Message with declared length equal to buffer length
+→ Simulated input: Buffer with 20 bytes, message header declares length = 20
+→ Expected: Message processed
+→ Actual: Message ignored, loop breaks prematurely
+// Message never enters processing loop even though it’s complete.
+
+// Test Case 4: Message parsing with unexpected `msgtype`
+→ Simulated input: Header bytes → 00 00 00 20 01 00 00 00
+→ Expected msgtype = 1
+→ Actual msgtype = 16777216 (shifted value)
+// Message type interpreted incorrectly due to wrong offset in `readInt32LE`.

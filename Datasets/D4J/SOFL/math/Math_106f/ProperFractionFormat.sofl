@@ -1,0 +1,115 @@
+module ProperFractionFormat
+var
+serialVersionUID: long = -6337346779577272307L
+
+process ctor_default()
+pre
+true
+post
+let df = getDefaultNumberFormat() in
+wholeFormat' = df ∧ numeratorFormat' = clone(df) ∧ denominatorFormat' = clone(df)
+Functional Scenario Form
+always && wholeFormat'=defaultNF ∧ numeratorFormat'=clone(defaultNF) ∧ denominatorFormat'=clone(defaultNF)
+end_process
+
+process ctor_withUnifiedFormat(format: NumberFormat)
+pre
+format ≠ null
+post
+wholeFormat' = format ∧ numeratorFormat' = clone(format) ∧ denominatorFormat' = clone(format)
+Functional Scenario Form
+format≠null && wholeFormat'=format ∧ numeratorFormat'=clone(format) ∧ denominatorFormat'=clone(format)
+end_process
+
+process ctor_withEachFormat(wholeF: NumberFormat, numF: NumberFormat, denF: NumberFormat)
+pre
+wholeF ≠ null ∧ numF ≠ null ∧ denF ≠ null
+post
+wholeFormat' = wholeF ∧ numeratorFormat' = numF ∧ denominatorFormat' = denF
+Functional Scenario Form
+wholeF≠null ∧ numF≠null ∧ denF≠null && wholeFormat'=wholeF ∧ numeratorFormat'=numF ∧ denominatorFormat'=denF
+end_process
+
+process formatFraction(f: Fraction, toAppendTo: StringBuffer, pos: FieldPosition) result: StringBuffer
+pre
+f ≠ null ∧ toAppendTo ≠ null ∧ pos ≠ null
+post
+// FieldPosition reset
+pos.beginIndex' = 0 ∧ pos.endIndex' = 0
+∧ let num0 = f.getNumerator(), den = f.getDenominator(),
+whole = num0 div den, rem = num0 mod den,
+remAdj = (whole ≠ 0 ? |rem| : rem),
+prefix = (whole ≠ 0 ? format(wholeFormat, whole) + " " : ""),
+body = format(numeratorFormat, remAdj) + " / " + format(denominatorFormat, den),
+s = prefix + body
+in result = append(toAppendTo, s)
+Functional Scenario Form
+whole=0 && result=append(to, format(numF, num0) + " / " + format(denF, den)) or whole≠0 && result=append(to, format(wholeF, whole) + " " + format(numF, |num0 mod den|) + " / " + format(denF, den))
+end_process
+
+process getWholeFormat() result: NumberFormat
+pre
+true
+post
+result = wholeFormat
+Functional Scenario Form
+always && result=wholeFormat
+end_process
+
+process parseProper(source: String, pos: ParsePosition) result: Fraction
+pre
+source ≠ null ∧ pos ≠ null
+post
+let initial = pos.index in
+// try improper via super.parse
+(exists fr • fr = super.parse(source, pos) ∧ fr ≠ null ∧ result = fr)
+∨
+(
+// reset path when super.parse failed
+pos.index = initial
+∧ parseAndIgnoreWhitespace(source, pos)'
+∧ let wholeN = parse(wholeFormat, source, pos') in
+(wholeN = null ⇒ (pos.index' = initial ∧ result = null))
+∨
+(
+parseAndIgnoreWhitespace(source, pos'')
+∧ let numN = parse(numeratorFormat, source, pos'') in
+(numN = null ⇒ (pos.index' = initial ∧ result = null))
+∨ (numN.intValue < 0 ⇒ (pos.index' = initial ∧ result = null))
+∨
+(
+let start = pos.index'', c = parseNextCharacter(source, pos''') in
+(c = 0 ⇒ result = new Fraction(numN.intValue, 1))
+∨
+(c ≠ '/' ⇒ (pos.index' = initial ∧ pos.errorIndex' = start ∧ result = null))
+∨
+(
+parseAndIgnoreWhitespace(source, pos'''')
+∧ let denN = parse(denominatorFormat, source, pos'''') in
+(denN = null ⇒ (pos.index' = initial ∧ result = null))
+∨ (denN.intValue < 0 ⇒ (pos.index' = initial ∧ result = null))
+∨
+(
+let w = wholeN.intValue, n = numN.intValue, d = denN.intValue,
+sign = MathUtils.sign(w), absw = |w|
+in result = new Fraction((absw*d + n)*sign, d)
+)
+)
+)
+)
+)
+Functional Scenario Form
+superParseSucceeds && result=super.parse(source,pos) or superParseFails ∧ invalidWhole && (pos.index'=initial ∧ result=null) or superParseFails ∧ validWhole ∧ invalidNumerator && (pos.index'=initial ∧ result=null) or validWhole ∧ nonnegativeNumerator ∧ noSlash && result=Fraction(num,1) or validWhole ∧ nonnegativeNumerator ∧ badSlash && (pos.index'=initial ∧ pos.errorIndex'=start ∧ result=null) or validWhole ∧ nonnegativeNumerator ∧ slash ∧ invalidDen && (pos.index'=initial ∧ result=null) or validWhole ∧ nonnegativeNumerator ∧ slash ∧ validDen && result=Fraction((|w|*d+n)*sign(w), d)
+end_process
+
+process setWholeFormat(format: NumberFormat)
+pre
+true
+post
+(format = null ⇒ throw IllegalArgumentException)
+∧ (format ≠ null ⇒ wholeFormat' = format)
+Functional Scenario Form
+format=null && throw IllegalArgumentException or format≠null && wholeFormat'=format
+end_process
+
+end_module

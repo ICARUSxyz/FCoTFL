@@ -1,0 +1,324 @@
+module TypeUtils
+type
+  type: Type
+  toType: Type
+  toClass: Class
+  toParameterizedType: ParameterizedType
+  toGenericArrayType: GenericArrayType
+  typeVarAssigns: map of TypeVariable to Type
+  result: Boolean
+
+process isAssignable(type: Type, toType: Type) result: Boolean
+pre  true
+post result = isAssignable(type, toType, null)
+Functional Scenario Form
+true && (result = isAssignable(type, toType, null))
+end_process
+
+process isAssignable(type: Type, toType: Type, typeVarAssigns: map of TypeVariable to Type) result: Boolean
+pre  true
+post result =
+       if toType is null or Class then isAssignable(type, (Class) toType)
+  else if toType is ParameterizedType then isAssignable(type, (ParameterizedType) toType, typeVarAssigns)
+  else if toType is GenericArrayType then isAssignable(type, (GenericArrayType) toType, typeVarAssigns)
+  else if toType is WildcardType then isAssignable(type, (WildcardType) toType, typeVarAssigns)
+  else if toType is TypeVariable then isAssignable(type, (TypeVariable) toType, typeVarAssigns)
+  else raise IllegalStateException
+Functional Scenario Form
+(toType is null or Class) && (result = isAssignable(type, (Class) toType)) or
+(toType is ParameterizedType) && (result = isAssignable(type, (ParameterizedType) toType, typeVarAssigns)) or
+(toType is GenericArrayType) && (result = isAssignable(type, (GenericArrayType) toType, typeVarAssigns)) or
+(toType is WildcardType) && (result = isAssignable(type, (WildcardType) toType, typeVarAssigns)) or
+(toType is TypeVariable) && (result = isAssignable(type, (TypeVariable) toType, typeVarAssigns)) or
+(¬(toType ∈ {Class, ParameterizedType, GenericArrayType, WildcardType, TypeVariable})) && (raise IllegalStateException)
+end_process
+
+process isAssignable(type: Type, toClass: Class) result: Boolean
+pre  true
+post result =
+       if type = null then (toClass = null or toClass is not primitive)
+  else if toClass = null then false
+  else if type = toClass then true
+  else if type is Class then ClassUtils.isAssignable((Class) type, toClass)
+  else if type is ParameterizedType then isAssignable(getRawType((ParameterizedType) type), toClass)
+  else if type is TypeVariable then ∃ bound ∈ type.bounds • isAssignable(bound, toClass)
+  else if type is GenericArrayType then (toClass = Object or (toClass is array and isAssignable(componentType(type), componentType(toClass))))
+  else if type is WildcardType then false
+  else raise IllegalStateException
+Functional Scenario Form
+(type = null) && (result = (toClass = null or toClass is not primitive)) or
+(toClass = null) && (result = false) or
+(type = toClass) && (result = true) or
+(type is Class) && (result = ClassUtils.isAssignable((Class) type, toClass)) or
+(type is ParameterizedType) && (result = isAssignable(getRawType((ParameterizedType) type), toClass)) or
+(type is TypeVariable) && (result = ∃ bound ∈ type.bounds • isAssignable(bound, toClass)) or
+(type is GenericArrayType) && (result = toClass = Object or (toClass is array and isAssignable(component(type), component(toClass)))) or
+(type is WildcardType) && (result = false) or
+(¬(type ∈ {Class, ParameterizedType, TypeVariable, GenericArrayType, WildcardType})) && (raise IllegalStateException)
+end_process
+
+process isAssignable(type: Type, toParameterizedType: ParameterizedType, typeVarAssigns: map of TypeVariable to Type) result: Boolean
+pre  true
+post result =
+       if type = null then true
+  else if toParameterizedType = null then false
+  else if toParameterizedType = type then true
+  else let toClass = getRawType(toParameterizedType) in
+       let fromTypeVarAssigns = getTypeArguments(type, toClass, null) in
+         if fromTypeVarAssigns = null then false
+         else if fromTypeVarAssigns = ∅ then true
+         else let toTypeVarAssigns = getTypeArguments(toParameterizedType, toClass, typeVarAssigns) in
+              ∀ var ∈ toTypeVarAssigns •
+                let toArg = unrollVariableAssignments(var, toTypeVarAssigns),
+                    fromArg = unrollVariableAssignments(var, fromTypeVarAssigns) in
+                  fromArg ≠ null ∧ (toArg = fromArg or (toArg is WildcardType ∧ isAssignable(fromArg, toArg, typeVarAssigns)))
+Functional Scenario Form
+(type = null) && (result = true) or
+(toParameterizedType = null) && (result = false) or
+(toParameterizedType = type) && (result = true) or
+(¬(type = null ∨ toParameterizedType = null ∨ type = toParameterizedType)) &&
+  (getTypeArguments(type, getRawType(toParameterizedType), null) = null) && (result = false) or
+(fromTypeVarAssigns = ∅) && (result = true) or
+(∀ var ∈ toTypeVarAssigns • validMatch) && (result = true) or
+(∃ var ∈ toTypeVarAssigns • invalidMatch) && (result = false)
+end_process
+
+process isAssignable(type: Type, toGenericArrayType: GenericArrayType, typeVarAssigns: map of TypeVariable to Type) result: Boolean
+pre  true
+post result =
+       if type = null then true
+  else if toGenericArrayType = null then false
+  else if toGenericArrayType = type then true
+  else if type is Class then type is array and isAssignable(type.componentType, toGenericArrayType.componentType)
+  else if type is GenericArrayType then isAssignable(type.componentType, toGenericArrayType.componentType)
+  else if type is WildcardType then ∃ bound ∈ upperBounds(type) • isAssignable(bound, toGenericArrayType)
+  else if type is TypeVariable then ∃ bound ∈ bounds(type) • isAssignable(bound, toGenericArrayType)
+  else if type is ParameterizedType then false
+  else raise IllegalStateException
+Functional Scenario Form
+(type = null) && (result = true) or
+(toGenericArrayType = null) && (result = false) or
+(toGenericArrayType = type) && (result = true) or
+(type is Class and type is array) && (result = isAssignable(component(type), component(toGenericArrayType))) or
+(type is GenericArrayType) && (result = isAssignable(component(type), component(toGenericArrayType))) or
+(type is WildcardType) && (result = ∃ bound ∈ upperBounds(type) • isAssignable(bound, toGenericArrayType)) or
+(type is TypeVariable) && (result = ∃ bound ∈ bounds(type) • isAssignable(bound, toGenericArrayType)) or
+(type is ParameterizedType) && (result = false) or
+(¬(type ∈ {Class, GenericArrayType, WildcardType, TypeVariable, ParameterizedType})) && (raise IllegalStateException)
+end_process
+
+
+process isAssignable(type: Type, toType: Type, typeVarAssigns: map of TypeVariable to Type) result: Boolean
+pre  type ≠ null ∧ toType ≠ null
+post (result = true) ⇔
+      (toType is Class ∧ isAssignable(type, toType as Class)) ∨
+      (toType is ParameterizedType ∧ isAssignable(type, toType as ParameterizedType, typeVarAssigns)) ∨
+      (toType is GenericArrayType ∧ isAssignable(type, toType as GenericArrayType, typeVarAssigns)) ∨
+      (toType is WildcardType ∧ isAssignable(type, toType as WildcardType, typeVarAssigns)) ∨
+      (toType is TypeVariable ∧ isAssignable(type, toType as TypeVariable, typeVarAssigns))
+Functional Scenario Form
+(toType is Class ∧ isAssignable(type, toType as Class)) && (result = true) or
+(toType is ParameterizedType ∧ isAssignable(type, toType as ParameterizedType, typeVarAssigns)) && (result = true) or
+(toType is GenericArrayType ∧ isAssignable(type, toType as GenericArrayType, typeVarAssigns)) && (result = true) or
+(toType is WildcardType ∧ isAssignable(type, toType as WildcardType, typeVarAssigns)) && (result = true) or
+(toType is TypeVariable ∧ isAssignable(type, toType as TypeVariable, typeVarAssigns)) && (result = true)
+end_process
+
+process isAssignable(type: Type, toClass: Class) result: Boolean
+pre  true
+post (result = true) ⇔
+     ((type = null ∧ (toClass = null ∨ ¬toClass.isPrimitive())) ∨
+      (type = toClass) ∨
+      (type is Class ∧ ClassUtils.isAssignable(type as Class, toClass)) ∨
+      (type is ParameterizedType ∧ isAssignable(getRawType(type), toClass)) ∨
+      (type is TypeVariable ∧ ∃ bound ∈ type.getBounds() • isAssignable(bound, toClass)) ∨
+      (type is GenericArrayType ∧ (toClass = Object ∨ (toClass.isArray() ∧ isAssignable(component(type), component(toClass))))) ∨
+      (false))
+Functional Scenario Form
+(type = null ∧ (toClass = null ∨ ¬toClass.isPrimitive())) && (result = true) or
+(type = toClass) && (result = true) or
+(type is Class ∧ ClassUtils.isAssignable(type, toClass)) && (result = true) or
+(type is ParameterizedType ∧ isAssignable(getRawType(type), toClass)) && (result = true) or
+(type is TypeVariable ∧ ∃ bound ∈ type.getBounds() • isAssignable(bound, toClass)) && (result = true) or
+(type is GenericArrayType ∧ (toClass = Object ∨ (toClass.isArray() ∧ isAssignable(component(type), component(toClass))))) && (result = true)
+end_process
+
+process substituteTypeVariables(type: Type, typeVarAssigns: map of TypeVariable to Type) result: Type
+pre  (type is TypeVariable and typeVarAssigns ≠ null) implies (typeVarAssigns containsKey type)
+post ((type is TypeVariable and typeVarAssigns ≠ null and typeVarAssigns containsKey type) implies result = typeVarAssigns[type]) and
+     ((type is TypeVariable and typeVarAssigns ≠ null and not (typeVarAssigns containsKey type)) implies raise IllegalArgumentException) and
+     (not (type is TypeVariable) or typeVarAssigns = null) implies result = type
+Functional Scenario Form
+(type is TypeVariable && typeVarAssigns ≠ null && typeVarAssigns containsKey type) && (result = typeVarAssigns[type]) or
+(type is TypeVariable && typeVarAssigns ≠ null && not (typeVarAssigns containsKey type)) && (raise IllegalArgumentException) or
+((not (type is TypeVariable) || typeVarAssigns = null)) && (result = type)
+end_process
+
+process getTypeArguments(parameterizedType: ParameterizedType) mapResult: map of TypeVariable to Type
+pre  parameterizedType ≠ null
+post mapResult = getTypeArguments(parameterizedType, getRawType(parameterizedType), null)
+Functional Scenario Form
+(parameterizedType ≠ null) && (mapResult = getTypeArguments(parameterizedType, getRawType(parameterizedType), null))
+end_process
+
+process getTypeArguments(type: Type, toClass: Class) mapResult: map of TypeVariable to Type
+pre  type ≠ null and toClass ≠ null
+post mapResult = getTypeArguments(type, toClass, null)
+Functional Scenario Form
+(type ≠ null && toClass ≠ null) && (mapResult = getTypeArguments(type, toClass, null))
+end_process
+
+process getTypeArguments(type: Type, toClass: Class, typeVarAssigns: map of TypeVariable to Type) mapResult: map of TypeVariable to Type
+pre  type ≠ null and toClass ≠ null
+post (type is Class) implies mapResult = getTypeArguments((Class)type, toClass, typeVarAssigns) and
+     (type is ParameterizedType) implies mapResult = getTypeArguments((ParameterizedType)type, toClass, typeVarAssigns) and
+     (type is GenericArrayType) implies mapResult = getTypeArguments(type.getComponentType, toClass.getComponentType, typeVarAssigns) and
+     (type is WildcardType and ∃ bound ∈ upperBounds(type) • isAssignable(bound, toClass)) implies mapResult = getTypeArguments(bound, toClass, typeVarAssigns) and
+     (type is TypeVariable and ∃ bound ∈ bounds(type) • isAssignable(bound, toClass)) implies mapResult = getTypeArguments(bound, toClass, typeVarAssigns)
+Functional Scenario Form
+(type is Class) && (mapResult = getTypeArguments((Class)type, toClass, typeVarAssigns)) or
+(type is ParameterizedType) && (mapResult = getTypeArguments((ParameterizedType)type, toClass, typeVarAssigns)) or
+(type is GenericArrayType) && (mapResult = getTypeArguments(type.getComponentType, toClass.getComponentType, typeVarAssigns)) or
+(type is WildcardType && ∃ bound ∈ upperBounds(type) • isAssignable(bound, toClass)) && (mapResult = getTypeArguments(bound, toClass, typeVarAssigns)) or
+(type is TypeVariable && ∃ bound ∈ bounds(type) • isAssignable(bound, toClass)) && (mapResult = getTypeArguments(bound, toClass, typeVarAssigns))
+end_process
+
+process determineTypeArguments(cls: Class, superType: ParameterizedType) mapResult: map of TypeVariable to Type
+pre  cls ≠ null and superType ≠ null and isAssignable(cls, getRawType(superType))
+post (cls = getRawType(superType)) implies mapResult = getTypeArguments(superType, getRawType(superType), null) and
+     (cls ≠ getRawType(superType) and getClosestParentType(cls, getRawType(superType)) is Class) implies mapResult = determineTypeArguments(getClosestParentType(cls, getRawType(superType)), superType) and
+     (cls ≠ getRawType(superType) and getClosestParentType(cls, getRawType(superType)) is ParameterizedType) implies
+         (mapResult = determineTypeArguments(getRawType(mid), superType) with mid = getClosestParentType(cls, getRawType(superType)) and
+          mapTypeVariablesToArguments(cls, mid, mapResult))
+Functional Scenario Form
+(cls = getRawType(superType)) && (mapResult = getTypeArguments(superType, getRawType(superType), null)) or
+(cls ≠ getRawType(superType) && getClosestParentType(cls, getRawType(superType)) is Class) && 
+  (mapResult = determineTypeArguments(getClosestParentType(cls, getRawType(superType)), superType)) or
+(cls ≠ getRawType(superType) && getClosestParentType(cls, getRawType(superType)) is ParameterizedType) && 
+  (mapResult = determineTypeArguments(getRawType(mid), superType) with mapTypeVariablesToArguments(cls, mid, mapResult))
+end_process
+
+process mapTypeVariablesToArguments(cls: Class, parameterizedType: ParameterizedType, typeVarAssigns: map of TypeVariable to Type)
+pre  cls ≠ null and parameterizedType ≠ null and typeVarAssigns ≠ null
+post for each typeVar, typeArg in parameterizedType:
+       if typeArg ∈ cls.getTypeParameters() and typeVarAssigns containsKey(typeVar)
+       then typeVarAssigns[typeArg] = typeVarAssigns[typeVar]
+Functional Scenario Form
+(for each (typeArg ∈ cls.getTypeParameters()) and (typeVarAssigns containsKey(typeVar))) &&
+(typeVarAssigns[typeArg] = typeVarAssigns[typeVar])
+end_process
+
+process getClosestParentType(cls: Class, superClass: Class) result: Type
+pre  cls ≠ null and superClass ≠ null
+post (superClass is interface and ∃ mid ∈ cls.interfaces • isAssignable(mid, superClass)) implies result = the closest such interface and
+     (otherwise) implies result = cls.getGenericSuperclass()
+Functional Scenario Form
+(superClass isInterface && ∃ mid ∈ cls.interfaces • isAssignable(mid, superClass)) && (result = the closest interface) or
+(¬(∃ interface) || ¬superClass.isInterface) && (result = cls.getGenericSuperclass())
+end_process
+
+process isInstance(value: Object, type: Type) result: Boolean
+pre  true
+post (type = null) implies result = false and
+     (value = null) implies result = not (type is Class and type.isPrimitive) and
+     (value ≠ null) implies result = isAssignable(value.getClass(), type, null)
+Functional Scenario Form
+(type = null) && (result = false) or
+(value = null && type is not primitive) && (result = true) or
+(value = null && type is primitive) && (result = false) or
+(value ≠ null) && (result = isAssignable(value.getClass(), type, null))
+end_process
+
+process normalizeUpperBounds(bounds: sequence of Type) result: sequence of Type
+pre  bounds ≠ null
+post if |bounds| < 2 then result = bounds else
+     result = bounds - { redundant bounds assignable to others in bounds }
+Functional Scenario Form
+(|bounds| < 2) && (result = bounds) or
+(|bounds| ≥ 2) && (result = bounds minus assignable redundancies)
+end_process
+
+process getImplicitBounds(typeVariable: TypeVariable) result: sequence of Type
+pre  typeVariable ≠ null
+post if typeVariable.getBounds() = ∅ then result = { Object } else
+     result = normalizeUpperBounds(typeVariable.getBounds())
+Functional Scenario Form
+(typeVariable.getBounds() = ∅) && (result = { Object }) or
+(typeVariable.getBounds() ≠ ∅) && (result = normalizeUpperBounds(typeVariable.getBounds()))
+end_process
+
+process getImplicitUpperBounds(wildcardType: WildcardType) result: sequence of Type
+pre  wildcardType ≠ null
+post if wildcardType.getUpperBounds() = ∅ then result = { Object } else
+     result = normalizeUpperBounds(wildcardType.getUpperBounds())
+Functional Scenario Form
+(wildcardType.getUpperBounds() = ∅) && (result = { Object }) or
+(wildcardType.getUpperBounds() ≠ ∅) && (result = normalizeUpperBounds(wildcardType.getUpperBounds()))
+end_process
+
+process getImplicitLowerBounds(wildcardType: WildcardType) result: sequence of Type
+pre  wildcardType ≠ null
+post if wildcardType.getLowerBounds() = ∅ then result = { null } else
+     result = wildcardType.getLowerBounds()
+Functional Scenario Form
+(wildcardType.getLowerBounds() = ∅) && (result = { null }) or
+(wildcardType.getLowerBounds() ≠ ∅) && (result = wildcardType.getLowerBounds())
+end_process
+
+process typesSatisfyVariables(typeVarAssigns: map of TypeVariable to Type) result: Boolean
+pre  typeVarAssigns ≠ null
+post result = (∀ (typeVar, type) ∈ typeVarAssigns •
+               ∀ bound ∈ getImplicitBounds(typeVar) •
+               isAssignable(type, substituteTypeVariables(bound, typeVarAssigns), typeVarAssigns))
+Functional Scenario Form
+(∀ (typeVar, type) ∈ typeVarAssigns •
+   ∀ bound ∈ getImplicitBounds(typeVar) •
+   isAssignable(type, substituteTypeVariables(bound, typeVarAssigns), typeVarAssigns)) && (result = true) or
+(∃ typeVar, bound • ¬isAssignable(...)) && (result = false)
+end_process
+
+process getRawType(parameterizedType: ParameterizedType) result: Class
+pre  parameterizedType ≠ null and parameterizedType.getRawType() is Class
+post result = (Class) parameterizedType.getRawType()
+Functional Scenario Form
+(parameterizedType.getRawType() ∈ Class) && (result = (Class) parameterizedType.getRawType())
+end_process
+
+process getRawType(type: Type, assigningType: Type) result: Class
+pre  type ≠ null
+post
+  (type is Class) implies result = (Class) type and
+  (type is ParameterizedType) implies result = getRawType((ParameterizedType) type) and
+  (type is TypeVariable and assignable) implies result = getRawType(typeArgument, assigningType) where typeArgument = getTypeArguments(assigningType, declarationClass).get(type) and
+  (type is GenericArrayType) implies result = Array.newInstance(componentClass, 0).getClass() where componentClass = getRawType(genericComponentType, assigningType) and
+  (type is WildcardType or cannot resolve) implies result = null
+Functional Scenario Form
+(type ∈ Class) && (result = (Class) type) or
+(type ∈ ParameterizedType) && (result = getRawType((ParameterizedType) type)) or
+(type ∈ TypeVariable and has mapping) && (result = getRawType(mappedType, assigningType)) or
+(type ∈ GenericArrayType) && (result = Array.newInstance(componentType, 0).getClass()) or
+(type ∈ WildcardType or unresolvable) && (result = null)
+end_process
+
+process isArrayType(type: Type) result: Boolean
+pre  type ≠ null
+post result = (type ∈ GenericArrayType) ∨ (type ∈ Class ∧ type.isArray())
+Functional Scenario Form
+(type is GenericArrayType or is Class and isArray) && (result = true) or
+(else) && (result = false)
+end_process
+
+process getArrayComponentType(type: Type) result: Type
+pre  type ≠ null
+post
+  (type ∈ Class and isArray) implies result = type.getComponentType() and
+  (type ∈ GenericArrayType) implies result = type.getGenericComponentType() and
+  (else) implies result = null
+Functional Scenario Form
+(type ∈ Class ∧ type.isArray()) && (result = type.getComponentType()) or
+(type ∈ GenericArrayType) && (result = type.getGenericComponentType()) or
+(else) && (result = null)
+end_process
+
+
+end_module

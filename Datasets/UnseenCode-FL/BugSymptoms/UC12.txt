@@ -1,0 +1,25 @@
+Bug Report: ChatgptClient
+
+Test Case:
+
+```cpp
+ChatgptClient client;
+client.sendUserMessage("Hello, who are you?");
+```
+
+Observed Behavior:
+
+* Application compiles but fails at runtime when making request to OpenAI API.
+
+Expected Behavior:
+
+* Sends user input to OpenAI API and receives a valid response from ChatGPT.
+* Updates `chatgptReply` correctly and emits `replyIsReady`.
+
+Actual Behavior:
+
+* Crashes with out-of-bound access on response parsing.
+* Reply content not properly stored or emitted.
+* Debug output shows "Failed to open openai key config file" or "API key not found" even when the file exists.
+* Authorization header not recognized.
+* JSON object malformed due to variable mismatch.

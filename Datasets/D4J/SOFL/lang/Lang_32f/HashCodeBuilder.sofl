@@ -1,0 +1,298 @@
+module HashCodeBuilder
+type
+  initialNonZeroOddNumber: int
+  multiplierNonZeroOddNumber: int
+  testTransients: Boolean
+  hash: int
+  value: Boolean
+  bval: byte
+  cval: char
+  fval: float
+  dval: double
+  ival: int
+  lval: long
+  object: Object
+  arrayBool: sequence of Boolean
+  arrayByte: sequence of byte
+  arrayChar: sequence of char
+  arrayInt: sequence of int
+  arrayLong: sequence of long
+  arrayFloat: sequence of float
+  arrayDouble: sequence of double
+  arrayObject: sequence of Object
+  hcb: HashCodeBuilder
+  s: short
+  superHashCode: int
+  arrayShort: sequence of short
+  hcb: HashCodeBuilder
+  hash: int
+
+process reflectionHashCode(initialNonZeroOddNumber: int, multiplierNonZeroOddNumber: int, object: Object)
+  result: int
+pre
+  object ≠ null ∧
+  initialNonZeroOddNumber ≠ 0 ∧ initialNonZeroOddNumber mod 2 = 1 ∧
+  multiplierNonZeroOddNumber ≠ 0 ∧ multiplierNonZeroOddNumber mod 2 = 1
+post
+  result = computed hash code from object’s non-static, non-transient fields using reflection with base initialNonZeroOddNumber and multiplierNonZeroOddNumber
+
+Functional Scenario Form
+  (object ≠ null ∧ initialNonZeroOddNumber mod 2 = 1 ∧ multiplierNonZeroOddNumber mod 2 = 1) &&
+  (result = computed hash of object via reflection, including inherited fields and excluding static fields)
+end_process
+
+process reflectionHashCodeWithClass<T>(
+  initialNonZeroOddNumber: int,
+  multiplierNonZeroOddNumber: int,
+  object: T,
+  testTransients: Boolean,
+  reflectUpToClass: Class of T,
+  excludeFields: sequence of String
+) result: int
+pre
+  object ≠ null ∧
+  initialNonZeroOddNumber ≠ 0 ∧ initialNonZeroOddNumber mod 2 = 1 ∧
+  multiplierNonZeroOddNumber ≠ 0 ∧ multiplierNonZeroOddNumber mod 2 = 1
+post
+  result = computed hash of object by reflecting fields up to reflectUpToClass
+Functional Scenario Form
+  (object ≠ null ∧ initialNonZeroOddNumber mod 2 = 1 ∧ multiplierNonZeroOddNumber mod 2 = 1) &&
+  (result = hash computed via reflection, skipping fields in excludeFields, including superclass up to reflectUpToClass)
+end_process
+
+process reflectionHashCodeDefault(object: Object) result: int
+pre  object ≠ null
+post result = reflectionHashCode(17, 37, object, false, null, null)
+Functional Scenario Form
+  (object ≠ null) && (result = reflectionHashCode using defaults: 17, 37, testTransients = false)
+end_process
+
+process reflectionHashCodeTransients(object: Object, testTransients: Boolean) result: int
+pre  object ≠ null
+post result = reflectionHashCode(17, 37, object, testTransients, null, null)
+Functional Scenario Form
+  (object ≠ null) && (result = hash with or without transient fields depending on testTransients)
+end_process
+
+process reflectionHashCodeExcludeFields(object: Object, excludeFields: sequence of String) result: int
+pre  object ≠ null
+post result = reflectionHashCode(17, 37, object, false, null, excludeFields)
+Functional Scenario Form
+  (object ≠ null) && (result = hash excluding specified fields)
+end_process
+
+process register(value: Object)
+pre  true
+post value is added to registry for cycle detection
+Functional Scenario Form
+  (true) && (value added to thread-local registry)
+end_process
+
+process unregister(value: Object)
+pre  true
+post value is removed from registry; if registry is empty, registry cleared
+Functional Scenario Form
+  (true) && (value removed from registry; registry reset if empty)
+end_process
+
+process HashCodeBuilderConstructorDefault() result: HashCodeBuilder
+pre  true
+post result.iConstant = 37 ∧ result.iTotal = 17
+Functional Scenario Form
+  (true) && (HashCodeBuilder constructed with default constants 17, 37)
+end_process
+
+process HashCodeBuilderConstructorCustom(
+  initialNonZeroOddNumber: int,
+  multiplierNonZeroOddNumber: int
+) result: HashCodeBuilder
+pre
+  initialNonZeroOddNumber ≠ 0 ∧ initialNonZeroOddNumber mod 2 = 1 ∧
+  multiplierNonZeroOddNumber ≠ 0 ∧ multiplierNonZeroOddNumber mod 2 = 1
+post
+  result.iTotal = initialNonZeroOddNumber ∧ result.iConstant = multiplierNonZeroOddNumber
+Functional Scenario Form
+  (valid odd initial and multiplier) && (HashCodeBuilder initialized with them)
+end_process
+
+process appendBoolean(hcb: HashCodeBuilder, value: Boolean) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + (if value then 0 else 1)
+Functional Scenario Form
+  (value = true) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (value = false) && (result.iTotal = hcb.iTotal * hcb.iConstant + 1)
+end_process
+
+process appendBooleanArray(hcb: HashCodeBuilder, array: arrayBool) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all elements of array to hcb sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendBoolean(array[i]))
+end_process
+
+process appendByte(hcb: HashCodeBuilder, value: byte) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + value
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + value)
+end_process
+
+process appendByteArray(hcb: HashCodeBuilder, array: arrayByte) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all bytes in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendByte(array[i]))
+end_process
+
+process appendChar(hcb: HashCodeBuilder, value: char) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + value
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + value)
+end_process
+
+process appendCharArray(hcb: HashCodeBuilder, array: arrayChar) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all chars in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendChar(array[i]))
+end_process
+
+process appendFloat(hcb: HashCodeBuilder, value: float) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + Float.floatToIntBits(value)
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + Float.floatToIntBits(value))
+end_process
+
+process appendFloatArray(hcb: HashCodeBuilder, array: arrayFloat) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all floats in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendFloat(array[i]))
+end_process
+
+process appendDouble(hcb: HashCodeBuilder, value: double) result: HashCodeBuilder
+pre  true
+post result = append(hcb, Double.doubleToLongBits(value))
+Functional Scenario Form
+  (true) && (result.iTotal = result of appendLong(hcb, Double.doubleToLongBits(value)))
+end_process
+
+process appendDoubleArray(hcb: HashCodeBuilder, array: arrayDouble) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all doubles in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendDouble(array[i]))
+end_process
+
+process appendInt(hcb: HashCodeBuilder, value: int) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + value
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + value)
+end_process
+
+process appendIntArray(hcb: HashCodeBuilder, array: arrayInt) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all ints in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendInt(array[i]))
+end_process
+
+process appendLong(hcb: HashCodeBuilder, value: long) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + int(value xor (value >> 32))
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + (int)(value xor (value >> 32)))
+end_process
+
+process appendLongArray(hcb: HashCodeBuilder, array: arrayLong) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all longs in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendLong(array[i]))
+end_process
+
+process appendObject(hcb: HashCodeBuilder, object: Object) result: HashCodeBuilder
+pre  true
+post
+  if object = null then result.iTotal = hcb.iTotal * hcb.iConstant
+  else if object is array then dispatch append by component type
+  else result.iTotal = hcb.iTotal * hcb.iConstant + object.hashCode()
+Functional Scenario Form
+  (object = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (object is array) && (result = dispatch to array-typed append) or
+  (object is normal) && (result.iTotal = hcb.iTotal * hcb.iConstant + object.hashCode())
+end_process
+
+process appendObjectArray(hcb: HashCodeBuilder, array: arrayObject) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = append all objects in array sequentially
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendObject(array[i]))
+end_process
+
+process appendShort(hcb: HashCodeBuilder, s: short) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + s
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + s)
+end_process
+
+process appendShortArray(hcb: HashCodeBuilder, array: arrayShort) result: HashCodeBuilder
+pre  true
+post
+  result = hcb if array = null
+  else result = hcb with each array[i] appended via appendShort
+Functional Scenario Form
+  (array = null) && (result.iTotal = hcb.iTotal * hcb.iConstant) or
+  (array ≠ null) && (∀i: 0 ≤ i < |array|, result includes appendShort(array[i]))
+end_process
+
+process appendSuper(hcb: HashCodeBuilder, superHashCode: int) result: HashCodeBuilder
+pre  true
+post result.iTotal = hcb.iTotal * hcb.iConstant + superHashCode
+Functional Scenario Form
+  (true) && (result.iTotal = hcb.iTotal * hcb.iConstant + superHashCode)
+end_process
+
+process toHashCode(hcb: HashCodeBuilder) result: int
+pre  true
+post result = hcb.iTotal
+Functional Scenario Form
+  (true) && (result = hcb.iTotal)
+end_process
+
+process hashCode(hcb: HashCodeBuilder) result: int
+pre  true
+post result = hcb.iTotal
+Functional Scenario Form
+  (true) && (result = hcb.iTotal)
+end_process
+
+end_module

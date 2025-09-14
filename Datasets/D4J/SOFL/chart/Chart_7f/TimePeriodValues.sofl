@@ -1,0 +1,318 @@
+module TimePeriodValues
+
+types:
+  DEFAULT_DOMAIN_DESCRIPTION: String
+  domain: String
+  DEFAULT_RANGE_DESCRIPTION: String
+  range: String
+  data: List
+
+var
+  DEFAULT_DOMAIN: string = "Time"
+  DEFAULT_RANGE: string = "Value"
+  serialVersionUID: -2210593619794989709L
+
+process TimePeriodValues_Init1(
+    name: Comparable
+) : TimePeriodValues
+pre 
+  name ≠ null
+post 
+  this.domain' = DEFAULT_DOMAIN ∧ 
+  this.range' = DEFAULT_RANGE ∧ 
+  this.data' = new ArrayList()
+Functional Scenario Form 
+validName&&defaultsInitialized 
+end_process
+
+process TimePeriodValues_Init2(
+    name: Comparable,
+    domain: string,
+    range: string
+) : TimePeriodValues
+pre 
+  name ≠ null
+post 
+  this.domain' = domain ∧ 
+  this.range' = range ∧ 
+  this.data' = new ArrayList()
+Functional Scenario Form 
+customDomainRangeApplied 
+end_process
+
+process getDomainDescription(
+    this: TimePeriodValues
+) result: string
+post 
+  result = this.domain
+Functional Scenario Form 
+nonNullDomain&&valueReturned 
+nullDomain&&nullReturn 
+end_process
+
+process setDomainDescription(
+    this: TimePeriodValues,
+    description: string
+)
+post 
+  oldVal = this.domain ∧ 
+  this.domain' = description ∧ 
+  firePropertyChange("Domain", oldVal, description)
+Functional Scenario Form 
+nonNullInput&&changeEventTriggered 
+sameValue&&noEvent 
+end_process
+
+process getRangeDescription(
+    this: TimePeriodValues
+) result: string
+post 
+  result = this.range
+Functional Scenario Form 
+nonNullRange&&returnValue 
+nullRangeReturn 
+end_process
+
+process setRangeDescription(
+    this: TimePeriodValues,
+    description: string
+)
+post 
+  oldVal = this.range ∧ 
+  this.range' = description ∧ 
+  firePropertyChange("Range", oldVal, description)
+Functional Scenario Form 
+rangeUpdateWithEvent 
+descriptionUnchanged&&silent 
+end_process
+
+process add(
+    this: TimePeriodValues,
+    item: TimePeriodValue
+)
+pre 
+  item ≠ null
+post 
+  this.data' = append(this.data, item) ∧ 
+  updateAllBounds(this, this.data.size-1) ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validItemAdded&&boundsUpdated || 
+invalidNullItem&&preFailed 
+end_process
+
+process updateAllBounds(
+    this: TimePeriodValues,
+    index: int
+)
+pre 
+  index ∈ 0..this.data.size-1
+post 
+  period = this.data.get(index).period ∧ 
+  startTime = period.start.time ∧ 
+  endTime = period.end.time ∧ 
+  middleTime = startTime + ((endTime - startTime) / 2) ∧ 
+  
+  // minStartIndex update
+  (this.minStartIndex ≠ -1 ⇒ 
+    currentMin = this.data.get(this.minStartIndex).period.start.time ∧ 
+    this.minStartIndex' = (startTime < currentMin) ? index : this.minStartIndex
+  ) ∨ this.minStartIndex' = index ∧ 
+  
+  // maxStartIndex update
+  (this.maxStartIndex ≠ -1 ⇒ 
+    currentMax = this.data.get(this.maxStartIndex).period.start.time ∧ 
+    this.maxStartIndex' = (startTime > currentMax) ? index : this.maxStartIndex
+  ) ∨ this.maxStartIndex' = index ∧ 
+  
+  // minMiddleIndex update
+  (this.minMiddleIndex ≠ -1 ⇒ 
+    s = this.data.get(this.minMiddleIndex).period.start.time ∧ 
+    e = this.data.get(this.minMiddleIndex).period.end.time ∧ 
+    currentMid = s + (e - s)/2 ∧ 
+    this.minMiddleIndex' = (middleTime < currentMid) ? index : this.minMiddleIndex
+  ) ∨ this.minMiddleIndex' = index ∧ 
+  
+  // maxMiddleIndex update
+  (this.maxMiddleIndex ≠ -1 ⇒ 
+    s = this.data.get(this.maxMiddleIndex).period.start.time ∧ 
+    e = this.data.get(this.maxMiddleIndex).period.end.time ∧ 
+    currentMid = s + (e - s)/2 ∧ 
+    this.maxMiddleIndex' = (middleTime > currentMid) ? index : this.maxMiddleIndex
+  ) ∨ this.maxMiddleIndex' = index ∧ 
+  
+  // minEndIndex update
+  (this.minEndIndex ≠ -1 ⇒ 
+    currentMin = this.data.get(this.minEndIndex).period.end.time ∧ 
+    this.minEndIndex' = (endTime < currentMin) ? index : this.minEndIndex
+  ) ∨ this.minEndIndex' = index ∧ 
+  
+  // maxEndIndex update
+  (this.maxEndIndex ≠ -1 ⇒ 
+    currentMax = this.data.get(this.maxEndIndex).period.end.time ∧ 
+    this.maxEndIndex' = (endTime > currentMax) ? index : this.maxEndIndex
+  ) ∨ this.maxEndIndex' = index
+Functional Scenario Form 
+firstItemAdded&&allIndicesSet || 
+newStartMin&&minStartIndexUpdated || 
+newMiddleMax&&maxMiddleIndexUpdated || 
+noIndexChanges&&valuesMaintained 
+end_process
+
+process recalculateBounds(
+    this: TimePeriodValues
+)
+post 
+  this.minStartIndex' = -1 ∧ 
+  this.minMiddleIndex' = -1 ∧ 
+  this.minEndIndex' = -1 ∧ 
+  this.maxStartIndex' = -1 ∧ 
+  this.maxMiddleIndex' = -1 ∧ 
+  this.maxEndIndex' = -1 ∧ 
+  ∀i ∈ 0..this.data.size-1 | 
+    updateBounds(this.data.get(i).period, i)
+Functional Scenario Form 
+existingData&&fullRebuild || 
+emptyDataSet&&allIndicesReset 
+end_process
+
+process add_byPeriodValue(
+    this: TimePeriodValues,
+    period: TimePeriod,
+    value: Number
+)
+post 
+  item = new TimePeriodValue(period, value) ∧ 
+  add(this, item)
+Functional Scenario Form 
+doubleValueAdded||numberValueHandled 
+end_process
+
+process update(
+    this: TimePeriodValues,
+    index: int,
+    value: Number
+)
+pre 
+  index ∈ 0..this.data.size-1 ∧ 
+  value ≠ null
+post 
+  item = this.data.get(index) ∧ 
+  item.value' = value ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validUpdateValue&&eventFired 
+outOfRangeIndex&&preFailed 
+end_process
+
+process deleteRange(
+    this: TimePeriodValues,
+    start: int,
+    end: int
+)
+pre 
+  start ≤ end ∧ 
+  end < this.data.size
+post 
+  removeCount = end - start + 1 ∧ 
+  ∀i ∈ 0..removeCount-1 | 
+    this.data' = removeAt(this.data, start) ∧ 
+  recalculateBounds() ∧ 
+  fireSeriesChanged()
+Functional Scenario Form 
+validRangeDeletion&&rebuildIndices 
+zeroLengthRange&&noOp 
+end_process
+
+process equals(
+    this: TimePeriodValues,
+    obj: Object
+) result: bool
+post 
+  (obj = this ⇒ result = true) ∨ 
+  (obj ∉ TimePeriodValues ⇒ result = false) ∨ 
+  (¬super.equals(obj) ⇒ result = false) ∨ 
+  (that = (TimePeriodValues)obj ∧ (
+    ¬ObjectUtilities.equal(this.domain, that.domain) ∨ 
+    ¬ObjectUtilities.equal(this.range, that.range) ∨ 
+    this.data.size ≠ that.data.size ∨ 
+    ∃i ∈ 0..this.data.size-1 | ¬this.data.get(i).equals(that.data.get(i))
+  ) ⇒ result = false) ∨ 
+  result = true
+Functional Scenario Form 
+identicalObject&&returnTrue 
+sizeMismatch&&false 
+elementInequality&&false 
+domainMismatch&&false 
+fullEquality&&true 
+end_process
+
+process hashCode(
+    this: TimePeriodValues
+) result: int
+post 
+  result1 = (this.domain ≠ null ? this.domain.hashCode() : 0) ∧ 
+  result2 = 29*result1 + (this.range ≠ null ? this.range.hashCode() : 0) ∧ 
+  result3 = 29*result2 + this.data.hashCode() ∧ 
+  result4 = 29*result3 + this.minStartIndex ∧ 
+  result5 = 29*result4 + this.maxStartIndex ∧ 
+  result6 = 29*result5 + this.minMiddleIndex ∧ 
+  result7 = 29*result6 + this.maxMiddleIndex ∧ 
+  result' = 29*result7 + this.minEndIndex + this.maxEndIndex
+Functional Scenario Form 
+nonNullDescriptions&&fullHash 
+nullDomains&&hashCodePropagation 
+end_process
+
+process createCopy(
+    this: TimePeriodValues,
+    start: int,
+    end: int
+) result: TimePeriodValues
+pre 
+  start ≥ 0 ∧ 
+  end < this.data.size ∧ 
+  start ≤ end
+post 
+  result' = super.clone() ∧ 
+  result.data' = new ArrayList() ∧ 
+  ∀i ∈ start..end | 
+    clonedItem = this.data.get(i).clone() ∧ 
+    result.data.add(clonedItem) ∧ 
+    result.updateAllBounds() 
+Functional Scenario Form 
+validRange&&deepClone || 
+startEqualsEnd&&singleItemCopy 
+end_process
+
+process clone(
+    this: TimePeriodValues
+) result: TimePeriodValues
+post 
+  result' = this.createCopy(0, max(0, this.data.size-1))
+Functional Scenario Form 
+nonEmptyData&&fullCopy || 
+emptySeries&&newInstance 
+end_process
+
+process getMinStartIndex(
+    this: TimePeriodValues
+) result: int
+post 
+  result = this.minStartIndex 
+Functional Scenario Form 
+initializedIndex&&valueReturned || 
+emptyData&&negativeOne 
+end_process
+
+process getMaxEndIndex(
+    this: TimePeriodValues
+) result: int 
+post 
+  result = this.maxEndIndex
+Functional Scenario Form 
+validMaxEndIndex|| uninitializedState 
+end_process
+
+
+end_module

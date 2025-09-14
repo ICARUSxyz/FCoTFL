@@ -1,0 +1,82 @@
+module UC62_PlayerController
+type 
+  speed: float
+  xVelocity: float
+  checkRadius: float
+  isOnGround: Boolean
+  playerDead: Boolean
+  result: Boolean
+
+process Start() result: Boolean
+pre  
+  rb = null ∧ anim = null
+post 
+  rb = GetComponent<Rigidbody2D>() ∧ anim = GetComponent<Animator>() ∧ result = true
+Functional Scenario Form 
+(rb = null ∧ anim = null) && (rb = GetComponent<Rigidbody2D>() ∧ anim = GetComponent<Animator>() ∧ result = true)
+end_process
+
+process Update() result: Boolean
+pre  
+  groundCheck ≠ null ∧ anim ≠ null
+post 
+  isOnGround = Physics2D.OverlapCircle(groundCheck.transform.position, checkRadius, platform) ∧
+  anim.SetBool("isOnGround", isOnGround) is called ∧
+  Movement() is executed ∧
+  result = true
+Functional Scenario Form 
+(groundCheck ≠ null ∧ anim ≠ null) && (isOnGround updated ∧ anim updated ∧ Movement() executed ∧ result = true)
+end_process
+
+process Movement() result: Boolean
+pre  
+  rb ≠ null ∧ anim ≠ null
+post 
+  xVelocity = Input.GetAxisRaw("Horizontal") ∧
+  rb.velocity.x = xVelocity * speed ∧
+  anim.SetFloat("speed", Abs(rb.velocity.x)) is called ∧
+  (xVelocity ≠ 0 → transform.localScale.x = xVelocity) ∧
+  result = true
+Functional Scenario Form 
+(rb ≠ null ∧ anim ≠ null) && (xVelocity updated ∧ rb.velocity updated ∧ anim updated ∧ (xVelocity ≠ 0 → flipped) ∧ result = true)
+end_process
+
+process OnCollisionEnter2D(other: Collision2D) result: Boolean
+pre  
+  other ≠ null
+post 
+  (other.gameObject.CompareTag("Fan") = true → rb.velocity.y = 10f) ∧ result = true
+Functional Scenario Form 
+(other ≠ null ∧ other.tag = "Fan") && (rb.velocity.y = 10f ∧ result = true) or 
+(other ≠ null ∧ other.tag ≠ "Fan") && (no action taken ∧ result = true)
+end_process
+
+process OnTriggerEnter2D(col: Collider2D) result: Boolean
+pre  
+  col ≠ null ∧ anim ≠ null
+post 
+  (col.CompareTag("Spike") = true → anim.SetTrigger("dead") is called) ∧ result = true
+Functional Scenario Form 
+(col ≠ null ∧ col.tag = "Spike") && (anim.SetTrigger("dead") is called ∧ result = true) or 
+(col ≠ null ∧ col.tag ≠ "Spike") && (no action taken ∧ result = true)
+end_process
+
+process PlayerDead() result: Boolean
+pre  
+  true
+post 
+  playerDead = true ∧ GameManager.GameOver(playerDead) is called ∧ result = true
+Functional Scenario Form 
+(true) && (playerDead = true ∧ GameManager.GameOver(playerDead) is called ∧ result = true)
+end_process
+
+process OnDrawGizmosSelected() result: Boolean
+pre  
+  groundCheck ≠ null
+post 
+  Gizmos.color = Color.blue ∧ Gizmos.DrawWireSphere(groundCheck.transform.position, checkRadius) is called ∧ result = true
+Functional Scenario Form 
+(groundCheck ≠ null) && (Gizmos configured and sphere drawn ∧ result = true)
+end_process
+
+end_module

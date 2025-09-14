@@ -1,0 +1,50 @@
+module UC25_allruledescriptdialog
+type
+  width: int
+  height: int
+
+process AllRuleDescriptDialog(parent: QWidget) result: AllRuleDescriptDialog
+pre
+  true
+post
+  result.ui ≠ null ∧
+  result.ui.tableWidget is connected to slot showRuleDescript(QTableWidgetItem*) ∧
+  result.ui.treeWidget is connected to slot showRuleDescript(QTreeWidgetItem*, int)
+Functional Scenario Form
+(true) && (initialize dialog and connect table/tree signals to corresponding slots)
+end_process
+
+process ~AllRuleDescriptDialog() result: void
+pre
+  true
+post
+  ui is deleted
+Functional Scenario Form
+(true) && (ui memory released)
+end_process
+
+process showRuleDescript(item: QTreeWidgetItem*, column: int) result: void
+pre
+  true
+post
+  ruleDescript is created ∧
+  factor is initialized ∧
+  ruleDescript.size = factor.getScreenFactor() * original size ∧
+  ruleDescript is shown
+Functional Scenario Form
+(true) && (create dialog, resize it with screen factor, and show)
+end_process
+
+process showRuleDescript(item: QTableWidgetItem*) result: void
+pre
+  true
+post
+  ruleDescript is created ∧
+  factor is initialized ∧
+  ruleDescript.size = factor.getScreenFactor() * original size ∧
+  ruleDescript is shown
+Functional Scenario Form
+(true) && (create dialog, resize it with screen factor, and show)
+end_process
+
+end_module

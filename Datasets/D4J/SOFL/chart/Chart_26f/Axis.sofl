@@ -1,0 +1,939 @@
+module Axis  
+type:  
+  DEFAULT_AXIS_VISIBLE: boolean 
+  DEFAULT_TICK_LABELS_VISIBLE: boolean
+  DEFAULT_TICK_MARKS_VISIBLE: boolean
+  DEFAULT_TICK_MARK_INSIDE_LENGTH: float
+  DEFAULT_TICK_MARK_OUTSIDE_LENGTH: float
+  tickMarksVisibl: boolean
+  tickMarkInsideLength: float
+  tickMarkOutsideLength: float
+  fixedDimension: double
+
+var:  
+  serialVersionUID: long = 7719289504573298271L  
+  visible: bool = DEFAULT_AXIS_VISIBLE  
+  label: String = null  
+  labelAngle: double = 0.0  
+  labelToolTip: String = null  
+  labelURL: String = null  
+  axisLineVisible: bool = true  
+
+process constructor(label: String)  
+pre true  
+post  
+  this.label' = label ∧  
+  visible' = DEFAULT_AXIS_VISIBLE ∧  
+  labelFont' = DEFAULT_AXIS_LABEL_FONT ∧  
+  labelPaint' = DEFAULT_AXIS_LABEL_PAINT ∧  
+  labelInsets' = DEFAULT_AXIS_LABEL_INSETS ∧  
+  labelAngle' = 0.0 ∧  
+  labelToolTip' = null ∧  
+  labelURL' = null ∧  
+  axisLineVisible' = true ∧  
+  axisLinePaint' = DEFAULT_AXIS_LINE_PAINT ∧  
+  axisLineStroke' = DEFAULT_AXIS_LINE_STROKE ∧  
+  tickLabelsVisible' = DEFAULT_TICK_LABELS_VISIBLE ∧  
+  tickLabelFont' = DEFAULT_TICK_LABEL_FONT ∧  
+  tickLabelPaint' = DEFAULT_TICK_LABEL_PAINT ∧  
+  tickLabelInsets' = DEFAULT_TICK_LABEL_INSETS ∧  
+  tickMarksVisible' = DEFAULT_TICK_MARKS_VISIBLE ∧  
+  tickMarkStroke' = DEFAULT_TICK_MARK_STROKE ∧  
+  tickMarkPaint' = DEFAULT_TICK_MARK_PAINT ∧  
+  tickMarkInsideLength' = DEFAULT_TICK_MARK_INSIDE_LENGTH ∧  
+  tickMarkOutsideLength' = DEFAULT_TICK_MARK_OUTSIDE_LENGTH ∧  
+  plot' = null ∧  
+  listenerList' = new EventListenerList()  
+
+Functional Scenario Form  
+label="Temperature"  
+    && initializes with default values  
+label=null  
+    && sets label property to null  
+end_process  
+
+process isVisible() result: bool  
+pre true  
+post  
+  result' = visible  
+
+Functional Scenario Form  
+visible=true  
+    && returns true  
+visible=false  
+    && returns false  
+end_process  
+
+process setVisible(flag: boolean)  
+pre true  
+post  
+  flag ≠ visible  
+    ⇒ visible' = flag ∧  
+      notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+current false and flag true  
+    && updates and fires event  
+current true and flag false  
+    && updates and fires event  
+current true and flag true  
+    && no change  
+end_process  
+
+process getLabel() result: String  
+pre true  
+post  
+  result' = label  
+
+Functional Scenario Form  
+label="Sales"  
+    && returns "Sales"  
+label=null  
+    && returns null  
+end_process  
+
+process setLabel(newLabel: String)  
+pre true  
+post  
+  (  
+    label ≠ null and newLabel ≠ null and ¬label.equals(newLabel)  
+      ⇒ label' = newLabel ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+  ) ∨  
+  (  
+    label = null and newLabel ≠ null  
+      ⇒ label' = newLabel ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+  )  
+
+Functional Scenario Form  
+current "A" and new "B"  
+    && updates and fires event  
+current "A" and new "A"  
+    && no change  
+current null and new "C"  
+    && updates and fires event  
+current null and new null  
+    && no change  
+end_process  
+
+process getLabelFont() result: Font  
+pre true  
+post  
+  result' = labelFont  
+
+Functional Scenario Form  
+labelFont=boldFont  
+    && returns boldFont  
+end_process  
+
+process setLabelFont(font: Font)  
+pre true  
+post  
+  font = null  
+    ⇒ errorMsg = "Null 'font' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    ¬this.labelFont.equals(font)  
+      ⇒ labelFont' = font ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+font=null  
+    && throws exception  
+font=newFont and different from current  
+    && updates and fires event  
+font=same as current  
+    && no change  
+end_process  
+
+process getLabelPaint() result: Paint  
+pre true  
+post  
+  result' = labelPaint  
+
+Functional Scenario Form  
+labelPaint=Color.red  
+    && returns red  
+end_process  
+
+process setLabelPaint(paint: Paint)  
+pre true  
+post  
+  paint = null  
+    ⇒ errorMsg = "Null 'paint' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    labelPaint' = paint ∧  
+    notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+paint=null  
+    && throws exception  
+paint=Color.blue  
+    && updates and fires event  
+end_process  
+
+process getLabelInsets() result: RectangleInsets  
+pre true  
+post  
+  result' = labelInsets  
+
+Functional Scenario Form  
+labelInsets=newInsets  
+    && returns newInsets  
+end_process  
+
+process setLabelInsets(insets: RectangleInsets)  
+pre true  
+post  
+  insets = null  
+    ⇒ errorMsg = "Null 'insets' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    ¬insets.equals(this.labelInsets)  
+      ⇒ labelInsets' = insets ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+insets=null  
+    && throws exception  
+insets=newInsets and different  
+    && updates and fires event  
+insets=same as current  
+    && no change  
+end_process  
+
+process getLabelAngle() result: double  
+pre true  
+post  
+  result' = labelAngle  
+
+Functional Scenario Form  
+labelAngle=0.5  
+    && returns 0.5  
+end_process  
+
+process setLabelAngle(angle: double)  
+pre true  
+post  
+  labelAngle' = angle ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+angle=0.785  
+    && updates and fires event  
+end_process  
+
+process getLabelToolTip() result: String  
+pre true  
+post  
+  result' = labelToolTip  
+
+Functional Scenario Form  
+labelToolTip="Axis info"  
+    && returns "Axis info"  
+end_process  
+
+process setLabelToolTip(text: String)  
+pre true  
+post  
+  labelToolTip' = text ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+text="Temperature scale"  
+    && updates and fires event  
+end_process  
+process getLabelURL() result: String  
+pre true  
+post  
+  result' = labelURL  
+
+Functional Scenario Form  
+labelURL="http://example.com"  
+    && returns "http://example.com"  
+end_process  
+
+process setLabelURL(url: String)  
+pre true  
+post  
+  labelURL' = url ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+url="https://data.org"  
+    && updates and fires event  
+end_process  
+
+process isAxisLineVisible() result: bool  
+pre true  
+post  
+  result' = axisLineVisible  
+
+Functional Scenario Form  
+axisLineVisible=true  
+    && returns true  
+end_process  
+
+process setAxisLineVisible(visible: boolean)  
+pre true  
+post  
+  axisLineVisible' = visible ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+visible=false  
+    && updates and fires event  
+end_process  
+
+process getAxisLinePaint() result: Paint  
+pre true  
+post  
+  result' = axisLinePaint  
+
+Functional Scenario Form  
+axisLinePaint=Color.green  
+    && returns green  
+end_process  
+
+process setAxisLinePaint(paint: Paint)  
+pre true  
+post  
+  paint = null  
+    ⇒ errorMsg = "Null 'paint' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    axisLinePaint' = paint ∧  
+    notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+paint=null  
+    && throws exception  
+paint=Color.orange  
+    && updates and fires event  
+end_process  
+
+process getAxisLineStroke() result: Stroke  
+pre true  
+post  
+  result' = axisLineStroke  
+
+Functional Scenario Form  
+axisLineStroke=dashedStroke  
+    && returns dashedStroke  
+end_process  
+
+process setAxisLineStroke(stroke: Stroke)  
+pre true  
+post  
+  stroke = null  
+    ⇒ errorMsg = "Null 'stroke' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    axisLineStroke' = stroke ∧  
+    notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+stroke=null  
+    && throws exception  
+stroke=boldStroke  
+    && updates and fires event  
+end_process  
+
+process isTickLabelsVisible() result: bool  
+pre true  
+post  
+  result' = tickLabelsVisible  
+
+Functional Scenario Form  
+tickLabelsVisible=false  
+    && returns false  
+end_process  
+
+process setTickLabelsVisible(flag: boolean)  
+pre true  
+post  
+  flag ≠ tickLabelsVisible  
+    ⇒ tickLabelsVisible' = flag ∧  
+      notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+current true and flag false  
+    && updates and fires event  
+current false and flag true  
+    && updates and fires event  
+current true and flag true  
+    && no change  
+end_process  
+
+process getTickLabelFont() result: Font  
+pre true  
+post  
+  result' = tickLabelFont  
+
+Functional Scenario Form  
+tickLabelFont=smallFont  
+    && returns smallFont  
+end_process  
+
+process setTickLabelFont(font: Font)  
+pre true  
+post  
+  font = null  
+    ⇒ errorMsg = "Null 'font' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    ¬tickLabelFont.equals(font)  
+      ⇒ tickLabelFont' = font ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+font=null  
+    && throws exception  
+font=newFont and different  
+    && updates and fires event  
+font=same as current  
+    && no change  
+end_process  
+
+process getTickLabelPaint() result: Paint  
+pre true  
+post  
+  result' = tickLabelPaint  
+
+Functional Scenario Form  
+tickLabelPaint=Color.darkGray  
+    && returns darkGray  
+end_process  
+
+process setTickLabelPaint(paint: Paint)  
+pre true  
+post  
+  paint = null  
+    ⇒ errorMsg = "Null 'paint' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    tickLabelPaint' = paint ∧  
+    notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+paint=null  
+    && throws exception  
+paint=Color.magenta  
+    && updates and fires event  
+end_process  
+
+process getTickLabelInsets() result: RectangleInsets  
+pre true  
+post  
+  result' = tickLabelInsets  
+
+Functional Scenario Form  
+tickLabelInsets=insets5px  
+    && returns insets5px  
+end_process  
+
+process setTickLabelInsets(insets: RectangleInsets)  
+pre true  
+post  
+  insets = null  
+    ⇒ errorMsg = "Null 'insets' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    ¬tickLabelInsets.equals(insets)  
+      ⇒ tickLabelInsets' = insets ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+insets=null  
+    && throws exception  
+insets=newInsets and different  
+    && updates and fires event  
+insets=same as current  
+    && no change  
+end_process  
+
+process isTickMarksVisible() result: bool  
+pre true  
+post  
+  result' = tickMarksVisible  
+
+Functional Scenario Form  
+tickMarksVisible=false  
+    && returns false  
+end_process  
+
+process setTickMarksVisible(flag: boolean)  
+pre true  
+post  
+  flag ≠ tickMarksVisible  
+    ⇒ tickMarksVisible' = flag ∧  
+      notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+current true and flag false  
+    && updates and fires event  
+current false and flag true  
+    && updates and fires event  
+current true and flag true  
+    && no change  
+end_process  
+
+process getTickMarkInsideLength() result: float  
+pre true  
+post  
+  result' = tickMarkInsideLength  
+
+Functional Scenario Form  
+tickMarkInsideLength=1.5  
+    && returns 1.5  
+end_process  
+
+process setTickMarkInsideLength(length: float)  
+pre true  
+post  
+  tickMarkInsideLength' = length ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+length=1.2  
+    && updates and fires event  
+end_process  
+
+process getTickMarkOutsideLength() result: float  
+pre true  
+post  
+  result' = tickMarkOutsideLength  
+
+Functional Scenario Form  
+tickMarkOutsideLength=3.0  
+    && returns 3.0  
+end_process  
+
+process setTickMarkOutsideLength(length: float)  
+pre true  
+post  
+  tickMarkOutsideLength' = length ∧  
+  notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+length=4.5  
+    && updates and fires event  
+end_process  
+
+process getTickMarkStroke() result: Stroke  
+pre true  
+post  
+  result' = tickMarkStroke  
+
+Functional Scenario Form  
+tickMarkStroke=dotted  
+    && returns dotted stroke  
+end_process  
+
+process setTickMarkStroke(stroke: Stroke)  
+pre true  
+post  
+  stroke = null  
+    ⇒ errorMsg = "Null 'stroke' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    ¬tickMarkStroke.equals(stroke)  
+      ⇒ tickMarkStroke' = stroke ∧  
+        notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+stroke=null  
+    && throws exception  
+stroke=newStroke and different  
+    && updates and fires event  
+stroke=same as current  
+    && no change  
+end_process  
+
+process getTickMarkPaint() result: Paint  
+pre true  
+post  
+  result' = tickMarkPaint  
+
+Functional Scenario Form  
+tickMarkPaint=Color.cyan  
+    && returns cyan  
+end_process  
+
+process setTickMarkPaint(paint: Paint)  
+pre true  
+post  
+  paint = null  
+    ⇒ errorMsg = "Null 'paint' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    tickMarkPaint' = paint ∧  
+    notifyListeners(new AxisChangeEvent(this))  
+
+Functional Scenario Form  
+paint=null  
+    && throws exception  
+paint=Color.yellow  
+    && updates and fires event  
+end_process  
+
+process getPlot() result: Plot  
+pre true  
+post  
+  result' = plot  
+
+Functional Scenario Form  
+plot=myPlot  
+    && returns myPlot  
+end_process  
+
+process setPlot(plot: Plot)  
+pre true  
+post  
+  plot' = plot ∧  
+  configure()  
+
+Functional Scenario Form  
+plot=chartPlot  
+    && updates and calls configure  
+end_process  
+
+process getFixedDimension() result: double  
+pre true  
+post  
+  result' = fixedDimension  
+
+Functional Scenario Form  
+fixedDimension=150.0  
+    && returns 150.0  
+end_process  
+
+process setFixedDimension(dimension: double)  
+pre true  
+post  
+  fixedDimension' = dimension  
+
+Functional Scenario Form  
+dimension=200.0  
+    && updates fixed dimension  
+end_process  
+
+abstract process configure()  
+
+abstract process reserveSpace(g2: Graphics2D, plot: Plot, 
+                             plotArea: Rectangle2D, 
+                             edge: RectangleEdge, 
+                             space: AxisSpace) result: AxisSpace  
+
+abstract process draw(g2: Graphics2D, cursor: double, 
+                     plotArea: Rectangle2D, dataArea: Rectangle2D, 
+                     edge: RectangleEdge, 
+                     plotState: PlotRenderingInfo) result: AxisState  
+
+abstract process refreshTicks(g2: Graphics2D, state: AxisState, 
+                             dataArea: Rectangle2D, 
+                             edge: RectangleEdge) result: List  
+
+process addChangeListener(listener: AxisChangeListener)  
+pre true  
+post  
+  listenerList' = listenerList.add(AxisChangeListener.class, listener)  
+
+Functional Scenario Form  
+listener=newListener  
+    && adds to listener list  
+end_process  
+
+process removeChangeListener(listener: AxisChangeListener)  
+pre true  
+post  
+  listenerList' = listenerList.remove(AxisChangeListener.class, listener)  
+
+Functional Scenario Form  
+listener=existingListener  
+    && removes from listener list  
+end_process  
+
+process hasListener(listener: EventListener) result: bool  
+pre true  
+post  
+  listeners = Arrays.asList(listenerList.getListenerList()) ∧  
+  result' = listeners.contains(listener)  
+
+Functional Scenario Form  
+listener=registeredListener  
+    && returns true  
+listener=unregisteredListener  
+    && returns false  
+end_process  
+
+process notifyListeners(event: AxisChangeEvent)  
+pre true  
+post  
+  listeners = listenerList.getListenerList() ∧  
+  ∀ i ∈ [0, listeners.length-1] step 2:  
+      listeners[i] = AxisChangeListener.class  
+          ⇒ listeners[i+1].axisChanged(event)  
+
+Functional Scenario Form  
+event=changeEvent and 3 listeners  
+    && notifies all listeners  
+end_process  
+
+process getLabelEnclosure(g2: Graphics2D, edge: RectangleEdge) result: Rectangle2D  
+pre true  
+post  
+  axisLabel = getLabel() ∧  
+  (  
+    axisLabel = null ∨ axisLabel.equals("")  
+      ⇒ result' = new Rectangle2D.Double()  
+    else  
+      fm = g2.getFontMetrics(getLabelFont()) ∧  
+      bounds = TextUtilities.getTextBounds(axisLabel, g2, fm) ∧  
+      insets = getLabelInsets() ∧  
+      boundsWithInsets = insets.createOutsetRectangle(bounds) ∧  
+      angle = getLabelAngle() ∧  
+      (  
+        edge = RectangleEdge.LEFT ∨ edge = RectangleEdge.RIGHT  
+          ⇒ angle' = angle - Math.PI / 2.0  
+        else  
+          angle' = angle  
+      ) ∧  
+      x = boundsWithInsets.getCenterX() ∧  
+      y = boundsWithInsets.getCenterY() ∧  
+      transformer = AffineTransform.getRotateInstance(angle', x, y) ∧  
+      labelBounds = transformer.createTransformedShape(boundsWithInsets) ∧  
+      result' = labelBounds.getBounds2D()  
+  )  
+
+Functional Scenario Form  
+label=null  
+    && returns empty rectangle  
+label=""  
+    && returns empty rectangle  
+label="Axis" and edge=TOP  
+    && returns rotated bounds with insets  
+label="Value" and edge=LEFT  
+    && returns vertical rotated bounds  
+end_process  
+
+process drawLabel(label: String, g2: Graphics2D, 
+                 plotArea: Rectangle2D, dataArea: Rectangle2D, 
+                 edge: RectangleEdge, state: AxisState, 
+                 plotState: PlotRenderingInfo) result: AxisState  
+pre true  
+post  
+  state = null  
+    ⇒ errorMsg = "Null 'state' argument." ∧  
+      result = IllegalArgumentException  
+  else  
+    (label = null ∨ label.equals(""))  
+      ⇒ result' = state  
+    else  
+      font = getLabelFont() ∧  
+      insets = getLabelInsets() ∧  
+      g2.setFont(font) ∧  
+      g2.setPaint(getLabelPaint()) ∧  
+      fm = g2.getFontMetrics() ∧  
+      labelBounds = TextUtilities.getTextBounds(label, g2, fm) ∧  
+      hotspot: Shape? = null ∧  
+      (  
+        edge = RectangleEdge.TOP  
+          ⇒ rotatedBounds = rotateShape(labelBounds, getLabelAngle()) ∧  
+            w = (float)rotatedBounds.getWidth() ∧  
+            h = (float)rotatedBounds.getHeight() ∧  
+            labelx = (float)dataArea.getCenterX() ∧  
+            labely = (float)(state.getCursor() - insets.getBottom() - h/2.0) ∧  
+            TextUtilities.drawRotatedString(label, g2, labelx, labely, 
+                TextAnchor.CENTER, getLabelAngle(), TextAnchor.CENTER) ∧  
+            hotspot' = new Rectangle2D.Float(labelx - w/2.0f, 
+                                            labely - h/2.0f, w, h) ∧  
+            state' = state.cursorUp(insets.getTop() + rotatedBounds.getHeight() 
+                                   + insets.getBottom())  
+        
+        edge = RectangleEdge.BOTTOM  
+          ⇒ rotatedBounds = rotateShape(labelBounds, getLabelAngle()) ∧  
+            w = (float)rotatedBounds.getWidth() ∧  
+            h = (float)rotatedBounds.getHeight() ∧  
+            labelx = (float)dataArea.getCenterX() ∧  
+            labely = (float)(state.getCursor() + insets.getTop() + h/2.0) ∧  
+            TextUtilities.drawRotatedString(label, g2, labelx, labely, 
+                TextAnchor.CENTER, getLabelAngle(), TextAnchor.CENTER) ∧  
+            hotspot' = new Rectangle2D.Float(labelx - w/2.0f, 
+                                            labely - h/2.0f, w, h) ∧  
+            state' = state.cursorDown(insets.getTop() + rotatedBounds.getHeight() 
+                                     + insets.getBottom())  
+        
+        edge = RectangleEdge.LEFT  
+          ⇒ angle = getLabelAngle() - Math.PI/2.0 ∧  
+            rotatedBounds = rotateShape(labelBounds, angle) ∧  
+            w = (float)rotatedBounds.getWidth() ∧  
+            h = (float)rotatedBounds.getHeight() ∧  
+            labelx = (float)(state.getCursor() - insets.getRight() - w/2.0) ∧  
+            labely = (float)dataArea.getCenterY() ∧  
+            TextUtilities.drawRotatedString(label, g2, labelx, labely, 
+                TextAnchor.CENTER, angle, TextAnchor.CENTER) ∧  
+            hotspot' = new Rectangle2D.Float(labelx - w/2.0f, 
+                                            labely - h/2.0f, w, h) ∧  
+            state' = state.cursorLeft(insets.getLeft() + rotatedBounds.getWidth() 
+                                     + insets.getRight())  
+        
+       edge = RectangleEdge.RIGHT  
+    ⇒ angle = getLabelAngle() + Math.PI / 2.0 ∧  
+      rotatedBounds = rotateShape(labelBounds, angle) ∧  
+      w = (float)rotatedBounds.getWidth() ∧  
+      h = (float)rotatedBounds.getHeight() ∧  
+      labelx = (float)(state.getCursor() + insets.getLeft() + w/2.0) ∧  
+      labely = (float)(dataArea.getY() + dataArea.getHeight()/2.0) ∧  
+      TextUtilities.drawRotatedString(label, g2, labelx, labely, 
+          TextAnchor.CENTER, angle, TextAnchor.CENTER) ∧  
+      hotspot' = new Rectangle2D.Float(labelx - w/2.0f, 
+                                      labely - h/2.0f, w, h) ∧  
+      state' = state.cursorRight(insets.getLeft() + w + insets.getRight())  
+       ) ∧  
+
+      (  
+        plotState ≠ null ∧ hotspot ≠ null  
+          ⇒ plotState.addSubplotInfo(new EntityCollection(), hotspot)  
+      ) ∧  
+      result' = state'  
+
+Functional Scenario Form  
+state=null  
+    && throws exception  
+label=""  
+    && returns unchanged state  
+edge=TOP and label="Sales"  
+    && draws rotated label and updates state  
+edge=LEFT and label="Time"  
+    && draws vertical label and updates state 
+edge=RIGHT and label="Value"  
+    && draws vertical label and updates cursor  
+plotState exists and hotspot defined  
+    && adds AxisLabelEntity to entity collection  
+end_process   
+
+process drawAxisLine(g2: Graphics2D, cursor: double, 
+                    dataArea: Rectangle2D, edge: RectangleEdge)  
+pre true  
+post  
+  (  
+    edge = RectangleEdge.TOP  
+      ⇒ axisLine = new Line2D.Double(dataArea.getX(), cursor, 
+                                    dataArea.getMaxX(), cursor)  
+    edge = RectangleEdge.BOTTOM  
+      ⇒ axisLine = new Line2D.Double(dataArea.getX(), cursor, 
+                                    dataArea.getMaxX(), cursor)  
+    edge = RectangleEdge.LEFT  
+      ⇒ axisLine = new Line2D.Double(cursor, dataArea.getY(), 
+                                    cursor, dataArea.getMaxY())  
+    edge = RectangleEdge.RIGHT  
+      ⇒ axisLine = new Line2D.Double(cursor, dataArea.getY(), 
+                                    cursor, dataArea.getMaxY())  
+  ) ∧  
+  g2.setPaint(axisLinePaint) ∧  
+  g2.setStroke(axisLineStroke) ∧  
+  g2.draw(axisLine)  
+
+Functional Scenario Form  
+edge=TOP  
+    && draws horizontal line at cursor  
+edge=LEFT  
+    && draws vertical line at cursor  
+end_process  
+
+process clone() result: Axis  
+pre true  
+post  
+  clone = (Axis)super.clone() ∧  
+  clone.plot' = null ∧  
+  clone.listenerList' = new EventListenerList()  
+
+Functional Scenario Form  
+successful cloning  
+    && returns new instance with plot=null  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  obj = this  
+    ⇒ result' = true  
+  ¬(obj instanceof Axis)  
+    ⇒ result' = false  
+  else  
+    that = (Axis) obj ∧  
+    (  
+      visible ≠ that.visible ∨  
+      ¬ObjectUtilities.equal(label, that.label) ∨  
+      ¬ObjectUtilities.equal(labelFont, that.labelFont) ∨  
+      ¬PaintUtilities.equal(labelPaint, that.labelPaint) ∨  
+      ¬ObjectUtilities.equal(labelInsets, that.labelInsets) ∨  
+      labelAngle ≠ that.labelAngle ∨  
+      ¬ObjectUtilities.equal(labelToolTip, that.labelToolTip) ∨  
+      ¬ObjectUtilities.equal(labelURL, that.labelURL) ∨  
+      axisLineVisible ≠ that.axisLineVisible ∨  
+      ¬ObjectUtilities.equal(axisLineStroke, that.axisLineStroke) ∨  
+      ¬PaintUtilities.equal(axisLinePaint, that.axisLinePaint) ∨  
+      tickLabelsVisible ≠ that.tickLabelsVisible ∨  
+      ¬ObjectUtilities.equal(tickLabelFont, that.tickLabelFont) ∨  
+      ¬PaintUtilities.equal(tickLabelPaint, that.tickLabelPaint) ∨  
+      ¬ObjectUtilities.equal(tickLabelInsets, that.tickLabelInsets) ∨  
+      tickMarksVisible ≠ that.tickMarksVisible ∨  
+      tickMarkInsideLength ≠ that.tickMarkInsideLength ∨  
+      tickMarkOutsideLength ≠ that.tickMarkOutsideLength ∨  
+      ¬PaintUtilities.equal(tickMarkPaint, that.tickMarkPaint) ∨  
+      ¬ObjectUtilities.equal(tickMarkStroke, that.tickMarkStroke) ∨  
+      fixedDimension ≠ that.fixedDimension  
+    )  
+      ⇒ result' = false  
+    else  
+      result' = true  
+
+Functional Scenario Form  
+same object  
+    && returns true  
+different type  
+    && returns false  
+all properties equal  
+    && returns true  
+one property different  
+    && returns false  
+end_process  
+
+process writeObject(stream: ObjectOutputStream)  
+pre true  
+post  
+  stream.defaultWriteObject() ∧  
+  SerialUtilities.writePaint(labelPaint, stream) ∧  
+  SerialUtilities.writePaint(tickLabelPaint, stream) ∧  
+  SerialUtilities.writeStroke(axisLineStroke, stream) ∧  
+  SerialUtilities.writePaint(axisLinePaint, stream) ∧  
+  SerialUtilities.writeStroke(tickMarkStroke, stream) ∧  
+  SerialUtilities.writePaint(tickMarkPaint, stream)  
+
+Functional Scenario Form  
+serialization  
+    && writes 6 custom paint/stroke objects  
+end_process  
+
+process readObject(stream: ObjectInputStream)  
+pre true  
+post  
+  stream.defaultReadObject() ∧  
+  labelPaint' = SerialUtilities.readPaint(stream) ∧  
+  tickLabelPaint' = SerialUtilities.readPaint(stream) ∧  
+  axisLineStroke' = SerialUtilities.readStroke(stream) ∧  
+  axisLinePaint' = SerialUtilities.readPaint(stream) ∧  
+  tickMarkStroke' = SerialUtilities.readStroke(stream) ∧  
+  tickMarkPaint' = SerialUtilities.readPaint(stream) ∧  
+  listenerList' = new EventListenerList()  
+
+Functional Scenario Form  
+deserialization  
+    && restores 6 paint/stroke properties and resets listeners  
+end_process  
+
+end_module  

@@ -1,0 +1,57 @@
+module UC7_suggestiondialog
+type
+  result: String
+  templateName: String
+  ok: Boolean
+ 
+process UC7_suggestiondialog(parent: QWidget) result: UC7_suggestiondialog
+pre
+  true
+post
+  this.parent = parent
+  this.tabWidget = new QTabWidget(this)
+  this.templateListCodeGen = new QListWidget(this)
+  this.templateListBugFix = new QListWidget(this)
+  this.templateListAnnotation = new QListWidget(this)
+  this.editAreaCodeGen = new QTextEdit(this)
+  this.editAreaBugFix = new QTextEdit(this)
+  this.editAreaAnnotation = new QTextEdit(this)
+  this.generateButton = new QPushButton("Generate", this)
+  this.generatedResultWidget = new GeneratedResultWidget(this)
+  setupUI() executed
+  setupConnections() executed
+Functional Scenario Form
+valid parent && all widgets created and initialized
+end_process
+
+process setGeneratedResult(result: String) result: Void
+pre
+  result ≠ null
+post
+  generatedResultWidget.setGeneratedResult(result) executed
+Functional Scenario Form
+valid result string && widget content updated accordingly
+end_process
+
+process addContextMenu(listWidget: QListWidget, editArea: QTextEdit) result: Void
+pre
+  listWidget ≠ null ∧ editArea ≠ null
+post
+  listWidget context menu set to CustomContextMenu
+  when listWidget.customContextMenuRequested triggered:
+    menu with "Delete Template" shown
+    if currentItem ≠ null, it is deleted from listWidget
+  editArea context menu set to CustomContextMenu
+  when editArea.customContextMenuRequested triggered:
+    menu with "Add Template" shown
+    if user inputs valid template name:
+      name added to listWidget
+  when listWidget.itemDoubleClicked triggered:
+    editArea text set to item.text()
+Functional Scenario Form
+user deletes item from listWidget && item is removed or
+user adds template via context menu && item is added to listWidget or
+user double-clicks item && editArea populated with item text
+end_process
+
+end_module

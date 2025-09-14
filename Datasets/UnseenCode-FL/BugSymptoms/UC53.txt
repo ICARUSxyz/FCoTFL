@@ -1,0 +1,20 @@
+// Test Case 1: updateFlameIntensity(45.0)
+→ Output:
+Current Flame Intensity: 45.00, Gas Flow Rate: 1.2 L/min
+ALETR: Flame intensity too low! Increasing gas flow.  ← (misspelled 'ALERT')
+
+// Test Case 2: updateFlameIntensity(85.0)
+→ Output:
+Current Flame Intensity: 85.00, Gas Flow Rate: 0.96 L/min
+Flame intensity is optimal. No adjustment needed.  ← (unexpected message despite high flame)
+
+// Test Case 3: updateFlameIntensity(65.0)
+→ Output:
+Current Flame Intensity: 65.00, Gas Flow Rate: 0.96 L/min
+Flame intensity is optimal. No adjustment needed.
+
+// Observation 1: One output line uses an inconsistent decimal format for gas flow rate (%.1f instead of %.2f)
+
+// Observation 2: Alert message for low flame contains a typographical error ("ALETR" instead of "ALERT")
+
+// Observation 3: Despite flame intensity being above maximum threshold, system reports it as optimal due to a mismatch in condition checking

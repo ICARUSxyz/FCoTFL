@@ -1,0 +1,36 @@
+module StrBuilder
+type
+    buffer: sequence of char
+    size: int
+    str: String
+    padChar: char
+    width: int
+    strLen: int
+    obj: Object
+    nullText: String
+    this: StrBuilder
+
+process appendFixedWidthPadRight(obj: Object, width: int, padChar: char) result: this: StrBuilder
+pre
+    true
+post
+    ((width <= 0) ⇒ (this.buffer and this.size remain unchanged)) ∧
+    ((width > 0) ⇒
+        let str = (if obj ≠ null then obj.toString() else getNullText()) in
+        let strLen = str.length in
+        (
+            (strLen ≥ width ⇒ str[0..width-1] copied to buffer[size..size+width-1]) ∧
+            (strLen < width ⇒
+                str[0..strLen-1] copied to buffer[size..size+strLen-1] ∧
+                (width - strLen) copies of padChar appended to buffer)
+        ) ∧
+        size = size@pre + width)
+Functional Scenario Form
+(width <= 0) && (this remains unchanged) or
+(obj = null and getNullText().length ≥ width) && (nullText truncated and copied) or
+(obj = null and getNullText().length < width) && (nullText copied and padded) or
+(obj ≠ null and obj.toString().length ≥ width) && (string truncated and copied) or
+(obj ≠ null and obj.toString().length < width) && (string copied and padded)
+end_process
+
+end_module

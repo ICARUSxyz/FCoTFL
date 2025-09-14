@@ -1,0 +1,61 @@
+**Bug Report: RadarChart Visualization – Symptom Summary**
+
+---
+
+### **Test Case 1: Initialization and Display**
+
+**Input:**
+
+```java
+int[] values = {60, 80, 50, 70, 90};
+String[] labels = {"A", "B", "C", "D", "E"};
+```
+
+**Expected Behavior:**
+A radar chart window is displayed showing five axes with values correctly plotted, labels aligned near each vertex, and the chart rendered proportionally within the panel.
+
+**Observed Output:**
+
+```
+[Window appears, but chart elements are misaligned or incorrect]
+- Radar polygon seems compressed or mis-scaled
+- Labels appear offset from their expected positions
+- Program fails to launch on some platforms with runtime error:
+  > Exception in thread "main" java.lang.Error: Unresolved compilation problem:
+  > EXIT_ON_CLOSE cannot be resolved to a variable
+```
+
+---
+
+### **Test Case 2: Polygon Rendering**
+
+**Observed Behavior:**
+
+```
+Exception in thread "AWT-EventQueue-0" java.lang.IllegalArgumentException: nPoints < 0
+	at java.awt.Polygon.<init>(Polygon.java:84)
+	at java.awt.Graphics.fillPolygon(Graphics.java:...)
+```
+
+---
+
+### **Test Case 3: Label Positioning**
+
+**Observed Behavior:**
+
+```
+Labels are drawn to the right of their expected positions.
+Some labels appear overlapping or misaligned from the vertices.
+```
+
+---
+
+### **Console Log (Simulated):**
+
+```
+[INFO] Launching radar chart window...
+[INFO] Drawing chart with 5 points
+[WARN] Label position adjustment may be inaccurate
+[ERROR] Unresolved symbol: EXIT_ON_CLOSE
+```
+

@@ -1,0 +1,989 @@
+module DatasetUtilities
+type
+  PieDataset: <interface>
+  CategoryDataset: <interface>
+  current: int
+  key: Comparable
+  otherKeys: List<Comparable>
+  KeyedValues: <interface>
+  rowKey: Comparable
+  rowData: KeyedValues
+  RangeInfo: <interface>
+  IntervalCategoryDataset: <interface>
+  IntervalXYDataset: <interface>
+  OHLCDataset: <interface>
+  KeyToGroupMap: composed type of{
+    getGroupIndex(group: Comparable): int,
+    getGroupCount(): int
+  }
+var
+  IllegalArgumentException: exception = "Null 'dataset' argument"
+  minItemsThreshold: int = 2
+  InitMin: double = Double.POSITIVE_INFINITY
+  InitMax: double = Double.NEGATIVE_INFINITY
+  min: double = Double.POSITIVE_INFINITY
+  max: double = Double.NEGATIVE_INFINITY
+
+process calculatePieDatasetTotal(dataset: PieDataset) result: double
+pre dataset ≠ null
+post 
+  result = ∑(key ∈ dataset.keys | 
+    key ≠ null ∧ dataset.getValue(key) > 0 ⇒ dataset.getValue(key).doubleValue()
+  )
+Functional Scenario Form 
+valid dataset input && sums all positive values for non-null keys
+end_process
+
+process createPieDatasetForRow(
+    dataset: CategoryDataset,
+    rowKey: Comparable
+) result: PieDataset
+pre dataset ≠ null ∧ dataset.containsRowKey(rowKey)
+post 
+  result = new DefaultPieDataset() ∧ 
+  ∀col ∈ 0..dataset.columnCount-1 |
+    result.setValue(dataset.columnKey(col), dataset.getValue(rowKey, col))
+Functional Scenario Form 
+existing row key && populates pie dataset with column values from specified row
+end_process
+
+process createPieDatasetForRowByIndex(
+    dataset: CategoryDataset,
+    row: int
+) result: PieDataset
+pre dataset ≠ null ∧ 0 ≤ row < dataset.rowCount
+post 
+  result = new DefaultPieDataset() ∧
+  ∀col ∈ 0..dataset.columnCount-1 |
+    result.setValue(dataset.columnKey(col), dataset.getValue(row, col))
+Functional Scenario Form 
+valid row index && creates pie dataset with all column entries from target row
+end_process
+
+process createPieDatasetForColumn(
+    dataset: CategoryDataset,
+    columnKey: Comparable
+) result: PieDataset
+pre dataset ≠ null ∧ dataset.containsColumnKey(columnKey)
+post 
+  result = new DefaultPieDataset() ∧ 
+  ∀row ∈ 0..dataset.rowCount-1 |
+    result.setValue(dataset.rowKey(row), dataset.getValue(row, columnKey))
+Functional Scenario Form 
+existing column key && fills pie dataset with row values from target column
+end_process
+
+process createPieDatasetForColumnByIndex(
+    dataset: CategoryDataset,
+    column: int
+) result: PieDataset
+pre dataset ≠ null ∧ 0 ≤ column < dataset.columnCount
+post 
+  result = new DefaultPieDataset() ∧
+  ∀row ∈ 0..dataset.rowCount-1 |
+    result.setValue(dataset.rowKey(row), dataset.getValue(row, column))
+Functional Scenario Form 
+valid column index && generates pie dataset containing all row entries from target column
+end_process
+
+process createConsolidatedPieDataset(
+    source: PieDataset,
+    key: Comparable,
+    minimumPercent: double
+) result: PieDataset
+pre 
+  source ≠ null ∧ 
+  0 ≤ minimumPercent ≤ 1
+post 
+  result = createConsolidatedPieDataset(source, key, minimumPercent, minItemsThreshold)
+Functional Scenario Form 
+source dataset exists && applies default minimum items threshold 2
+end_process
+
+process createConsolidatedPieDataset(
+    source: PieDataset,
+    key: Comparable,
+    minimumPercent: double,
+    minItems: int
+) result: PieDataset
+pre 
+  source ≠ null ∧ 
+  0 ≤ minimumPercent ≤ 1 ∧ 
+  minItems ≥ 0
+post 
+  let total = calculatePieDatasetTotal(source), 
+       filteredKeys = {k ∈ source.keys | source.getValue(k) / total < minimumPercent} in
+    result = new DefaultPieDataset() ∧
+    ∑(k ∈ source.keys | 
+      (k ∈ filteredKeys ∧ |filteredKeys| ≥ minItems ⇒ otherValue' += source.getValue(k).doubleValue()) ∨
+      (k ∉ filteredKeys ∨ |filteredKeys| < minItems ⇒ result.setValue(k, source.getValue(k)))
+    ) ∧
+    (|filteredKeys| ≥ minItems ⇒ result.setValue(key, otherValue'))
+Functional Scenario Form 
+valid inputs && 
+summarizes values below threshold into 'other' category when meets minItems condition || 
+retains original entries when insufficient items to aggregate
+end_process
+
+process createCategoryDataset(
+    rowKeyPrefix: String,
+    columnKeyPrefix: String,
+    data: double[][]
+) result: CategoryDataset
+pre 
+  rowKeyPrefix ≠ null ∧ 
+  columnKeyPrefix ≠ null ∧ 
+  data ≠ null
+post 
+  result = new DefaultCategoryDataset() ∧
+  ∀r ∈ 0..data.length-1 |
+    ∀c ∈ 0..data[r].length-1 |
+      result.addValue(
+        new Double(data[r][c]), 
+        rowKeyPrefix + (r+1), 
+        columnKeyPrefix + (c+1)
+      )
+Functional Scenario Form 
+valid prefixes and data array && populates dataset with generated row/column keys
+end_process
+
+process createCategoryDataset(
+    rowKeyPrefix: String,
+    columnKeyPrefix: String,
+    data: Number[][]
+) result: CategoryDataset
+pre 
+  rowKeyPrefix ≠ null ∧ 
+  columnKeyPrefix ≠ null ∧ 
+  data ≠ null
+post 
+  result = new DefaultCategoryDataset() ∧
+  ∀r ∈ 0..data.length-1 |
+    ∀c ∈ 0..data[r].length-1 |
+      result.addValue(
+        data[r][c], 
+        rowKeyPrefix + (r+1), 
+        columnKeyPrefix + (c+1)
+      )
+Functional Scenario Form 
+valid string prefixes && array dimensions && populates dataset with numeric values
+end_process
+
+process createCategoryDataset(
+    rowKeys: Comparable[],
+    columnKeys: Comparable[],
+    data: double[][]
+) result: CategoryDataset
+pre 
+  rowKeys ≠ null ∧ 
+  columnKeys ≠ null ∧ 
+  data ≠ null ∧ 
+  ¬ArrayUtilities.hasDuplicateItems(rowKeys) ∧ 
+  ¬ArrayUtilities.hasDuplicateItems(columnKeys) ∧ 
+  rowKeys.length = data.length ∧ 
+  columnKeys.length = columnCount(data) ∧ 
+  ∀r ∈ 0..data.length-1 | data[r].length ≤ columnKeys.length
+post 
+  result = new DefaultCategoryDataset() ∧
+  ∀r ∈ 0..rowKeys.length-1 |
+    ∀c ∈ 0..data[r].length-1 |
+      result.addValue(
+        new Double(data[r][c]), 
+        rowKeys[r], 
+        columnKeys[c]
+      )
+Functional Scenario Form 
+unique row/column keys && data dimension compliance && fills dataset with explicit keys
+end_process
+
+process createCategoryDataset(
+    rowKey: Comparable,
+    rowData: KeyedValues
+) result: CategoryDataset
+pre 
+  rowKey ≠ null ∧ 
+  rowData ≠ null
+post 
+  result = new DefaultCategoryDataset() ∧
+  ∀i ∈ 0..rowData.itemCount-1 |
+    result.addValue(
+      rowData.getValue(i), 
+      rowKey, 
+      rowData.getKey(i)
+    )
+Functional Scenario Form 
+valid key-value inputs && transforms keyed values to single row category dataset
+end_process
+
+process isEmptyOrNull(dataset: XYDataset) result: bool
+pre true
+post 
+  (dataset = null) ∨
+  (dataset ≠ null ∧ ∀s ∈ 0..dataset.seriesCount-1 | dataset.itemCount(s) = 0)
+Functional Scenario Form 
+dataset is null && result = true or 
+dataset exists and all series empty && result = true or 
+dataset exists and any series contains items && result = false
+end_process
+
+process findDomainBounds(dataset: XYDataset) result: Range
+pre dataset ≠ null
+post result = findDomainBounds(dataset, IntervalIncludedDefault)
+Functional Scenario Form 
+valid dataset input && delegates to interval-included bounds calculation
+end_process
+
+process findDomainBounds(
+    dataset: XYDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  (dataset ∈ DomainInfo ⇒ result = ((DomainInfo)dataset).getDomainBounds(includeInterval)) ∨
+  (dataset ∉ DomainInfo ⇒ result = iterateDomainBounds(dataset, includeInterval))
+Functional Scenario Form 
+dataset implements DomainInfo && returns direct bounds query or 
+dataset lacks DomainInfo && computes bounds via iteration
+end_process
+
+process findDomainBounds(
+    dataset: XYDataset,
+    visibleSeriesKeys: List<Comparable>,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null
+post 
+  (dataset ∈ XYDomainInfo ⇒ result = ((XYDomainInfo)dataset).getDomainBounds(visibleSeriesKeys, includeInterval)) ∨
+  (dataset ∉ XYDomainInfo ⇒ result = iterateToFindDomainBounds(dataset, visibleSeriesKeys, includeInterval))
+Functional Scenario Form 
+XYDomainInfo implementation && retrieves filtered bounds or 
+generic dataset && iterates visible series manually
+end_process
+
+process iterateDomainBounds(dataset: XYDataset) result: Range
+pre dataset ≠ null
+post result = iterateDomainBounds(dataset, IntervalIncludedDefault)
+Functional Scenario Form 
+non-null dataset && performs iterative calculation with default interval handling
+end_process
+
+process iterateDomainBounds(
+    dataset: XYDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  let seriesCount = dataset.seriesCount in
+    (includeInterval ∧ dataset ∈ IntervalXYDataset ⇒ 
+      ∑_{series=0}^{seriesCount-1} 
+        ∑_{item=0}^{dataset.itemCount(series)-1} (
+          min ← min(NaNFilter(intervalXYData.getXValue), 
+                    NaNFilter(intervalXYData.getStartXValue),
+                    NaNFilter(intervalXYData.getEndXValue)),
+          max ← max(...)
+        )) ∨
+    (¬includeInterval ∨ dataset ∉ IntervalXYDataset ⇒ 
+      ∑_{series=0}^{seriesCount-1}
+        ∑_{item=0}^{dataset.itemCount(series)-1} (
+          min ← min(NaNFilter(dataset.getXValue)),
+          max ← max(...)
+        )) ∧
+  (min ≤ max ⇒ result = new Range(min, max)) ∨
+  (min > max ⇒ result = null)
+Functional Scenario Form 
+includeInterval enabled and IntervalXYDataset && calculates min/max with start/end x-values or 
+standard dataset/disabled interval && uses x-value only → returns valid range or null
+end_process
+
+process findRangeBounds(
+    dataset: CategoryDataset
+) result: Range
+pre dataset ≠ null
+post 
+  result = findRangeBounds(dataset, true)
+Functional Scenario Form 
+non-null category dataset && delegates to interval-included range calculation
+end_process
+
+process findRangeBounds(
+    dataset: CategoryDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeBounds(includeInterval)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    result = iterateRangeBounds(dataset, includeInterval))
+Functional Scenario Form 
+RangeInfo implementation && uses interface method or 
+standard category dataset && performs manual range iteration
+end_process
+
+process findRangeBounds(
+    dataset: CategoryDataset,
+    visibleSeriesKeys: List<Comparable>,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null
+post 
+  (dataset ∈ CategoryRangeInfo ⇒ 
+    result = ((CategoryRangeInfo)dataset).getRangeBounds(visibleSeriesKeys, includeInterval)) ∨
+  (dataset ∉ CategoryRangeInfo ⇒ 
+    result = iterateToFindRangeBounds(dataset, visibleSeriesKeys, includeInterval))
+Functional Scenario Form 
+CategoryRangeInfo implementation && retrieves filtered series range or 
+standard dataset && performs manual iteration over visible series
+end_process
+
+process findRangeBounds(
+    dataset: XYDataset
+) result: Range
+pre dataset ≠ null
+post result = findRangeBounds(dataset, true)
+Functional Scenario Form 
+non-null XYDataset && delegates to interval-included range calculation
+end_process
+
+process findRangeBounds(
+    dataset: XYDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeBounds(includeInterval)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    result = iterateRangeBounds(dataset, includeInterval))
+Functional Scenario Form 
+RangeInfo instance && uses direct range access or 
+generic XYDataset && calculates through iterative sampling
+end_process
+
+process findRangeBounds(
+    dataset: XYDataset,
+    visibleSeriesKeys: List<Comparable>,
+    xRange: Range,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null ∧ xRange ≠ null
+post 
+  (dataset ∈ XYRangeInfo ⇒ 
+    result = ((XYRangeInfo)dataset).getRangeBounds(visibleSeriesKeys, xRange, includeInterval)) ∨
+  (dataset ∉ XYRangeInfo ⇒ 
+    result = iterateToFindRangeBounds(dataset, visibleSeriesKeys, xRange, includeInterval))
+Functional Scenario Form 
+XYRangeInfo compliant dataset && applies x-range filtered bounds retrieval or 
+standard dataset && manual iteration within x-range constraints
+end_process
+
+process iterateCategoryRangeBounds(
+    dataset: CategoryDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post result = iterateRangeBounds(dataset, includeInterval)
+Functional Scenario Form 
+calls current iteration method maintaining backward compatibility
+end_process
+
+process iterateRangeBounds(
+    dataset: CategoryDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  let (rowCount, columnCount) = (dataset.rowCount, dataset.columnCount) in
+    (includeInterval ∧ dataset ∈ IntervalCategoryDataset ⇒ 
+      ∀row ∈ 0..rowCount-1 |
+        ∀column ∈ 0..columnCount-1 |
+          processThreeValues(
+            ((IntervalCategoryDataset)dataset).getValue(row, column),
+            ((IntervalCategoryDataset)dataset).getStartValue(row, column),
+            ((IntervalCategoryDataset)dataset).getEndValue(row, column)
+          )) ∨
+    (¬includeInterval ∨ dataset ∉ IntervalCategoryDataset ⇒ 
+      ∀row ∈ 0..rowCount-1 |
+        ∀column ∈ 0..columnCount-1 |
+          processSingleValue(dataset.getValue(row, column))) ∧
+  (InitMin ≤ InitMax ⇒ result = new Range(InitMin, InitMax)) ∨
+  (InitMin > InitMax ⇒ result = null)
+where
+  processThreeValues(v: Number, l: Number, u: Number) ≜ 
+    updateMinMax(v) ∧ updateMinMax(l) ∧ updateMinMax(u)
+    
+  processSingleValue(v: Number) ≜
+    updateMinMax(v)
+  
+  updateMinMax(n: Number) ≜
+    n ≠ null ∧ !Double.isNaN(n.doubleValue()) ⇒
+      InitMin' = Math.min(InitMin, n.doubleValue()) ∧ 
+      InitMax' = Math.max(InitMax, n.doubleValue())
+Functional Scenario Form 
+includeInterval=true && dataset is IntervalCategoryDataset && process value/start/end values → returns valid range or 
+includeInterval=false || not IntervalCategoryDataset && process values only → returns range or null
+end_process
+
+process iterateToFindRangeBounds(
+    dataset: CategoryDataset,
+    visibleSeriesKeys: List<Comparable>,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null
+post 
+  let columnCount = dataset.columnCount in
+    (includeInterval ∧ dataset ∈ StatisticalCategoryDataset ⇒
+      ∀seriesKey ∈ visibleSeriesKeys |
+        let series = dataset.getRowIndex(seriesKey) in
+          ∀column ∈ 0..columnCount-1 |
+            meanN = ((StatisticalCategoryDataset)dataset).getMeanValue(series, column) |
+            stdN = ((StatisticalCategoryDataset)dataset).getStdDevValue(series, column) in
+              processMeanStdDev(meanN, stdN)) ∨
+    (default processing for plain CategoryDataset ⇒
+      ∀seriesKey ∈ visibleSeriesKeys |
+        let series = dataset.getRowIndex(seriesKey) in
+          ∀column ∈ 0..columnCount-1 |
+            processSingleValue(dataset.getValue(series, column))) ∧
+  (InitMin ≤ InitMax ⇒ result = new Range(InitMin, InitMax)) ∨
+  (InitMin > InitMax ⇒ result = null)
+where
+  processMeanStdDev(meanN: Number, stdN: Number) ≜ 
+    meanN ≠ null ∧ !Double.isNaN(meanN.doubleValue()) ⇒
+      let std = 
+        if stdN ≠ null ∧ !Double.isNaN(stdN.doubleValue()) then 
+          stdN.doubleValue() 
+        else 
+          0.0 in
+          InitMin' = Math.min(InitMin, meanN.doubleValue() - std) ∧ 
+          InitMax' = Math.max(InitMax, meanN.doubleValue() + std)
+
+Functional Scenario Form 
+includeInterval=true && StatisticalCategoryDataset && processes mean±std → updates range or 
+generic CategoryDataset && processes cell values → updates range or 
+valid min/max range → returns computed range or 
+invalid range → returns null
+end_process
+
+process iterateXYRangeBounds(dataset: XYDataset) result: Range
+pre dataset ≠ null
+post result = iterateRangeBounds(dataset, true)
+Functional Scenario Form 
+dataset ≠ null && delegate to interval-included range calculation
+end_process
+
+process iterateRangeBounds(
+    dataset: XYDataset,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null
+post 
+  let seriesCount = dataset.seriesCount in
+    (includeInterval ∧ dataset ∈ IntervalXYDataset ⇒ 
+      ∀series ∈ 0..seriesCount-1 |
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          processThreeYValues(
+            dataset.getYValue(series, item),
+            ((IntervalXYDataset)dataset).getStartYValue(series, item),
+            ((IntervalXYDataset)dataset).getEndYValue(series, item)
+          )) ∨
+    (includeInterval ∧ dataset ∈ OHLCDataset ⇒ 
+      ∀series ∈ 0..seriesCount-1 |
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          processHighLowValues(
+            ((OHLCDataset)dataset).getLowValue(series, item),
+            ((OHLCDataset)dataset).getHighValue(series, item)
+          )) ∨
+    (¬includeInterval ∨ (dataset ∉ IntervalXYDataset ∧ dataset ∉ OHLCDataset) ⇒ 
+      ∀series ∈ 0..seriesCount-1 |
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          processSingleYValue(dataset.getYValue(series, item))) ∧
+  (InitMin ≤ InitMax ⇒ result = new Range(InitMin, InitMax)) ∨
+  (InitMin > InitMax ⇒ result = null)
+where
+  processThreeYValues(yVal: double, startY: double, endY: double) ≜
+    processValidNumber(yVal) ∧
+    processValidNumber(startY) ∧
+    processValidNumber(endY)
+    
+  processHighLowValues(low: double, high: double) ≜
+    processValidNumber(low) ∧
+    processValidNumber(high)
+  
+  processSingleYValue(yVal: double) ≜
+    processValidNumber(yVal)
+  
+  processValidNumber(val: double) ≜
+    !Double.isNaN(val) ⇒
+      InitMin' = Math.min(InitMin, val) ∧
+      InitMax' = Math.max(InitMax, val)
+Functional Scenario Form 
+includeInterval=true && dataset ∈ IntervalXYDataset → process Y/startY/endY values ||
+includeInterval=true && dataset ∈ OHLCDataset → process low/high values ||
+(includeInterval=false || dataset ∉ special types) → process Y values only ||
+InitMin ≤ InitMax → return valid range ||
+InitMin > InitMax → return null
+end_process
+
+process iterateToFindDomainBounds(
+    dataset: XYDataset,
+    visibleSeriesKeys: List<Comparable>,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null
+post 
+  (includeInterval ∧ dataset ∈ IntervalXYDataset ⇒
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          processIntervalXValues(
+            ((IntervalXYDataset)dataset).getStartXValue(series, item),
+            ((IntervalXYDataset)dataset).getEndXValue(series, item)
+          )) ∨
+  (¬includeInterval ∨ dataset ∉ IntervalXYDataset ⇒
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          processXValue(dataset.getXValue(series, item))) ∧
+  (InitMin ≤ InitMax ⇒ result = new Range(InitMin, InitMax)) ∨
+  (InitMin > InitMax ⇒ result = null)
+where
+  processIntervalXValues(startX: double, endX: double) ≜
+    processValidNumber(startX) ∧ processValidNumber(endX)
+  
+  processXValue(xVal: double) ≜
+    processValidNumber(xVal)
+  
+  processValidNumber(val: double) ≜
+    !Double.isNaN(val) ⇒ 
+      InitMin' = Math.min(InitMin, val) ∧
+      InitMax' = Math.max(InitMax, val)
+Functional Scenario Form 
+includeInterval=true ∧ dataset∈IntervalXYDataset && processIntervalXValues startX/endX ||
+¬includeInterval ∨ dataset∉IntervalXYDataset && processXValue singleX ||
+InitMin≤InitMax && return new Range(InitMin, InitMax) ||
+InitMin>InitMax && return null
+end_process
+
+process iterateToFindRangeBounds(
+    dataset: XYDataset,
+    visibleSeriesKeys: List<Comparable>,
+    xRange: Range,
+    includeInterval: bool
+) result: Range
+pre dataset ≠ null ∧ visibleSeriesKeys ≠ null ∧ xRange ≠ null
+post 
+  (includeInterval ∧ dataset ∈ OHLCDataset ⇒ 
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          ohlc.getXValue(series, item) ∈ xRange ⇒
+            processOHLCValues(
+              ((OHLCDataset)dataset).getLowValue(series, item),
+              ((OHLCDataset)dataset).getHighValue(series, item)
+            )) ∨
+  (includeInterval ∧ dataset ∈ BoxAndWhiskerXYDataset ⇒ 
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          bx.getXValue(series, item) ∈ xRange ⇒
+            processBoxValues(
+              ((BoxAndWhiskerXYDataset)dataset).getMinRegularValue(series, item),
+              ((BoxAndWhiskerXYDataset)dataset).getMaxRegularValue(series, item)
+            )) ∨
+  (includeInterval ∧ dataset ∈ IntervalXYDataset ⇒ 
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          ixyd.getXValue(series, item) ∈ xRange ⇒
+            processIntervalYValues(
+              ((IntervalXYDataset)dataset).getStartYValue(series, item),
+              ((IntervalXYDataset)dataset).getEndYValue(series, item)
+            )) ∨
+  (¬includeInterval ∨ dataset ∉ (OHLCDataset|BoxAndWhiskerXYDataset|IntervalXYDataset) ⇒ 
+    ∀seriesKey ∈ visibleSeriesKeys |
+      let series = dataset.indexOf(seriesKey) in
+        ∀item ∈ 0..dataset.itemCount(series)-1 |
+          dataset.getXValue(series, item) ∈ xRange ⇒
+            processStandardYValue(dataset.getYValue(series, item))) ∧
+  (InitMin ≤ InitMax ⇒ result = new Range(InitMin, InitMax)) ∨
+  (InitMin > InitMax ⇒ result = null)
+where
+  processOHLCValues(low: double, high: double) ≜
+    processValidNumber(low) ∧ processValidNumber(high)
+  
+  processBoxValues(min: Number, max: Number) ≜
+    processNumber(min) ∧ processNumber(max)
+  
+  processIntervalYValues(startY: double, endY: double) ≜
+    processValidNumber(startY) ∧ processValidNumber(endY)
+  
+  processStandardYValue(yVal: double) ≜
+    processValidNumber(yVal)
+  
+  processNumber(n: Number) ≜
+    n ≠ null ⇒ processValidNumber(n.doubleValue())
+  
+  processValidNumber(val: double) ≜
+    !Double.isNaN(val) ⇒ 
+      InitMin' = Math.min(InitMin, val) ∧
+      InitMax' = Math.max(InitMax, val)
+Functional Scenario Form 
+includeInterval=true ∧ dataset∈OHLCDataset ∧ x contains in xRange && process low/high y-values ||
+includeInterval=true ∧ dataset∈BoxAndWhiskerXYDataset ∧ x contains in xRange && process min/max regular values ||
+includeInterval=true ∧ dataset∈IntervalXYDataset ∧ x contains in xRange && process start/end y-values ||
+(includeInterval=false ∨ dataset∉special_types) ∧ x contains in xRange && process standard y-values ||
+validInitRange && return computed Range ||
+invalidInitRange && return null
+end_process
+
+process findMinimumDomainValue(dataset: XYDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ DomainInfo ⇒ 
+    result = ((DomainInfo)dataset).getDomainLowerBound(true)) ∨
+  (dataset ∉ DomainInfo ⇒ 
+    ∑_{series=0}^{dataset.seriesCount-1} 
+      ∑_{item=0}^{dataset.itemCount(series)-1} (
+        val = if dataset ∈ IntervalXYDataset then 
+                ((IntervalXYDataset)dataset).getStartXValue(series, item)
+              else 
+                dataset.getXValue(series, item)
+        !Double.isNaN(val) ⇒ min' = Math.min(min, val)
+      ) ∧
+    (min ≠ Double.POSITIVE_INFINITY ⇒ result = new Double(min)) ∨
+    (min = Double.POSITIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈DomainInfo && use interface method ||
+dataset∉DomainInfo && process all data points || 
+valid minimum found && return Double ||
+all values invalid && return null
+end_process
+
+process findMaximumDomainValue(dataset: XYDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ DomainInfo ⇒ 
+    result = ((DomainInfo)dataset).getDomainUpperBound(true)) ∨
+  (dataset ∉ DomainInfo ⇒ 
+    ∑_{series=0}^{dataset.seriesCount-1} 
+      ∑_{item=0}^{dataset.itemCount(series)-1} (
+        val = if dataset ∈ IntervalXYDataset then 
+                ((IntervalXYDataset)dataset).getEndXValue(series, item)
+              else 
+                dataset.getXValue(series, item)
+        !Double.isNaN(val) ⇒ max' = Math.max(max, val)
+      ) ∧
+    (max ≠ Double.NEGATIVE_INFINITY ⇒ result = new Double(max)) ∨
+    (max = Double.NEGATIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈DomainInfo && use interface method ||
+dataset∉DomainInfo && iterate all data points || 
+valid maximum found && return Double ||
+all values invalid && return null
+end_process
+
+process findMinimumRangeValue(dataset: CategoryDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeLowerBound(true)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    ∑_{series=0}^{dataset.rowCount-1} 
+      ∑_{item=0}^{dataset.columnCount-1} (
+        val = if dataset ∈ IntervalCategoryDataset then 
+                ((IntervalCategoryDataset)dataset).getStartValue(series, item)
+              else 
+                dataset.getValue(series, item)
+        val ≠ null ⇒ min' = Math.min(min, val.doubleValue())
+      ) ∧
+    (min ≠ Double.POSITIVE_INFINITY ⇒ result = new Double(min)) ∨
+    (min = Double.POSITIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈RangeInfo && use interface method ||
+dataset∉RangeInfo && process cell values with interval check ||
+valid minimum found && return Double ||
+all values invalid && return null
+end_process
+
+process findMinimumRangeValue(dataset: XYDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeLowerBound(true)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    ∑_{series=0}^{dataset.seriesCount-1} 
+      ∑_{item=0}^{dataset.itemCount(series)-1} (
+        val = case
+          dataset ∈ IntervalXYDataset ⇒ 
+            ((IntervalXYDataset)dataset).getStartYValue(series, item)
+          dataset ∈ OHLCDataset ⇒ 
+            ((OHLCDataset)dataset).getLowValue(series, item)
+          else ⇒ 
+            dataset.getYValue(series, item)
+        !Double.isNaN(val) ⇒ min' = Math.min(min, val)
+      ) ∧
+    (min ≠ Double.POSITIVE_INFINITY ⇒ result = new Double(min)) ∨
+    (min = Double.POSITIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈RangeInfo && use interface method ||
+dataset∉RangeInfo && process y-values with type-based selection ||
+valid minimum found && return Double ||
+all values invalid && return null
+end_process
+
+process findMaximumRangeValue(dataset: CategoryDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeUpperBound(true)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    ∑_{series=0}^{dataset.rowCount-1} 
+      ∑_{item=0}^{dataset.columnCount-1} (
+        val = if dataset ∈ IntervalCategoryDataset then 
+                ((IntervalCategoryDataset)dataset).getEndValue(series, item)
+              else 
+                dataset.getValue(series, item)
+        val ≠ null ⇒ max' = Math.max(max, val.doubleValue())
+      ) ∧
+    (max ≠ Double.NEGATIVE_INFINITY ⇒ result = new Double(max)) ∨
+    (max = Double.NEGATIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈RangeInfo && use interface method ||
+dataset∉RangeInfo && process cell values with interval selection ||
+valid maximum found && return Double ||
+all values invalid && return null
+end_process
+
+process findMaximumRangeValue(dataset: XYDataset) result: Number
+pre dataset ≠ null
+post 
+  (dataset ∈ RangeInfo ⇒ 
+    result = ((RangeInfo)dataset).getRangeUpperBound(true)) ∨
+  (dataset ∉ RangeInfo ⇒ 
+    ∑_{series=0}^{dataset.seriesCount-1} 
+      ∑_{item=0}^{dataset.itemCount(series)-1} (
+        val = case
+          dataset ∈ IntervalXYDataset ⇒ 
+            ((IntervalXYDataset)dataset).getEndYValue(series, item)
+          dataset ∈ OHLCDataset ⇒ 
+            ((OHLCDataset)dataset).getHighValue(series, item)
+          else ⇒ 
+            dataset.getYValue(series, item)
+        !Double.isNaN(val) ⇒ max' = Math.max(max, val)
+      ) ∧
+    (max ≠ Double.NEGATIVE_INFINITY ⇒ result = new Double(max)) ∨
+    (max = Double.NEGATIVE_INFINITY ⇒ result = null))
+Functional Scenario Form 
+dataset∈RangeInfo && direct interface access ||
+dataset∉RangeInfo && process y-values with multi-type handling ||
+valid maximum computed && return Double ||
+no valid data && return null
+end_process
+
+process findStackedRangeBounds(
+    dataset: CategoryDataset
+) result: Range
+pre dataset ≠ null
+post result = findStackedRangeBounds(dataset, 0.0)
+Functional Scenario Form 
+dataset ≠ null && invoke default base calculation
+end_process
+
+process findStackedRangeBounds(
+    dataset: CategoryDataset,
+    base: double
+) result: Range
+pre dataset ≠ null
+post 
+  ∃ item ∈ 0..dataset.columnCount-1, series ∈ 0..dataset.rowCount-1 | 
+    dataset.getValue(series, item) ≠ null ⇒
+      result ≠ null
+  ∀ item ∈ 0..dataset.columnCount-1 (
+    pos_total = base + Σ_{series} positive_values(item, series) ∧
+    neg_total = base + Σ_{series} negative_values(item, series) 
+  ) ∧
+  final_min = min(neg_total for all items) ∧
+  final_max = max(pos_total for all items) ∧
+  (final_min ≤ final_max ⇒ result = new Range(final_min, final_max)) ||
+  (final_min > final_max ⇒ result = null)
+where
+  positive_values(item, series) ≜
+    let v = dataset.getValue(series, item).doubleValue() in
+      if v > 0 then v else 0
+  
+  negative_values(item, series) ≜
+    let v = dataset.getValue(series, item).doubleValue() in
+      if v < 0 then v else 0
+Functional Scenario Form 
+valid category data && calculate per-category stacked totals || 
+non-empty data range detected && return calculated range || 
+all null values && return null
+end_process
+
+process findStackedRangeBounds(
+    dataset: CategoryDataset,
+    map: KeyToGroupMap
+) result: Range
+pre dataset ≠ null ∧ map ≠ null
+post 
+  ∃ series ∈ 0..dataset.rowCount-1, item ∈ 0..dataset.columnCount-1 |
+    dataset.getValue(series, item) ≠ null ⇒ 
+      result ≠ null
+  let groupIndex = map.getGroupIndex(map.getGroup(series)) for all series in
+    ∀ category ∈ 0..dataset.columnCount-1 (
+      group_accumulate_pos[group] += positive_values(category, series) ∧
+      group_accumulate_neg[group] += negative_values(category, series)
+    ) ∧
+    ∀ group ∈ 0..map.getGroupCount()-1 (
+      group_min = min(group_accumulate_neg[group]) ∧
+      group_max = max(group_accumulate_pos[group])
+    ) ∧
+    result = range_combine_all(group_min..group_max)
+where
+  positive_values(category, series) ≜
+    let v = dataset.getValue(series, category).doubleValue() in
+      if v > 0 then v else 0
+  
+  negative_values(category, series) ≜
+    let v = dataset.getValue(series, category).doubleValue() in
+      if v < 0 then v else 0
+  
+  range_combine_all(ranges) ≜
+    fold Range.combine over ranges from empty to full
+Functional Scenario Form 
+group mapping exists && per-group accumulation performed || 
+multiple group ranges combined && return merged range || 
+no valid numeric values && return null
+end_process
+
+process findMinimumStackedRangeValue(
+    dataset: CategoryDataset
+) result: Number
+pre dataset ≠ null
+post 
+  ∃ item ∈ 0..dataset.columnCount-1, series ∈ 0..dataset.rowCount-1 | 
+    dataset.getValue(series, item) ≠ null ⇒ 
+      result = new Double(final_min)
+  ∀ item ∈ 0..dataset.columnCount-1 (
+    total_neg = Σ_{series} (
+      val = dataset.getValue(series, item) |
+        val ≠ null ∧ val.doubleValue < 0 ⇒ val.doubleValue else 0
+    )
+    min' = Math.min(min, total_neg)
+  ) ∧
+  (hasValidData ⇒ result ≠ null) ||
+  (¬hasValidData ⇒ result = null)
+where
+  hasValidData ≜ 
+    ∃item,series | dataset.getValue(series, item) ≠ null
+Functional Scenario Form 
+dataset has negative values && accumulate negative sums per category && return min sum ||
+no negative values && return null
+end_process
+
+process findMaximumStackedRangeValue(
+    dataset: CategoryDataset
+) result: Number
+pre dataset ≠ null
+post 
+  ∃ item ∈ 0..dataset.columnCount-1, series ∈ 0..dataset.rowCount-1 | 
+    dataset.getValue(series, item) ≠ null ⇒ 
+      result = new Double(final_max)
+  ∀ item ∈ 0..dataset.columnCount-1 (
+    total_pos = Σ_{series} (
+      val = dataset.getValue(series, item) |
+        val ≠ null ∧ val.doubleValue > 0 ⇒ val.doubleValue else 0
+    )
+    max' = Math.max(max, total_pos)
+  ) ∧
+  (hasValidData ⇒ result ≠ null) ||
+  (¬hasValidData ⇒ result = null)
+where
+  hasValidData ≜ 
+    ∃item,series | dataset.getValue(series, item) ≠ null
+Functional Scenario Form 
+dataset has positive values && accumulate positive sums per category && return max sum ||
+no positive values && return null
+end_process
+
+process findStackedRangeBounds(
+    dataset: TableXYDataset
+) result: Range
+pre dataset ≠ null
+post result = findStackedRangeBounds(dataset, 0.0)
+Functional Scenario Form 
+table dataset && delegate to base=0.0 calculation
+end_process
+
+process findStackedRangeBounds(
+    dataset: TableXYDataset,
+    base: double
+) result: Range
+pre dataset ≠ null
+post 
+  let itemCount = dataset.itemCount in
+    ∀ itemNo ∈ 0..itemCount-1 (
+      pos = base', neg = base' initial ∀itemNo |
+        ∀ seriesNo ∈ 0..dataset.seriesCount-1 |
+          y = dataset.getYValue(seriesNo, itemNo) |
+            !Double.isNaN(y) ⇒
+              (y > 0 ⇒ pos' = pos + y) ∧
+              (y ≤ 0 ⇒ neg' = neg + y)
+    ) ∧
+    min_result = min(neg for all items) ∧
+    max_result = max(pos for all items) ∧
+    (min_result ≤ max_result ⇒ result = new Range(min_result, max_result)) ||
+    (min_result > max_result ⇒ result = null)
+Functional Scenario Form 
+valid TableXYDataset && calculate item-wise stacked pos/neg sums || 
+valid min/max detected && return range || 
+invalid data || return null
+end_process
+
+process calculateStackTotal(
+    dataset: TableXYDataset,
+    item: int
+) result: double
+pre dataset ≠ null ∧ item ≥ 0 ∧ item < dataset.itemCount
+post 
+  result = Σ_{series=0}^{dataset.seriesCount-1} (
+    y = dataset.getYValue(series, item) |
+      !Double.isNaN(y) ⇒ y else 0
+  )
+Functional Scenario Form 
+valid item index && sum non-NaN y-values || 
+all series y=NaN && return 0.0
+end_process
+
+process findCumulativeRangeBounds(
+    dataset: CategoryDataset
+) result: Range
+pre dataset ≠ null
+post 
+  ∃ row ∈ 0..dataset.rowCount-1, column ∈ 0..dataset.columnCount-1 |
+    dataset.getValue(row, column) ≠ null ⇒ result ≠ null
+  ∀ row ∈ 0..dataset.rowCount-1 (
+    runningTotal = 0.0' initial per row |
+      ∀ column ∈ 0..dataset.columnCount-1 (
+        n = dataset.getValue(row, column) |
+          n ≠ null ⇒ 
+            val = n.doubleValue() |
+              !Double.isNaN(val) ⇒ (
+                runningTotal' = runningTotal + val ∧
+                min_cumul' = Math.min(min_cumul, runningTotal) ∧
+                max_cumul' = Math.max(max_cumul, runningTotal)
+              )
+      )
+  ) ∧
+  (hasData ⇒ result = new Range(min_cumul, max_cumul)) ||
+  (¬hasData ⇒ result = null)
+where
+  hasData ≜ 
+    ∃row,column | dataset.getValue(row, column) ≠ null
+Functional Scenario Form 
+dataset contains cumulative values && track running totals per row || 
+calculate global min/max && return valid range || 
+empty dataset && return null
+end_process
+
+end_module

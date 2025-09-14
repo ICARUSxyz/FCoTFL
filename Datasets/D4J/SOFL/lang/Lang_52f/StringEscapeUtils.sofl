@@ -1,0 +1,62 @@
+module StringEscapeUtils
+type 
+    out: Writer
+    str: String
+    escapeSingleQuote: Boolean
+    // No explicit return, result is side effect on out
+
+process escapeJavaStyleString(out: Writer, str: String, escapeSingleQuote: Boolean)
+pre  
+    out ≠ null
+post 
+    (str = null → out unchanged) or
+    (str ≠ null →
+        for each character ch in str do
+            if ch > 0xfff → out.write("\\u" + hex(ch))
+            else if ch > 0xff → out.write("\\u0" + hex(ch))
+            else if ch > 0x7f → out.write("\\u00" + hex(ch))
+            else if ch < 32 →
+                ch = '\b' → out.write("\\b")
+                ch = '\n' → out.write("\\n")
+                ch = '\t' → out.write("\\t")
+                ch = '\f' → out.write("\\f")
+                ch = '\r' → out.write("\\r")
+                otherwise →
+                    if ch > 0xf → out.write("\\u00" + hex(ch))
+                    else → out.write("\\u000" + hex(ch))
+            else →
+                ch = '\'' ∧ escapeSingleQuote = true → out.write("\\'")
+                ch = '\'' ∧ escapeSingleQuote = false → out.write("'")
+                ch = '"' → out.write("\\\"")
+                ch = '\\' → out.write("\\\\")
+                ch = '/' → out.write("\\/")
+                otherwise → out.write(ch)
+    )
+
+Functional Scenario Form
+(out = null) && (raise IllegalArgumentException) or
+(str = null) && (no output is written to out) or
+(str ≠ null) &&
+(
+    (char in str > 0xfff) && (write "\\u" + hex(char)) or
+    (char in str > 0xff) && (write "\\u0" + hex(char)) or
+    (char in str > 0x7f) && (write "\\u00" + hex(char)) or
+    (char in str < 32) &&
+        (
+            char = '\b' && write "\\b" or
+            char = '\n' && write "\\n" or
+            char = '\t' && write "\\t" or
+            char = '\f' && write "\\f" or
+            char = '\r' && write "\\r" or
+            otherwise && write "\\u00XX" or "\\u000X"
+        ) or
+    (char = '\'' && escapeSingleQuote) && (write "\\'") or
+    (char = '\'' && ¬escapeSingleQuote) && (write "'") or
+    (char = '"') && (write "\\\"") or
+    (char = '\\') && (write "\\\\") or
+    (char = '/') && (write "\\/") or
+    (all other characters) && (write char as-is)
+)
+end_process
+
+end_module

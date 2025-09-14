@@ -1,0 +1,218 @@
+module FDistribution
+type
+  numeratorDegreesOfFreedom: double
+  denominatorDegreesOfFreedom: double
+  solverAbsoluteAccuracy: double
+  numericalVariance: double
+
+var
+  DEFAULT_INVERSE_ABSOLUTE_ACCURACY: real = 1e-9
+  serialVersionUID: long = -8516354193418641566L
+  numericalVarianceIsCalculated: boolean = false
+
+process FDistribution(
+  numeratorDegreesOfFreedom: real,
+  denominatorDegreesOfFreedom: real
+) result: FDistribution
+pre 
+  numeratorDegreesOfFreedom > 0 ∧ 
+  denominatorDegreesOfFreedom > 0
+post 
+  result = FDistribution(
+    new Well19937c(), 
+    numeratorDegreesOfFreedom, 
+    denominatorDegreesOfFreedom, 
+    DEFAULT_INVERSE_ABSOLUTE_ACCURACY
+  )
+Functional Scenario Form 
+validParameters&&objectCreated || 
+numeratorNotPositive&&exceptionThrown || 
+denominatorNotPositive&&exceptionThrown
+end_process
+
+process FDistribution(
+  numeratorDegreesOfFreedom: real,
+  denominatorDegreesOfFreedom: real,
+  inverseCumAccuracy: real
+) result: FDistribution
+pre 
+  numeratorDegreesOfFreedom > 0 ∧ 
+  denominatorDegreesOfFreedom > 0 ∧ 
+  inverseCumAccuracy > 0
+post 
+  result = FDistribution(
+    new Well19937c(), 
+    numeratorDegreesOfFreedom, 
+    denominatorDegreesOfFreedom, 
+    inverseCumAccuracy
+  )
+Functional Scenario Form 
+validParameters&&objectCreated || 
+numeratorNotPositive&&exceptionThrown || 
+denominatorNotPositive&&exceptionThrown || 
+invalidAccuracy&&defaultAccuracyUsed
+end_process
+
+process FDistribution(
+  rng: RandomGenerator,
+  numeratorDegreesOfFreedom: real,
+  denominatorDegreesOfFreedom: real,
+  inverseCumAccuracy: real
+) result: FDistribution
+pre 
+  rng ≠ null ∧ 
+  numeratorDegreesOfFreedom > 0 ∧ 
+  denominatorDegreesOfFreedom > 0 ∧ 
+  inverseCumAccuracy > 0
+post 
+  result.numeratorDegreesOfFreedom = numeratorDegreesOfFreedom ∧
+  result.denominatorDegreesOfFreedom = denominatorDegreesOfFreedom ∧
+  result.solverAbsoluteAccuracy = inverseCumAccuracy ∧
+  result.numericalVariance = NaN ∧
+  result.numericalVarianceIsCalculated = false
+Functional Scenario Form 
+validParameters&&fullyInitialized || 
+nullRng&&exceptionThrown || 
+numeratorNotPositive&&exceptionThrown || 
+denominatorNotPositive&&exceptionThrown || 
+negativeAccuracy&&defaultAccuracyUsed
+end_process
+
+process density(x: real) result: real
+pre 
+  x > 0 ∧ 
+  this.numeratorDegreesOfFreedom > 0 ∧ 
+  this.denominatorDegreesOfFreedom > 0
+post 
+  nhalf = numeratorDegreesOfFreedom / 2 ∧
+  mhalf = denominatorDegreesOfFreedom / 2 ∧
+  logx = ln(x) ∧
+  logn = ln(numeratorDegreesOfFreedom) ∧
+  logm = ln(denominatorDegreesOfFreedom) ∧
+  lognxm = ln(numeratorDegreesOfFreedom * x + denominatorDegreesOfFreedom) ∧
+  result = exp(
+    nhalf * logn + 
+    nhalf * logx - 
+    logx +
+    mhalf * logm - 
+    nhalf * lognxm - 
+    mhalf * lognxm -
+    Beta.logBeta(nhalf, mhalf)
+  )
+Functional Scenario Form 
+positiveX&&densityComputed || 
+xZero&&domainException || 
+xNegative&&domainException || 
+boundaryCase&&specialHandling
+end_process
+
+process cumulativeProbability(x: real) result: real
+pre 
+  this.numeratorDegreesOfFreedom > 0 ∧ 
+  this.denominatorDegreesOfFreedom > 0
+post 
+  (x ≤ 0 ⇒ ret = 0) ∧
+  (x > 0 ⇒ 
+      n = this.numeratorDegreesOfFreedom ∧
+      m = this.denominatorDegreesOfFreedom ∧
+      arg = (n * x) / (m + n * x) ∧
+      ret = Beta.regularizedBeta(arg, 0.5 * n, 0.5 * m)
+  ) ∧
+  result = ret
+Functional Scenario Form 
+xPositive&&cdfComputed || 
+xZero&&returnsZero || 
+xNegative&&returnsZero || 
+boundaryCase&&specialHandling
+end_process
+
+process getNumeratorDegreesOfFreedom() result: real
+post 
+  result = this.numeratorDegreesOfFreedom
+Functional Scenario Form 
+alwaysReturnsStoredValue
+end_process
+
+process getDenominatorDegreesOfFreedom() result: real
+post 
+  result = this.denominatorDegreesOfFreedom
+Functional Scenario Form 
+alwaysReturnsStoredValue
+end_process
+
+process getSolverAbsoluteAccuracy() result: real
+post 
+  result = this.solverAbsoluteAccuracy
+Functional Scenario Form 
+alwaysReturnsStoredAccuracy
+end_process
+
+process getNumericalMean() result: real
+post 
+  (this.denominatorDegreesOfFreedom > 2 ⇒ 
+      result = this.denominatorDegreesOfFreedom / (this.denominatorDegreesOfFreedom - 2)) ∧
+  (this.denominatorDegreesOfFreedom ≤ 2 ⇒ 
+      result = NaN)
+Functional Scenario Form 
+dfDenom>2&&meanComputed || 
+dfDenom≤2&&returnsNaN
+end_process
+
+process getNumericalVariance() result: real
+post 
+  (¬this.numericalVarianceIsCalculated ⇒ 
+      variance = calculateNumericalVariance() ∧
+      this.numericalVariance' = variance ∧
+      this.numericalVarianceIsCalculated' = true ∧
+      result = variance) ∧
+  (this.numericalVarianceIsCalculated ⇒ 
+      result = this.numericalVariance)
+Functional Scenario Form 
+firstCall&&computedAndCached || 
+subsequentCall&&cachedValueReturned
+end_process
+
+process calculateNumericalVariance() result: real
+pre 
+  this.denominatorDegreesOfFreedom > 4
+post 
+  n = this.numeratorDegreesOfFreedom ∧
+  m = this.denominatorDegreesOfFreedom ∧
+  denomDFMinusTwo = m - 2 ∧
+  result = (2 * m^2 * (n + m - 2)) / (n * denomDFMinusTwo^2 * (m - 4))
+Functional Scenario Form 
+dfDenom>4&&varianceComputed || 
+dfDenom≤4&&returnsNaN
+end_process
+
+process getSupportLowerBound() result: real
+post 
+  result = 0
+
+end_process
+
+process getSupportUpperBound() result: real
+post 
+  result = REAL_MAX  // Double.POSITIVE_INFINITY
+
+end_process
+
+process isSupportLowerBoundInclusive() result: bool
+post 
+  result = false
+
+end_process
+
+process isSupportUpperBoundInclusive() result: bool
+post 
+  result = false
+
+end_process
+
+process isSupportConnected() result: bool
+post 
+  result = true
+
+end_process
+
+end_module

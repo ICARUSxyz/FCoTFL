@@ -1,0 +1,48 @@
+module UC23_selectnewclassdialog
+type
+  i: int
+  items: sequence of String
+  newItems: sequence of String
+  preItems: sequence of String
+ 
+process SelectNewClassDialog(newItems: sequence of String, preItems: sequence of String) result: Void
+pre
+  ui = new Ui_SelectNewClassDialog
+post
+  for each string in newItems:
+    add unchecked QListWidgetItem to ui.newListWidget
+  for each string in preItems:
+    add QListWidgetItem to ui.preListWidget
+  connect ui.okButton.clicked to dialog.accept()
+Functional Scenario Form
+dialog initialized && new list populated with unchecked items && pre list populated
+end_process
+
+process checkedItems() result: sequence of String
+pre
+  ui.newListWidget ≠ null
+post
+  result ← all item.text from ui.newListWidget where item.checkState = Checked
+Functional Scenario Form
+iterate list && collect items that are checked
+end_process
+
+process uncheckedItems() result: sequence of String
+pre
+  ui.newListWidget ≠ null
+post
+  result ← all item.text from ui.newListWidget where item.checkState = Unchecked
+Functional Scenario Form
+iterate list && collect items that are unchecked
+end_process
+
+process ~SelectNewClassDialog() result: Void
+pre
+  ui ≠ null
+post
+  delete ui
+Functional Scenario Form
+dialog destructed && ui memory released
+end_process
+
+end_module

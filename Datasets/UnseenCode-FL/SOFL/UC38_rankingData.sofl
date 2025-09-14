@@ -1,0 +1,47 @@
+module UC38_rankingData
+type
+  inputFilePath: string
+  outputFilePath: string
+  num: int
+  line: string
+  resultLine: string
+  name: string
+  grip: string
+  Person: composed type of {
+	name: string, 
+	grip: string}
+  persons: sequence of Person
+  Result: composed type of {
+	names: sequence of string, 
+	grips: sequence of string}
+
+process ExtractData(inputFilePath: string, outputFilePath: string, num: int)
+pre
+  inputFilePath refers to a readable file
+  ∧ outputFilePath refers to a writable file
+  ∧ ∀ line ∈ lines(inputFilePath) • |split(line, "/")| ≥ num
+post
+  ∀ line ∈ lines(inputFilePath) •
+    let data = split(line, "/") in
+      writeLine(outputFilePath, data[2] + "/" + data[num - 1])
+Functional Scenario Form
+(∀ line ∈ lines(inputFilePath) ∧ |split(line, "/")| ≥ num) && 
+  (∀ line ∈ lines(inputFilePath) • writeLine(outputFilePath, split(line, "/")[2] + "/" + split(line, "/")[num - 1]))
+end_process
+
+process sort(inputFilePath: string) result: Result
+pre
+  inputFilePath refers to a readable file
+  ∧ ∀ line ∈ lines(inputFilePath) • |split(line, "/")| = 2 ∧ split(line, "/")[1] is an integer string
+post
+  persons = [ Person(split(line, "/")[0], split(line, "/")[1]) | line ∈ lines(inputFilePath) ]
+  ∧ sortedPersons = sortDescendingByGrip(persons)
+  ∧ result.names = takeFirstN([p.name | p ∈ sortedPersons], 3, "-")
+  ∧ result.grips = takeFirstN([p.grip | p ∈ sortedPersons], 3, "-")
+Functional Scenario Form
+(∀ line ∈ lines(inputFilePath) ∧ line is valid) &&
+  (result.names = top3 names sorted by grip descending, padded with "-")
+  ∧ (result.grips = top3 grips sorted descending, padded with "-")
+end_process
+
+end_module

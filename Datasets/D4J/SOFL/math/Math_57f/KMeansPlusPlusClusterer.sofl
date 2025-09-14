@@ -1,0 +1,160 @@
+module KMeansPlusPlusClusterer
+type
+Integer_MAX: int
+
+process ctor1(r: Random) // KMeansPlusPlusClusterer(Random)
+pre
+r != null
+post
+random = r && emptyStrategy = EmptyClusterStrategy.LARGEST_VARIANCE
+Functional Scenario Form
+(r = null) && (throws NullPointerException) or
+(r != null) && (object initialized with emptyStrategy = LARGEST_VARIANCE)
+
+end_process
+
+process ctor2(r: Random, s: EmptyClusterStrategy) // KMeansPlusPlusClusterer(Random, EmptyClusterStrategy)
+pre
+r != null && s != null
+post
+random = r && emptyStrategy = s
+Functional Scenario Form
+(r = null) && (throws NullPointerException) or
+(s = null) && (throws NullPointerException) or
+(r != null && s != null) && (object initialized as post)
+
+end_process
+
+process cluster(points: Collection<T>, k: int, maxIterations: int) result: List<Cluster<T>>
+pre
+points != null && points.size() >= 1 && (∀p ∈ points • p != null) &&
+k >= 1 && k <= points.size()
+post
+result != null &&
+result.size() = k &&
+(⋃_{c ∈ result} c.points) = points &&
+(∀c1,c2 ∈ result, c1 ≠ c2 • c1.points ∩ c2.points = ∅) &&
+(maxIterations < 0 ⇒ algorithm terminated at a fixed point: no center change and no point reassignment) &&
+(maxIterations ≥ 0 ⇒ algorithm terminated because no center change and no point reassignment or reached count = maxIterations)
+Functional Scenario Form
+(points = null) && (throws NullPointerException) or
+(points.size() < 1) && (throws IllegalArgumentException) or
+(∃p ∈ points • p = null) && (throws NullPointerException) or
+(k < 1) && (throws IllegalArgumentException) or
+(k > points.size()) && (throws IllegalArgumentException) or
+(emptyStrategy = ERROR && some cluster becomes empty) && (throws ConvergenceException) or
+(maxIterations < 0 && inputs valid) && (returns stable clustering as post) or
+(maxIterations ≥ 0 && inputs valid) && (returns clustering at first stabilization or after maxIterations as post)
+
+end_process
+
+process assignPointsToClusters(clusters: Collection<Cluster<T>>, points: Collection<T>)
+pre
+clusters != null && clusters.size() >= 1 &&
+(∀c ∈ clusters • c != null && c.center != null) &&
+points != null && (∀p ∈ points • p != null)
+post
+(∀p ∈ points • let c* = argmin_{c ∈ clusters} p.distanceFrom(c.center) in p ∈ c*.points)
+Functional Scenario Form
+(clusters = null) && (throws NullPointerException) or
+(clusters.size() < 1) && (throws IllegalArgumentException) or
+(∃c ∈ clusters • c = null ∨ c.center = null) && (throws NullPointerException) or
+(points = null) && (throws NullPointerException) or
+(∃p ∈ points • p = null) && (throws NullPointerException) or
+(valid inputs) && (each point assigned to nearest cluster)
+
+end_process
+
+process chooseInitialCenters(points: Collection<T>, k: int, rng: Random) result: List<Cluster<T>>
+pre
+points != null && points.size() >= 1 && (∀p ∈ points • p != null) &&
+k >= 1 && k <= points.size() &&
+rng != null
+post
+result != null &&
+result.size() = k &&
+(∀c ∈ result • c.center ∈ points) &&
+(∀c1,c2 ∈ result, c1 ≠ c2 • c1.center ≠ c2.center)
+Functional Scenario Form
+(points = null) && (throws NullPointerException) or
+(rng = null) && (throws NullPointerException) or
+(points.size() < 1) && (throws IllegalArgumentException) or
+(k < 1) && (throws IllegalArgumentException) or
+(k > points.size()) && (throws IllegalArgumentException) or
+(valid inputs) && (first center uniform; remaining centers chosen ∝ D(x)^2; size = k)
+
+end_process
+
+process getPointFromLargestVarianceCluster(clusters: Collection<Cluster<T>>) result: T
+pre
+clusters != null && clusters.size() >= 1 &&
+(∃c ∈ clusters • c.points.size() >= 1) &&
+(∀c ∈ clusters • c.center != null)
+post
+let c* = argmax_{c ∈ clusters, c.points.size() ≥ 1} Variance({ p.distanceFrom(c.center) | p ∈ c.points }) in
+result ∈ old(c*.points) &&
+c*.points = old(c*.points) \ { result }
+Functional Scenario Form
+(clusters = null) && (throws NullPointerException) or
+(clusters.size() < 1) && (throws IllegalArgumentException) or
+(∀c ∈ clusters • c.points.size() = 0) && (throws ConvergenceException) or
+(∃c ∈ clusters • c.center = null) && (throws NullPointerException) or
+(valid inputs with some non-empty cluster) && (returns and removes a random point from cluster with largest variance)
+
+end_process
+
+process getPointFromLargestNumberCluster(clusters: Collection<Cluster<T>>) result: T
+pre
+clusters != null && clusters.size() >= 1 &&
+(∃c ∈ clusters • c.points.size() ≥ 1)
+post
+let c* = argmax_{c ∈ clusters} c.points.size() in
+result ∈ old(c*.points) &&
+c*.points = old(c*.points) \ { result }
+Functional Scenario Form
+(clusters = null) && (throws NullPointerException) or
+(clusters.size() < 1) && (throws IllegalArgumentException) or
+(∀c ∈ clusters • c.points.size() = 0) && (throws ConvergenceException) or
+(valid inputs) && (returns and removes a random point from the largest cluster)
+
+end_process
+
+process getFarthestPoint(clusters: Collection<Cluster<T>>) result: T
+pre
+clusters != null && clusters.size() >= 1 &&
+(∃c ∈ clusters • c.points.size() ≥ 1) &&
+(∀c ∈ clusters • c.center != null)
+post
+let (c*, p*) = argmax_{c ∈ clusters, p ∈ c.points} p.distanceFrom(c.center) in
+result = p* &&
+c*.points = old(c*.points) \ { p* }
+Functional Scenario Form
+(clusters = null) && (throws NullPointerException) or
+(clusters.size() < 1) && (throws IllegalArgumentException) or
+(∀c ∈ clusters • c.points.size() = 0) && (throws ConvergenceException) or
+(∃c ∈ clusters • c.center = null) && (throws NullPointerException) or
+(valid inputs) && (returns and removes farthest point from its center)
+
+end_process
+
+process getNearestCluster(clusters: Collection<Cluster<T>>, point: T) result: Cluster<T>
+pre
+clusters != null && clusters.size() >= 1 &&
+(∀c ∈ clusters • c != null && c.center != null) &&
+point != null
+post
+result ∈ clusters &&
+(∀c ∈ clusters • point.distanceFrom(result.center) ≤ point.distanceFrom(c.center))
+Functional Scenario Form
+(clusters = null) && (throws NullPointerException) or
+(clusters.size() < 1) && (throws IllegalArgumentException) or
+(∃c ∈ clusters • c = null ∨ c.center = null) && (throws NullPointerException) or
+(point = null) && (throws NullPointerException) or
+(valid inputs) && (returns cluster minimizing distance to point)
+
+end_process
+
+end_module
+
+
+

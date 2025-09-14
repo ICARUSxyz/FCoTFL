@@ -1,0 +1,24 @@
+// Test Case 1: Creating a local player entity
+→ Input: sGUID belongs to local user
+→ Expected: Local player entity created with correct team type
+→ Actual: Player entity initialized with undefined or incorrect type
+
+// Test Case 2: Adding player to AccountDic
+→ Input: Attempt to add existing sGUID again
+→ Expected: Log shows "Has the same Guid: [GUID]"
+→ Actual: Log shows message without expected wording, causing miscommunication
+
+// Test Case 3: Setting collider radius based on config
+→ Input: Hero with HeroCollideRadious = 100
+→ Expected: entity.ColliderRadius == 10
+→ Actual: entity.ColliderRadius == 10 (corrected from originally too large value)
+
+// Test Case 4: Cleaning account dictionary
+→ Input: AccountDic has N entries
+→ Expected: All non-local players are removed (loop includes index 0)
+→ Actual: First entry potentially skipped; loop does not cover i == 0
+
+// Test Case 5: Removing account by seat number
+→ Input: Entity with GameUserSeat != target seat
+→ Expected: Entity removed from AccountDic
+→ Actual: Removal logic skipped due to condition always evaluating true

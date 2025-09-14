@@ -1,0 +1,80 @@
+**Bug Report: Syntax Rule Pattern Matching and String Conversion**
+
+---
+
+**Test Case 1: Header Variable Pattern Initialization**
+
+**Action:**
+Regular expressions are compiled during startup for pattern matching in header analysis.
+
+**Expected:**
+All patterns compile successfully and match expected variable formats.
+
+**Observed:**
+Startup log shows a failure to compile one pattern due to missing terminator or syntax error.
+
+**Log:**
+
+```plaintext
+[INIT] Compiling class variable header pattern...
+[ERROR] QRegExp compilation failed: Unexpected end of pattern
+```
+
+---
+
+**Test Case 2: Variable Matching with Generic Pattern**
+
+**Action:**
+Generic variable pattern is used to match types in code.
+
+**Expected:**
+QRegExp initialized with the defined pattern string.
+
+**Observed:**
+Pattern remains empty or matches nothing due to missing initialization input.
+
+**Log:**
+
+```plaintext
+[INIT] Initializing generic variable matcher...
+[WARNING] QRegExp created with empty pattern
+```
+
+---
+
+**Test Case 3: Converting Strings to lowerCamelCase**
+
+**Action:**
+Function is called to convert a string with multiple words into lowerCamelCase format.
+
+**Expected:**
+First word should be lowercased, others capitalized.
+
+**Observed:**
+Result skips or misinterprets first word; output starts from second word unexpectedly.
+
+**Log:**
+
+```plaintext
+[INPUT] "Get User Info"
+[RESULT] "UserInfo"  // Expected: "getUserInfo"
+```
+
+---
+
+**Test Case 4: Converting Strings to UpperCamelCase**
+
+**Action:**
+Function is called with a space-separated string to be converted to UpperCamelCase.
+
+**Expected:**
+Empty input returns empty string.
+
+**Observed:**
+Unexpected return type or crash due to incompatible type on return.
+
+**Log:**
+\[INPUT] ""
+\[CRASH] Return type mismatch — expected QString, got int
+\[RESULT] <application terminated unexpectedly>
+-----------------------------------------------

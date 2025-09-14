@@ -1,0 +1,370 @@
+module MinMaxCategoryRenderer  
+type:  
+  plotLines: boolean 
+var:  
+  serialVersionUID: long = 2935615937671064911L  
+
+process constructor()  
+pre true  
+post  
+  super() ∧  
+  plotLines' = false ∧  
+  groupPaint' = Color.black ∧  
+  groupStroke' = new BasicStroke(1.0f) ∧  
+  minIcon' = getIcon(new Arc2D.Double(-4, -4, 8, 8, 0, 360, Arc2D.OPEN), null, Color.black) ∧  
+  maxIcon' = getIcon(new Arc2D.Double(-4, -4, 8, 8, 0, 360, Arc2D.OPEN), null, Color.black) ∧  
+  objectIcon' = getIcon(new Line2D.Double(-4, 0, 4, 0), false, true) ∧  
+  lastCategory' = -1 ∧  
+  min' = 0.0 ∧  
+  max' = 0.0  
+
+Functional Scenario Form  
+default initialization  
+    && all default values set  
+end_process  
+
+process isDrawLines() result: bool  
+pre true  
+post  
+  result' = plotLines  
+
+Functional Scenario Form  
+plotLines=true && returns true  
+plotLines=false && returns false  
+end_process  
+
+process setDrawLines(draw: boolean)  
+pre true  
+post  
+  plotLines ≠ draw  
+    ⇒ plotLines' = draw ∧  
+      notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+draw=true when current false  
+    && updates && fires event  
+draw=false when current true  
+    && updates && fires event  
+same value  
+    && no change  
+end_process  
+
+process getGroupPaint() result: Paint  
+pre true  
+post  
+  result' = groupPaint  
+
+Functional Scenario Form  
+groupPaint=red && returns red  
+end_process  
+
+process setGroupPaint(paint: Paint)  
+pre true  
+post  
+  paint = null  
+    ⇒ errorMsg = "Null 'paint' argument." ∧ result = IllegalArgumentException  
+  else  
+    groupPaint' = paint ∧  
+    notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+paint=blue valid  
+    && updates && fires event  
+paint=null  
+    && throws exception  
+end_process  
+
+process getGroupStroke() result: Stroke  
+pre true  
+post  
+  result' = groupStroke  
+
+Functional Scenario Form  
+groupStroke=dashed && returns stroke  
+end_process  
+
+process setGroupStroke(stroke: Stroke)  
+pre true  
+post  
+  stroke = null  
+    ⇒ errorMsg = "Null 'stroke' argument." ∧ result = IllegalArgumentException  
+  else  
+    groupStroke' = stroke ∧  
+    notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+stroke=bold valid  
+    && updates && fires event  
+stroke=null  
+    && throws exception  
+end_process  
+
+process getObjectIcon() result: Icon  
+pre true  
+post  
+  result' = objectIcon  
+
+Functional Scenario Form  
+objectIcon=lineIcon  
+    && returns current object icon  
+end_process  
+
+process setObjectIcon(icon: Icon)  
+pre true  
+post  
+  icon = null  
+    ⇒ errorMsg = "Null 'icon' argument." ∧ result = IllegalArgumentException  
+  else  
+    objectIcon' = icon ∧  
+    notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+icon=circleIcon valid  
+    && updates && fires event  
+icon=null  
+    && throws exception  
+end_process  
+
+process getMaxIcon() result: Icon  
+pre true  
+post  
+  result' = maxIcon  
+
+Functional Scenario Form  
+maxIcon=circleIcon  
+    && returns current max icon  
+end_process  
+
+process setMaxIcon(icon: Icon)  
+pre true  
+post  
+  icon = null  
+    ⇒ errorMsg = "Null 'icon' argument." ∧ result = IllegalArgumentException  
+  else  
+    maxIcon' = icon ∧  
+    notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+icon=triangleIcon valid  
+    && updates && fires event  
+end_process  
+
+process getMinIcon() result: Icon  
+pre true  
+post  
+  result' = minIcon  
+
+Functional Scenario Form  
+minIcon=squareIcon  
+    && returns current min icon  
+end_process  
+
+process setMinIcon(icon: Icon)  
+pre true  
+post  
+  icon = null  
+    ⇒ errorMsg = "Null 'icon' argument." ∧ result = IllegalArgumentException  
+  else  
+    minIcon' = icon ∧  
+    notifyListeners(new RendererChangeEvent(this))  
+
+Functional Scenario Form  
+icon=starIcon valid  
+    && updates && fires event  
+icon=null  
+    && throws exception  
+end_process  
+
+process drawItem(g2: Graphics2D, state: CategoryItemRendererState, 
+                dataArea: Rectangle2D, plot: CategoryPlot, 
+                domainAxis: CategoryAxis, rangeAxis: ValueAxis, 
+                dataset: CategoryDataset, row: int, column: int, pass: int)  
+pre true  
+post  
+  value = dataset.getValue(row, column) ∧  
+  (  
+    value = null ⇒ skip  // Skip if null value  
+    value ≠ null  
+      ⇒ x1 = domainAxis.getCategoryMiddle(column, getColumnCount(), dataArea, 
+                                         plot.getDomainAxisEdge()) ∧  
+        y1 = rangeAxis.valueToJava2D(value.doubleValue(), dataArea, 
+                                   plot.getRangeAxisEdge()) ∧  
+        g2.setPaint(getItemPaint(row, column)) ∧  
+        g2.setStroke(getItemStroke(row, column)) ∧  
+        orient = plot.getOrientation() ∧  
+        (  
+          orient = PlotOrientation.VERTICAL  
+            ⇒ objectIcon.paintIcon(null, g2, (int)x1, (int)y1)  
+          orient = PlotOrientation.HORIZONTAL  
+            ⇒ objectIcon.paintIcon(null, g2, (int)y1, (int)x1)  
+        ) ∧  
+        (  
+          lastCategory = column  
+            ⇒ (  
+                value.doubleValue() < min ⇒ min' = value.doubleValue()  
+                value.doubleValue() > max ⇒ max' = value.doubleValue()  
+              ) ∧  
+              (  
+                row = dataset.getRowCount() - 1  
+                  ⇒ minY = rangeAxis.valueToJava2D(min, dataArea, 
+                                                 plot.getRangeAxisEdge()) ∧  
+                    maxY = rangeAxis.valueToJava2D(max, dataArea, 
+                                                 plot.getRangeAxisEdge()) ∧  
+                    g2.setPaint(groupPaint) ∧  
+                    g2.setStroke(groupStroke) ∧  
+                    (  
+                      orient = PlotOrientation.VERTICAL  
+                        ⇒ g2.draw(new Line2D.Double(x1, minY, x1, maxY)) ∧  
+                          minIcon.paintIcon(null, g2, (int)x1, (int)minY) ∧  
+                          maxIcon.paintIcon(null, g2, (int)x1, (int)maxY)  
+                      orient = PlotOrientation.HORIZONTAL  
+                        ⇒ g2.draw(new Line2D.Double(minY, x1, maxY, x1)) ∧  
+                          minIcon.paintIcon(null, g2, (int)minY, (int)x1) ∧  
+                          maxIcon.paintIcon(null, g2, (int)maxY, (int)x1)  
+                    )  
+              )  
+            lastCategory ≠ column  
+            ⇒ lastCategory' = column ∧  
+              min' = value.doubleValue() ∧  
+              max' = value.doubleValue()  
+        ) ∧  
+        (  
+          plotLines ∧ column ≠ 0  
+            ⇒ prevValue = dataset.getValue(row, column - 1) ∧  
+              (  
+                prevValue ≠ null  
+                  ⇒ x0 = domainAxis.getCategoryMiddle(column - 1, 
+                                                     getColumnCount(), 
+                                                     dataArea, 
+                                                     plot.getDomainAxisEdge()) ∧  
+                    y0 = rangeAxis.valueToJava2D(prevValue.doubleValue(), 
+                                               dataArea, 
+                                               plot.getRangeAxisEdge()) ∧  
+                    (  
+                      orient = PlotOrientation.VERTICAL  
+                        ⇒ g2.draw(new Line2D.Double(x0, y0, x1, y1))  
+                      orient = PlotOrientation.HORIZONTAL  
+                        ⇒ g2.draw(new Line2D.Double(y0, x0, y1, x1))  
+                    )  
+              )  
+        ) ∧  
+        entities = state.getEntityCollection() ∧  
+        (  
+          entities ≠ null  
+            ⇒ shape = new Rectangle2D.Double(x1 - 4, y1 - 4, 8.0, 8.0) ∧  
+              addItemEntity(entities, dataset, row, column, shape)  
+        )  
+  )  
+
+Functional Scenario Form  
+value null && no rendering  
+first item in category && updates min/max/lastCategory  
+last item in series && draws min/max line and icons  
+plotLines true && connects to previous point  
+entities collection present && adds item entity  
+end_process  
+
+process equals(obj: Object) result: bool  
+pre true  
+post  
+  (  
+    obj = this ⇒ result' = true  
+    ¬(obj instanceof MinMaxCategoryRenderer) ⇒ result' = false  
+    else  
+      that = (MinMaxCategoryRenderer) obj ∧  
+      (  
+        this.plotLines ≠ that.plotLines ∨  
+        ¬PaintUtilities.equal(this.groupPaint, that.groupPaint) ∨  
+        ¬this.groupStroke.equals(that.groupStroke)  
+          ⇒ result' = false  
+        else  
+          result' = super.equals(obj)  
+      )  
+  )  
+
+Functional Scenario Form  
+obj = this && returns true  
+obj different plotLines && returns false  
+obj different groupPaint && returns false  
+obj different groupStroke && returns false  
+all equal && returns super.equals  
+end_process  
+
+process getIcon(shape: Shape, fillPaint: Paint?, outlinePaint: Paint?) result: Icon  
+pre true  
+post  
+  width = shape.getBounds().width ∧  
+  height = shape.getBounds().height ∧  
+  path = new GeneralPath(shape) ∧  
+  result' = new Icon() {  
+      paintIcon(c: Component, g: Graphics, x: int, y: int) {  
+          g2 = (Graphics2D) g ∧  
+          path.transform(AffineTransform.getTranslateInstance(x, y)) ∧  
+          (fillPaint ≠ null ⇒ g2.setPaint(fillPaint) ∧ g2.fill(path)) ∧  
+          (outlinePaint ≠ null ⇒ g2.setPaint(outlinePaint) ∧ g2.draw(path)) ∧  
+          path.transform(AffineTransform.getTranslateInstance(-x, -y))  
+      }  
+      getIconWidth() = width  
+      getIconHeight() = height  
+  }  
+
+Functional Scenario Form  
+shape=circle, fillPaint=red, outlinePaint=black  
+    && creates filled red circle with black outline  
+shape=line, fillPaint=null, outlinePaint=blue  
+    && creates blue line without fill  
+end_process  
+
+process getIcon(shape: Shape, fill: boolean, outline: boolean) result: Icon  
+pre true  
+post  
+  width = shape.getBounds().width ∧  
+  height = shape.getBounds().height ∧  
+  path = new GeneralPath(shape) ∧  
+  result' = new Icon() {  
+      paintIcon(c: Component, g: Graphics, x: int, y: int) {  
+          g2 = (Graphics2D) g ∧  
+          path.transform(AffineTransform.getTranslateInstance(x, y)) ∧  
+          (fill ⇒ g2.fill(path)) ∧  
+          (outline ⇒ g2.draw(path)) ∧  
+          path.transform(AffineTransform.getTranslateInstance(-x, -y))  
+      }  
+      getIconWidth() = width  
+      getIconHeight() = height  
+  }  
+
+Functional Scenario Form  
+shape=rectangle, fill=true, outline=false  
+    && creates filled rectangle without outline  
+shape=triangle, fill=false, outline=true  
+    && creates outlined triangle without fill  
+end_process  
+
+process writeObject(stream: ObjectOutputStream)  
+pre true  
+post  
+  stream.defaultWriteObject() ∧  
+  SerialUtilities.writeStroke(this.groupStroke, stream) ∧  
+  SerialUtilities.writePaint(this.groupPaint, stream)  
+
+Functional Scenario Form  
+serialization  
+    && writes default fields + custom stroke/paint  
+end_process  
+
+process readObject(stream: ObjectInputStream)  
+pre true  
+post  
+  stream.defaultReadObject() ∧  
+  groupStroke' = SerialUtilities.readStroke(stream) ∧  
+  groupPaint' = SerialUtilities.readPaint(stream) ∧  
+  minIcon' = getIcon(new Arc2D.Double(-4,-4,8,8,0,360,Arc2D.OPEN), null, Color.black) ∧  
+  maxIcon' = getIcon(new Arc2D.Double(-4,-4,8,8,0,360,Arc2D.OPEN), null, Color.black) ∧  
+  objectIcon' = getIcon(new Line2D.Double(-4,0,4,0), false, true)  
+
+Functional Scenario Form  
+deserialization  
+    && reads default fields + restores stroke/paint + recreates icons  
+end_process  
+
+end_module  
