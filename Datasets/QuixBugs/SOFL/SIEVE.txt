@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module SIEVE
+type 
+    max: int
+    primes: sequence of int
+
+process sieve(max: int) primes: sequence of int
+pre  
+    max ≥ 2
+post 
+    ∀ p ∈ primes • is_prime(p) ∧ 2 ≤ p ≤ max ∧
+    ∀ n ∈ [2..max] • if is_prime(n) then n ∈ primes
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SIEVE
+type 
+    max: int
+    primes: sequence of int
+
+process sieve(max: int) primes: sequence of int
+Functional Scenario Form 
+(max ≥ 2) &&
+(primes is the sequence of all prime numbers in [2, max], in ascending order)
+end_process
+
+end_module

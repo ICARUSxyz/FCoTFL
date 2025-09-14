@@ -1,0 +1,30 @@
+Pre/Post Specification:
+
+module BUCKETSORT
+	type 
+    		arr: sequence of int
+    		k: int
+    		counts: sequence of int
+    		sorted_arr: sequence of int
+    	process bucketsort(arr: sequence of int, k: int) sorted_arr: sequence of int
+		pre  ∀ x ∈ arr • 0 ≤ x < k
+		post 
+    			result = ⨁_{i=0 to k−1} replicate(i, count(arr, i)) ∧
+    			permutation(result, arr)
+	end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+
+module BUCKETSORT
+	type 
+    		arr: sequence of int
+    		k: int
+    		counts: sequence of int
+    		sorted_arr: sequence of int
+	process bucketsort(arr: sequence of int, k: int) result: sequence of int
+		Functional Scenario Form 
+			(∀ x ∈ arr • 0 ≤ x < k) && (result = sorted version of arr using counting sort logic)
+	end_process
+end_module
+

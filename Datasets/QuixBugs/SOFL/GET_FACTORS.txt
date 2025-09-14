@@ -1,0 +1,27 @@
+Pre/Post Specification:
+module GET_FACTORS
+type 
+    n: int
+    factors: sequence of int
+process get_factors(n: int) factors: sequence of int
+pre  
+    n ≥ 1
+post 
+    (n = 1 ⇒ factors = ⟨⟩) ∧
+    (n > 1 ⇒ 
+        (∏ i ∈ [0..length(factors)-1] • factors[i] = n) ∧ 
+        (∀ i ∈ [0..length(factors)-1] • is_prime(factors[i])))
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module GET_FACTORS
+type 
+    n: int
+    factors: sequence of int
+process get_factors(n: int) factors: sequence of int
+Functional Scenario Form 
+(n = 1) && (factors = ⟨⟩) or
+(n > 1) && (factors is a sequence of prime numbers such that their product equals n)
+end_process
+end_module

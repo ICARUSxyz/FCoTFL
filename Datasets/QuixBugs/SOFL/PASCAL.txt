@@ -1,0 +1,31 @@
+Pre/Post Specification：
+module PASCAL
+type 
+    n: int
+    rows: sequence of sequence of int
+
+process pascal(n: int) rows: sequence of sequence of int
+pre  
+    n ≥ 1
+post 
+    length(rows) = n ∧
+    ∀ i ∈ [0..n−1] •
+        rows[i][0] = 1 ∧ rows[i][i] = 1 ∧
+        ∀ j ∈ [1..i−1] • rows[i][j] = rows[i−1][j−1] + rows[i−1][j]
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module PASCAL
+type 
+    n: int
+    rows: sequence of sequence of int
+
+process pascal(n: int) rows: sequence of sequence of int
+Functional Scenario Form 
+(n ≥ 1) &&
+(rows contains n rows of Pascal's Triangle, where each element is defined as the sum of the two elements diagonally above it, with boundaries set to 1)
+end_process
+
+end_module

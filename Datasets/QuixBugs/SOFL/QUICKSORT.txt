@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module QUICKSORT
+type 
+    arr: sequence of int
+    sorted_arr: sequence of int
+
+process quicksort(arr: sequence of int) sorted_arr: sequence of int
+pre  
+    true
+post 
+    sorted_arr is a permutation of arr ∧
+    sorted_arr is in non-decreasing order
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module QUICKSORT
+type 
+    arr: sequence of int
+    sorted_arr: sequence of int
+
+process quicksort(arr: sequence of int) sorted_arr: sequence of int
+Functional Scenario Form 
+(true) &&
+(sorted_arr is a sorted (non-decreasing) permutation of arr)
+end_process
+
+end_module

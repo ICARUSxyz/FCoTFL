@@ -1,0 +1,43 @@
+﻿id,name,total_line,buggy_line,content
+1,BITCOUNT,20,15,n = (n & (n - 1));
+2,BREADTH_FIRST_SEARCH,45,24,while (true) {
+2,BREADTH_FIRST_SEARCH,45,42,// return false;
+3,BUCKETSORT,29,22,for (Integer count : arr) {
+4,DEPTH_FIRST_SEARCH,34,22,FAULT_OF_OMISSION
+5,DETECT_CYCLE,28,18,if (hare.getSuccessor() == null)
+6,FIND_FIRST_IN_SORTED,34,19,while (lo <= hi) {
+7,FIND_IN_SORTED,29,20,"return binsearch(arr, x, mid, end);"
+8,FLATTEN,29,21,result.add(flatten(x));
+8,FLATTEN,29,26,return flatten(arr);
+9,GCD,22,19,"return gcd(a % b, b);"
+10,GET_FACTORS,29,27,return new ArrayList<Integer>();
+11,HANOI,65,27,"steps.add(new Pair<Integer,Integer>(start, helper));"
+12,IS_VALID_PARENTHESIZATION,26,24,return true;
+13,KHEAPSORT,40,27,for (Integer x : arr) {
+14,KNAPSACK,42,30,else if (weight < j) {
+15,KTH,30,25,"return kth(above, k);"
+16,LCS_LENGTH,59,37,int insert_value = dp.get(i-1).get(j) + 1;
+17,LEVENSHTEIN,26,17,"return 1 + levenshtein(source.substring(1), target.substring(1));"
+18,LIS,38,31,longest = length + 1;
+19,LONGEST_COMMON_SUBSEQUENCE,27,18,"return a.charAt(0) + longest_common_subsequence(a.substring(1), b);"
+20,MAX_SUBLIST_SUM,25,19,max_ending_here = max_ending_here + x;
+21,MERGESORT,52,38,if (arr.size() == 0) { // <= 1 in correct version
+22,MINIMUM_SPANNING_TREE,41,28,"groupByNode = update(groupByNode, node, vertex_u);"
+23,NEXT_PALINDROME,40,35,"otherwise.addAll(Collections.nCopies(digit_list.length, 0));"
+24,NEXT_PERMUTATION,45,19,if (perm.get(j) < perm.get(i)) {
+25,PASCAL,41,22,for (int c=0; c<r; c++) {
+26,POSSIBLE_CHANGE,25,17,if (total < 0) {
+27,POWERSET,36,23,to_add.add(first);                AND OTHERS
+28,QUICKSORT,39,26,} else if (x > pivot) {
+29,REVERSE_LINKED_LIST,24,20,prevnode = node;
+30,RPN_EVAL,41,34,"c = bin_op.apply(a,b);"
+31,SHORTEST_PATH_LENGTH,57,38,"unvisitedNodes.get(nextnode) + length_by_edge.get(Arrays.asList(node, nextnode))));"
+32,SHORTEST_PATH_LENGTHS,52,37,"length_by_path.get(Arrays.asList(j,k))));"
+33,SHORTEST_PATHS,63,30,"weight_by_edge.put(edge, update_weight);"
+34,SHUNTING_YARD,43,33,FAULT_OF_OMISSION
+35,SIEVE,47,41,"if (any(list_comp(n, primes))) {"
+36,SQRT,21,16,while (Math.abs(x-approx) > epsilon) {
+37,SUBSEQUENCES,32,16,return new ArrayList();
+38,TO_BASE,26,21,result = result + String.valueOf(alphabet.charAt(i));
+39,TOPOLOGICAL_ORDERING,25,17,if (orderedNodes.containsAll(nextNode.getSuccessors()) && !orderedNodes.contains(nextNode)) {
+40,WRAP,34,31,FAULT_OF_OMISSION

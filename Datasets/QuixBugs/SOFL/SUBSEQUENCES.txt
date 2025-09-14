@@ -1,0 +1,32 @@
+Pre/Post Specification：
+module SUBSEQUENCES
+type 
+    a: int
+    b: int
+    k: int
+    subseqs: sequence of sequence of int
+
+process subsequences(a: int, b: int, k: int) subseqs: sequence of sequence of int
+pre  
+    a ≤ b ∧ k ≥ 0 ∧ (b−a+1) ≥ k
+post 
+    subseqs contains all increasing sequences of length k formed from distinct integers in [a..b]
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SUBSEQUENCES
+type 
+    a: int
+    b: int
+    k: int
+    subseqs: sequence of sequence of int
+
+process subsequences(a: int, b: int, k: int) subseqs: sequence of sequence of int
+Functional Scenario Form 
+(a ≤ b ∧ k ≥ 0 ∧ (b−a+1) ≥ k) &&
+(subseqs = all strictly increasing integer sequences of length k where each element ∈ [a, b])
+end_process
+
+end_module

@@ -1,0 +1,32 @@
+Pre/Post Specification:
+module DEPTH_FIRST_SEARCH
+type 
+    startnode: Node
+    goalnode: Node
+    nodesvisited: set of Node
+    result: Boolean
+process depth_first_search(startnode: Node, goalnode: Node) result: Boolean
+pre  
+    startnode ≠ null ∧ goalnode ≠ null
+post 
+    result = (∃ path: sequence of Node • 
+              path[0] = startnode ∧ 
+              path[|path|-1] = goalnode ∧ 
+              ∀ i ∈ [0..|path|-2] • path[i+1] ∈ path[i].getSuccessors())
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module DEPTH_FIRST_SEARCH
+type 
+    startnode: Node
+    goalnode: Node
+    nodesvisited: set of Node
+    result: Boolean
+process depth_first_search(startnode: Node, goalnode: Node) result: Boolean
+Functional Scenario Form 
+(startnode ≠ null ∧ goalnode ≠ null) &&
+(result = true if there exists a path from startnode to goalnode by following successors using DFS logic;
+ result = false otherwise)
+end_process
+end_module

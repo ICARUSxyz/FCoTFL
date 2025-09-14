@@ -1,0 +1,33 @@
+Pre/Post Specification：
+module SHORTEST_PATHS
+type 
+    source: string
+    weight_by_edge: map of (pair of string) to int
+    distances: map of string to int
+
+process shortest_paths(source: string, weight_by_edge: map of (pair of string) to int) distances: map of string to int
+pre  
+    source ≠ null ∧ ∀ e ∈ weight_by_edge • e[0] ≠ null ∧ e[1] ≠ null ∧ e.weight ≥ 0
+post 
+    ∀ node ∈ distances •
+        distances[node] = the length of the shortest path from source to node using weights in weight_by_edge,
+        or INF if no such path exists
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SHORTEST_PATHS
+type 
+    source: string
+    weight_by_edge: map of (pair of string) to int
+    distances: map of string to int
+
+process shortest_paths(source: string, weight_by_edge: map of (pair of string) to int) distances: map of string to int
+Functional Scenario Form 
+(source ≠ null ∧ all edge weights ≥ 0) &&
+(distances[node] = shortest path cost from source to node for all reachable nodes;
+ distances[node] = INF for unreachable nodes)
+end_process
+
+end_module

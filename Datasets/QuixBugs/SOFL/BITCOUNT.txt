@@ -1,0 +1,21 @@
+Pre/Post Specification：
+
+module BITCOUNT
+	type count, n: int 
+	process BitCount(n: int) count: int
+		pre  true
+		post count = NumberOfOnes(n)
+	end_process
+end_module
+
+
+Functional Scenario Form (FSF Specification):
+
+module BITCOUNT
+	type count, n: int 
+	process BitCount(n: int) count: int
+	Functional Scenario Form 
+		(n = 0) && (count = 0) or 
+		(n > 0) && (count = NumberOfOnes(n))
+end_process 
+end_module

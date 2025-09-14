@@ -1,0 +1,32 @@
+Pre/Post Specification：
+module NEXT_PERMUTATION
+type 
+    perm: sequence of int
+    next_perm: sequence of int
+
+process next_permutation(perm: sequence of int) next_perm: sequence of int
+pre  
+    perm ≠ ⟨⟩
+post 
+    if perm is the largest permutation in lexicographic order then 
+        next_perm = ⟨⟩
+    else 
+        next_perm is the smallest permutation greater than perm in lexicographic order
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module NEXT_PERMUTATION
+type 
+    perm: sequence of int
+    next_perm: sequence of int
+
+process next_permutation(perm: sequence of int) next_perm: sequence of int
+Functional Scenario Form 
+(perm ≠ ⟨⟩) &&
+((perm is lexicographically maximal) && (next_perm = ⟨⟩) or
+ (next_perm is the immediate lexicographically greater permutation of perm))
+end_process
+
+end_module

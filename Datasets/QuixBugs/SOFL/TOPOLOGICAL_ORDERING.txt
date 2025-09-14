@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module TOPOLOGICAL_ORDERING
+type 
+    directedGraph: sequence of Node
+    ordering: sequence of Node
+
+process topological_ordering(directedGraph: sequence of Node) ordering: sequence of Node
+pre  
+    directedGraph represents a finite directed acyclic graph (DAG)
+post 
+    ordering is a permutation of directedGraph ∧
+    ∀ edge (u → v) in the graph • index(ordering, u) < index(ordering, v)
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module TOPOLOGICAL_ORDERING
+type 
+    directedGraph: sequence of Node
+    ordering: sequence of Node
+
+process topological_ordering(directedGraph: sequence of Node) ordering: sequence of Node
+Functional Scenario Form 
+(directedGraph is a DAG) &&
+(ordering is a sequence containing all nodes such that every node appears after all of its predecessors)
+end_process
+
+end_module

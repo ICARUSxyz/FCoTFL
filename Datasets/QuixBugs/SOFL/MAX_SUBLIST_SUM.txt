@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module MAX_SUBLIST_SUM
+type 
+    arr: sequence of int
+    sum: int
+
+process max_sublist_sum(arr: sequence of int) sum: int
+pre  
+    arr ≠ null
+post 
+    sum = max_{0 ≤ i ≤ j ≤ |arr|} (sum of arr[i..j−1]), where empty sublist sum is defined as 0
+end_process
+
+end_module
+
+
+Functional Scenario Form (FSF Specification)：
+module MAX_SUBLIST_SUM
+type 
+    arr: sequence of int
+    sum: int
+
+process max_sublist_sum(arr: sequence of int) sum: int
+Functional Scenario Form 
+(arr ≠ null) &&
+(sum equals the maximum sum of any contiguous sublist of arr, where empty sublist yields 0)
+end_process
+
+end_module

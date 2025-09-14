@@ -1,0 +1,28 @@
+Pre/Post Specification：
+module RPN_EVAL
+type 
+    tokens: sequence of (real or string)
+    result: real
+
+process rpn_eval(tokens: sequence of (real or string)) result: real
+pre  
+    tokens represent a valid RPN expression with well-formed operator-operand structure
+post 
+    result = the numeric value obtained by evaluating the postfix expression in tokens using standard arithmetic rules
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module RPN_EVAL
+type 
+    tokens: sequence of (real or string)
+    result: real
+
+process rpn_eval(tokens: sequence of (real or string)) result: real
+Functional Scenario Form 
+(tokens form a valid RPN expression) &&
+(result equals the computed value from evaluating the postfix expression using a stack-based algorithm with operators {+, -, *, /})
+end_process
+
+end_module

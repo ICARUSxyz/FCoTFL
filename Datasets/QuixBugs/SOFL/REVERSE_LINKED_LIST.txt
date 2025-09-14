@@ -1,0 +1,30 @@
+Pre/Post Specification：
+module REVERSE_LINKED_LIST
+type 
+    node: Node
+    reversed: Node
+
+process reverse_linked_list(node: Node) reversed: Node
+pre  
+    true
+post 
+    reversed is the head of the reversed linked list of node ∧
+    reversed list contains the same nodes as the original list but in reverse order ∧
+    all successor pointers are reversed
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module REVERSE_LINKED_LIST
+type 
+    node: Node
+    reversed: Node
+
+process reverse_linked_list(node: Node) reversed: Node
+Functional Scenario Form 
+(true) &&
+(reversed is the head of the reversed version of the input list, with all successor links reversed and node contents preserved)
+end_process
+
+end_module

@@ -1,0 +1,30 @@
+Pre/Post Specification：
+module SQRT
+type 
+    x: real
+    epsilon: real
+    sqrt_x: real
+
+process sqrt(x: real, epsilon: real) sqrt_x: real
+pre  
+    x ≥ 0 ∧ epsilon > 0
+post 
+    |sqrt_x * sqrt_x − x| ≤ epsilon
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SQRT
+type 
+    x: real
+    epsilon: real
+    sqrt_x: real
+
+process sqrt(x: real, epsilon: real) sqrt_x: real
+Functional Scenario Form 
+(x ≥ 0 ∧ epsilon > 0) &&
+(sqrt_x is an approximation of √x such that |sqrt_x² − x| ≤ epsilon)
+end_process
+
+end_module

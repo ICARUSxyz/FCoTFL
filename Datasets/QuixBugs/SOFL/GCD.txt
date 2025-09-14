@@ -1,0 +1,27 @@
+Pre/Post Specification:
+module GCD
+type 
+    a: int
+    b: int
+    g: int
+process gcd(a: int, b: int) g: int
+pre  
+    a ≥ 0 ∧ b ≥ 0 ∧ (a ≠ 0 ∨ b ≠ 0)
+post 
+    g > 0 ∧ a mod g = 0 ∧ b mod g = 0 ∧ 
+    ∀ d: int • (d > 0 ∧ a mod d = 0 ∧ b mod d = 0) ⇒ d ≤ g
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module GCD
+type 
+    a: int
+    b: int
+    g: int
+process gcd(a: int, b: int) g: int
+Functional Scenario Form 
+((a ≥ 0 ∧ b ≥ 0 ∧ (a ≠ 0 ∨ b ≠ 0))) &&
+(g = the greatest integer that divides both a and b without remainder)
+end_process
+end_module

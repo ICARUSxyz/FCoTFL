@@ -1,0 +1,35 @@
+Pre/Post Specification：
+module WRAP
+type 
+    text: string
+    cols: int
+    lines: sequence of string
+
+process wrap(text: string, cols: int) lines: sequence of string
+pre  
+    text ≠ null ∧ cols > 0
+post 
+    concat(lines) = text ∧
+    ∀ line ∈ lines • line.length() ≤ cols ∧
+    lines are split at whitespace where possible
+end_process
+
+end_module
+
+ Functional Scenario Form (FSF Specification)：
+module WRAP
+type 
+    text: string
+    cols: int
+    lines: sequence of string
+
+process wrap(text: string, cols: int) lines: sequence of string
+Functional Scenario Form 
+(text ≠ null ∧ cols > 0) &&
+(lines is a sequence of substrings of text such that:
+ - their concatenation equals text,
+ - each line is at most cols characters long,
+ - lines are preferably split at spaces)
+end_process
+
+end_module

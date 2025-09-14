@@ -1,0 +1,33 @@
+Pre/Post Specification：
+module SHORTEST_PATH_LENGTHS
+type 
+    numNodes: int
+    length_by_edge: map of (pair of int) to int
+    length_by_path: map of (pair of int) to int
+
+process shortest_path_lengths(numNodes: int, length_by_edge: map of (pair of int) to int) length_by_path: map of (pair of int) to int
+pre  
+    numNodes ≥ 0 ∧ ∀ e ∈ length_by_edge • 0 ≤ e[0], e[1] < numNodes ∧ e.weight ≥ 0
+post 
+    ∀ i, j ∈ [0..numNodes−1] •
+        length_by_path[(i, j)] = the minimal total weight among all paths from i to j,
+        or INF if no path exists
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SHORTEST_PATH_LENGTHS
+type 
+    numNodes: int
+    length_by_edge: map of (pair of int) to int
+    length_by_path: map of (pair of int) to int
+
+process shortest_path_lengths(numNodes: int, length_by_edge: map of (pair of int) to int) length_by_path: map of (pair of int) to int
+Functional Scenario Form 
+(numNodes ≥ 0 ∧ all edge weights ≥ 0) &&
+(length_by_path[(i, j)] gives the shortest distance from i to j for all i, j ∈ [0..numNodes−1];
+ if no path exists from i to j, then length_by_path[(i, j)] = INF)
+end_process
+
+end_module

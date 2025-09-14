@@ -1,0 +1,36 @@
+Pre/Post Specification：
+module SHORTEST_PATH_LENGTH
+type 
+    length_by_edge: map of (pair of Node) to int
+    startnode: Node
+    goalnode: Node
+    length: int
+
+process shortest_path_length(length_by_edge: map of (pair of Node) to int, startnode: Node, goalnode: Node) length: int
+pre  
+    startnode ≠ null ∧ goalnode ≠ null ∧ ∀ e ∈ length_by_edge • e.weight ≥ 0
+post 
+    if ∃ path from startnode to goalnode then 
+        length = the minimum total weight among all such paths
+    else 
+        length = Integer.MAX_VALUE
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module SHORTEST_PATH_LENGTH
+type 
+    length_by_edge: map of (pair of Node) to int
+    startnode: Node
+    goalnode: Node
+    length: int
+
+process shortest_path_length(length_by_edge: map of (pair of Node) to int, startnode: Node, goalnode: Node) length: int
+Functional Scenario Form 
+(startnode ≠ null ∧ goalnode ≠ null ∧ all edge weights ≥ 0) &&
+(length = shortest path distance from startnode to goalnode if path exists;
+ length = Integer.MAX_VALUE otherwise)
+end_process
+
+end_module

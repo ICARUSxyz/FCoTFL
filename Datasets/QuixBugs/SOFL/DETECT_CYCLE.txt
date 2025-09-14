@@ -1,0 +1,28 @@
+Pre/Post Specification:
+module DETECT_CYCLE
+type 
+    node: Node
+    result: Boolean
+process detect_cycle(node: Node) result: Boolean
+pre  
+    node ≠ null
+post 
+    result = (∃ n ∈ ℕ • ∃ path: sequence of Node • 
+              path[0] = node ∧ 
+              ∀ i ∈ [0..n−1] • path[i+1] = path[i].getSuccessor() ∧ 
+              ∃ i, j ∈ [0..n] • i < j ∧ path[i] = path[j])
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module DETECT_CYCLE
+type 
+    node: Node
+    result: Boolean
+process detect_cycle(node: Node) result: Boolean
+Functional Scenario Form 
+(node ≠ null) &&
+(result = true if the sequence of successors starting from node forms a cycle;
+ result = false otherwise)
+end_process
+end_module

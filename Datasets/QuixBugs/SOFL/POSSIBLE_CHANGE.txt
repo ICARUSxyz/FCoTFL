@@ -1,0 +1,32 @@
+Pre/Post Specification：
+module POSSIBLE_CHANGE
+type 
+    coins: sequence of int
+    total: int
+    ways: int
+
+process possible_change(coins: sequence of int, total: int) ways: int
+pre  
+    total ≥ 0 ∧ ∀ c ∈ coins • c > 0
+post 
+    ways = the number of distinct combinations of coins that sum exactly to total,
+    where each coin can be used an unlimited number of times
+end_process
+
+end_module
+
+
+Functional Scenario Form (FSF Specification)：
+module POSSIBLE_CHANGE
+type 
+    coins: sequence of int
+    total: int
+    ways: int
+
+process possible_change(coins: sequence of int, total: int) ways: int
+Functional Scenario Form 
+(total ≥ 0 ∧ ∀ c ∈ coins • c > 0) &&
+(ways equals the total number of combinations to reach total using coins, allowing repeated use of each coin)
+end_process
+
+end_module

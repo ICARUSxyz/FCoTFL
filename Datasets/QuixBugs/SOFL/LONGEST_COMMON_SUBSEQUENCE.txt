@@ -1,0 +1,41 @@
+Pre/Post Specification:
+module LONGEST_COMMON_SUBSEQUENCE
+type 
+  a: sequence of char,
+  b: sequence of char
+
+process longest_common_subsequence(a: sequence of char, b: sequence of char) result: sequence of char
+pre  
+  true
+post 
+  subsequence(result, a) &&
+  subsequence(result, b) &&
+  (∀ s: sequence of char.
+     (subsequence(s, a) && subsequence(s, b)) → |s| ≤ |result|)
+end_process
+
+end_module
+
+
+Functional Scenario Form:
+module LONGEST_COMMON_SUBSEQUENCE
+type 
+  a: sequence of char,
+  b: sequence of char
+
+process longest_common_subsequence(a: sequence of char, b: sequence of char) result: sequence of char
+Functional Scenario Form
+  (a = [] ∨ b = []) &&
+    (result = []) or
+  (a ≠ [] ∧ b ≠ [] ∧ head(a) = head(b)) &&
+    (result = head(a) ⧺ longest_common_subsequence(tail(a), tail(b))) or
+  (a ≠ [] ∧ b ≠ [] ∧ head(a) ≠ head(b) ∧ 
+     |longest_common_subsequence(a, tail(b))| ≥ |longest_common_subsequence(tail(a), b)|) &&
+    (result = longest_common_subsequence(a, tail(b))) or
+  (a ≠ [] ∧ b ≠ [] ∧ head(a) ≠ head(b) ∧ 
+     |longest_common_subsequence(a, tail(b))| < |longest_common_subsequence(tail(a), b)|) &&
+    (result = longest_common_subsequence(tail(a), b))
+end_process
+
+end_module
+

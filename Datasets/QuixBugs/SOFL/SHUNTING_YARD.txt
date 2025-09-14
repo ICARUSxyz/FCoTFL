@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module SHUNTING_YARD
+type 
+    tokens: sequence of (int or string)
+    rpn: sequence of (int or string)
+
+process shunting_yard(tokens: sequence of (int or string)) rpn: sequence of (int or string)
+pre  
+    tokens represent a valid infix arithmetic expression using integers and operators from {+, −, *, /}
+post 
+    rpn is a postfix (RPN) version of the input tokens that preserves evaluation order and operator precedence
+end_process
+
+end_module
+
+
+Functional Scenario Form (FSF Specification)：
+module SHUNTING_YARD
+type 
+    tokens: sequence of (int or string)
+    rpn: sequence of (int or string)
+
+process shunting_yard(tokens: sequence of (int or string)) rpn: sequence of (int or string)
+Functional Scenario Form 
+(tokens form a valid infix arithmetic expression) &&
+(rpn is the correctly ordered postfix expression equivalent to tokens, respecting precedence and left-to-right associativity)
+end_process
+
+end_module

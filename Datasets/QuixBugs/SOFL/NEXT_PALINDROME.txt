@@ -1,0 +1,29 @@
+Pre/Post Specification：
+module NEXT_PALINDROME
+type 
+    digit_list: sequence of int
+    palindrome: string
+
+process next_palindrome(digit_list: sequence of int) palindrome: string
+pre  
+    digit_list ≠ ⟨⟩ ∧ ∀ d ∈ digit_list • 0 ≤ d ≤ 9
+post 
+    palindrome represents the smallest palindromic integer strictly greater than the number represented by digit_list
+end_process
+
+end_module
+
+
+Functional Scenario Form (FSF Specification)：
+module NEXT_PALINDROME
+type 
+    digit_list: sequence of int
+    palindrome: string
+
+process next_palindrome(digit_list: sequence of int) palindrome: string
+Functional Scenario Form 
+(digit_list ≠ ⟨⟩ ∧ ∀ d ∈ digit_list • 0 ≤ d ≤ 9) &&
+(palindrome is the string representation of the smallest palindrome greater than the integer formed by digit_list)
+end_process
+
+end_module

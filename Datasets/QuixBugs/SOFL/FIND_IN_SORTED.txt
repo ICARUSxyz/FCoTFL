@@ -1,0 +1,28 @@
+Pre/Post Specification:
+module FIND_IN_SORTED
+type 
+    arr: sequence of int
+    x: int
+    index: int
+process find_in_sorted(arr: sequence of int, x: int) index: int
+pre  
+    is_sorted(arr, ascending)
+post 
+    (index = -1 ∧ x ∉ arr) ∨ 
+    (index ≠ -1 ∧ arr[index] = x)
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module FIND_IN_SORTED
+type 
+    arr: sequence of int
+    x: int
+    index: int
+process find_in_sorted(arr: sequence of int, x: int) index: int
+Functional Scenario Form 
+(is_sorted(arr, ascending)) &&
+(index = any i such that arr[i] = x, if x ∈ arr;
+ index = -1 otherwise)
+end_process
+end_module

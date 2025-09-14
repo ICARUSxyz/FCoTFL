@@ -1,0 +1,24 @@
+Pre/Post Specification:
+module FLATTEN
+type 
+    arr: sequence of Object
+    flat_result: sequence of Object
+process flatten(arr: sequence of Object) flat_result: sequence of Object
+pre  
+    true
+post 
+    flat_result = flatten_all_nested_lists(arr)
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module FLATTEN
+type 
+    arr: sequence of Object
+    flat_result: sequence of Object
+process flatten(arr: sequence of Object) flat_result: sequence of Object
+Functional Scenario Form 
+(true) &&
+(flat_result = sequence of all elements in arr, recursively flattened in depth-first order)
+end_process
+end_module

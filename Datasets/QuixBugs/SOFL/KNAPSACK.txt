@@ -1,0 +1,26 @@
+Pre/Post Specification:
+module KNAPSACK
+type 
+    capacity: int
+    items: sequence of (int, int)
+    max_value: int
+process knapsack(capacity: int, items: sequence of (int, int)) max_value: int
+pre  
+    capacity ≥ 0 ∧ (∀i ∈ items • i.1 ≥ 0 ∧ i.2 ≥ 0)
+post 
+    max_value = the maximum total value achievable by selecting a subset of items whose total weight ≤ capacity
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module KNAPSACK
+type 
+    capacity: int
+    items: sequence of (int, int)
+    max_value: int
+process knapsack(capacity: int, items: sequence of (int, int)) max_value: int
+Functional Scenario Form 
+(capacity ≥ 0 ∧ ∀i ∈ items • i.1 ≥ 0 ∧ i.2 ≥ 0) &&
+(max_value equals the highest possible sum of values of a subset of items such that the sum of their weights ≤ capacity)
+end_process
+end_module

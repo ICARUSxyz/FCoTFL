@@ -1,0 +1,27 @@
+Pre/Post Specification:
+module KTH
+type 
+    arr: sequence of int
+    k: int
+    a: int
+process kth(arr: sequence of int, k: int) a: int
+pre  
+    length(arr) > 0 ∧ 0 ≤ k < length(arr)
+post 
+    a ∈ arr ∧ 
+    there are exactly k elements in arr strictly less than a
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module KTH
+type 
+    arr: sequence of int
+    k: int
+    a: int
+process kth(arr: sequence of int, k: int) a: int
+Functional Scenario Form 
+(length(arr) > 0 ∧ 0 ≤ k < length(arr)) && 
+(a ∈ arr ∧ a is the element such that exactly k elements in arr are strictly less than a)
+end_process
+end_module

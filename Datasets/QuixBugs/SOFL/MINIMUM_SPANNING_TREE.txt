@@ -1,0 +1,31 @@
+Pre/Post Specification：
+module MINIMUM_SPANNING_TREE
+type 
+    weightedEdges: set of WeightedEdge
+    mst: set of WeightedEdge
+
+process minimum_spanning_tree(weightedEdges: set of WeightedEdge) mst: set of WeightedEdge
+pre  
+    weightedEdges ≠ ∅ ∧ ∀ e ∈ weightedEdges • e.weight ≥ 0
+post 
+    mst is a subset of weightedEdges ∧
+    mst connects all vertices ∧
+    mst contains no cycles ∧
+    total_weight(mst) is minimal among all such subsets
+end_process
+
+end_module
+
+ Functional Scenario Form (FSF Specification):
+module MINIMUM_SPANNING_TREE
+type 
+    weightedEdges: set of WeightedEdge
+    mst: set of WeightedEdge
+
+process minimum_spanning_tree(weightedEdges: set of WeightedEdge) mst: set of WeightedEdge
+Functional Scenario Form 
+(weightedEdges ≠ ∅ ∧ ∀ e ∈ weightedEdges • e.weight ≥ 0) &&
+(mst ⊆ weightedEdges ∧ mst spans all nodes ∧ mst contains no cycles ∧ total weight of mst is minimal)
+end_process
+
+end_module

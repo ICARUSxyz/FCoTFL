@@ -1,0 +1,30 @@
+Pre/Post Specification：
+module POWERSET
+type 
+    arr: sequence of any
+    pset: sequence of sequence of any
+
+process powerset(arr: sequence of any) pset: sequence of sequence of any
+pre  
+    true
+post 
+    ∀ subset ∈ pset • subset ⊆ arr ∧
+    ∀ s ⊆ arr • s ∈ pset ∧
+    length(pset) = 2^length(arr)
+end_process
+
+end_module
+
+Functional Scenario Form (FSF Specification)：
+module POWERSET
+type 
+    arr: sequence of any
+    pset: sequence of sequence of any
+
+process powerset(arr: sequence of any) pset: sequence of sequence of any
+Functional Scenario Form 
+(true) &&
+(pset is the set of all subsets of arr, including the empty set and arr itself, with total count 2^length(arr))
+end_process
+
+end_module

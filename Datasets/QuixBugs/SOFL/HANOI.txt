@@ -1,0 +1,29 @@
+Pre/Post Specification:
+module HANOI
+type 
+    height: int
+    start: int
+    end: int
+    steps: sequence of (int, int)
+process hanoi(height: int, start: int, end: int) steps: sequence of (int, int)
+pre  
+    height ≥ 0 ∧ start ∈ {1, 2, 3} ∧ end ∈ {1, 2, 3} ∧ start ≠ end
+post 
+    length(steps) = 2^height - 1 ∧
+    steps represent a valid sequence of moves that solves the Towers of Hanoi
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module HANOI
+type 
+    height: int
+    start: int
+    end: int
+    steps: sequence of (int, int)
+process hanoi(height: int, start: int, end: int) steps: sequence of (int, int)
+Functional Scenario Form 
+((height ≥ 0 ∧ start ≠ end ∧ start, end ∈ {1, 2, 3})) &&
+(steps is the correct sequence of moves to transfer 'height' disks from 'start' to 'end' using the third peg)
+end_process
+end_module

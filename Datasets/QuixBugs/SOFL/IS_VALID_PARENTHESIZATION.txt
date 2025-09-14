@@ -1,0 +1,25 @@
+Pre/Post Specification:
+module IS_VALID_PARENTHESIZATION
+type 
+    parens: sequence of char
+    result: Boolean
+process is_valid_parenthesization(parens: sequence of char) result: Boolean
+pre  
+    true
+post 
+    result = true ⇔ every '(' has a matching ')' in correct order and nesting
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module IS_VALID_PARENTHESIZATION
+type 
+    parens: sequence of char
+    result: Boolean
+
+process is_valid_parenthesization(parens: sequence of char) result: Boolean
+Functional Scenario Form 
+(true) && 
+(result = true if and only if parens is a well-formed sequence of parentheses with balanced depth and proper ordering)
+end_process
+end_module

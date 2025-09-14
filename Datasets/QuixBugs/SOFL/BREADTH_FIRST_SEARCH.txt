@@ -1,0 +1,36 @@
+Pre/Post Specification: 
+
+module BREADTH_FIRST_SEARCH
+	type 
+		startnode, goalnode: Node
+		nodesvisited: set of Node
+		queue: sequence of Node
+		result: Boolean
+	process BreadthFirstSearch(startnode: Node, goalnode: Node) result: Boolean
+		pre  startnode ≠ null ∧ goalnode ≠ null
+		post 
+   			 if ∃ path: sequence of Node (
+       			 path[0] = startnode ∧ path[|path|−1] = goalnode ∧ 
+       			 ∀ i ∈ [0..|path|−2], path[i+1] ∈ path[i].getSuccessors()
+   			 ) 
+    			then result = true 
+    			else result = false
+	end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+
+module BREADTH_FIRST_SEARCH
+	type 
+		startnode, goalnode: Node
+		nodesvisited: set of Node
+		queue: sequence of Node
+    		
+	process BreadthFirstSearch(startnode: Node, goalnode: Node) result: Boolean
+		Functional Scenario Form 
+			(startnode = goalnode) && (result = true) or 
+			(pathExists(startnode, goalnode)) && (result = true) or 
+			(¬pathExists(startnode, goalnode)) && (result = false)
+	end_process
+end_module
+

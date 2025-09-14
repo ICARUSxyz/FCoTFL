@@ -1,0 +1,26 @@
+Pre/Post Specification:
+module LCS_LENGTH
+type 
+    s: string
+    t: string
+    a: int
+process lcs_length(s: string, t: string) a: int
+pre  
+    s ≠ null ∧ t ≠ null
+post 
+    a = length of the longest sequence of characters that appear in both s and t in the same order (not necessarily contiguous)
+end_process
+end_module
+
+Functional Scenario Form (FSF Specification):
+module LCS_LENGTH
+type 
+    s: string
+    t: string
+    a: int
+process lcs_length(s: string, t: string) a: int
+Functional Scenario Form 
+(s ≠ null ∧ t ≠ null) &&
+(a = the length of the longest common subsequence between s and t, preserving relative order)
+end_process
+end_module
